@@ -1,0 +1,2255 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include "asp.h"
+
+@PRAGMA_WEAK@
+
+#undef FCNAME
+#define FCNAME MPIASP_Init_thread
+int MPIASP_Init_thread(int *argc, char ***argv, int required, int *provided) {
+    int result;
+
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+
+    return PMPI_Init_thread(argc, argv, required, provided);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Attr_delete
+int MPIASP_Attr_delete(MPI_Comm comm, int keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Attr_delete(comm, keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Attr_get
+int MPIASP_Attr_get(MPI_Comm comm, int keyval, void *attr_value, int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Attr_get(comm, keyval, attr_value, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Attr_put
+int MPIASP_Attr_put(MPI_Comm comm, int keyval, void *attr_value) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Attr_put(comm, keyval, attr_value);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_create_keyval
+int MPIASP_Comm_create_keyval(MPI_Comm_copy_attr_function *comm_copy_attr_fn,
+        MPI_Comm_delete_attr_function *comm_delete_attr_fn, int *comm_keyval,
+        void *extra_state) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_create_keyval(comm_copy_attr_fn, comm_delete_attr_fn,
+            comm_keyval, extra_state);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_delete_attr
+int MPIASP_Comm_delete_attr(MPI_Comm comm, int comm_keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_delete_attr(comm, comm_keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_free_keyval
+int MPIASP_Comm_free_keyval(int *comm_keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_free_keyval(comm_keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_get_attr
+int MPIASP_Comm_get_attr(MPI_Comm comm, int comm_keyval, void *attribute_val,
+        int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_get_attr(comm, comm_keyval, attribute_val, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_set_attr
+int MPIASP_Comm_set_attr(MPI_Comm comm, int comm_keyval, void *attribute_val) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_set_attr(comm, comm_keyval, attribute_val);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Keyval_create
+int MPIASP_Keyval_create(MPI_Copy_function *copy_fn,
+        MPI_Delete_function *delete_fn, int *keyval, void *extra_state) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Keyval_create(copy_fn, delete_fn, keyval, extra_state);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Keyval_free
+int MPIASP_Keyval_free(int *keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Keyval_free(keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_keyval
+int MPIASP_Type_create_keyval(MPI_Type_copy_attr_function *type_copy_attr_fn,
+        MPI_Type_delete_attr_function *type_delete_attr_fn, int *type_keyval,
+        void *extra_state) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_keyval(type_copy_attr_fn, type_delete_attr_fn,
+            type_keyval, extra_state);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_delete_attr
+int MPIASP_Type_delete_attr(MPI_Datatype type, int type_keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_delete_attr(type, type_keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_free_keyval
+int MPIASP_Type_free_keyval(int *type_keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_free_keyval(type_keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_get_attr
+int MPIASP_Type_get_attr(MPI_Datatype type, int type_keyval,
+        void *attribute_val, int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_get_attr(type, type_keyval, attribute_val, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_set_attr
+int MPIASP_Type_set_attr(MPI_Datatype type, int type_keyval,
+        void *attribute_val) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_set_attr(type, type_keyval, attribute_val);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_create_keyval
+int MPIASP_Win_create_keyval(MPI_Win_copy_attr_function *win_copy_attr_fn,
+        MPI_Win_delete_attr_function *win_delete_attr_fn, int *win_keyval,
+        void *extra_state) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_create_keyval(win_copy_attr_fn, win_delete_attr_fn,
+            win_keyval, extra_state);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_delete_attr
+int MPIASP_Win_delete_attr(MPI_Win win, int win_keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_delete_attr(win, win_keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_free_keyval
+int MPIASP_Win_free_keyval(int *win_keyval) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_free_keyval(win_keyval);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_get_attr
+int MPIASP_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val,
+        int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_get_attr(win, win_keyval, attribute_val, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_set_attr
+int MPIASP_Win_set_attr(MPI_Win win, int win_keyval, void *attribute_val) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_set_attr(win, win_keyval, attribute_val);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Allgather
+int MPIASP_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+        void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount,
+            recvtype, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Allgatherv
+int MPIASP_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+        void *recvbuf, int *recvcounts, int *displs, MPI_Datatype recvtype,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Allgatherv(sendbuf, sendcount, sendtype, recvbuf, recvcounts,
+            displs, recvtype, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Allreduce
+int MPIASP_Allreduce(void *sendbuf, void *recvbuf, int count,
+        MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Alltoall
+int MPIASP_Alltoall(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+        void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Alltoall(sendbuf, sendcount, sendtype, recvbuf, recvcount,
+            recvtype, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Alltoallv
+int MPIASP_Alltoallv(void *sendbuf, int *sendcnts, int *sdispls,
+        MPI_Datatype sendtype, void *recvbuf, int *recvcnts, int *rdispls,
+        MPI_Datatype recvtype, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Alltoallv(sendbuf, sendcnts, sdispls, sendtype, recvbuf,
+            recvcnts, rdispls, recvtype, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Alltoallw
+int MPIASP_Alltoallw(void *sendbuf, int *sendcnts, int *sdispls,
+        MPI_Datatype *sendtypes, void *recvbuf, int *recvcnts, int *rdispls,
+        MPI_Datatype *recvtypes, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Alltoallw(sendbuf, sendcnts, sdispls, sendtypes, recvbuf,
+            recvcnts, rdispls, recvtypes, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Barrier
+int MPIASP_Barrier(MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Barrier(comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Bcast
+int MPIASP_Bcast(void *buffer, int count, MPI_Datatype datatype, int root,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Bcast(buffer, count, datatype, root, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Exscan
+int MPIASP_Exscan(void *sendbuf, void *recvbuf, int count,
+        MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Exscan(sendbuf, recvbuf, count, datatype, op, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Gather
+int MPIASP_Gather(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
+        void *recvbuf, int recvcnt, MPI_Datatype recvtype, int root,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Gather(sendbuf, sendcnt, sendtype, recvbuf, recvcnt, recvtype,
+            root, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Gatherv
+int MPIASP_Gatherv(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
+        void *recvbuf, int *recvcnts, int *displs, MPI_Datatype recvtype,
+        int root, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Gatherv(sendbuf, sendcnt, sendtype, recvbuf, recvcnts, displs,
+            recvtype, root, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Op_create
+int MPIASP_Op_create(MPI_User_function *function, int commute, MPI_Op *op) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Op_create(function, commute, op);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Op_free
+int MPIASP_Op_free(MPI_Op *op) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Op_free(op);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Op_commutative
+int MPIASP_Op_commutative(MPI_Op op, int *commute) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Op_commutative(op, commute);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Reduce
+int MPIASP_Reduce(void *sendbuf, void *recvbuf, int count,
+        MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Reduce_local
+int MPIASP_Reduce_local(void *inbuf, void *inoutbuf, int count,
+        MPI_Datatype datatype, MPI_Op op) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Reduce_local(inbuf, inoutbuf, count, datatype, op);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Reduce_scatter
+int MPIASP_Reduce_scatter(void *sendbuf, void *recvbuf, int *recvcnts,
+        MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Reduce_scatter(sendbuf, recvbuf, recvcnts, datatype, op, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Reduce_scatter_block
+int MPIASP_Reduce_scatter_block(void *sendbuf, void *recvbuf, int recvcount,
+        MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Reduce_scatter_block(sendbuf, recvbuf, recvcount, datatype, op,
+            comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Scan
+int MPIASP_Scan(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
+        MPI_Op op, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Scan(sendbuf, recvbuf, count, datatype, op, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Scatter
+int MPIASP_Scatter(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
+        void *recvbuf, int recvcnt, MPI_Datatype recvtype, int root,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Scatter(sendbuf, sendcnt, sendtype, recvbuf, recvcnt, recvtype,
+            root, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Scatterv
+int MPIASP_Scatterv(void *sendbuf, int *sendcnts, int *displs,
+        MPI_Datatype sendtype, void *recvbuf, int recvcnt,
+        MPI_Datatype recvtype, int root, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Scatterv(sendbuf, sendcnts, displs, sendtype, recvbuf, recvcnt,
+            recvtype, root, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_compare
+int MPIASP_Comm_compare(MPI_Comm comm1, MPI_Comm comm2, int *result) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_compare(comm1, comm2, result);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_create
+int MPIASP_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_create(comm, group, newcomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_free
+int MPIASP_Comm_free(MPI_Comm *comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_free(comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_get_name
+int MPIASP_Comm_get_name(MPI_Comm comm, char *comm_name, int *resultlen) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_get_name(comm, comm_name, resultlen);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_group
+int MPIASP_Comm_group(MPI_Comm comm, MPI_Group *group) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_group(comm, group);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_rank
+int MPIASP_Comm_rank(MPI_Comm comm, int *rank) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_rank(comm, rank);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_remote_group
+int MPIASP_Comm_remote_group(MPI_Comm comm, MPI_Group *group) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_remote_group(comm, group);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_remote_size
+int MPIASP_Comm_remote_size(MPI_Comm comm, int *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_remote_size(comm, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_set_name
+int MPIASP_Comm_set_name(MPI_Comm comm, char *comm_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_set_name(comm, comm_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_size
+int MPIASP_Comm_size(MPI_Comm comm, int *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_size(comm, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_split
+int MPIASP_Comm_split(MPI_Comm comm, int color, int key, MPI_Comm *newcomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_split(comm, color, key, newcomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_test_inter
+int MPIASP_Comm_test_inter(MPI_Comm comm, int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_test_inter(comm, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Intercomm_create
+int MPIASP_Intercomm_create(MPI_Comm local_comm, int local_leader,
+        MPI_Comm peer_comm, int remote_leader, int tag, MPI_Comm *newintercomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Intercomm_create(local_comm, local_leader, peer_comm,
+            remote_leader, tag, newintercomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Intercomm_merge
+int MPIASP_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm *newintracomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Intercomm_merge(intercomm, high, newintracomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Address
+int MPIASP_Address(void *location, MPI_Aint *address) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Address(location, address);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Get_address
+int MPIASP_Get_address(void *location, MPI_Aint *address) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Get_address(location, address);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Get_count
+int MPIASP_Get_count(MPI_Status *status, MPI_Datatype datatype, int *count) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Get_count(status, datatype, count);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Get_elements
+int MPIASP_Get_elements(MPI_Status *status, MPI_Datatype datatype,
+        int *elements) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Get_elements(status, datatype, elements);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Pack
+int MPIASP_Pack(void *inbuf, int incount, MPI_Datatype datatype, void *outbuf,
+        int outcount, int *position, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Pack(inbuf, incount, datatype, outbuf, outcount, position, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Pack_external
+int MPIASP_Pack_external(char *datarep, void *inbuf, int incount,
+        MPI_Datatype datatype, void *outbuf, MPI_Aint outcount,
+        MPI_Aint *position) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Pack_external(datarep, inbuf, incount, datatype, outbuf,
+            outcount, position);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Pack_external_size
+int MPIASP_Pack_external_size(char *datarep, int incount, MPI_Datatype datatype,
+        MPI_Aint *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Pack_external_size(datarep, incount, datatype, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Pack_size
+int MPIASP_Pack_size(int incount, MPI_Datatype datatype, MPI_Comm comm,
+        int *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Pack_size(incount, datatype, comm, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Status_set_elements
+int MPIASP_Status_set_elements(MPI_Status *status, MPI_Datatype datatype,
+        int count) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Status_set_elements(status, datatype, count);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_commit
+int MPIASP_Type_commit(MPI_Datatype *datatype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_commit(datatype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_contiguous
+int MPIASP_Type_contiguous(int count, MPI_Datatype old_type,
+        MPI_Datatype *new_type_p) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_contiguous(count, old_type, new_type_p);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_darray
+int MPIASP_Type_create_darray(int size, int rank, int ndims,
+        int array_of_gsizes[], int array_of_distribs[], int array_of_dargs[],
+        int array_of_psizes[], int order, MPI_Datatype oldtype,
+        MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_darray(size, rank, ndims, array_of_gsizes,
+            array_of_distribs, array_of_dargs, array_of_psizes, order, oldtype,
+            newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_hindexed
+int MPIASP_Type_create_hindexed(int count, int blocklengths[],
+        MPI_Aint displacements[], MPI_Datatype oldtype, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_hindexed(count, blocklengths, displacements,
+            oldtype, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_hvector
+int MPIASP_Type_create_hvector(int count, int blocklength, MPI_Aint stride,
+        MPI_Datatype oldtype, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_hvector(count, blocklength, stride, oldtype,
+            newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_indexed_block
+int MPIASP_Type_create_indexed_block(int count, int blocklength,
+        int array_of_displacements[], MPI_Datatype oldtype,
+        MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_indexed_block(count, blocklength,
+            array_of_displacements, oldtype, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_hindexed_block
+int MPIASP_Type_create_hindexed_block(int count, int blocklength,
+        const MPI_Aint array_of_displacements[], MPI_Datatype oldtype,
+        MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_hindexed_block(count, blocklength,
+            array_of_displacements, oldtype, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_resized
+int MPIASP_Type_create_resized(MPI_Datatype oldtype, MPI_Aint lb,
+        MPI_Aint extent, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_resized(oldtype, lb, extent, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_struct
+int MPIASP_Type_create_struct(int count, int array_of_blocklengths[],
+        MPI_Aint array_of_displacements[], MPI_Datatype array_of_types[],
+        MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_struct(count, array_of_blocklengths,
+            array_of_displacements, array_of_types, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_create_subarray
+int MPIASP_Type_create_subarray(int ndims, int array_of_sizes[],
+        int array_of_subsizes[], int array_of_starts[], int order,
+        MPI_Datatype oldtype, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_create_subarray(ndims, array_of_sizes, array_of_subsizes,
+            array_of_starts, order, oldtype, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_dup
+int MPIASP_Type_dup(MPI_Datatype datatype, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_dup(datatype, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_extent
+int MPIASP_Type_extent(MPI_Datatype datatype, MPI_Aint *extent) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_extent(datatype, extent);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_free
+int MPIASP_Type_free(MPI_Datatype *datatype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_free(datatype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_get_contents
+int MPIASP_Type_get_contents(MPI_Datatype datatype, int max_integers,
+        int max_addresses, int max_datatypes, int array_of_integers[],
+        MPI_Aint array_of_addresses[], MPI_Datatype array_of_datatypes[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_get_contents(datatype, max_integers, max_addresses,
+            max_datatypes, array_of_integers, array_of_addresses,
+            array_of_datatypes);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_get_envelope
+int MPIASP_Type_get_envelope(MPI_Datatype datatype, int *num_integers,
+        int *num_addresses, int *num_datatypes, int *combiner) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_get_envelope(datatype, num_integers, num_addresses,
+            num_datatypes, combiner);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_get_extent
+int MPIASP_Type_get_extent(MPI_Datatype datatype, MPI_Aint *lb,
+        MPI_Aint *extent) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_get_extent(datatype, lb, extent);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_get_name
+int MPIASP_Type_get_name(MPI_Datatype datatype, char *type_name, int *resultlen) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_get_name(datatype, type_name, resultlen);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_get_true_extent
+int MPIASP_Type_get_true_extent(MPI_Datatype datatype, MPI_Aint *true_lb,
+        MPI_Aint *true_extent) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_get_true_extent(datatype, true_lb, true_extent);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_hindexed
+int MPIASP_Type_hindexed(int count, int blocklens[], MPI_Aint indices[],
+        MPI_Datatype old_type, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_hindexed(count, blocklens, indices, old_type, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_hvector
+int MPIASP_Type_hvector(int count, int blocklen, MPI_Aint stride,
+        MPI_Datatype old_type, MPI_Datatype *newtype_p) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_hvector(count, blocklen, stride, old_type, newtype_p);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_indexed
+int MPIASP_Type_indexed(int count, int blocklens[], int indices[],
+        MPI_Datatype old_type, MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_indexed(count, blocklens, indices, old_type, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_lb
+int MPIASP_Type_lb(MPI_Datatype datatype, MPI_Aint *displacement) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_lb(datatype, displacement);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_match_size
+int MPIASP_Type_match_size(int typeclass, int size, MPI_Datatype *datatype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_match_size(typeclass, size, datatype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_set_name
+int MPIASP_Type_set_name(MPI_Datatype type, char *type_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_set_name(type, type_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_size
+int MPIASP_Type_size(MPI_Datatype datatype, int *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_size(datatype, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_struct
+int MPIASP_Type_struct(int count, int blocklens[], MPI_Aint indices[],
+        MPI_Datatype old_types[], MPI_Datatype *newtype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_struct(count, blocklens, indices, old_types, newtype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_ub
+int MPIASP_Type_ub(MPI_Datatype datatype, MPI_Aint *displacement) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_ub(datatype, displacement);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Type_vector
+int MPIASP_Type_vector(int count, int blocklength, int stride,
+        MPI_Datatype old_type, MPI_Datatype *newtype_p) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Type_vector(count, blocklength, stride, old_type, newtype_p);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Unpack
+int MPIASP_Unpack(void *inbuf, int insize, int *position, void *outbuf,
+        int outcount, MPI_Datatype datatype, MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Unpack(inbuf, insize, position, outbuf, outcount, datatype,
+            comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Unpack_external
+int MPIASP_Unpack_external(char *datarep, void *inbuf, MPI_Aint insize,
+        MPI_Aint *position, void *outbuf, int outcount, MPI_Datatype datatype) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Unpack_external(datarep, inbuf, insize, position, outbuf,
+            outcount, datatype);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Add_error_class
+int MPIASP_Add_error_class(int *errorclass) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Add_error_class(errorclass);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Add_error_code
+int MPIASP_Add_error_code(int errorclass, int *errorcode) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Add_error_code(errorclass, errorcode);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Add_error_string
+int MPIASP_Add_error_string(int errorcode, char *string) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Add_error_string(errorcode, string);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_call_errhandler
+int MPIASP_Comm_call_errhandler(MPI_Comm comm, int errorcode) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_call_errhandler(comm, errorcode);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_create_errhandler
+int MPIASP_Comm_create_errhandler(MPI_Comm_errhandler_function *function,
+        MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_create_errhandler(function, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_get_errhandler
+int MPIASP_Comm_get_errhandler(MPI_Comm comm, MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_get_errhandler(comm, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_set_errhandler
+int MPIASP_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_set_errhandler(comm, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Errhandler_create
+int MPIASP_Errhandler_create(MPI_Handler_function *function,
+        MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Errhandler_create(function, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Errhandler_free
+int MPIASP_Errhandler_free(MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Errhandler_free(errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Errhandler_get
+int MPIASP_Errhandler_get(MPI_Comm comm, MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Errhandler_get(comm, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Errhandler_set
+int MPIASP_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Errhandler_set(comm, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Error_class
+int MPIASP_Error_class(int errorcode, int *errorclass) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Error_class(errorcode, errorclass);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Error_string
+int MPIASP_Error_string(int errorcode, char *string, int *resultlen) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Error_string(errorcode, string, resultlen);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_call_errhandler
+int MPIASP_Win_call_errhandler(MPI_Win win, int errorcode) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_call_errhandler(win, errorcode);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_create_errhandler
+int MPIASP_Win_create_errhandler(MPI_Win_errhandler_function *function,
+        MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_create_errhandler(function, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_get_errhandler
+int MPIASP_Win_get_errhandler(MPI_Win win, MPI_Errhandler *errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_get_errhandler(win, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_set_errhandler
+int MPIASP_Win_set_errhandler(MPI_Win win, MPI_Errhandler errhandler) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_set_errhandler(win, errhandler);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_compare
+int MPIASP_Group_compare(MPI_Group group1, MPI_Group group2, int *result) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_compare(group1, group2, result);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_difference
+int MPIASP_Group_difference(MPI_Group group1, MPI_Group group2,
+        MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_difference(group1, group2, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_excl
+int MPIASP_Group_excl(MPI_Group group, int n, int *ranks, MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_excl(group, n, ranks, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_free
+int MPIASP_Group_free(MPI_Group *group) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_free(group);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_incl
+int MPIASP_Group_incl(MPI_Group group, int n, int *ranks, MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_incl(group, n, ranks, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_intersection
+int MPIASP_Group_intersection(MPI_Group group1, MPI_Group group2,
+        MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_intersection(group1, group2, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_range_excl
+int MPIASP_Group_range_excl(MPI_Group group, int n, int ranges[][3],
+        MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_range_excl(group, n, ranges, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_range_incl
+int MPIASP_Group_range_incl(MPI_Group group, int n, int ranges[][3],
+        MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_range_incl(group, n, ranges, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_rank
+int MPIASP_Group_rank(MPI_Group group, int *rank) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_rank(group, rank);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_size
+int MPIASP_Group_size(MPI_Group group, int *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_size(group, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_translate_ranks
+int MPIASP_Group_translate_ranks(MPI_Group group1, int n, int *ranks1,
+        MPI_Group group2, int *ranks2) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_translate_ranks(group1, n, ranks1, group2, ranks2);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Group_union
+int MPIASP_Group_union(MPI_Group group1, MPI_Group group2, MPI_Group *newgroup) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Group_union(group1, group2, newgroup);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Finalized
+int MPIASP_Finalized(int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Finalized(flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Initialized
+int MPIASP_Initialized(int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Initialized(flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Is_thread_main
+int MPIASP_Is_thread_main(int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Is_thread_main(flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Query_thread
+int MPIASP_Query_thread(int *provided) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Query_thread(provided);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Get_processor_name
+int MPIASP_Get_processor_name(char *name, int *resultlen) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Get_processor_name(name, resultlen);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Pcontrol
+int MPIASP_Pcontrol(const int level, ...) {
+    int ret_val;
+    va_list list;
+
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+
+    va_start(list, level);
+    ret_val = PMPI_Pcontrol(level, list);
+    va_end(list);
+    return ret_val;
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Get_version
+int MPIASP_Get_version(int *version, int *subversion) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Get_version(version, subversion);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Bsend
+int MPIASP_Bsend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Bsend(buf, count, datatype, dest, tag, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Bsend_init
+int MPIASP_Bsend_init(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Bsend_init(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Buffer_attach
+int MPIASP_Buffer_attach(void *buffer, int size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Buffer_attach(buffer, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Buffer_detach
+int MPIASP_Buffer_detach(void *buffer, int *size) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Buffer_detach(buffer, size);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cancel
+int MPIASP_Cancel(MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cancel(request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Grequest_complete
+int MPIASP_Grequest_complete(MPI_Request request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Grequest_complete(request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Grequest_start
+int MPIASP_Grequest_start(MPI_Grequest_query_function *query_fn,
+        MPI_Grequest_free_function *free_fn,
+        MPI_Grequest_cancel_function *cancel_fn, void *extra_state,
+        MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Grequest_start(query_fn, free_fn, cancel_fn, extra_state,
+            request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Ibsend
+int MPIASP_Ibsend(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Ibsend(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Iprobe
+int MPIASP_Iprobe(int source, int tag, MPI_Comm comm, int *flag,
+        MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Iprobe(source, tag, comm, flag, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Irecv
+int MPIASP_Irecv(void *buf, int count, MPI_Datatype datatype, int source,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Irecv(buf, count, datatype, source, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Irsend
+int MPIASP_Irsend(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Irsend(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Isend
+int MPIASP_Isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+        MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Isend(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Issend
+int MPIASP_Issend(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Issend(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Probe
+int MPIASP_Probe(int source, int tag, MPI_Comm comm, MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Probe(source, tag, comm, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Recv
+int MPIASP_Recv(void *buf, int count, MPI_Datatype datatype, int source,
+        int tag, MPI_Comm comm, MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Recv(buf, count, datatype, source, tag, comm, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Recv_init
+int MPIASP_Recv_init(void *buf, int count, MPI_Datatype datatype, int source,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Recv_init(buf, count, datatype, source, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Request_free
+int MPIASP_Request_free(MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Request_free(request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Request_get_status
+int MPIASP_Request_get_status(MPI_Request request, int *flag,
+        MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Request_get_status(request, flag, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Rsend
+int MPIASP_Rsend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Rsend(buf, count, datatype, dest, tag, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Rsend_init
+int MPIASP_Rsend_init(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Rsend_init(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Send
+int MPIASP_Send(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Send(buf, count, datatype, dest, tag, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Sendrecv
+int MPIASP_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+        int dest, int sendtag, void *recvbuf, int recvcount,
+        MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm,
+        MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf,
+            recvcount, recvtype, source, recvtag, comm, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Sendrecv_replace
+int MPIASP_Sendrecv_replace(void *buf, int count, MPI_Datatype datatype,
+        int dest, int sendtag, int source, int recvtag, MPI_Comm comm,
+        MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Sendrecv_replace(buf, count, datatype, dest, sendtag, source,
+            recvtag, comm, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Send_init
+int MPIASP_Send_init(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Send_init(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Ssend
+int MPIASP_Ssend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+        MPI_Comm comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Ssend(buf, count, datatype, dest, tag, comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Ssend_init
+int MPIASP_Ssend_init(void *buf, int count, MPI_Datatype datatype, int dest,
+        int tag, MPI_Comm comm, MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Ssend_init(buf, count, datatype, dest, tag, comm, request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Start
+int MPIASP_Start(MPI_Request *request) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Start(request);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Startall
+int MPIASP_Startall(int count, MPI_Request array_of_requests[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Startall(count, array_of_requests);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Status_set_cancelled
+int MPIASP_Status_set_cancelled(MPI_Status *status, int flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Status_set_cancelled(status, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Test
+int MPIASP_Test(MPI_Request *request, int *flag, MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Test(request, flag, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Testall
+int MPIASP_Testall(int count, MPI_Request array_of_requests[], int *flag,
+        MPI_Status array_of_statuses[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Testall(count, array_of_requests, flag, array_of_statuses);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Testany
+int MPIASP_Testany(int count, MPI_Request array_of_requests[], int *index,
+        int *flag, MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Testany(count, array_of_requests, index, flag, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Testsome
+int MPIASP_Testsome(int incount, MPI_Request array_of_requests[], int *outcount,
+        int array_of_indices[], MPI_Status array_of_statuses[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Testsome(incount, array_of_requests, outcount, array_of_indices,
+            array_of_statuses);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Test_cancelled
+int MPIASP_Test_cancelled(MPI_Status *status, int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Test_cancelled(status, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Wait
+int MPIASP_Wait(MPI_Request *request, MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Wait(request, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Waitall
+int MPIASP_Waitall(int count, MPI_Request array_of_requests[],
+        MPI_Status array_of_statuses[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Waitall(count, array_of_requests, array_of_statuses);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Waitany
+int MPIASP_Waitany(int count, MPI_Request array_of_requests[], int *index,
+        MPI_Status *status) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Waitany(count, array_of_requests, index, status);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Waitsome
+int MPIASP_Waitsome(int incount, MPI_Request array_of_requests[], int *outcount,
+        int array_of_indices[], MPI_Status array_of_statuses[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Waitsome(incount, array_of_requests, outcount, array_of_indices,
+            array_of_statuses);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Accumulate
+int MPIASP_Accumulate(void *origin_addr, int origin_count,
+        MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+        int target_count, MPI_Datatype target_datatype, MPI_Op op, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
+            target_rank, target_disp, target_count, target_datatype, op, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Alloc_mem
+int MPIASP_Alloc_mem(MPI_Aint size, MPI_Info info, void *baseptr) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Alloc_mem(size, info, baseptr);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Free_mem
+int MPIASP_Free_mem(void *base) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Free_mem(base);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Get
+int MPIASP_Get(void *origin_addr, int origin_count,
+        MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+        int target_count, MPI_Datatype target_datatype, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Get(origin_addr, origin_count, origin_datatype, target_rank,
+            target_disp, target_count, target_datatype, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Put
+int MPIASP_Put(void *origin_addr, int origin_count,
+        MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+        int target_count, MPI_Datatype target_datatype, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank,
+            target_disp, target_count, target_datatype, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_complete
+int MPIASP_Win_complete(MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_complete(win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_fence
+int MPIASP_Win_fence(int assert, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_fence(assert, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_free
+int MPIASP_Win_free(MPI_Win *win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_free(win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_get_group
+int MPIASP_Win_get_group(MPI_Win win, MPI_Group *group) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_get_group(win, group);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_get_name
+int MPIASP_Win_get_name(MPI_Win win, char *win_name, int *resultlen) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_get_name(win, win_name, resultlen);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_lock
+int MPIASP_Win_lock(int lock_type, int rank, int assert, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_lock(lock_type, rank, assert, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_post
+int MPIASP_Win_post(MPI_Group group, int assert, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_post(group, assert, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_set_name
+int MPIASP_Win_set_name(MPI_Win win, char *win_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_set_name(win, win_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_start
+int MPIASP_Win_start(MPI_Group group, int assert, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_start(group, assert, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_test
+int MPIASP_Win_test(MPI_Win win, int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_test(win, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_unlock
+int MPIASP_Win_unlock(int rank, MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_unlock(rank, win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Win_wait
+int MPIASP_Win_wait(MPI_Win win) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Win_wait(win);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_create
+int MPIASP_Info_create(MPI_Info *info) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_create(info);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_delete
+int MPIASP_Info_delete(MPI_Info info, char *key) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_delete(info, key);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_dup
+int MPIASP_Info_dup(MPI_Info info, MPI_Info *newinfo) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_dup(info, newinfo);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_free
+int MPIASP_Info_free(MPI_Info *info) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_free(info);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_get
+int MPIASP_Info_get(MPI_Info info, char *key, int valuelen, char *value,
+        int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_get(info, key, valuelen, value, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_get_nkeys
+int MPIASP_Info_get_nkeys(MPI_Info info, int *nkeys) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_get_nkeys(info, nkeys);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_get_nthkey
+int MPIASP_Info_get_nthkey(MPI_Info info, int n, char *key) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_get_nthkey(info, n, key);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_get_valuelen
+int MPIASP_Info_get_valuelen(MPI_Info info, char *key, int *valuelen, int *flag) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_get_valuelen(info, key, valuelen, flag);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Info_set
+int MPIASP_Info_set(MPI_Info info, char *key, char *value) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Info_set(info, key, value);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Close_port
+int MPIASP_Close_port(char *port_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Close_port(port_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_accept
+int MPIASP_Comm_accept(char *port_name, MPI_Info info, int root, MPI_Comm comm,
+        MPI_Comm *newcomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_accept(port_name, info, root, comm, newcomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_connect
+int MPIASP_Comm_connect(char *port_name, MPI_Info info, int root, MPI_Comm comm,
+        MPI_Comm *newcomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_connect(port_name, info, root, comm, newcomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_disconnect
+int MPIASP_Comm_disconnect(MPI_Comm * comm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_disconnect(comm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_get_parent
+int MPIASP_Comm_get_parent(MPI_Comm *parent) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_get_parent(parent);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_join
+int MPIASP_Comm_join(int fd, MPI_Comm *intercomm) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_join(fd, intercomm);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_spawn
+int MPIASP_Comm_spawn(char *command, char *argv[], int maxprocs, MPI_Info info,
+        int root, MPI_Comm comm, MPI_Comm *intercomm, int array_of_errcodes[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_spawn(command, argv, maxprocs, info, root, comm, intercomm,
+            array_of_errcodes);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Comm_spawn_multiple
+int MPIASP_Comm_spawn_multiple(int count, char *array_of_commands[],
+        char* *array_of_argv[], int array_of_maxprocs[],
+        MPI_Info array_of_info[], int root, MPI_Comm comm, MPI_Comm *intercomm,
+        int array_of_errcodes[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Comm_spawn_multiple(count, array_of_commands, array_of_argv,
+            array_of_maxprocs, array_of_info, root, comm, intercomm,
+            array_of_errcodes);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Lookup_name
+int MPIASP_Lookup_name(char *service_name, MPI_Info info, char *port_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Lookup_name(service_name, info, port_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Open_port
+int MPIASP_Open_port(MPI_Info info, char *port_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Open_port(info, port_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Publish_name
+int MPIASP_Publish_name(char *service_name, MPI_Info info, char *port_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Publish_name(service_name, info, port_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Unpublish_name
+int MPIASP_Unpublish_name(char *service_name, MPI_Info info, char *port_name) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Unpublish_name(service_name, info, port_name);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cartdim_get
+int MPIASP_Cartdim_get(MPI_Comm comm, int *ndims) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cartdim_get(comm, ndims);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_coords
+int MPIASP_Cart_coords(MPI_Comm comm, int rank, int maxdims, int *coords) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_coords(comm, rank, maxdims, coords);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_create
+int MPIASP_Cart_create(MPI_Comm comm_old, int ndims, int *dims, int *periods,
+        int reorder, MPI_Comm *comm_cart) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_create(comm_old, ndims, dims, periods, reorder, comm_cart);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_get
+int MPIASP_Cart_get(MPI_Comm comm, int maxdims, int *dims, int *periods,
+        int *coords) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_get(comm, maxdims, dims, periods, coords);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_map
+int MPIASP_Cart_map(MPI_Comm comm_old, int ndims, int *dims, int *periods,
+        int *newrank) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_map(comm_old, ndims, dims, periods, newrank);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_rank
+int MPIASP_Cart_rank(MPI_Comm comm, int *coords, int *rank) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_rank(comm, coords, rank);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_shift
+int MPIASP_Cart_shift(MPI_Comm comm, int direction, int displ, int *source,
+        int *dest) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_shift(comm, direction, displ, source, dest);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Cart_sub
+int MPIASP_Cart_sub(MPI_Comm comm, int *remain_dims, MPI_Comm *comm_new) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Cart_sub(comm, remain_dims, comm_new);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Dims_create
+int MPIASP_Dims_create(int nnodes, int ndims, int *dims) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Dims_create(nnodes, ndims, dims);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Graph_create
+int MPIASP_Graph_create(MPI_Comm comm_old, int nnodes, int *index, int *edges,
+        int reorder, MPI_Comm *comm_graph) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Graph_create(comm_old, nnodes, index, edges, reorder,
+            comm_graph);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Dist_graph_create
+int MPIASP_Dist_graph_create(MPI_Comm comm_old, int n, int sources[],
+        int degrees[], int destinations[], int weights[], MPI_Info info,
+        int reorder, MPI_Comm *comm_dist_graph) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Dist_graph_create(comm_old, n, sources, degrees, destinations,
+            weights, info, reorder, comm_dist_graph);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Dist_graph_create_adjacent
+int MPIASP_Dist_graph_create_adjacent(MPI_Comm comm_old, int indegree,
+        int sources[], int sourceweights[], int outdegree, int destinations[],
+        int destweights[], MPI_Info info, int reorder,
+        MPI_Comm *comm_dist_graph) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Dist_graph_create_adjacent(comm_old, indegree, sources,
+            sourceweights, outdegree, destinations, destweights, info, reorder,
+            comm_dist_graph);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Graphdims_get
+int MPIASP_Graphdims_get(MPI_Comm comm, int *nnodes, int *nedges) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Graphdims_get(comm, nnodes, nedges);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Graph_neighbors_count
+int MPIASP_Graph_neighbors_count(MPI_Comm comm, int rank, int *nneighbors) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Graph_neighbors_count(comm, rank, nneighbors);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Graph_get
+int MPIASP_Graph_get(MPI_Comm comm, int maxindex, int maxedges, int *index,
+        int *edges) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Graph_get(comm, maxindex, maxedges, index, edges);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Graph_map
+int MPIASP_Graph_map(MPI_Comm comm_old, int nnodes, int *index, int *edges,
+        int *newrank) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Graph_map(comm_old, nnodes, index, edges, newrank);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Graph_neighbors
+int MPIASP_Graph_neighbors(MPI_Comm comm, int rank, int maxneighbors,
+        int *neighbors) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Graph_neighbors(comm, rank, maxneighbors, neighbors);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Dist_graph_neighbors
+int MPIASP_Dist_graph_neighbors(MPI_Comm comm, int maxindegree, int sources[],
+        int sourceweights[], int maxoutdegree, int destinations[],
+        int destweights[]) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Dist_graph_neighbors(comm, maxindegree, sources, sourceweights,
+            maxoutdegree, destinations, destweights);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Dist_graph_neighbors_count
+int MPIASP_Dist_graph_neighbors_count(MPI_Comm comm, int *indegree,
+        int *outdegree, int *weighted) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Dist_graph_neighbors_count(comm, indegree, outdegree, weighted);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Topo_test
+int MPIASP_Topo_test(MPI_Comm comm, int *topo_type) {
+    MPIASP_DBG_PRINT_FCNAME();
+    if (MPIASP_Comm_rank_isasp())
+        return MPI_SUCCESS;
+    return PMPI_Topo_test(comm, topo_type);
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Wtime
+double MPIASP_Wtime() {
+    /*MPIASP_DBG_PRINT_FCNAME_VOID(FCNAME);*//* No checking for performance */
+    return PMPI_Wtime();
+}
+
+#undef FCNAME
+#define FCNAME MPIASP_Wtick
+double MPIASP_Wtick() {
+    /*MPIASP_DBG_PRINT_FCNAME_VOID(FCNAME);*//* No checking for performance */
+    return PMPI_Wtick();
+}

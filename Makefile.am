@@ -1,0 +1,20 @@
+#
+# Copyright (C) 2010. See COPYRIGHT in top-level directory.
+#
+
+ACLOCAL_AMFLAGS = -I confdb
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(prefix)/include -I$(top_builddir)/include
+
+lib_LTLIBRARIES = libasp.la
+
+libasp_la_SOURCES = src/mpi.c \
+                    src/mpio.c \
+                    src/mpi/rma/win_create.c \
+                    src/mpi/init/init.c \
+                    src/mpi/init/finalize.c \
+                    src/mpi/init/abort.c \
+                    src/mpi/comm/comm_dup.c
+
+libasp_la_LDFLAGS = $(libasp_so_versionflags)
+
+asp_headers =	include/asp.h
