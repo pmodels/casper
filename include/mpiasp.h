@@ -25,8 +25,10 @@ typedef enum {
 } MPIASP_Func;
 
 typedef struct MPIASP_Win {
-    MPI_Aint *all_base_asp_addrs;
-    MPI_Aint *all_base_addrs;
+    MPI_Aint *base_asp_addrs;
+    MPI_Aint *base_addrs;
+    MPI_Aint *sizes;
+    int *disp_units;
 
     // communicator including local processe and ASP
     MPI_Comm shrd_comm;
@@ -34,6 +36,8 @@ typedef struct MPIASP_Win {
 
     // communicator including all the user processes and ASP
     MPI_Comm ua_comm;
+    int asp_rank;
+
     // communicator including all the user processes
     MPI_Comm user_comm;
 
@@ -41,7 +45,7 @@ typedef struct MPIASP_Win {
     MPI_Win win;
 } MPIASP_Win;
 
-typedef struct ASP_Func_info{
+typedef struct ASP_Func_info {
     MPIASP_Func FUNC;
     int nprocs;
 } ASP_Func_info;
@@ -71,7 +75,6 @@ static inline void put_ua_win(int handle, MPIASP_Win* ua_win) {
 extern MPI_Comm MPIASP_COMM_USER;
 extern int MPIASP_RANK_IN_COMM_WORLD;
 
-
 static inline int MPIASP_Asp_initialized(void) {
     return MPIASP_RANK_IN_COMM_WORLD > -1;
 }
@@ -94,10 +97,32 @@ static inline int MPIASP_Func_start(MPIASP_Func FUNC, int nprocs, int ua_tag) {
     info.FUNC = FUNC;
     info.nprocs = nprocs;
 
-    return PMPI_Send(&info, sizeof(ASP_Func_info), MPI_CHAR, MPIASP_RANK_IN_COMM_WORLD, ua_tag,
-            MPI_COMM_WORLD);
+    return PMPI_Send((char*)&info, sizeof(ASP_Func_info), MPI_CHAR,
+            MPIASP_RANK_IN_COMM_WORLD, ua_tag, MPI_COMM_WORLD);
 }
 
+static inline int MPIASP_Tag_format(int user_tag) {
+    int tag_ub, flag;
+    void *v;
+    /*
+     * TODO: is there a better solution to get a unique tag ?
+     */
+    // Invalid tag ERROR If ((tag) < 0 || (tag) > MPIR_Process.attrs.tag_ub))
+    if (user_tag < 0)
+        user_tag = (~user_tag + 1);
+
+    PMPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &v, &flag);
+    if (!flag) {
+        MPIASP_DBG_PRINT("Error: Cannot get MPI_TAG_UB\n");
+        return -1;
+    }
+
+    tag_ub = *(int*)v;
+    MPIASP_DBG_PRINT("tag_ub=%d\n", tag_ub);
+
+    user_tag = user_tag & tag_ub;
+    return user_tag;
+}
 
 extern int run_asp_main(void);
 

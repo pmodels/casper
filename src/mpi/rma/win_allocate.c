@@ -1,13 +1,6 @@
-/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil ; -*- */
-/*
- *
- *  (C) 2001 by Argonne National Laboratory.
- *      See COPYRIGHT in top-level directory.
- */
-
 #include <stdio.h>
 #include <stdlib.h>
-#include "asp.h"
+#include "mpiasp.h"
 
 /* -- Begin Profiling Symbol Block for routine MPI_Win_create */
 #if defined(HAVE_PRAGMA_WEAK)
@@ -36,10 +29,16 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int dst;
     int ua_nprocs, ua_rank, user_nprocs, user_rank;
     MPIASP_Win *ua_win;
-    int ua_tag = (int) user_comm;
+    int ua_tag;
     int func_params[2];
+    void **base_pp = (void **) baseptr;
 
     MPIASP_DBG_PRINT_FCNAME();
+
+    ua_tag = MPIASP_Tag_format((int)user_comm);
+    if(ua_tag < 0){
+        goto fn_fail;
+    }
 
     PMPI_Comm_size(user_comm, &user_nprocs);
     PMPI_Comm_rank(user_comm, &user_rank);
@@ -50,8 +49,10 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     }
 
     ua_win = calloc(1, sizeof(MPIASP_Win));
-    ua_win->all_base_asp_addrs = calloc(user_nprocs, sizeof(MPI_Aint));
-    ua_win->all_base_addrs = calloc(user_nprocs, sizeof(MPI_Aint));
+    ua_win->base_asp_addrs = calloc(user_nprocs, sizeof(MPI_Aint));
+    ua_win->base_addrs = calloc(user_nprocs, sizeof(MPI_Aint));
+    ua_win->disp_units = calloc(user_nprocs, sizeof(int));
+    ua_win->sizes = calloc(user_nprocs, sizeof(MPI_Aint));
     ua_ranks_in_world = calloc(user_nprocs + 1, sizeof(int));
     ua_win->user_comm = user_comm;
 
@@ -98,7 +99,7 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(ua_win->ua_comm, &ua_rank);
 
     MPIASP_DBG_PRINT(
-            "[%d] Created ua_comm, ua_rank %d, ua_nprocs\n", user_rank, ua_rank, ua_nprocs);
+            "[%d] Created ua_comm, ua_rank %d, ua_nprocs %d\n", user_rank, ua_rank, ua_nprocs);
 
     /*
      * Allocate a shared window with ASP
@@ -119,7 +120,7 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    PMPI_Get_address(ua_win->base, &ua_win->all_base_addrs[user_rank]);
+    PMPI_Get_address(ua_win->base, &ua_win->base_addrs[user_rank]);
 
     MPIASP_DBG_PRINT(
             "[%d]Created local shared winbuf = %p\n", user_rank, ua_win->base);
@@ -127,7 +128,7 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     /*
      * Receive the address of all the shared user buffers on ASP
      */
-    mpi_errno = PMPI_Bcast(ua_win->all_base_asp_addrs, user_nprocs, MPI_AINT,
+    mpi_errno = PMPI_Bcast(ua_win->base_asp_addrs, user_nprocs, MPI_AINT,
             MPIASP_RANK_IN_COMM_WORLD, ua_win->ua_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -136,7 +137,7 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (user_rank == 0) {
         for (dst = 0; dst < user_nprocs; dst++) {
             MPIASP_DBG_PRINT(
-                    "[%d] all_base_asp_addrs[%d] = 0x%lx\n", user_rank, dst, ua_win->all_base_asp_addrs[dst]);
+                    "[%d] base_asp_addrs[%d] = 0x%lx\n", user_rank, dst, ua_win->base_asp_addrs[dst]);
         }
     }
 #endif
@@ -145,16 +146,42 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
      * Gather the base addresses on all user processes
      */
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-            ua_win->all_base_addrs, 1, MPI_AINT, user_comm);
+            ua_win->base_addrs, 1, MPI_AINT, user_comm);
 
 #ifdef DEBUG
-    if (rank == 0) {
+    if (user_rank == 0) {
         for (dst = 0; dst < user_nprocs; dst++) {
             MPIASP_DBG_PRINT(
-                    "[%d] all_base_addrs[%d] = 0x%lx\n", user_rank, dst, ua_win->all_base_addrs[dst]);
+                    "[%d] base_addrs[%d] = 0x%lx\n", user_rank, dst, ua_win->base_addrs[dst]);
         }
     }
 #endif
+
+    /**
+     * TODO: How to set disp_unit and size in ua_win
+     * PMPI_Win_create_dynamic creates window with base=MPI_BOTTOM, size=0, disp_unit=1
+     */
+    /*
+     * Gather the disp_unit and size on all user processes
+     */
+    ua_win->disp_units[user_rank] = disp_unit;
+    ua_win->sizes[user_rank] = size;
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+            ua_win->disp_units, 1, MPI_INT, user_comm);
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+            ua_win->sizes, 1, MPI_LONG, user_comm);
+
+    /*
+     * Get the rank of ASP in user+asp communicator
+     */
+    int rank1[1] = { MPIASP_RANK_IN_COMM_WORLD };
+    int rank2[1];
+    mpi_errno = PMPI_Group_translate_ranks(world_group, 1, rank1, ua_group,
+            rank2);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    ua_win->asp_rank = rank2[0];
+    MPIASP_DBG_PRINT( "[%d] asp_rank = %d\n", user_rank, ua_win->asp_rank);
 
     /*
      * Create a window including user processes and ASP;
@@ -170,13 +197,15 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         goto fn_fail;
 
     *win = ua_win->win;
+    *base_pp = ua_win->base;
+
     put_ua_win(*win, ua_win);
 
     fn_exit:
 
-    MPI_Group_free(&world_group);
-    MPI_Group_free(&ua_group);
-    MPI_Group_free(&shrd_group);
+    PMPI_Group_free(&world_group);
+    PMPI_Group_free(&ua_group);
+    PMPI_Group_free(&shrd_group);
 
     if (ua_ranks_in_world)
         free(ua_ranks_in_world);
@@ -185,20 +214,24 @@ int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     fn_fail:
 
-    if (ua_win->shrd_win > 0)
-        PMPI_Win_free(ua_win->shrd_win);
-    if (ua_win->win > 0)
-        PMPI_Win_free(ua_win->win);
+    if (ua_win->shrd_win)
+        PMPI_Win_free(&ua_win->shrd_win);
+    if (ua_win->win)
+        PMPI_Win_free(&ua_win->win);
 
-    if (ua_win->shrd_comm > 0)
-        PMPI_Comm_free(ua_win->shrd_comm);
-    if (ua_win->ua_comm > 0)
-        PMPI_Comm_free(ua_win->ua_comm);
+    if (ua_win->shrd_comm)
+        PMPI_Comm_free(&ua_win->shrd_comm);
+    if (ua_win->ua_comm)
+        PMPI_Comm_free(&ua_win->ua_comm);
 
-    if (ua_win->all_base_asp_addrs)
-        free(ua_win->all_base_asp_addrs);
-    if (ua_win->all_base_addrs)
-        free(ua_win->all_base_addrs);
+    if (ua_win->base_asp_addrs)
+        free(ua_win->base_asp_addrs);
+    if (ua_win->base_addrs)
+        free(ua_win->base_addrs);
+    if (ua_win->disp_units)
+        free(ua_win->disp_units);
+    if (ua_win->sizes)
+        free(ua_win->sizes);
     if (ua_win)
         free(ua_win);
 

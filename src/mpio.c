@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "asp.h"
+#include "mpiasp.h"
 
 #ifdef HAVE_ROMIO 
 

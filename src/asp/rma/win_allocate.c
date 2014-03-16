@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "asp.h"
 
 #undef FUNCNAME
@@ -9,13 +10,6 @@
  * TODO: should implement table[user_win_handle : asp_win object]
  */
 ASP_Win *asp_win_table[2];
-
-inline ASP_Win* get_asp_win(int handle) {
-    return asp_win_table[0];
-}
-inline void put_asp_win(int handle, ASP_Win* win) {
-    asp_win_table[0] = win;
-}
 
 int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
     int mpi_errno = MPI_SUCCESS;
@@ -71,7 +65,7 @@ int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
     memset(outputs, 0, sizeof(outputs));
     for (dst = 0; dst < user_nprocs; dst++) {
         sprintf(outputs_ptr, "%2d ", ua_ranks_in_world[dst]);
-        outputs += 3;
+        outputs_ptr += 3;
     }
     MPIASP_DBG_PRINT("[ASP] Received user ranks in world: %s\n", outputs);
 #endif
@@ -87,7 +81,7 @@ int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
     PMPI_Comm_rank(win->ua_comm, &ua_rank);
 
     MPIASP_DBG_PRINT(
-            "[ASP] Created ua_comm, ua_rank %d, ua_nprocs\n", ua_rank, ua_nprocs);
+            "[ASP] Created ua_comm, ua_rank %d, ua_nprocs %d\n", ua_rank, ua_nprocs);
 
     /*
      * Allocate shared buffers with all the user processes
@@ -96,7 +90,7 @@ int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
 
         // -Create the communicator only including a user process and ASP
         shrd_ranks[0] = dst;
-        shrd_ranks[1] = rank;
+        shrd_ranks[1] = MPIASP_RANK_IN_COMM_WORLD;
 
         PMPI_Group_incl(world_group, 2, shrd_ranks, &shrd_group);
         mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, shrd_group, 0,
@@ -106,8 +100,8 @@ int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
 
         // -Allocate shared window
         // No local buffer, only need shared buffer on user processes
-        mpi_errno = PMPI_Win_allocate_shared(0, disp_unit, NULL, win->all_shrd_comms[dst],
-                &winbuf, &win->all_shrd_wins[dst]);
+        mpi_errno = PMPI_Win_allocate_shared(0, disp_unit, MPI_INFO_NULL,
+                win->all_shrd_comms[dst], &winbuf, &win->all_shrd_wins[dst]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -134,14 +128,17 @@ int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
     /*
      * Create a window including user processes and ASP and attach all the shared buffers.
      */
-    PMPI_Win_create_dynamic(NULL, win->ua_comm, &win->win);
+    /*
+     * TODO: How to get user defined MPI_Info?
+     */
+    PMPI_Win_create_dynamic(MPI_INFO_NULL, win->ua_comm, &win->win);
     for (dst = 0; dst < user_nprocs; dst++) {
         PMPI_Win_attach(win->win, shrd_winbufs[dst], size);
     }
 
     put_asp_win(0, win);
 
-    MPIASP_DBG_PRINT( "[ASP] Created ASP window 0x%lx\n", win->win);
+    MPIASP_DBG_PRINT( "[ASP] Created ASP window 0x%x\n", win->win);
 
     fn_exit:
 
@@ -161,14 +158,14 @@ int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag) {
 
     for (dst = 0; dst < user_nprocs; dst++) {
         if (win->all_shrd_wins[dst])
-            PMPI_Win_free(win->all_shrd_wins[dst]);
+            PMPI_Win_free(&win->all_shrd_wins[dst]);
         if (win->all_shrd_comms[dst])
-            PMPI_Comm_free(win->all_shrd_comms[dst]);
+            PMPI_Comm_free(&win->all_shrd_comms[dst]);
     }
-    if (win->win > 0)
-        PMPI_Win_free(win->win);
+    if (win->win)
+        PMPI_Win_free(&win->win);
     if (win->ua_comm)
-        PMPI_Comm_free(win->ua_comm);
+        PMPI_Comm_free(&win->ua_comm);
 
     if (win->all_shrd_base_addrs)
         free(win->all_shrd_base_addrs);

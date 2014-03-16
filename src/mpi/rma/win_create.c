@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "asp.h"
+#include "mpiasp.h"
 
 /* -- Begin Profiling Symbol Block for routine MPI_Win_create */
 #if defined(HAVE_PRAGMA_WEAK)

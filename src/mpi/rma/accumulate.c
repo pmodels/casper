@@ -42,7 +42,7 @@ int MPIASP_Accumulate(const void *origin_addr, int origin_count,
             goto fn_fail;
 
         MPIASP_DBG_PRINT(
-                "MPIASP Accumulate on target %d, 0x%lx to \n", target_rank, ua_target_disp, origin_addr);
+                "MPIASP Accumulate on target %d, disp 0x%lx, org_addr %p \n", target_rank, ua_target_disp, origin_addr);
     } else {
         mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
                 target_rank, target_disp, target_count, target_datatype, op,

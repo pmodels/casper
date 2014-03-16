@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include "asp.h"
+#include "mpiasp.h"
 
 
 /* -- Begin Profiling Symbol Block for routine MPI_Init */
@@ -175,14 +175,10 @@
 #pragma weak MPI_Waitall = MPIASP_Waitall
 #pragma weak MPI_Waitany = MPIASP_Waitany
 #pragma weak MPI_Waitsome = MPIASP_Waitsome
-#pragma weak MPI_Accumulate = MPIASP_Accumulate
 #pragma weak MPI_Alloc_mem = MPIASP_Alloc_mem
 #pragma weak MPI_Free_mem = MPIASP_Free_mem
-#pragma weak MPI_Get = MPIASP_Get
-#pragma weak MPI_Put = MPIASP_Put
 #pragma weak MPI_Win_complete = MPIASP_Win_complete
 #pragma weak MPI_Win_fence = MPIASP_Win_fence
-#pragma weak MPI_Win_free = MPIASP_Win_free
 #pragma weak MPI_Win_get_group = MPIASP_Win_get_group
 #pragma weak MPI_Win_get_name = MPIASP_Win_get_name
 #pragma weak MPI_Win_lock = MPIASP_Win_lock
@@ -406,14 +402,10 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Waitall MPI_Waitall
 #pragma _HP_SECONDARY_DEF MPIASP_Waitany MPI_Waitany
 #pragma _HP_SECONDARY_DEF MPIASP_Waitsome MPI_Waitsome
-#pragma _HP_SECONDARY_DEF MPIASP_Accumulate MPI_Accumulate
 #pragma _HP_SECONDARY_DEF MPIASP_Alloc_mem MPI_Alloc_mem
 #pragma _HP_SECONDARY_DEF MPIASP_Free_mem MPI_Free_mem
-#pragma _HP_SECONDARY_DEF MPIASP_Get MPI_Get
-#pragma _HP_SECONDARY_DEF MPIASP_Put MPI_Put
 #pragma _HP_SECONDARY_DEF MPIASP_Win_complete MPI_Win_complete
 #pragma _HP_SECONDARY_DEF MPIASP_Win_fence MPI_Win_fence
-#pragma _HP_SECONDARY_DEF MPIASP_Win_free MPI_Win_free
 #pragma _HP_SECONDARY_DEF MPIASP_Win_get_group MPI_Win_get_group
 #pragma _HP_SECONDARY_DEF MPIASP_Win_get_name MPI_Win_get_name
 #pragma _HP_SECONDARY_DEF MPIASP_Win_lock MPI_Win_lock
@@ -637,14 +629,10 @@
 #pragma _CRI duplicate MPI_Waitall as MPIASP_Waitall
 #pragma _CRI duplicate MPI_Waitany as MPIASP_Waitany
 #pragma _CRI duplicate MPI_Waitsome as MPIASP_Waitsome
-#pragma _CRI duplicate MPI_Accumulate as MPIASP_Accumulate
 #pragma _CRI duplicate MPI_Alloc_mem as MPIASP_Alloc_mem
 #pragma _CRI duplicate MPI_Free_mem as MPIASP_Free_mem
-#pragma _CRI duplicate MPI_Get as MPIASP_Get
-#pragma _CRI duplicate MPI_Put as MPIASP_Put
 #pragma _CRI duplicate MPI_Win_complete as MPIASP_Win_complete
 #pragma _CRI duplicate MPI_Win_fence as MPIASP_Win_fence
-#pragma _CRI duplicate MPI_Win_free as MPIASP_Win_free
 #pragma _CRI duplicate MPI_Win_get_group as MPIASP_Win_get_group
 #pragma _CRI duplicate MPI_Win_get_name as MPIASP_Win_get_name
 #pragma _CRI duplicate MPI_Win_lock as MPIASP_Win_lock
@@ -2374,18 +2362,6 @@ int MPIASP_Waitsome(int incount, MPI_Request array_of_requests[], int *outcount,
 }
 
 #undef FCNAME
-#define FCNAME MPIASP_Accumulate
-int MPIASP_Accumulate(void *origin_addr, int origin_count,
-        MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-        int target_count, MPI_Datatype target_datatype, MPI_Op op, MPI_Win win) {
-    MPIASP_DBG_PRINT_FCNAME();
-    if (MPIASP_Comm_rank_isasp())
-        return MPI_SUCCESS;
-    return PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
-            target_rank, target_disp, target_count, target_datatype, op, win);
-}
-
-#undef FCNAME
 #define FCNAME MPIASP_Alloc_mem
 int MPIASP_Alloc_mem(MPI_Aint size, MPI_Info info, void *baseptr) {
     MPIASP_DBG_PRINT_FCNAME();
@@ -2404,30 +2380,6 @@ int MPIASP_Free_mem(void *base) {
 }
 
 #undef FCNAME
-#define FCNAME MPIASP_Get
-int MPIASP_Get(void *origin_addr, int origin_count,
-        MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-        int target_count, MPI_Datatype target_datatype, MPI_Win win) {
-    MPIASP_DBG_PRINT_FCNAME();
-    if (MPIASP_Comm_rank_isasp())
-        return MPI_SUCCESS;
-    return PMPI_Get(origin_addr, origin_count, origin_datatype, target_rank,
-            target_disp, target_count, target_datatype, win);
-}
-
-#undef FCNAME
-#define FCNAME MPIASP_Put
-int MPIASP_Put(void *origin_addr, int origin_count,
-        MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-        int target_count, MPI_Datatype target_datatype, MPI_Win win) {
-    MPIASP_DBG_PRINT_FCNAME();
-    if (MPIASP_Comm_rank_isasp())
-        return MPI_SUCCESS;
-    return PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank,
-            target_disp, target_count, target_datatype, win);
-}
-
-#undef FCNAME
 #define FCNAME MPIASP_Win_complete
 int MPIASP_Win_complete(MPI_Win win) {
     MPIASP_DBG_PRINT_FCNAME();
@@ -2443,15 +2395,6 @@ int MPIASP_Win_fence(int assert, MPI_Win win) {
     if (MPIASP_Comm_rank_isasp())
         return MPI_SUCCESS;
     return PMPI_Win_fence(assert, win);
-}
-
-#undef FCNAME
-#define FCNAME MPIASP_Win_free
-int MPIASP_Win_free(MPI_Win *win) {
-    MPIASP_DBG_PRINT_FCNAME();
-    if (MPIASP_Comm_rank_isasp())
-        return MPI_SUCCESS;
-    return PMPI_Win_free(win);
 }
 
 #undef FCNAME

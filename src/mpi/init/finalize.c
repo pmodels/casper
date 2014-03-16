@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "asp.h"
+#include "mpiasp.h"
 
 /* -- Begin Profiling Symbol Block for routine MPI_Finalize */
 #if defined(HAVE_PRAGMA_WEAK)
@@ -18,11 +18,17 @@
 int MPIASP_Finalize(void) {
     static const char FCNAME[] = "MPIASP_Finalize";
     int mpi_errno = MPI_SUCCESS;
-    int rank;
+    int rank, nprocs;
 
     MPIASP_DBG_PRINT_FCNAME();
 
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_rank(MPI_COMM_WORLD, &nprocs);
+
+    if (rank == 0) {
+        // ASP does not need user process information because it is a global call
+        MPIASP_Func_start(MPIASP_FUNC_FINALIZE, 0, 0);
+    }
 
     // Only the processes in user communicator free MPIASP_COMM_USER
     if (MPIASP_Asp_initialized() && !MPIASP_IsASP(rank)) {

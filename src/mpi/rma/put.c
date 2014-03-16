@@ -58,7 +58,7 @@ static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
         goto fn_fail;
 
     MPIASP_DBG_PRINT(
-            "MPIASP Put to asp instead of target %d, 0x%lx(0x%lx + %d * %d)\n",
+            "MPIASP Put to asp instead of target %d, 0x%lx(0x%lx + %d * %ld)\n",
             target_rank, ua_target_disp, ua_win->base_asp_addrs[target_rank],
             ua_win->disp_units[target_rank], target_disp);
 
