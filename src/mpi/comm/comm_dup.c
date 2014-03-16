@@ -9,6 +9,13 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Comm_dup  MPI_Comm_dup
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Comm_dup as MPIASP_Comm_dup
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm) {
+	return MPIASP_Comm_dup(comm, newcomm);
+}
 #endif
 /* -- End Profiling Symbol Block */
 

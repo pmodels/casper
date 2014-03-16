@@ -126,4 +126,25 @@ static inline int MPIASP_Tag_format(int user_tag) {
 
 extern int run_asp_main(void);
 
+extern int MPIASP_Init(int *argc, char ***argv);
+extern int MPIASP_Finalize(void);
+extern int MPIASP_Abort(MPI_Comm comm, int errorcode);
+extern int MPIASP_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm);
+
+extern int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
+		MPI_Comm user_comm, void *baseptr, MPI_Win *win);
+extern int MPIASP_Win_create(void *base, MPI_Aint size, int disp_unit,
+		MPI_Info info, MPI_Comm comm, MPI_Win *win);
+extern int MPIASP_Win_free(MPI_Win *win);
+
+extern int MPIASP_Put(const void *origin_addr, int origin_count,
+		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+		int target_count, MPI_Datatype target_datatype, MPI_Win win);
+extern int MPIASP_Get(void *origin_addr, int origin_count,
+		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+		int target_count, MPI_Datatype target_datatype, MPI_Win win);
+extern int MPIASP_Accumulate(const void *origin_addr, int origin_count,
+		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+		int target_count, MPI_Datatype target_datatype, MPI_Op op, MPI_Win win);
+
 #endif /* MPIASP_H_ */

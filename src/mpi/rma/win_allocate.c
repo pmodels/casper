@@ -9,6 +9,14 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Win_allocate  MPI_Win_allocate
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Win_allocate as MPIASP_Win_allocate
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
+		MPI_Comm user_comm, void *baseptr, MPI_Win *win) {
+	return MPIASP_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
+}
 #endif
 /* -- End Profiling Symbol Block */
 

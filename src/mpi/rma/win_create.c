@@ -9,6 +9,14 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Win_create  MPI_Win_create
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Win_create as MPIASP_Win_create
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Win_create(void *base, MPI_Aint size, int disp_unit, MPI_Info info,
+		MPI_Comm comm, MPI_Win *win) {
+	return MPIASP_Win_create(base, size, disp_unit, info, comm, win);
+}
 #endif
 /* -- End Profiling Symbol Block */
 

@@ -9,6 +9,13 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Init  MPI_Init
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Init as MPIASP_Init
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Init(int *argc, char ***argv) {
+	return MPIASP_Init(argc, argv);
+}
 #endif
 /* -- End Profiling Symbol Block */
 

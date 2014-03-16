@@ -9,6 +9,16 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Accumulate  MPI_Accumulate
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Accumulate as MPIASP_Accumulate
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Accumulate(const void *origin_addr, int origin_count,
+		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+		int target_count, MPI_Datatype target_datatype, MPI_Op op, MPI_Win win) {
+	return MPIASP_Accumulate(origin_addr, origin_count, origin_datatype,
+			target_rank, target_disp, target_count, target_datatype, op, win);
+}
 #endif
 /* -- End Profiling Symbol Block */
 

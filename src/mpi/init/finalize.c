@@ -9,6 +9,13 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Finalize  MPI_Finalize
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Finalize as MPIASP_Finalize
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Finalize(void) {
+	return MPIASP_Finalize();
+}
 #endif
 /* -- End Profiling Symbol Block */
 

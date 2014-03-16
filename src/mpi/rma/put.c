@@ -9,6 +9,16 @@
 #pragma _HP_SECONDARY_DEF MPIASP_Put  MPI_Put
 #elif defined(HAVE_PRAGMA_CRI_DUP)
 #pragma _CRI duplicate MPI_Put as MPIASP_Put
+#else
+/**
+ * Temp solution for weak symbol on Mac
+ */
+int MPI_Put(const void *origin_addr, int origin_count,
+		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+		int target_count, MPI_Datatype target_datatype, MPI_Win win) {
+	return MPIASP_Put(origin_addr, origin_count, origin_datatype, target_rank,
+			target_disp, target_count, target_datatype, win);
+}
 #endif
 /* -- End Profiling Symbol Block */
 
