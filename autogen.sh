@@ -1,9 +1,10 @@
-#! /bin/sh
+#! /bin/bash
 
-if [ -n "$MPICH_AUTOTOOLS_DIR" ] ; then
-    autoreconf=${MPICH_AUTOTOOLS_DIR}/autoreconf
-else
-    autoreconf=${AUTORECONF:-autoreconf}
-fi
+path=`which mpicc | sed -e 's_/[^/]*$__g'`/../include
+path=`cd $path ; pwd ; cd $OLDPWD`/mpi.h
 
-$autoreconf ${autoreconf_args:-"-vif"}
+echo -n "Generating MPI wrappers... "
+./src/buildiface --infile $path --outfile src/mpi_wrap.c
+echo "done"
+
+autoreconf -vif

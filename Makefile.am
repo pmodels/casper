@@ -3,26 +3,8 @@
 #
 
 ACLOCAL_AMFLAGS = -I confdb
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(prefix)/include -I$(top_builddir)/include
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
 
 lib_LTLIBRARIES = libasp.la
 
-libasp_la_SOURCES = src/mpi.c \
-                    src/mpio.c \
-                    src/mpi/rma/win_create.c \
-                    src/mpi/rma/win_allocate.c \
-                    src/mpi/rma/win_free.c \
-                    src/mpi/rma/put.c \
-                    src/mpi/rma/get.c \
-                    src/mpi/rma/accumulate.c \
-                    src/mpi/init/init.c \
-                    src/mpi/init/finalize.c \
-                    src/mpi/init/abort.c \
-                    src/mpi/comm/comm_dup.c \
-                    src/asp/main.c \
-                    src/asp/rma/win_allocate.c \
-                    src/asp/rma/win_free.c
-
-libasp_la_LDFLAGS = $(libasp_so_versionflags)
-
-asp_headers =	include/asp.h
+libasp_la_SOURCES = src/mpi2asp.c src/mpi_wrap.c
