@@ -2,33 +2,12 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-/* -- Begin Profiling Symbol Block for routine MPI_Win_create */
-#if defined(HAVE_PRAGMA_WEAK)
-#pragma weak MPI_Win_allocate = MPIASP_Win_allocate
-#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
-#pragma _HP_SECONDARY_DEF MPIASP_Win_allocate  MPI_Win_allocate
-#elif defined(HAVE_PRAGMA_CRI_DUP)
-#pragma _CRI duplicate MPI_Win_allocate as MPIASP_Win_allocate
-#else
-/**
- * Temp solution for weak symbol on Mac
- */
-int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
-		MPI_Comm user_comm, void *baseptr, MPI_Win *win) {
-	return MPIASP_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
-}
-#endif
-/* -- End Profiling Symbol Block */
-
-#undef FUNCNAME
-#define FUNCNAME MPIASP_Win_allocate
-
 /**
  * TODO: should implement table[win_handle : ua_win object]
  */
 MPIASP_Win *ua_win_table[2];
 
-int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
+int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         MPI_Comm user_comm, void *baseptr, MPI_Win *win) {
     static const char FCNAME[] = "MPIASP_Win_allocate";
     int mpi_errno = MPI_SUCCESS;

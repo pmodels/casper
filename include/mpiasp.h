@@ -1,17 +1,17 @@
 #ifndef MPIASP_H_
 #define MPIASP_H_
 
-#include "aspconf.h"
+#include <stdio.h>
 #include <mpi.h>
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
-#define MPIASP_DBG_PRINT(str...) {fprintf(stdout, str);fflush(stdout);}
+#define MPIASP_DBG_PRINT(str...) do{fprintf(stdout, str);fflush(stdout);}while(0)
 #else
 #define MPIASP_DBG_PRINT(str...) {}
 #endif
 
-#define MPIASP_DBG_PRINT_FCNAME() MPIASP_DBG_PRINT("[MPIASP]in %s\n", __FUNCTION__);
+#define MPIASP_DBG_PRINT_FCNAME() MPIASP_DBG_PRINT("[MPIASP]in %s\n", __FUNCTION__)
 
 typedef enum {
     MPIASP_FUNC_NULL,
@@ -72,7 +72,8 @@ static inline void put_ua_win(int handle, MPIASP_Win* ua_win) {
     ua_win_table[0] = ua_win;
 }
 
-extern MPI_Comm MPIASP_COMM_USER;
+extern MPI_Comm MPIASP_COMM_USER_WORLD;
+extern MPI_Comm MPIASP_COMM_LOCAL;
 extern int MPIASP_RANK_IN_COMM_WORLD;
 
 static inline int MPIASP_Asp_initialized(void) {
@@ -125,26 +126,5 @@ static inline int MPIASP_Tag_format(int user_tag) {
 }
 
 extern int run_asp_main(void);
-
-extern int MPIASP_Init(int *argc, char ***argv);
-extern int MPIASP_Finalize(void);
-extern int MPIASP_Abort(MPI_Comm comm, int errorcode);
-extern int MPIASP_Comm_dup(MPI_Comm comm, MPI_Comm *newcomm);
-
-extern int MPIASP_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
-		MPI_Comm user_comm, void *baseptr, MPI_Win *win);
-extern int MPIASP_Win_create(void *base, MPI_Aint size, int disp_unit,
-		MPI_Info info, MPI_Comm comm, MPI_Win *win);
-extern int MPIASP_Win_free(MPI_Win *win);
-
-extern int MPIASP_Put(const void *origin_addr, int origin_count,
-		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-		int target_count, MPI_Datatype target_datatype, MPI_Win win);
-extern int MPIASP_Get(void *origin_addr, int origin_count,
-		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-		int target_count, MPI_Datatype target_datatype, MPI_Win win);
-extern int MPIASP_Accumulate(const void *origin_addr, int origin_count,
-		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-		int target_count, MPI_Datatype target_datatype, MPI_Op op, MPI_Win win);
 
 #endif /* MPIASP_H_ */

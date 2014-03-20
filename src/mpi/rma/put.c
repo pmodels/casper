@@ -2,26 +2,6 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-/* -- Begin Profiling Symbol Block for routine MPI_Win_create */
-#if defined(HAVE_PRAGMA_WEAK)
-#pragma weak MPI_Put = MPIASP_Put
-#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
-#pragma _HP_SECONDARY_DEF MPIASP_Put  MPI_Put
-#elif defined(HAVE_PRAGMA_CRI_DUP)
-#pragma _CRI duplicate MPI_Put as MPIASP_Put
-#else
-/**
- * Temp solution for weak symbol on Mac
- */
-int MPI_Put(const void *origin_addr, int origin_count,
-		MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
-		int target_count, MPI_Datatype target_datatype, MPI_Win win) {
-	return MPIASP_Put(origin_addr, origin_count, origin_datatype, target_rank,
-			target_disp, target_count, target_datatype, win);
-}
-#endif
-/* -- End Profiling Symbol Block */
-
 #if 0
 static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
         MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
@@ -82,10 +62,7 @@ static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
 }
 #endif
 
-#undef FUNCNAME
-#define FUNCNAME MPIASP_Put
-
-int MPIASP_Put(const void *origin_addr, int origin_count,
+int MPI_Put(const void *origin_addr, int origin_count,
         MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
         int target_count, MPI_Datatype target_datatype, MPI_Win win) {
     static const char FCNAME[] = "MPIASP_Put";

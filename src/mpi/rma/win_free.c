@@ -2,27 +2,7 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-/* -- Begin Profiling Symbol Block for routine MPI_Win_create */
-#if defined(HAVE_PRAGMA_WEAK)
-#pragma weak MPI_Win_free = MPIASP_Win_free
-#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
-#pragma _HP_SECONDARY_DEF MPIASP_Win_free  MPI_Win_free
-#elif defined(HAVE_PRAGMA_CRI_DUP)
-#pragma _CRI duplicate MPI_Win_free as MPIASP_Win_free
-#else
-/**
- * Temp solution for weak symbol on Mac
- */
 int MPI_Win_free(MPI_Win *win) {
-	return MPIASP_Win_free(win);
-}
-#endif
-/* -- End Profiling Symbol Block */
-
-#undef FUNCNAME
-#define FUNCNAME MPIASP_Win_free
-
-int MPIASP_Win_free(MPI_Win *win) {
     static const char FCNAME[] = "MPIASP_Win_free";
     int mpi_errno = MPI_SUCCESS;
     MPIASP_Win *ua_win;

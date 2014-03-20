@@ -60,7 +60,7 @@ print CFILE <<EOT;
  */
 
 #include "mpi.h"
-#include "asp.h"
+#include "mpiasp.h"
 EOT
 
 
@@ -190,7 +190,7 @@ while (<INFILE>) {
 	    print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n${tab}${tab}return P$routine(";
 	    for ($x = 0; $x <= $#arglist; $x++) {
 		if ($x == $comm_arg) {
-		    print CFILE "asp_user_world";
+		    print CFILE "MPIASP_COMM_USER_WORLD";
 		}
 		else {
 		    print CFILE "x$x";
