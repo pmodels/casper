@@ -9,25 +9,34 @@ int MPI_Finalize(void) {
 
     MPIASP_DBG_PRINT_FCNAME();
 
-    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    PMPI_Comm_rank(MPI_COMM_WORLD, &nprocs);
+    // ASP does not need user process information because it is a global call
+    MPIASP_Func_start(MPIASP_FUNC_FINALIZE, 0, 0, MPIASP_COMM_USER_LOCAL);
 
-    PMPI_Comm_rank(MPIASP_COMM_LOCAL, &local_rank);
-    PMPI_Comm_size(MPIASP_COMM_LOCAL, &local_nprocs);
-
-    if (local_rank == local_nprocs - 1) {
-        // ASP does not need user process information because it is a global call
-        MPIASP_Func_start(MPIASP_FUNC_FINALIZE, 0, 0);
-    }
-
-    if (MPIASP_COMM_USER_WORLD) {
+    if (MPIASP_COMM_USER_WORLD){
+        MPIASP_DBG_PRINT(" free MPIASP_COMM_USER_WORLD\n");
         PMPI_Comm_free(&MPIASP_COMM_USER_WORLD);
     }
-    if (MPIASP_COMM_LOCAL) {
+
+    if (MPIASP_COMM_LOCAL){
+        MPIASP_DBG_PRINT(" free MPIASP_COMM_LOCAL\n");
         PMPI_Comm_free(&MPIASP_COMM_LOCAL);
     }
-    MPIASP_DBG_PRINT("free MPIASP_COMM_USER_WORLD, I am %d/%d, local %d/%d \n",
-            rank, nprocs, local_rank, local_nprocs);
+
+    if (MPIASP_COMM_USER_LOCAL){
+        MPIASP_DBG_PRINT(" free MPIASP_COMM_USER_LOCAL\n");
+        PMPI_Comm_free(&MPIASP_COMM_USER_LOCAL);
+    }
+
+    if (MPIASP_COMM_USER_ROOTS){
+        MPIASP_DBG_PRINT(" free MPIASP_COMM_USER_ROOTS\n");
+        PMPI_Comm_free(&MPIASP_COMM_USER_ROOTS);
+    }
+
+    if (MPIASP_ALL_NODE_IDS)
+        free(MPIASP_ALL_NODE_IDS);
+
+    if (MPIASP_ALL_ASP_IN_COMM_WORLD)
+        free(MPIASP_ALL_ASP_IN_COMM_WORLD);
 
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)

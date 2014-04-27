@@ -7,7 +7,7 @@ int run_asp_main(void) {
     MPIASP_Func FUNC;
     int user_root, user_nprocs, user_tag;
 
-    MPIASP_DBG_PRINT("[ASP] main start\n");
+    ASP_DBG_PRINT(" main start\n");
 
     /*TODO: init in user app or here ? */
     //    MPI_Init(&argc, &argv);
@@ -16,8 +16,8 @@ int run_asp_main(void) {
         if (mpi_errno != MPI_SUCCESS)
             break;
 
-        MPIASP_DBG_PRINT(
-                "[ASP] FUNC %d start, root %d, nprocs %d, tag %d\n", FUNC, user_root, user_nprocs, user_tag);
+        ASP_DBG_PRINT(
+                " FUNC %d start, root %d, nprocs %d, tag %d\n", FUNC, user_root, user_nprocs, user_tag);
 
         switch (FUNC) {
         case MPIASP_FUNC_WIN_ALLOCATE:
@@ -36,20 +36,20 @@ int run_asp_main(void) {
             break;
 
         case MPIASP_FUNC_FINALIZE:
-            PMPI_Finalize();
+            ASP_Finalize();
             goto exit;
 
             break;
 
         default:
-            MPIASP_DBG_PRINT("[ASP] FUNC %d not supported\n", FUNC);
+            ASP_DBG_PRINT(" FUNC %d not supported\n", FUNC);
             break;
         }
     }
 
     exit:
 
-    MPIASP_DBG_PRINT("[ASP] main done\n");
+    ASP_DBG_PRINT(" main done\n");
 
     return mpi_errno;
 }

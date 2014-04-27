@@ -5,11 +5,20 @@
 #include <mpi.h>
 #include "mpiasp.h"
 
+#ifdef DEBUG
+#define ASP_DBG_PRINT(str, ...) do{ \
+    fprintf(stdout, "[ASP][N-%d]"str, MPIASP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
+    } while(0)
+#else
+#define ASP_DBG_PRINT(str...) {}
+#endif
+
 typedef struct ASP_Win {
-    // communicators with each user processes
-    MPI_Comm *all_shrd_comms;
-    MPI_Win *all_shrd_wins;
-    MPI_Aint *all_shrd_base_addrs;
+    MPI_Aint *user_base_addrs_in_local;
+
+    // communicator including local processe and ASP
+    MPI_Comm local_ua_comm;
+    MPI_Win local_ua_win;
 
     // communicator including all the user processes and ASP
     MPI_Comm ua_comm;
@@ -46,7 +55,7 @@ static inline int ASP_Func_start(MPIASP_Func *FUNC, int *root, int *nprocs,
     ASP_Func_info info;
 
     mpi_errno = PMPI_Recv((char*)&info, sizeof(ASP_Func_info), MPI_CHAR,
-            MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            MPI_ANY_SOURCE, MPI_ANY_TAG, MPIASP_COMM_LOCAL, &status);
 
     *FUNC = info.FUNC;
     *nprocs = info.nprocs;
@@ -56,7 +65,21 @@ static inline int ASP_Func_start(MPIASP_Func *FUNC, int *root, int *nprocs,
     return mpi_errno;
 }
 
-extern int ASP_Win_allocate(int user_root, int user_nprocs, int user_tag);
-extern int ASP_Win_free(int user_root, int user_nprocs, int user_tag);
+static inline int MPIASP_Func_get_param(char *func_params, int size,
+        int user_local_root, int ua_tag) {
+    int local_user_rank, i;
+    MPI_Status status;
+    int mpi_errno = MPI_SUCCESS;
+
+    return PMPI_Recv(func_params, size, MPI_CHAR, user_local_root, ua_tag,
+            MPIASP_COMM_LOCAL, &status);
+}
+
+extern int ASP_Win_allocate(int user_local_root, int user_local_nprocs,
+        int user_tag);
+extern int ASP_Win_free(int user_local_root, int user_local_nprocs,
+        int user_tag);
+
+extern int ASP_Finalize(void);
 
 #endif /* ASP_H_ */

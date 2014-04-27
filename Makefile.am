@@ -16,5 +16,6 @@ libasp_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/init/init.c \
                     src/mpi/init/finalize.c \
                     src/asp/main.c \
+                    src/asp/mpi/finalize.c \
                     src/asp/rma/win_allocate.c \
                     src/asp/rma/win_free.c

@@ -39,25 +39,25 @@ static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ua_target_disp = 0;
 
-    ua_target_disp = ua_win->base_asp_addrs[target_rank]
+    ua_target_disp = ua_win->base_asp_offset[target_rank]
             + ua_win->disp_units[target_rank] * target_disp;
 
     mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
-            ua_win->asp_rank, ua_target_disp, target_count, target_datatype, win);
+            ua_win->asp_ranks_in_ua[target_rank], ua_target_disp,
+            target_count, target_datatype, win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     MPIASP_DBG_PRINT(
-            "MPIASP Put to asp instead of target %d, 0x%lx(0x%lx + %d * %ld)\n",
-            target_rank, ua_target_disp, ua_win->base_asp_addrs[target_rank],
+            "MPIASP Put to asp %d instead of target %d, 0x%lx(0x%lx + %d * %ld)\n",
+            ua_win->asp_ranks_in_ua[target_rank], target_rank,
+            ua_target_disp, ua_win->base_asp_offset[target_rank],
             ua_win->disp_units[target_rank], target_disp);
 
     fn_exit:
-
     return mpi_errno;
 
     fn_fail:
-
     goto fn_exit;
 }
 #endif
@@ -69,36 +69,22 @@ int MPI_Put(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     MPIASP_Win *ua_win;
 
-
     MPIASP_DBG_PRINT_FCNAME();
 
-    if (MPIASP_Comm_rank_isasp())
-        goto fn_exit;
-
-    ua_win = get_ua_win(win);
-
     /* Replace displacement if it is an MPIASP-window */
+    ua_win = get_ua_win(win);
     if (ua_win > 0) {
-
         mpi_errno = MPIASP_Put_impl(origin_addr, origin_count,
                 origin_datatype, target_rank, target_disp, target_count,
                 target_datatype, win, ua_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
     } else {
-
         mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
                 target_rank, target_disp, target_count, target_datatype, win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
     }
 
     fn_exit:
-
     return mpi_errno;
 
     fn_fail:
-
     goto fn_exit;
 }

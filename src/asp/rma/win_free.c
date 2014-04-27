@@ -5,7 +5,7 @@
 #undef FUNCNAME
 #define FUNCNAME ASP_Win_free
 
-int ASP_Win_free(int user_root, int user_nprocs, int user_tag) {
+int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag) {
     int mpi_errno = MPI_SUCCESS;
     int dst;
     int ua_nprocs, ua_rank;
@@ -18,53 +18,43 @@ int ASP_Win_free(int user_root, int user_nprocs, int user_tag) {
     if (win > 0) {
         win_bkup = win->win;
 
-        for (dst = 0; dst < user_nprocs; dst++) {
-            //-Free window shared with user processes
-            if (win->all_shrd_wins[dst]) {
-                MPIASP_DBG_PRINT("[ASP] \t free shared window[%d]\n", dst);
-                mpi_errno = PMPI_Win_free(&win->all_shrd_wins[dst]);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
-            }
-
-            //-Free communicator including local process and ASP
-            if (win->all_shrd_comms[dst]) {
-                MPIASP_DBG_PRINT("[ASP] \t free shared communicator[%d]\n", dst);
-                mpi_errno = PMPI_Comm_free(&win->all_shrd_comms[dst]);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
-            }
+        if (win->local_ua_win) {
+            ASP_DBG_PRINT(" free shared window\n");
+            mpi_errno = PMPI_Win_free(&win->local_ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
         }
 
-        //-Free window including user processes and ASP
         if (win->win) {
-            MPIASP_DBG_PRINT("[ASP] \t free ua window\n");
+            ASP_DBG_PRINT(" free ua window\n");
             mpi_errno = PMPI_Win_free(&win->win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        //-Free communicator including user processes and ASP
-        if (win->ua_comm) {
-            MPIASP_DBG_PRINT("[ASP] \t free ua communicator\n");
+        if (win->local_ua_comm && win->local_ua_comm != MPIASP_COMM_LOCAL) {
+            ASP_DBG_PRINT(" free shared communicator\n");
+            mpi_errno = PMPI_Comm_free(&win->local_ua_comm);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
+        if (win->ua_comm && win->ua_comm != MPI_COMM_WORLD) {
+            ASP_DBG_PRINT(" free ua communicator\n");
             mpi_errno = PMPI_Comm_free(&win->ua_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        if (win->all_shrd_base_addrs)
-            free(win->all_shrd_base_addrs);
-        if (win->all_shrd_comms)
-            free(win->all_shrd_comms);
-        if (win->all_shrd_wins)
-            free(win->all_shrd_wins);
+        if (win->user_base_addrs_in_local)
+            free(win->user_base_addrs_in_local);
 
         free(win);
 
-        MPIASP_DBG_PRINT( "[ASP] Freed ASP window 0x%x\n", win_bkup);
+        ASP_DBG_PRINT( " Freed ASP window 0x%x\n", win_bkup);
     } else {
-        MPIASP_DBG_PRINT(
-                "[ASP] no corresponding ASP window, tag 0x%x\n", user_tag);
+        ASP_DBG_PRINT(
+                " no corresponding ASP window, tag 0x%x\n", user_tag);
     }
 
     fn_exit:
