@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <mpi.h>
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define MPIASP_DBG_PRINT(str...) do{fprintf(stdout, "[MPIASP]"str);fflush(stdout);}while(0)
 #else
