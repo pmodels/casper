@@ -54,6 +54,7 @@ typedef struct MPIASP_Win {
     MPI_Win win;
 
     int num_nodes;
+    int asp_win_handle;
 } MPIASP_Win;
 
 typedef struct ASP_Func_info {
@@ -61,26 +62,24 @@ typedef struct ASP_Func_info {
     int nprocs;
 } ASP_Func_info;
 
-extern MPIASP_Win *ua_win_table[2];
+
+extern int table_remove_all(int type, int _destroy_func(void *obj));
+extern int table_remove(int type, unsigned long long key);
+extern void *table_find(int type, unsigned long long key);
+extern unsigned long long table_insert(int type, void *obj);
+extern void table_destroy();
+extern int table_init();
+extern int table_insert_with_key(int type, void *obj, unsigned long long key);
+
 static inline MPIASP_Win* get_ua_win(int handle) {
-    if (ua_win_table[0]->win == handle) {
-        return ua_win_table[0];
-    } else {
-        return NULL;
-    }
+    return (MPIASP_Win *) table_find(0, (unsigned long long) handle);
 }
-static inline MPIASP_Win* remove_ua_win(int handle) {
-    MPIASP_Win *ret;
-    if (ua_win_table[0]->win == handle) {
-        ret = ua_win_table[0];
-        ua_win_table[0] = NULL;
-        return ret;
-    } else {
-        return NULL;
-    }
+static inline int remove_ua_win(int handle, MPIASP_Win** win) {
+    *win = (MPIASP_Win *) table_find(0, (unsigned long long) handle);
+    return table_remove(0, (unsigned long long) handle);
 }
-static inline void put_ua_win(int handle, MPIASP_Win* ua_win) {
-    ua_win_table[0] = ua_win;
+static inline int put_ua_win(int handle, MPIASP_Win* ua_win) {
+    return table_insert_with_key(0, ua_win, (unsigned long long) handle);
 }
 
 extern MPI_Comm MPIASP_COMM_USER_WORLD;

@@ -35,6 +35,10 @@ int MPI_Init(int *argc, char ***argv) {
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    mpi_errno = table_init();
+    if (mpi_errno != 0)
+        goto fn_fail;
+
     /* Get a communicator only containing processes with shared memory */
     mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
             MPI_INFO_NULL, &MPIASP_COMM_LOCAL);

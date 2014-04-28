@@ -42,6 +42,11 @@ int ASP_Finalize(void) {
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    mpi_errno = table_remove_all(0, NULL);
+    if (mpi_errno != 0)
+        goto fn_fail;
+    table_destroy();
+
     fn_exit:
     return mpi_errno;
 

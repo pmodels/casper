@@ -365,7 +365,18 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     *win = ua_win->win;
     *base_pp = ua_win->base;
 
-    put_ua_win(*win, ua_win);
+    if (user_local_rank == 0) {
+        // Receive the handle of ASP win
+        mpi_errno = PMPI_Recv(&ua_win->asp_win_handle, 1, MPI_INT,
+                MPIASP_RANK_IN_COMM_LOCAL, ua_tag,
+                MPIASP_COMM_LOCAL, &stat);
+        if (mpi_errno != 0)
+            goto fn_fail;
+    }
+
+    mpi_errno = put_ua_win(*win, ua_win);
+    if (mpi_errno != 0)
+        goto fn_fail;
 
     fn_exit:
 

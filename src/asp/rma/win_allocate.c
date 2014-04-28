@@ -210,9 +210,17 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    put_asp_win(0, win);
+    mpi_errno = put_asp_win((int)win->win, win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     ASP_DBG_PRINT(" Created ASP window 0x%x\n", win->win);
+
+    // Notify user root the handle of ASP win
+    mpi_errno = PMPI_Send(&win->win, 1, MPI_INT,
+            user_local_root, user_tag, MPIASP_COMM_LOCAL);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     fn_exit:
 

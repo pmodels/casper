@@ -11,8 +11,18 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag) {
     int ua_nprocs, ua_rank;
     ASP_Win *win;
     MPI_Win win_bkup;
+    int asp_win_handle;
+    MPI_Status stat;
 
-    win = remove_asp_win(0);
+    // Receive the handle of ASP win
+    mpi_errno = PMPI_Recv(&asp_win_handle, 1, MPI_INT,
+            user_local_root, user_tag, MPIASP_COMM_LOCAL, &stat);
+    if (mpi_errno != 0)
+        goto fn_fail;
+
+    mpi_errno = remove_asp_win(asp_win_handle, &win);
+    if (mpi_errno != 0)
+        goto fn_fail;
 
     /* Release ASP resources if there is a corresponding ASP-window */
     if (win > 0) {

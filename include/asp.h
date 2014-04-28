@@ -27,22 +27,20 @@ typedef struct ASP_Win {
     MPI_Win win;
 } ASP_Win;
 
-extern ASP_Win *asp_win_table[2];
-static inline ASP_Win* get_asp_win(int handle) {
-    return asp_win_table[0];
+extern int table_remove_all(int type, int _destroy_func(void *obj));
+extern int table_remove(int type, unsigned long long key);
+extern void *table_find(int type, unsigned long long key);
+extern unsigned long long table_insert(int type, void *obj);
+extern void table_destroy();
+extern int table_init();
+extern int table_insert_with_key(int type, void *obj, unsigned long long key);
+
+static inline int remove_asp_win(int handle, ASP_Win** win) {
+    *win = (ASP_Win *) table_find(0, (unsigned long long)handle);
+    return table_remove(0, (unsigned long long)handle);
 }
-static inline ASP_Win* remove_asp_win(int handle) {
-    ASP_Win *ret;
-    if (asp_win_table[0]) {
-        ret = asp_win_table[0];
-        asp_win_table[0] = NULL;
-        return ret;
-    } else {
-        return NULL;
-    }
-}
-static inline void put_asp_win(int handle, ASP_Win* win) {
-    asp_win_table[0] = win;
+static inline int put_asp_win(int key, ASP_Win* win) {
+    return table_insert_with_key(0, win, (unsigned long long) key);
 }
 
 /**
@@ -54,7 +52,7 @@ static inline int ASP_Func_start(MPIASP_Func *FUNC, int *root, int *nprocs,
     MPI_Status status;
     ASP_Func_info info;
 
-    mpi_errno = PMPI_Recv((char*)&info, sizeof(ASP_Func_info), MPI_CHAR,
+    mpi_errno = PMPI_Recv((char*) &info, sizeof(ASP_Func_info), MPI_CHAR,
             MPI_ANY_SOURCE, MPI_ANY_TAG, MPIASP_COMM_LOCAL, &status);
 
     *FUNC = info.FUNC;

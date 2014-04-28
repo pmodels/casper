@@ -3,7 +3,8 @@
 #
 
 ACLOCAL_AMFLAGS = -I confdb
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include \
+			  `pkg-config --cflags glib-2.0` `pkg-config --libs glib-2.0`
 
 lib_LTLIBRARIES = libasp.la
 
@@ -18,4 +19,5 @@ libasp_la_SOURCES = src/mpi_wrap.c	\
                     src/asp/main.c \
                     src/asp/mpi/finalize.c \
                     src/asp/rma/win_allocate.c \
-                    src/asp/rma/win_free.c
+                    src/asp/rma/win_free.c	\
+                    src/util/table.c

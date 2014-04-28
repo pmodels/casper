@@ -6,17 +6,20 @@ int MPI_Win_free(MPI_Win *win) {
     static const char FCNAME[] = "MPIASP_Win_free";
     int mpi_errno = MPI_SUCCESS;
     MPIASP_Win *ua_win;
-    int user_rank, user_nprocs;
+    int user_rank, user_nprocs, local_user_nprocs;
     int ua_tag;
 
     MPIASP_DBG_PRINT_FCNAME();
 
-    ua_win = remove_ua_win(*win);
+    mpi_errno = remove_ua_win(*win, &ua_win);
+    if (mpi_errno != 0)
+        goto fn_fail;
 
     /* Release additional resources if it is an MPIASP-window */
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
         PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
+        PMPI_Comm_rank(ua_win->local_user_comm, &local_user_nprocs);
 
         mpi_errno = MPIASP_Tag_format((int) ua_win->user_comm, &ua_tag);
         if (mpi_errno != MPI_SUCCESS)
@@ -24,6 +27,14 @@ int MPI_Win_free(MPI_Win *win) {
 
         MPIASP_Func_start(MPIASP_FUNC_WIN_FREE, user_nprocs, ua_tag,
                 ua_win->local_user_comm);
+
+        // Notify the handle of target ASP win
+        if (local_user_nprocs == 0) {
+            mpi_errno = PMPI_Send(&ua_win->asp_win_handle, 1, MPI_INT,
+                    MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
 
         if (ua_win->local_ua_win) {
             MPIASP_DBG_PRINT("[%d] \t free shared window\n", user_rank);
