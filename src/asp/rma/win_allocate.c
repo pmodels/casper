@@ -166,7 +166,6 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
     ASP_DBG_PRINT(" Created local_ua_win, base=%p\n", win->base);
 
     // -Query address of user buffers and send to USER processes
-#ifdef DEBUG
     PMPI_Comm_rank(win->local_ua_comm, &local_ua_rank);
     PMPI_Comm_size(win->local_ua_comm, &local_ua_nprocs);
     for (dst = 0; dst < local_ua_nprocs; dst++) {
@@ -185,7 +184,6 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
 
         size += r_size; // size in byte
     }
-#endif
 
     /* Create a window including all USER processes and ASP processes */
     ASP_DBG_PRINT(" ---- Start create UA window\n");
