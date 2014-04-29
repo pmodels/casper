@@ -62,6 +62,14 @@ int MPI_Init(int *argc, char ***argv) {
     /* Get a user comm_world for the user to use */
     PMPI_Comm_rank(MPIASP_COMM_LOCAL, &local_rank);
     PMPI_Comm_size(MPIASP_COMM_LOCAL, &local_nprocs);
+
+    if(local_nprocs == 1){
+        fprintf(stderr,
+                "No user process found, please run with more than 2 process per node\n");
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+
     mpi_errno = PMPI_Comm_split(MPI_COMM_WORLD,
             local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_WORLD);
     if (mpi_errno != MPI_SUCCESS)
@@ -168,12 +176,18 @@ int MPI_Init(int *argc, char ***argv) {
 
     fn_fail:
     /* --BEGIN ERROR HANDLING-- */
-    if (MPIASP_COMM_USER_WORLD)
+    if (MPIASP_COMM_USER_WORLD != MPI_COMM_NULL) {
+        MPIASP_DBG_PRINT("free MPIASP_COMM_USER_WORLD\n");
         PMPI_Comm_free(&MPIASP_COMM_USER_WORLD);
-    if (MPIASP_COMM_LOCAL)
+    }
+    if (MPIASP_COMM_LOCAL != MPI_COMM_NULL) {
+        MPIASP_DBG_PRINT("free MPIASP_COMM_LOCAL\n");
         PMPI_Comm_free(&MPIASP_COMM_LOCAL);
-    if (MPIASP_COMM_USER_LOCAL)
+    }
+    if (MPIASP_COMM_USER_LOCAL != MPI_COMM_NULL) {
+        MPIASP_DBG_PRINT("free MPIASP_COMM_USER_LOCAL\n");
         PMPI_Comm_free(&MPIASP_COMM_USER_LOCAL);
+    }
 
     if (MPIASP_ALL_NODE_IDS)
         free(MPIASP_ALL_NODE_IDS);
@@ -187,6 +201,8 @@ int MPI_Init(int *argc, char ***argv) {
 
     MPIASP_ALL_ASP_IN_COMM_WORLD = NULL;
     MPIASP_ALL_NODE_IDS = NULL;
+
+    PMPI_Abort(MPI_COMM_WORLD, 0);
 
     goto fn_exit;
     /* --END ERROR HANDLING-- */
