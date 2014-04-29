@@ -5,7 +5,8 @@
 #include <mpi.h>
 #include "mpiasp.h"
 
-#ifdef DEBUG
+#define ASP_DEBUG
+#ifdef ASP_DEBUG
 #define ASP_DBG_PRINT(str, ...) do{ \
     fprintf(stdout, "[ASP][N-%d]"str, MPIASP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
     } while(0)
