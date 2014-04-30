@@ -119,17 +119,14 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
     int ua_nprocs, ua_rank;
     ASP_Win *win;
     void **user_bases = NULL;
-    int *ua_ranks_in_world = NULL;
 
     int func_params[1];
     int is_user_world;
-    MPI_Request *reqs = NULL;
-    MPI_Status *stats = NULL;
 
     win = calloc(1, sizeof(ASP_Win));
     win->user_base_addrs_in_local = calloc(user_local_nprocs, sizeof(MPI_Aint));
-    ua_ranks_in_world = calloc(user_local_nprocs + 1, sizeof(int));
-    user_bases = calloc(user_local_nprocs, sizeof(void*));
+    user_bases = calloc(user_local_nprocs + MPIASP_NUM_ASP_IN_LOCAL,
+            sizeof(void*));
 
     /* Gather parameters from user processes, because each process may
      * specify different size, disp_unit */
@@ -222,14 +219,8 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
 
     fn_exit:
 
-    if (ua_ranks_in_world)
-        free(ua_ranks_in_world);
     if (user_bases)
         free(user_bases);
-    if (reqs)
-        free(reqs);
-    if (stats)
-        free(stats);
 
     return mpi_errno;
 
