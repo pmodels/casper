@@ -20,7 +20,7 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag) {
     if (mpi_errno != 0)
         goto fn_fail;
 
-    mpi_errno = remove_asp_win(asp_win_handle, &win);
+    mpi_errno = get_asp_win(asp_win_handle, &win);
     if (mpi_errno != 0)
         goto fn_fail;
 

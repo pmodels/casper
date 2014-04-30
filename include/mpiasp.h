@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <mpi.h>
+#include "hash_table.h"
 
 //#define DEBUG
 #ifdef DEBUG
@@ -62,24 +63,26 @@ typedef struct ASP_Func_info {
     int nprocs;
 } ASP_Func_info;
 
+extern hashtable_t *ua_win_ht;
+#define UA_WIN_HT_SIZE 65536
 
-extern int table_remove_all(int type, int _destroy_func(void *obj));
-extern int table_remove(int type, unsigned long long key);
-extern void *table_find(int type, unsigned long long key);
-extern unsigned long long table_insert(int type, void *obj);
-extern void table_destroy();
-extern int table_init();
-extern int table_insert_with_key(int type, void *obj, unsigned long long key);
+static inline int get_ua_win(int handle, MPIASP_Win** win) {
+    *win = (MPIASP_Win *) ht_get(ua_win_ht, (ht_key_t) handle);
+    return 0;
+}
+static inline int put_ua_win(int key, MPIASP_Win* win) {
+    return ht_set(ua_win_ht, (ht_key_t) key, win);
+}
+static inline int init_ua_win_table() {
+    ua_win_ht = ht_create(UA_WIN_HT_SIZE);
 
-static inline MPIASP_Win* get_ua_win(int handle) {
-    return (MPIASP_Win *) table_find(0, (unsigned long long) handle);
+    if (ua_win_ht == NULL)
+        return -1;
+
+    return 0;
 }
-static inline int remove_ua_win(int handle, MPIASP_Win** win) {
-    *win = (MPIASP_Win *) table_find(0, (unsigned long long) handle);
-    return table_remove(0, (unsigned long long) handle);
-}
-static inline int put_ua_win(int handle, MPIASP_Win* ua_win) {
-    return table_insert_with_key(0, ua_win, (unsigned long long) handle);
+static inline void destroy_ua_win_table() {
+    return ht_destroy(ua_win_ht);
 }
 
 extern MPI_Comm MPIASP_COMM_USER_WORLD;
@@ -119,7 +122,7 @@ static inline int MPIASP_Func_start(MPIASP_Func FUNC, int nprocs, int ua_tag,
 
 static inline int MPIASP_Func_set_param(char *func_params, int size, int ua_tag,
         MPI_Comm user_local_comm) {
-    int local_user_rank, i;
+    int local_user_rank;
     int mpi_errno = MPI_SUCCESS;
 
     PMPI_Comm_rank(user_local_comm, &local_user_rank);

@@ -2,12 +2,15 @@
 #include <stdlib.h>
 #include "asp.h"
 
+hashtable_t *asp_win_ht;
+
 int run_asp_main(void) {
     int mpi_errno = MPI_SUCCESS;
     MPIASP_Func FUNC;
     int user_root, user_nprocs, user_tag;
 
     ASP_DBG_PRINT(" main start\n");
+    init_asp_win_table();
 
     /*TODO: init in user app or here ? */
     //    MPI_Init(&argc, &argv);

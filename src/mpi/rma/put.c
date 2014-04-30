@@ -72,7 +72,10 @@ int MPI_Put(const void *origin_addr, int origin_count,
     MPIASP_DBG_PRINT_FCNAME();
 
     /* Replace displacement if it is an MPIASP-window */
-    ua_win = get_ua_win(win);
+    mpi_errno = get_ua_win(win, &ua_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     if (ua_win > 0) {
         mpi_errno = MPIASP_Put_impl(origin_addr, origin_count,
                 origin_datatype, target_rank, target_disp, target_count,

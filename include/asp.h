@@ -4,8 +4,9 @@
 #include "aspconf.h"
 #include <mpi.h>
 #include "mpiasp.h"
+#include "hash_table.h"
 
-#define ASP_DEBUG
+//#define ASP_DEBUG
 #ifdef ASP_DEBUG
 #define ASP_DBG_PRINT(str, ...) do{ \
     fprintf(stdout, "[ASP][N-%d]"str, MPIASP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
@@ -28,20 +29,26 @@ typedef struct ASP_Win {
     MPI_Win win;
 } ASP_Win;
 
-extern int table_remove_all(int type, int _destroy_func(void *obj));
-extern int table_remove(int type, unsigned long long key);
-extern void *table_find(int type, unsigned long long key);
-extern unsigned long long table_insert(int type, void *obj);
-extern void table_destroy();
-extern int table_init();
-extern int table_insert_with_key(int type, void *obj, unsigned long long key);
+extern hashtable_t *asp_win_ht;
+#define ASP_WIN_HT_SIZE 65536
 
-static inline int remove_asp_win(int handle, ASP_Win** win) {
-    *win = (ASP_Win *) table_find(0, (unsigned long long)handle);
-    return table_remove(0, (unsigned long long)handle);
+static inline int get_asp_win(int handle, ASP_Win** win) {
+    *win = (ASP_Win *) ht_get(asp_win_ht, (ht_key_t) handle);
+    return 0;
 }
 static inline int put_asp_win(int key, ASP_Win* win) {
-    return table_insert_with_key(0, win, (unsigned long long) key);
+    return ht_set(asp_win_ht, (ht_key_t) key, win);
+}
+static inline int init_asp_win_table() {
+    asp_win_ht = ht_create(ASP_WIN_HT_SIZE);
+
+    if (asp_win_ht == NULL)
+        return -1;
+
+    return 0;
+}
+static inline void destroy_asp_win_table() {
+    return ht_destroy(asp_win_ht);
 }
 
 /**

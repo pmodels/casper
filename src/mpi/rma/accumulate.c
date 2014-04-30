@@ -40,7 +40,9 @@ int MPI_Accumulate(const void *origin_addr, int origin_count,
 
     MPIASP_DBG_PRINT_FCNAME();
 
-    ua_win = get_ua_win(win);
+    mpi_errno = get_ua_win(win, &ua_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     /* Replace displacement if it is an MPIASP-window */
     if (ua_win > 0) {

@@ -189,7 +189,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     static const char FCNAME[] = "MPI_Win_allocate";
     int mpi_errno = MPI_SUCCESS;
     MPI_Group ua_group, world_group;
-    int ua_nprocs, ua_rank, user_nprocs, user_rank, user_world_rank,
+    int ua_rank, user_nprocs, user_rank, user_world_rank,
             user_local_rank, user_local_nprocs, ua_local_rank, ua_local_nprocs;
     MPIASP_Win *ua_win;
     int ua_tag;
@@ -200,6 +200,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MPI_Status *user_status, stat;
     int *asp_info = NULL, *asp_ranks = NULL;
     MPI_Aint *user_local_sizes;
+
+#ifdef DEBUG
+    int ua_nprocs;
+#endif
 
     MPIASP_DBG_PRINT_FCNAME();
 

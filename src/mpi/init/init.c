@@ -19,6 +19,8 @@ int MPIASP_NUM_UNIQUE_ASP = 0;
 int MPIASP_MY_NODE_ID = -1;
 int *MPIASP_ALL_NODE_IDS = NULL;
 
+hashtable_t *ua_win_ht;
+
 int MPI_Init(int *argc, char ***argv) {
     static const char FCNAME[] = "MPI_Init";
     int mpi_errno = MPI_SUCCESS;
@@ -33,10 +35,6 @@ int MPI_Init(int *argc, char ***argv) {
 
     mpi_errno = PMPI_Init(argc, argv);
     if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    mpi_errno = table_init();
-    if (mpi_errno != 0)
         goto fn_fail;
 
     /* Get a communicator only containing processes with shared memory */
@@ -118,6 +116,10 @@ int MPI_Init(int *argc, char ***argv) {
                 MPIASP_ALL_ASP_IN_COMM_WORLD, 1, MPI_INT,
                 MPIASP_COMM_USER_WORLD);
         if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        mpi_errno = init_ua_win_table();
+        if (mpi_errno != 0)
             goto fn_fail;
 
 #ifdef DEBUG

@@ -11,8 +11,8 @@ int MPI_Win_free(MPI_Win *win) {
 
     MPIASP_DBG_PRINT_FCNAME();
 
-    mpi_errno = remove_ua_win(*win, &ua_win);
-    if (mpi_errno != 0)
+    mpi_errno = get_ua_win(*win, &ua_win);
+    if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Release additional resources if it is an MPIASP-window */
