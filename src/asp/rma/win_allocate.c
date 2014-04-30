@@ -114,7 +114,7 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
     int mpi_errno = MPI_SUCCESS;
     MPI_Status status;
     int dst, local_ua_rank, local_ua_nprocs;
-    MPI_Aint r_size, size;
+    MPI_Aint r_size, size = 0;
     int r_disp_unit, req_idx;
     int ua_nprocs, ua_rank;
     ASP_Win *win;
