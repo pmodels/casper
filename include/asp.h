@@ -30,7 +30,7 @@ typedef struct ASP_Win {
 } ASP_Win;
 
 extern hashtable_t *asp_win_ht;
-#define ASP_WIN_HT_SIZE 65536
+#define ASP_WIN_HT_SIZE 256
 
 static inline int get_asp_win(int handle, ASP_Win** win) {
     *win = (ASP_Win *) ht_get(asp_win_ht, (ht_key_t) handle);

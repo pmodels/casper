@@ -196,9 +196,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int i, j;
     int func_params[1];
     void **base_pp = (void **) baseptr;
-    MPI_Request *user_reqs;
-    MPI_Status *user_status, stat;
-    int *asp_info = NULL, *asp_ranks = NULL;
+    MPI_Status stat;
+    int *asp_info = NULL;
     MPI_Aint *user_local_sizes;
 
 #ifdef DEBUG
@@ -227,9 +226,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(ua_win->local_user_comm, &user_local_rank);
     PMPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
-    user_reqs = calloc(user_nprocs, sizeof(MPI_Request));
-    user_status = calloc(user_nprocs, sizeof(MPI_Status));
-    asp_ranks = calloc(MPIASP_NUM_ASP_IN_LOCAL, sizeof(int));
     ua_win->base_asp_offset = calloc(user_nprocs, sizeof(MPI_Aint));
     ua_win->user_comm = user_comm;
     ua_win->disp_units = calloc(user_nprocs, sizeof(int));
@@ -389,12 +385,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (ua_group)
         PMPI_Group_free(&ua_group);
 
-    if (user_reqs)
-        free(user_reqs);
-    if (user_status)
-        free(user_status);
-    if (asp_ranks)
-        free(asp_ranks);
+    if (user_local_sizes)
+        free(user_local_sizes);
 
     return mpi_errno;
 
@@ -427,8 +419,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         free(ua_win->asp_ranks_in_ua);
     if (ua_win)
         free(ua_win);
-    if (user_local_sizes)
-        free(user_local_sizes);
 
     *win  = MPI_WIN_NULL;
     *base_pp = NULL;

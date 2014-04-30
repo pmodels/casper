@@ -124,9 +124,6 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
     int is_user_world;
 
     win = calloc(1, sizeof(ASP_Win));
-    win->user_base_addrs_in_local = calloc(user_local_nprocs, sizeof(MPI_Aint));
-    user_bases = calloc(user_local_nprocs + MPIASP_NUM_ASP_IN_LOCAL,
-            sizeof(void*));
 
     /* Gather parameters from user processes, because each process may
      * specify different size, disp_unit */
@@ -165,6 +162,10 @@ int ASP_Win_allocate(int user_local_root, int user_local_nprocs, int user_tag) {
     // -Query address of user buffers and send to USER processes
     PMPI_Comm_rank(win->local_ua_comm, &local_ua_rank);
     PMPI_Comm_size(win->local_ua_comm, &local_ua_nprocs);
+
+    user_bases = calloc(local_ua_nprocs, sizeof(void*));
+    win->user_base_addrs_in_local = calloc(local_ua_nprocs, sizeof(MPI_Aint));
+
     for (dst = 0; dst < local_ua_nprocs; dst++) {
         mpi_errno = PMPI_Win_shared_query(win->local_ua_win, dst, &r_size,
                 &r_disp_unit, &user_bases[dst]);

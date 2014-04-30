@@ -64,7 +64,7 @@ typedef struct ASP_Func_info {
 } ASP_Func_info;
 
 extern hashtable_t *ua_win_ht;
-#define UA_WIN_HT_SIZE 65536
+#define UA_WIN_HT_SIZE 256
 
 static inline int get_ua_win(int handle, MPIASP_Win** win) {
     *win = (MPIASP_Win *) ht_get(ua_win_ht, (ht_key_t) handle);
