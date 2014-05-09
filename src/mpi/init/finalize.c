@@ -32,6 +32,11 @@ int MPI_Finalize(void) {
         PMPI_Comm_free(&MPIASP_COMM_USER_ROOTS);
     }
 
+    if (MPIASP_GROUP_WORLD != MPI_GROUP_NULL)
+        PMPI_Group_free(&MPIASP_GROUP_WORLD);
+    if (MPIASP_GROUP_LOCAL != MPI_GROUP_NULL)
+        PMPI_Group_free(&MPIASP_GROUP_LOCAL);
+
     if (MPIASP_ALL_NODE_IDS)
         free(MPIASP_ALL_NODE_IDS);
 

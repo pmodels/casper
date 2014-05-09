@@ -43,6 +43,22 @@ int MPI_Win_free(MPI_Win *win) {
                 goto fn_fail;
         }
 
+        if (ua_win->local_ua_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&ua_win->local_ua_group);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+        if (ua_win->ua_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&ua_win->ua_group);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+        if (ua_win->user_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&ua_win->user_group);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
         if (ua_win->local_ua_comm
                 && ua_win->local_ua_comm != MPIASP_COMM_LOCAL) {
             MPIASP_DBG_PRINT("[%d] \t free shared communicator\n", user_rank);

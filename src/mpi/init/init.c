@@ -7,6 +7,8 @@ MPI_Comm MPIASP_COMM_USER_WORLD = MPI_COMM_NULL;
 MPI_Comm MPIASP_COMM_USER_LOCAL = MPI_COMM_NULL;
 MPI_Comm MPIASP_COMM_LOCAL = MPI_COMM_NULL;
 MPI_Comm MPIASP_COMM_USER_ROOTS = MPI_COMM_NULL;
+MPI_Group MPIASP_GROUP_WORLD = MPI_GROUP_NULL;
+MPI_Group MPIASP_GROUP_LOCAL = MPI_GROUP_NULL;
 
 //MPI_Comm MPIASP_COMM_ASP_LOCAL = MPI_COMM_NULL;
 //MPI_Comm MPIASP_COMM_ASP_WORLD = MPI_COMM_NULL;
@@ -24,7 +26,7 @@ hashtable_t *ua_win_ht;
 int MPI_Init(int *argc, char ***argv) {
     static const char FCNAME[] = "MPI_Init";
     int mpi_errno = MPI_SUCCESS;
-    MPI_Group world_group = 0, local_group = 0;
+    MPIASP_GROUP_LOCAL = 0;
     int i;
     int local_rank, local_nprocs, rank, nprocs, user_rank, user_nprocs;
     int local_user_rank, local_user_nprocs;
@@ -46,16 +48,16 @@ int MPI_Init(int *argc, char ***argv) {
     /*
      * Specify the first N local processes to be ASP process
      */
-    mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &world_group);
+    mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &MPIASP_GROUP_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    mpi_errno = PMPI_Comm_group(MPIASP_COMM_LOCAL, &local_group);
+    mpi_errno = PMPI_Comm_group(MPIASP_COMM_LOCAL, &MPIASP_GROUP_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     MPIASP_RANK_IN_COMM_LOCAL = 0;
-    PMPI_Group_translate_ranks(local_group, MPIASP_NUM_ASP_IN_LOCAL,
-            &MPIASP_RANK_IN_COMM_LOCAL, world_group, &MPIASP_RANK_IN_COMM_WORLD);
+    PMPI_Group_translate_ranks(MPIASP_GROUP_LOCAL, MPIASP_NUM_ASP_IN_LOCAL,
+            &MPIASP_RANK_IN_COMM_LOCAL, MPIASP_GROUP_WORLD, &MPIASP_RANK_IN_COMM_WORLD);
 
     /* Get a user comm_world for the user to use */
     PMPI_Comm_rank(MPIASP_COMM_LOCAL, &local_rank);
@@ -158,21 +160,11 @@ int MPI_Init(int *argc, char ***argv) {
         PMPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-        // Finish cleaning work before start ASP processing.
-        if (world_group)
-            PMPI_Group_free(&world_group);
-        if (local_group)
-            PMPI_Group_free(&local_group);
-
         run_asp_main();
         exit(0);
     }
 
     fn_exit:
-    if (world_group)
-        PMPI_Group_free(&world_group);
-    if (local_group)
-        PMPI_Group_free(&local_group);
 
     return mpi_errno;
 
@@ -190,6 +182,11 @@ int MPI_Init(int *argc, char ***argv) {
         MPIASP_DBG_PRINT("free MPIASP_COMM_USER_LOCAL\n");
         PMPI_Comm_free(&MPIASP_COMM_USER_LOCAL);
     }
+
+    if (MPIASP_GROUP_WORLD != MPI_GROUP_NULL)
+        PMPI_Group_free(&MPIASP_GROUP_WORLD);
+    if (MPIASP_GROUP_LOCAL != MPI_GROUP_NULL)
+        PMPI_Group_free(&MPIASP_GROUP_LOCAL);
 
     if (MPIASP_ALL_NODE_IDS)
         free(MPIASP_ALL_NODE_IDS);

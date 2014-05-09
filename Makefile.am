@@ -13,6 +13,10 @@ libasp_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/rma/put.c \
                     src/mpi/rma/get.c \
                     src/mpi/rma/accumulate.c \
+                    src/mpi/rma/win_lock_all.c	\
+                    src/mpi/rma/win_unlock_all.c	\
+                    src/mpi/rma/win_flush.c	\
+                    src/mpi/rma/win_flush_all.c	\
                     src/mpi/init/init.c \
                     src/mpi/init/finalize.c \
                     src/asp/main.c \

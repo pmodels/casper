@@ -5,6 +5,8 @@
 #include <mpi.h>
 #include "hash_table.h"
 
+#define ENABLE_SHRD_COMM_TRANS
+
 //#define DEBUG
 #ifdef DEBUG
 #define MPIASP_DBG_PRINT(str...) do{fprintf(stdout, "[MPIASP]"str);fflush(stdout);}while(0)
@@ -37,15 +39,18 @@ typedef struct MPIASP_Win {
 
     // communicator including local process and ASP
     MPI_Comm local_ua_comm;
+    MPI_Group local_ua_group;
     MPI_Win local_ua_win;
     ASP_Win_params *local_ua_win_param;
 
     // communicator including all the user processes and ASP
     MPI_Comm ua_comm;
+    MPI_Group ua_group;
     int *asp_ranks_in_ua;
 
     // communicator including all the user processes
     MPI_Comm user_comm;
+    MPI_Group user_group;
     int *user_ranks_in_world;
     int *user_ranks_in_user_world;
 
@@ -89,6 +94,8 @@ extern MPI_Comm MPIASP_COMM_USER_WORLD;
 extern MPI_Comm MPIASP_COMM_LOCAL;
 extern MPI_Comm MPIASP_COMM_USER_LOCAL;
 extern MPI_Comm MPIASP_COMM_USER_ROOTS;
+extern MPI_Group MPIASP_GROUP_WORLD;
+extern MPI_Group MPIASP_GROUP_LOCAL;
 
 extern int MPIASP_NUM_ASP_IN_LOCAL;
 extern int MPIASP_RANK_IN_COMM_WORLD;
@@ -155,6 +162,26 @@ static inline int MPIASP_Tag_format(int org_tag, int *tag) {
     MPIASP_DBG_PRINT("tag_ub=%d\n", tag_ub);
 
     *tag = org_tag & tag_ub;
+    return mpi_errno;
+}
+
+static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group,
+        int *is_shared) {
+    int mpi_errno = MPI_SUCCESS;
+    int target_rank_in_world = 0, rank_in_world = 0;
+
+    *is_shared = 0;
+
+    // If target is in the same node, use shared window instead
+    PMPI_Group_translate_ranks(group, 1,
+            &target_rank, MPIASP_GROUP_WORLD, &target_rank_in_world);
+    PMPI_Comm_rank(MPI_COMM_WORLD, &rank_in_world);
+
+    if (MPIASP_ALL_NODE_IDS[target_rank_in_world]
+            == MPIASP_ALL_NODE_IDS[rank_in_world]) {
+        *is_shared = 1;
+    }
+
     return mpi_errno;
 }
 
