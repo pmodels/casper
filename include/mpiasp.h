@@ -47,6 +47,7 @@ typedef struct MPIASP_Win {
     MPI_Comm ua_comm;
     MPI_Group ua_group;
     int *asp_ranks_in_ua;
+    MPI_Win ua_win;
 
     // communicator including all the user processes
     MPI_Comm user_comm;

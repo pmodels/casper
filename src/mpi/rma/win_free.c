@@ -43,6 +43,13 @@ int MPI_Win_free(MPI_Win *win) {
                 goto fn_fail;
         }
 
+        if (ua_win->ua_win) {
+            MPIASP_DBG_PRINT("[%d] \t free ua window\n", user_rank);
+            mpi_errno = PMPI_Win_free(&ua_win->ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
         if (ua_win->local_ua_group != MPI_GROUP_NULL) {
             mpi_errno = PMPI_Group_free(&ua_win->local_ua_group);
             if (mpi_errno != MPI_SUCCESS)
@@ -76,7 +83,7 @@ int MPI_Win_free(MPI_Win *win) {
                 goto fn_fail;
         }
 
-        MPIASP_DBG_PRINT("[%d] \t free ua window\n", user_rank);
+        MPIASP_DBG_PRINT("[%d] \t free user window\n", user_rank);
         mpi_errno = PMPI_Win_free(win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

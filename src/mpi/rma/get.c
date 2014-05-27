@@ -59,7 +59,7 @@ static int MPIASP_Get_impl(void *origin_addr, int origin_count,
 
         mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
                 ua_win->asp_ranks_in_ua[target_rank], ua_target_disp,
-                target_count, target_datatype, win);
+                target_count, target_datatype, ua_win->ua_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 

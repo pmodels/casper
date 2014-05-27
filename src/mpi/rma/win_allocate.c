@@ -357,12 +357,20 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 #endif
 
     // -Create window
+    // - Internal window for accessing to helpers
     mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
-            ua_win->ua_comm, &ua_win->win);
+            ua_win->ua_comm, &ua_win->ua_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MPIASP_DBG_PRINT("[%d] Created window 0x%x\n", user_rank, ua_win->win);
+    // - Only expose user window in order to hide helpers in all non-wrapped window functions
+    mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
+            ua_win->user_comm, &ua_win->win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    MPIASP_DBG_PRINT("[%d] Created window 0x%x, ua_window 0x%x\n",
+            user_rank, ua_win->win, ua_win->ua_win);
 
     *win = ua_win->win;
     *base_pp = ua_win->base;
@@ -393,6 +401,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         PMPI_Win_free(&ua_win->local_ua_win);
     if (ua_win->win)
         PMPI_Win_free(&ua_win->win);
+    if (ua_win->ua_win)
+        PMPI_Win_free(&ua_win->ua_win);
 
     if (ua_win->local_ua_comm && ua_win->local_ua_comm != MPIASP_COMM_LOCAL)
         PMPI_Comm_free(&ua_win->local_ua_comm);

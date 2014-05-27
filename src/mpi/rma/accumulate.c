@@ -57,8 +57,7 @@ static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
 
         mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
                 ua_win->asp_ranks_in_ua[target_rank], ua_target_disp,
-                target_count,
-                target_datatype, op, win);
+                target_count, target_datatype, op, ua_win->ua_win);
 
         MPIASP_DBG_PRINT(
                 "MPIASP Accumulate to asp %d instead of target %d, 0x%lx(0x%lx + %d * %ld)\n",
