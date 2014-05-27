@@ -38,9 +38,11 @@ int MPI_Win_flush(int rank, MPI_Win win) {
         else
 #endif
         {
-            PMPI_Group_translate_ranks(ua_win->user_group, 1, &rank,
-                    ua_win->ua_group, &rank_in_ua);
-            mpi_errno = PMPI_Win_flush(rank_in_ua, ua_win->ua_win);
+            // We only flush target helper in ua_window. Because for non-shared
+            // targets, all translated operations are issued to target helper via ua_window.
+            // Otherwise, they are issued through user window.
+            mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[rank],
+                    ua_win->ua_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
