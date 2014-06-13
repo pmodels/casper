@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-int MPI_Finalize(void) {
+int MPI_Finalize(void)
+{
     static const char FCNAME[] = "MPI_Finalize";
     int mpi_errno = MPI_SUCCESS;
     int rank, nprocs, local_rank, local_nprocs;
@@ -49,9 +50,9 @@ int MPI_Finalize(void) {
 
     destroy_ua_win_table();
 
-    fn_exit:
+  fn_exit:
     return mpi_errno;
 
-    fn_fail:
+  fn_fail:
     goto fn_exit;
 }

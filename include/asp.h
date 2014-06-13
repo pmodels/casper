@@ -32,14 +32,17 @@ typedef struct ASP_Win {
 extern hashtable_t *asp_win_ht;
 #define ASP_WIN_HT_SIZE 256
 
-static inline int get_asp_win(int handle, ASP_Win** win) {
+static inline int get_asp_win(int handle, ASP_Win** win)
+{
     *win = (ASP_Win *) ht_get(asp_win_ht, (ht_key_t) handle);
     return 0;
 }
-static inline int put_asp_win(int key, ASP_Win* win) {
+static inline int put_asp_win(int key, ASP_Win* win)
+{
     return ht_set(asp_win_ht, (ht_key_t) key, win);
 }
-static inline int init_asp_win_table() {
+static inline int init_asp_win_table()
+{
     asp_win_ht = ht_create(ASP_WIN_HT_SIZE);
 
     if (asp_win_ht == NULL)
@@ -47,7 +50,8 @@ static inline int init_asp_win_table() {
 
     return 0;
 }
-static inline void destroy_asp_win_table() {
+static inline void destroy_asp_win_table()
+{
     return ht_destroy(asp_win_ht);
 }
 
@@ -55,7 +59,8 @@ static inline void destroy_asp_win_table() {
  * ASP receives a new function from user root process
  */
 static inline int ASP_Func_start(MPIASP_Func *FUNC, int *root, int *nprocs,
-        int *ua_tag) {
+                                 int *ua_tag)
+{
     int mpi_errno = MPI_SUCCESS;
     MPI_Status status;
     ASP_Func_info info;
@@ -72,7 +77,9 @@ static inline int ASP_Func_start(MPIASP_Func *FUNC, int *root, int *nprocs,
 }
 
 static inline int MPIASP_Func_get_param(char *func_params, int size,
-        int user_local_root, int ua_tag) {
+                                        int user_local_root,
+                                        int ua_tag)
+{
     int local_user_rank, i;
     MPI_Status status;
     int mpi_errno = MPI_SUCCESS;
@@ -82,9 +89,9 @@ static inline int MPIASP_Func_get_param(char *func_params, int size,
 }
 
 extern int ASP_Win_allocate(int user_local_root, int user_local_nprocs,
-        int user_tag);
+                            int user_tag);
 extern int ASP_Win_free(int user_local_root, int user_local_nprocs,
-        int user_tag);
+                        int user_tag);
 
 extern int ASP_Finalize(void);
 

@@ -23,7 +23,8 @@ int *MPIASP_ALL_NODE_IDS = NULL;
 
 hashtable_t *ua_win_ht;
 
-int MPI_Init(int *argc, char ***argv) {
+int MPI_Init(int *argc, char ***argv)
+{
     static const char FCNAME[] = "MPI_Init";
     int mpi_errno = MPI_SUCCESS;
     MPIASP_GROUP_LOCAL = 0;
@@ -41,7 +42,7 @@ int MPI_Init(int *argc, char ***argv) {
 
     /* Get a communicator only containing processes with shared memory */
     mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-            MPI_INFO_NULL, &MPIASP_COMM_LOCAL);
+                                     MPI_INFO_NULL, &MPIASP_COMM_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -57,34 +58,34 @@ int MPI_Init(int *argc, char ***argv) {
 
     MPIASP_RANK_IN_COMM_LOCAL = 0;
     PMPI_Group_translate_ranks(MPIASP_GROUP_LOCAL, MPIASP_NUM_ASP_IN_LOCAL,
-            &MPIASP_RANK_IN_COMM_LOCAL, MPIASP_GROUP_WORLD, &MPIASP_RANK_IN_COMM_WORLD);
+                               &MPIASP_RANK_IN_COMM_LOCAL, MPIASP_GROUP_WORLD,
+                               &MPIASP_RANK_IN_COMM_WORLD);
 
     /* Get a user comm_world for the user to use */
     PMPI_Comm_rank(MPIASP_COMM_LOCAL, &local_rank);
     PMPI_Comm_size(MPIASP_COMM_LOCAL, &local_nprocs);
 
-    if(local_nprocs == 1){
-        fprintf(stderr,
-                "No user process found, please run with more than 2 process per node\n");
+    if (local_nprocs == 1) {
+        fprintf(stderr, "No user process found, please run with more than 2 process per node\n");
         mpi_errno = -1;
         goto fn_fail;
     }
 
     mpi_errno = PMPI_Comm_split(MPI_COMM_WORLD,
-            local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_WORLD);
+                                local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Get a user comm_local for the user to use */
     mpi_errno = PMPI_Comm_split(MPIASP_COMM_LOCAL,
-            local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_LOCAL);
+                                local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Get a user root communicator for exchange local informations between different nodes*/
+    /* Get a user root communicator for exchange local informations between different nodes */
     PMPI_Comm_rank(MPIASP_COMM_USER_LOCAL, &local_user_rank);
     mpi_errno = PMPI_Comm_split(MPIASP_COMM_USER_WORLD,
-            local_user_rank == 0, 1, &MPIASP_COMM_USER_ROOTS);
+                                local_user_rank == 0, 1, &MPIASP_COMM_USER_ROOTS);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -100,14 +101,14 @@ int MPI_Init(int *argc, char ***argv) {
     PMPI_Bcast(&MPIASP_MY_NODE_ID, 1, MPI_INT, 0, MPIASP_COMM_LOCAL);
     MPIASP_ALL_NODE_IDS[rank] = MPIASP_MY_NODE_ID;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-            MPIASP_ALL_NODE_IDS, 1, MPI_INT, MPI_COMM_WORLD);
+                               MPIASP_ALL_NODE_IDS, 1, MPI_INT, MPI_COMM_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     // USER processes
     MPIASP_DBG_PRINT("%d/%d in world, %d/%d in local, asp_rank_in_ua %d, "
-            "node_id %d\n", rank, nprocs, local_rank, local_nprocs,
-            MPIASP_RANK_IN_COMM_WORLD, MPIASP_ALL_NODE_IDS[rank]);
+                     "node_id %d\n", rank, nprocs, local_rank, local_nprocs,
+                     MPIASP_RANK_IN_COMM_WORLD, MPIASP_ALL_NODE_IDS[rank]);
 
     if (local_rank >= MPIASP_NUM_ASP_IN_LOCAL) {
 
@@ -115,8 +116,8 @@ int MPI_Init(int *argc, char ***argv) {
         MPIASP_ALL_ASP_IN_COMM_WORLD = calloc(user_nprocs, sizeof(int));
         MPIASP_ALL_ASP_IN_COMM_WORLD[user_rank] = MPIASP_RANK_IN_COMM_WORLD;
         mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                MPIASP_ALL_ASP_IN_COMM_WORLD, 1, MPI_INT,
-                MPIASP_COMM_USER_WORLD);
+                                   MPIASP_ALL_ASP_IN_COMM_WORLD, 1, MPI_INT,
+                                   MPIASP_COMM_USER_WORLD);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -127,20 +128,19 @@ int MPI_Init(int *argc, char ***argv) {
 #ifdef DEBUG
         PMPI_Comm_size(MPIASP_COMM_USER_LOCAL, &local_user_nprocs);
         MPIASP_DBG_PRINT("create MPIASP_COMM_USER_WORLD,"
-                "I am %d/%d in world, %d/%d in local, %d/%d in user world, "
-                "%d/%d in user local\n", rank, nprocs, local_rank, local_nprocs,
-                user_rank, user_nprocs, local_user_rank, local_user_nprocs);
+                         "I am %d/%d in world, %d/%d in local, %d/%d in user world, "
+                         "%d/%d in user local\n", rank, nprocs, local_rank, local_nprocs,
+                         user_rank, user_nprocs, local_user_rank, local_user_nprocs);
 
         if (user_rank == 0) {
             MPIASP_DBG_PRINT("Debug gathered info ***** \n");
             for (i = 0; i < user_nprocs; i++) {
                 MPIASP_DBG_PRINT("[%d] asp_rank_in_ua[%d]: %d\n",
-                        rank, i, MPIASP_ALL_ASP_IN_COMM_WORLD[i]);
+                                 rank, i, MPIASP_ALL_ASP_IN_COMM_WORLD[i]);
             }
 
             for (i = 0; i < nprocs; i++) {
-                MPIASP_DBG_PRINT("[%d] node_id[%d]: %d\n", rank, i,
-                        MPIASP_ALL_NODE_IDS[i]);
+                MPIASP_DBG_PRINT("[%d] node_id[%d]: %d\n", rank, i, MPIASP_ALL_NODE_IDS[i]);
             }
         }
         PMPI_Barrier(MPI_COMM_WORLD);
@@ -151,8 +151,7 @@ int MPI_Init(int *argc, char ***argv) {
     else {
 #ifdef DEBUG
         ASP_DBG_PRINT("I am ASP on node %d, %d/%d in world, %d/%d in local\n",
-                MPIASP_ALL_NODE_IDS[rank], rank, nprocs, local_rank,
-                local_nprocs);
+                      MPIASP_ALL_NODE_IDS[rank], rank, nprocs, local_rank, local_nprocs);
         ASP_DBG_PRINT("Debug gathered info ***** \n");
         for (i = 0; i < nprocs; i++) {
             ASP_DBG_PRINT(" node_id[%d]: %d\n", i, MPIASP_ALL_NODE_IDS[i]);
@@ -164,11 +163,11 @@ int MPI_Init(int *argc, char ***argv) {
         exit(0);
     }
 
-    fn_exit:
+  fn_exit:
 
     return mpi_errno;
 
-    fn_fail:
+  fn_fail:
     /* --BEGIN ERROR HANDLING-- */
     if (MPIASP_COMM_USER_WORLD != MPI_COMM_NULL) {
         MPIASP_DBG_PRINT("free MPIASP_COMM_USER_WORLD\n");

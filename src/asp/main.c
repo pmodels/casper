@@ -4,7 +4,8 @@
 
 hashtable_t *asp_win_ht;
 
-int run_asp_main(void) {
+int run_asp_main(void)
+{
     int mpi_errno = MPI_SUCCESS;
     MPIASP_Func FUNC;
     int user_root, user_nprocs, user_tag;
@@ -19,8 +20,8 @@ int run_asp_main(void) {
         if (mpi_errno != MPI_SUCCESS)
             break;
 
-        ASP_DBG_PRINT(
-                " FUNC %d start, root %d, nprocs %d, tag %d\n", FUNC, user_root, user_nprocs, user_tag);
+        ASP_DBG_PRINT(" FUNC %d start, root %d, nprocs %d, tag %d\n", FUNC, user_root, user_nprocs,
+                      user_tag);
 
         switch (FUNC) {
         case MPIASP_FUNC_WIN_ALLOCATE:
@@ -50,7 +51,7 @@ int run_asp_main(void) {
         }
     }
 
-    exit:
+  exit:
 
     ASP_DBG_PRINT(" main done\n");
 

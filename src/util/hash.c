@@ -3,12 +3,14 @@
 #include <string.h>
 #include <hash_table.h>
 
-static int ht_hash(hashtable_t *hashtable, ht_key_t key) {
+static int ht_hash(hashtable_t * hashtable, ht_key_t key)
+{
     return key % hashtable->size;
 }
 
 /* Create a key-value pair. */
-static entry_t *ht_newpair(ht_key_t key, void *value) {
+static entry_t *ht_newpair(ht_key_t key, void *value)
+{
     entry_t *newpair;
 
     if ((newpair = malloc(sizeof(entry_t))) == NULL) {
@@ -24,7 +26,8 @@ static entry_t *ht_newpair(ht_key_t key, void *value) {
 }
 
 /* Create a new hashtable. */
-hashtable_t *ht_create(int size) {
+hashtable_t *ht_create(int size)
+{
 
     hashtable_t *hashtable = NULL;
     int i;
@@ -51,7 +54,8 @@ hashtable_t *ht_create(int size) {
 }
 
 /* Insert a key-value pair into a hash table. */
-int ht_set(hashtable_t *hashtable, ht_key_t key, void *value) {
+int ht_set(hashtable_t * hashtable, ht_key_t key, void *value)
+{
     int bin = 0;
     entry_t *newpair = NULL;
     entry_t *next = NULL;
@@ -66,11 +70,12 @@ int ht_set(hashtable_t *hashtable, ht_key_t key, void *value) {
         next = next->next;
     }
 
-    /* If key already exists, return error*/
+    /* If key already exists, return error */
     if (next != NULL && next->key == key) {
         goto fn_fail;
 
-    } else {
+    }
+    else {
         newpair = ht_newpair(key, value);
         if (newpair == NULL)
             goto fn_fail;
@@ -81,23 +86,26 @@ int ht_set(hashtable_t *hashtable, ht_key_t key, void *value) {
             hashtable->table[bin] = newpair;
 
             /* At the end of the linked list */
-        } else if (next == NULL) {
+        }
+        else if (next == NULL) {
             last->next = newpair;
 
             /* In the middle of the list */
-        } else {
+        }
+        else {
             newpair->next = next;
             last->next = newpair;
         }
     }
     return 0;
 
-    fn_fail:
+  fn_fail:
     return -1;
 }
 
 /* Retrieve a key-value pair from a hash table. */
-void *ht_get(hashtable_t *hashtable, ht_key_t key) {
+void *ht_get(hashtable_t * hashtable, ht_key_t key)
+{
     int bin = 0;
     entry_t *pair;
 
@@ -113,12 +121,14 @@ void *ht_get(hashtable_t *hashtable, ht_key_t key) {
     if (pair == NULL || pair->key != key) {
         return NULL;
 
-    } else {
+    }
+    else {
         return pair->value;
     }
 }
 
-void ht_destroy(hashtable_t *hashtable) {
+void ht_destroy(hashtable_t * hashtable)
+{
     int bin = 0;
     entry_t *next = NULL;
     entry_t *current = NULL;

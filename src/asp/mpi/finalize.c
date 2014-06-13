@@ -5,16 +5,16 @@
  *  Author: Min Si
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "asp.h"
 
-int ASP_Finalize(void) {
+int ASP_Finalize(void)
+{
     int mpi_errno = MPI_SUCCESS;
     int rank, nprocs, local_rank, local_nprocs;
 
-    if (MPIASP_COMM_LOCAL){
+    if (MPIASP_COMM_LOCAL) {
         ASP_DBG_PRINT(" free MPIASP_COMM_LOCAL\n");
         PMPI_Comm_free(&MPIASP_COMM_LOCAL);
     }
@@ -49,9 +49,9 @@ int ASP_Finalize(void) {
 
     destroy_asp_win_table();
 
-    fn_exit:
+  fn_exit:
     return mpi_errno;
 
-    fn_fail:
+  fn_fail:
     goto fn_exit;
 }

@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-int MPI_Win_flush_all(MPI_Win win) {
+int MPI_Win_flush_all(MPI_Win win)
+{
     MPIASP_Win *ua_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, local_ua_nprocs;
@@ -38,9 +39,9 @@ int MPI_Win_flush_all(MPI_Win win) {
 
     mpi_errno = PMPI_Win_flush_all(win);
 
-    fn_exit:
+  fn_exit:
     return mpi_errno;
 
-    fn_fail:
+  fn_fail:
     goto fn_exit;
 }

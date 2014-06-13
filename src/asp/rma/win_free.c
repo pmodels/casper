@@ -5,7 +5,8 @@
 #undef FUNCNAME
 #define FUNCNAME ASP_Win_free
 
-int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag) {
+int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag)
+{
     int mpi_errno = MPI_SUCCESS;
     int dst;
     int ua_nprocs, ua_rank;
@@ -16,7 +17,7 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag) {
 
     // Receive the handle of ASP win
     mpi_errno = PMPI_Recv(&asp_win_handle, 1, MPI_INT,
-            user_local_root, user_tag, MPIASP_COMM_LOCAL, &stat);
+                          user_local_root, user_tag, MPIASP_COMM_LOCAL, &stat);
     if (mpi_errno != 0)
         goto fn_fail;
 
@@ -61,17 +62,17 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag) {
 
         free(win);
 
-        ASP_DBG_PRINT( " Freed ASP window 0x%x\n", win_bkup);
-    } else {
-        ASP_DBG_PRINT(
-                " no corresponding ASP window, tag 0x%x\n", user_tag);
+        ASP_DBG_PRINT(" Freed ASP window 0x%x\n", win_bkup);
+    }
+    else {
+        ASP_DBG_PRINT(" no corresponding ASP window, tag 0x%x\n", user_tag);
     }
 
-    fn_exit:
+  fn_exit:
 
     return mpi_errno;
 
-    fn_fail:
+  fn_fail:
 
     goto fn_exit;
 }

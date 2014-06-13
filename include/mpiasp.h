@@ -72,14 +72,17 @@ typedef struct ASP_Func_info {
 extern hashtable_t *ua_win_ht;
 #define UA_WIN_HT_SIZE 256
 
-static inline int get_ua_win(int handle, MPIASP_Win** win) {
+static inline int get_ua_win(int handle, MPIASP_Win** win)
+{
     *win = (MPIASP_Win *) ht_get(ua_win_ht, (ht_key_t) handle);
     return 0;
 }
-static inline int put_ua_win(int key, MPIASP_Win* win) {
+static inline int put_ua_win(int key, MPIASP_Win* win)
+{
     return ht_set(ua_win_ht, (ht_key_t) key, win);
 }
-static inline int init_ua_win_table() {
+static inline int init_ua_win_table()
+{
     ua_win_ht = ht_create(UA_WIN_HT_SIZE);
 
     if (ua_win_ht == NULL)
@@ -87,7 +90,8 @@ static inline int init_ua_win_table() {
 
     return 0;
 }
-static inline void destroy_ua_win_table() {
+static inline void destroy_ua_win_table()
+{
     return ht_destroy(ua_win_ht);
 }
 
@@ -106,7 +110,8 @@ extern int MPIASP_NUM_UNIQUE_ASP;
 extern int MPIASP_MY_NODE_ID;
 extern int *MPIASP_ALL_NODE_IDS;
 
-static inline int MPIASP_Asp_initialized(void) {
+static inline int MPIASP_Asp_initialized(void)
+{
     return MPIASP_RANK_IN_COMM_WORLD > -1;
 }
 
@@ -114,7 +119,8 @@ static inline int MPIASP_Asp_initialized(void) {
  * The root process in current local user communicator ask ASP to start a new function
  */
 static inline int MPIASP_Func_start(MPIASP_Func FUNC, int nprocs, int ua_tag,
-        MPI_Comm user_local_comm) {
+                                    MPI_Comm user_local_comm)
+{
     ASP_Func_info info;
     int local_user_rank;
     info.FUNC = FUNC;
@@ -129,7 +135,8 @@ static inline int MPIASP_Func_start(MPIASP_Func FUNC, int nprocs, int ua_tag,
 }
 
 static inline int MPIASP_Func_set_param(char *func_params, int size, int ua_tag,
-        MPI_Comm user_local_comm) {
+                                        MPI_Comm user_local_comm)
+{
     int local_user_rank;
     int mpi_errno = MPI_SUCCESS;
 
@@ -142,7 +149,8 @@ static inline int MPIASP_Func_set_param(char *func_params, int size, int ua_tag,
     return mpi_errno;
 }
 
-static inline int MPIASP_Tag_format(int org_tag, int *tag) {
+static inline int MPIASP_Tag_format(int org_tag, int *tag)
+{
     int mpi_errno = MPI_SUCCESS;
     int tag_ub, flag;
     void *v;
@@ -159,7 +167,7 @@ static inline int MPIASP_Tag_format(int org_tag, int *tag) {
         return -1;
     }
 
-    tag_ub = *(int*)v;
+    tag_ub = *(int*) v;
     MPIASP_DBG_PRINT("tag_ub=%d\n", tag_ub);
 
     *tag = org_tag & tag_ub;
@@ -167,7 +175,8 @@ static inline int MPIASP_Tag_format(int org_tag, int *tag) {
 }
 
 static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group,
-        int *is_shared) {
+                                        int *is_shared)
+{
     int mpi_errno = MPI_SUCCESS;
     int target_rank_in_world = 0, rank_in_world = 0;
 
