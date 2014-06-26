@@ -9,13 +9,13 @@
 
 //#define DEBUG
 #ifdef DEBUG
-#define MPIASP_DBG_PRINT(str...) do{fprintf(stdout, "[MPIASP]"str);fflush(stdout);}while(0)
+#define MPIASP_DBG_PRINT(str...) do {fprintf(stdout, "[MPIASP]"str);fflush(stdout);} while (0)
 #else
 #define MPIASP_DBG_PRINT(str...) {}
 #endif
 
 #define MPIASP_DBG_PRINT_FCNAME() MPIASP_DBG_PRINT("in %s\n", __FUNCTION__)
-#define MPIASP_ERR_PRINT(str...) do{fprintf(stderr, str);fflush(stdout);}while(0)
+#define MPIASP_ERR_PRINT(str...) do {fprintf(stderr, str);fflush(stdout);} while (0)
 
 typedef enum {
     MPIASP_FUNC_NULL,
@@ -72,15 +72,17 @@ typedef struct ASP_Func_info {
 extern hashtable_t *ua_win_ht;
 #define UA_WIN_HT_SIZE 256
 
-static inline int get_ua_win(int handle, MPIASP_Win** win)
+static inline int get_ua_win(int handle, MPIASP_Win ** win)
 {
     *win = (MPIASP_Win *) ht_get(ua_win_ht, (ht_key_t) handle);
     return 0;
 }
-static inline int put_ua_win(int key, MPIASP_Win* win)
+
+static inline int put_ua_win(int key, MPIASP_Win * win)
 {
     return ht_set(ua_win_ht, (ht_key_t) key, win);
 }
+
 static inline int init_ua_win_table()
 {
     ua_win_ht = ht_create(UA_WIN_HT_SIZE);
@@ -90,6 +92,7 @@ static inline int init_ua_win_table()
 
     return 0;
 }
+
 static inline void destroy_ua_win_table()
 {
     return ht_destroy(ua_win_ht);
@@ -128,8 +131,8 @@ static inline int MPIASP_Func_start(MPIASP_Func FUNC, int nprocs, int ua_tag,
 
     PMPI_Comm_rank(user_local_comm, &local_user_rank);
     if (local_user_rank == 0) {
-        return PMPI_Send((char*) &info, sizeof(ASP_Func_info), MPI_CHAR,
-                MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
+        return PMPI_Send((char *) &info, sizeof(ASP_Func_info), MPI_CHAR,
+                         MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
     }
     return 0;
 }
@@ -143,7 +146,7 @@ static inline int MPIASP_Func_set_param(char *func_params, int size, int ua_tag,
     PMPI_Comm_rank(user_local_comm, &local_user_rank);
     if (local_user_rank == 0) {
         mpi_errno = PMPI_Send(func_params, size, MPI_CHAR,
-                MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
+                              MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
     }
 
     return mpi_errno;
@@ -167,15 +170,14 @@ static inline int MPIASP_Tag_format(int org_tag, int *tag)
         return -1;
     }
 
-    tag_ub = *(int*) v;
+    tag_ub = *(int *) v;
     MPIASP_DBG_PRINT("tag_ub=%d\n", tag_ub);
 
     *tag = org_tag & tag_ub;
     return mpi_errno;
 }
 
-static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group,
-                                        int *is_shared)
+static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *is_shared)
 {
     int mpi_errno = MPI_SUCCESS;
     int target_rank_in_world = 0, rank_in_world = 0;
@@ -183,12 +185,11 @@ static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group,
     *is_shared = 0;
 
     // If target is in the same node, use shared window instead
-    PMPI_Group_translate_ranks(group, 1,
-            &target_rank, MPIASP_GROUP_WORLD, &target_rank_in_world);
+    PMPI_Group_translate_ranks(group, 1, &target_rank, MPIASP_GROUP_WORLD, &target_rank_in_world);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank_in_world);
 
     if (MPIASP_ALL_NODE_IDS[target_rank_in_world]
-            == MPIASP_ALL_NODE_IDS[rank_in_world]) {
+        == MPIASP_ALL_NODE_IDS[rank_in_world]) {
         *is_shared = 1;
     }
 
