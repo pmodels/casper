@@ -2,10 +2,19 @@
 #define MPIASP_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <mpi.h>
 #include "hash_table.h"
 
 #define ENABLE_SHRD_COMM_TRANS
+
+#ifdef HAVE_BUILTIN_EXPECT
+#  define unlikely(x_) __builtin_expect(!!(x_),0)
+#  define likely(x_)   __builtin_expect(!!(x_),1)
+#else
+#  define unlikely(x_) (x_)
+#  define likely(x_)   (x_)
+#endif
 
 //#define DEBUG
 #ifdef DEBUG
@@ -16,6 +25,12 @@
 
 #define MPIASP_DBG_PRINT_FCNAME() MPIASP_DBG_PRINT("in %s\n", __FUNCTION__)
 #define MPIASP_ERR_PRINT(str...) do {fprintf(stderr, str);fflush(stdout);} while (0)
+
+#define MPIASP_Assert(EXPR) do { if (unlikely(!(EXPR))){ \
+            MPIASP_ERR_PRINT("[MPIASP][N-%d, %d]  assert fail in [%s:%d]: \"%s\"\n", \
+                    MPIASP_MY_NODE_ID, MPIASP_MY_RANK_IN_WORLD, __FILE__, __LINE__, #EXPR); \
+            PMPI_Abort(MPI_COMM_WORLD, -1); \
+        }} while (0)
 
 typedef enum {
     MPIASP_FUNC_NULL,
@@ -47,13 +62,11 @@ typedef struct MPIASP_Win {
     MPI_Comm ua_comm;
     MPI_Group ua_group;
     int *asp_ranks_in_ua;
-    MPI_Win ua_win;
+    MPI_Win *ua_wins;           // every target has separate window for permission control
 
     // communicator including all the user processes
     MPI_Comm user_comm;
     MPI_Group user_group;
-    int *user_ranks_in_world;
-    int *user_ranks_in_user_world;
 
     MPI_Comm local_user_comm;
 
@@ -61,12 +74,13 @@ typedef struct MPIASP_Win {
     MPI_Win win;
 
     int num_nodes;
-    int asp_win_handle;
+    unsigned long asp_win_handle;
 } MPIASP_Win;
 
 typedef struct ASP_Func_info {
     MPIASP_Func FUNC;
-    int nprocs;
+    int user_nprocs;
+    int user_local_nprocs;
 } ASP_Func_info;
 
 extern hashtable_t *ua_win_ht;
@@ -109,9 +123,10 @@ extern int MPIASP_NUM_ASP_IN_LOCAL;
 extern int MPIASP_RANK_IN_COMM_WORLD;
 extern int MPIASP_RANK_IN_COMM_LOCAL;
 extern int *MPIASP_ALL_ASP_IN_COMM_WORLD;
-extern int MPIASP_NUM_UNIQUE_ASP;
+extern int MPIASP_NUM_NODES;
 extern int MPIASP_MY_NODE_ID;
 extern int *MPIASP_ALL_NODE_IDS;
+extern int MPIASP_MY_RANK_IN_WORLD;
 
 static inline int MPIASP_Asp_initialized(void)
 {
@@ -121,13 +136,14 @@ static inline int MPIASP_Asp_initialized(void)
 /**
  * The root process in current local user communicator ask ASP to start a new function
  */
-static inline int MPIASP_Func_start(MPIASP_Func FUNC, int nprocs, int ua_tag,
-                                    MPI_Comm user_local_comm)
+static inline int MPIASP_Func_start(MPIASP_Func FUNC, int user_nprocs, int user_local_nprocs,
+                                    int ua_tag, MPI_Comm user_local_comm)
 {
     ASP_Func_info info;
     int local_user_rank;
     info.FUNC = FUNC;
-    info.nprocs = nprocs;
+    info.user_nprocs = user_nprocs;
+    info.user_local_nprocs = user_local_nprocs;
 
     PMPI_Comm_rank(user_local_comm, &local_user_rank);
     if (local_user_rank == 0) {
@@ -171,27 +187,59 @@ static inline int MPIASP_Tag_format(int org_tag, int *tag)
     }
 
     tag_ub = *(int *) v;
-    MPIASP_DBG_PRINT("tag_ub=%d\n", tag_ub);
-
     *tag = org_tag & tag_ub;
+
+    MPIASP_DBG_PRINT("tag_ub=%d\n", *tag);
+
     return mpi_errno;
 }
 
-static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *is_shared)
+
+static inline int MPIASP_Get_node_ids(MPI_Group group, int n, const int ranks[], int node_ids[])
 {
     int mpi_errno = MPI_SUCCESS;
-    int target_rank_in_world = 0, rank_in_world = 0;
+    int *ranks_in_world = NULL;
+    int i;
 
+    if (n == 0)
+        return mpi_errno;
+
+    ranks_in_world = calloc(n, sizeof(int));
+
+    mpi_errno = PMPI_Group_translate_ranks(group, n, ranks, MPIASP_GROUP_WORLD, ranks_in_world);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    for (i = 0; i < n; i++) {
+        node_ids[i] = MPIASP_ALL_NODE_IDS[ranks_in_world[i]];
+    }
+
+  fn_exit:
+    if (ranks_in_world)
+        free(ranks_in_world);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *node_id,
+                                        int *is_shared)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int target_node_id = -1;
     *is_shared = 0;
 
     // If target is in the same node, use shared window instead
-    PMPI_Group_translate_ranks(group, 1, &target_rank, MPIASP_GROUP_WORLD, &target_rank_in_world);
-    PMPI_Comm_rank(MPI_COMM_WORLD, &rank_in_world);
+    mpi_errno = MPIASP_Get_node_ids(group, 1, &target_rank, &target_node_id);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
 
-    if (MPIASP_ALL_NODE_IDS[target_rank_in_world]
-        == MPIASP_ALL_NODE_IDS[rank_in_world]) {
+    if (target_node_id == MPIASP_ALL_NODE_IDS[MPIASP_MY_RANK_IN_WORLD]) {
         *is_shared = 1;
     }
+
+    *node_id = target_node_id;
 
     return mpi_errno;
 }

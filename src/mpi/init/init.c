@@ -4,8 +4,8 @@
 #include "asp.h"
 
 MPI_Comm MPIASP_COMM_USER_WORLD = MPI_COMM_NULL;
-MPI_Comm MPIASP_COMM_USER_LOCAL = MPI_COMM_NULL;
 MPI_Comm MPIASP_COMM_LOCAL = MPI_COMM_NULL;
+MPI_Comm MPIASP_COMM_USER_LOCAL = MPI_COMM_NULL;
 MPI_Comm MPIASP_COMM_USER_ROOTS = MPI_COMM_NULL;
 MPI_Group MPIASP_GROUP_WORLD = MPI_GROUP_NULL;
 MPI_Group MPIASP_GROUP_LOCAL = MPI_GROUP_NULL;
@@ -17,9 +17,10 @@ int MPIASP_NUM_ASP_IN_LOCAL = 0;
 int MPIASP_RANK_IN_COMM_WORLD = -1;
 int MPIASP_RANK_IN_COMM_LOCAL = -1;
 int *MPIASP_ALL_ASP_IN_COMM_WORLD = NULL;
-int MPIASP_NUM_UNIQUE_ASP = 0;
 int MPIASP_MY_NODE_ID = -1;
+int MPIASP_NUM_NODES = 0;
 int *MPIASP_ALL_NODE_IDS = NULL;
+int MPIASP_MY_RANK_IN_WORLD = -1;       // used in debug
 
 hashtable_t *ua_win_ht;
 
@@ -31,6 +32,8 @@ int MPI_Init(int *argc, char ***argv)
     int i;
     int local_rank, local_nprocs, rank, nprocs, user_rank, user_nprocs;
     int local_user_rank, local_user_nprocs;
+    int *tmp_node_helper_gather_buf = NULL, node_id = 0;
+    int tmp_local_node_bcast_buf[2];
 
     MPIASP_DBG_PRINT_FCNAME();
 
@@ -84,6 +87,7 @@ int MPI_Init(int *argc, char ***argv)
 
     /* Get a user root communicator for exchange local informations between different nodes */
     PMPI_Comm_rank(MPIASP_COMM_USER_LOCAL, &local_user_rank);
+    PMPI_Comm_size(MPIASP_COMM_USER_LOCAL, &local_user_nprocs);
     mpi_errno = PMPI_Comm_split(MPIASP_COMM_USER_WORLD,
                                 local_user_rank == 0, 1, &MPIASP_COMM_USER_ROOTS);
     if (mpi_errno != MPI_SUCCESS)
@@ -92,78 +96,74 @@ int MPI_Init(int *argc, char ***argv)
     /* Determine a node id for each USER processes */
     PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_size(MPIASP_COMM_USER_ROOTS, &MPIASP_NUM_NODES);
     PMPI_Comm_rank(MPIASP_COMM_USER_ROOTS, &MPIASP_MY_NODE_ID);
     PMPI_Comm_size(MPIASP_COMM_USER_WORLD, &user_nprocs);
     PMPI_Comm_rank(MPIASP_COMM_USER_WORLD, &user_rank);
+    MPIASP_MY_RANK_IN_WORLD = rank;
+
+    /* Exchange node id among local processes */
+    tmp_local_node_bcast_buf[0] = MPIASP_MY_NODE_ID;
+    tmp_local_node_bcast_buf[1] = MPIASP_NUM_NODES;
+    PMPI_Bcast(tmp_local_node_bcast_buf, 2, MPI_INT, 0, MPIASP_COMM_LOCAL);
+    MPIASP_MY_NODE_ID = tmp_local_node_bcast_buf[0];
+    MPIASP_NUM_NODES = tmp_local_node_bcast_buf[1];
 
     MPIASP_ALL_NODE_IDS = calloc(nprocs, sizeof(int));
+    MPIASP_ALL_ASP_IN_COMM_WORLD = calloc(MPIASP_NUM_NODES * MPIASP_NUM_ASP_IN_LOCAL, sizeof(int));
+    tmp_node_helper_gather_buf = calloc(nprocs, sizeof(int) * 2);
 
-    PMPI_Bcast(&MPIASP_MY_NODE_ID, 1, MPI_INT, 0, MPIASP_COMM_LOCAL);
-    MPIASP_ALL_NODE_IDS[rank] = MPIASP_MY_NODE_ID;
+    /* Exchange node id and Helper ranks among world processes */
+    tmp_node_helper_gather_buf[rank * 2] = MPIASP_MY_NODE_ID;
+    // TODO: support multiple helpers
+    tmp_node_helper_gather_buf[rank * 2 + 1] = MPIASP_RANK_IN_COMM_WORLD;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               MPIASP_ALL_NODE_IDS, 1, MPI_INT, MPI_COMM_WORLD);
+                               tmp_node_helper_gather_buf, 2, MPI_INT, MPI_COMM_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    for (i = 0; i < nprocs; i++) {
+        node_id = tmp_node_helper_gather_buf[i * 2];
+        MPIASP_ALL_NODE_IDS[i] = node_id;
+        MPIASP_ALL_ASP_IN_COMM_WORLD[node_id] = tmp_node_helper_gather_buf[i * 2 + 1];
+    }
+
+#ifdef DEBUG
+    MPIASP_DBG_PRINT("Debug gathered info ***** \n");
+    for (i = 0; i < nprocs; i++) {
+        node_id = MPIASP_ALL_NODE_IDS[i];
+        MPIASP_DBG_PRINT("[%d] node_id[%d]: %d, helper_rank_in_world[%d]: %d\n", rank, i,
+                         MPIASP_ALL_NODE_IDS[i], node_id, MPIASP_ALL_ASP_IN_COMM_WORLD[node_id]);
+    }
+    PMPI_Barrier(MPI_COMM_WORLD);
+#endif
+
     // USER processes
-    MPIASP_DBG_PRINT("%d/%d in world, %d/%d in local, asp_rank_in_ua %d, "
-                     "node_id %d\n", rank, nprocs, local_rank, local_nprocs,
-                     MPIASP_RANK_IN_COMM_WORLD, MPIASP_ALL_NODE_IDS[rank]);
-
     if (local_rank >= MPIASP_NUM_ASP_IN_LOCAL) {
-
-        /* -Gather the rank_in_world of ASP processes from all user process */
-        MPIASP_ALL_ASP_IN_COMM_WORLD = calloc(user_nprocs, sizeof(int));
-        MPIASP_ALL_ASP_IN_COMM_WORLD[user_rank] = MPIASP_RANK_IN_COMM_WORLD;
-        mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                                   MPIASP_ALL_ASP_IN_COMM_WORLD, 1, MPI_INT,
-                                   MPIASP_COMM_USER_WORLD);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        MPIASP_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
+                         "%d/%d in user local, asp_rank_in_world %d, node_id %d\n",
+                         rank, nprocs, local_rank, local_nprocs, user_rank, user_nprocs,
+                         local_user_rank, local_user_nprocs, MPIASP_RANK_IN_COMM_WORLD,
+                         MPIASP_ALL_NODE_IDS[rank]);
 
         mpi_errno = init_ua_win_table();
         if (mpi_errno != 0)
             goto fn_fail;
-
-#ifdef DEBUG
-        PMPI_Comm_size(MPIASP_COMM_USER_LOCAL, &local_user_nprocs);
-        MPIASP_DBG_PRINT("create MPIASP_COMM_USER_WORLD,"
-                         "I am %d/%d in world, %d/%d in local, %d/%d in user world, "
-                         "%d/%d in user local\n", rank, nprocs, local_rank, local_nprocs,
-                         user_rank, user_nprocs, local_user_rank, local_user_nprocs);
-
-        if (user_rank == 0) {
-            MPIASP_DBG_PRINT("Debug gathered info ***** \n");
-            for (i = 0; i < user_nprocs; i++) {
-                MPIASP_DBG_PRINT("[%d] asp_rank_in_ua[%d]: %d\n",
-                                 rank, i, MPIASP_ALL_ASP_IN_COMM_WORLD[i]);
-            }
-
-            for (i = 0; i < nprocs; i++) {
-                MPIASP_DBG_PRINT("[%d] node_id[%d]: %d\n", rank, i, MPIASP_ALL_NODE_IDS[i]);
-            }
-        }
-        PMPI_Barrier(MPI_COMM_WORLD);
-#endif
     }
     //ASP processes
     /* TODO: ASP process should not run user program */
     else {
-#ifdef DEBUG
-        ASP_DBG_PRINT("I am ASP on node %d, %d/%d in world, %d/%d in local\n",
-                      MPIASP_ALL_NODE_IDS[rank], rank, nprocs, local_rank, local_nprocs);
-        ASP_DBG_PRINT("Debug gathered info ***** \n");
-        for (i = 0; i < nprocs; i++) {
-            ASP_DBG_PRINT(" node_id[%d]: %d\n", i, MPIASP_ALL_NODE_IDS[i]);
-        }
-        PMPI_Barrier(MPI_COMM_WORLD);
-#endif
+        MPIASP_DBG_PRINT("I am helper, %d/%d in world, %d/%d in local, node_id %d\n",
+                         rank, nprocs, local_rank, local_nprocs, MPIASP_RANK_IN_COMM_WORLD,
+                         MPIASP_ALL_NODE_IDS[rank]);
 
         run_asp_main();
         exit(0);
     }
 
   fn_exit:
+    if (tmp_node_helper_gather_buf)
+        free(tmp_node_helper_gather_buf);
 
     return mpi_errno;
 

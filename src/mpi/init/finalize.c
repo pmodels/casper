@@ -10,8 +10,8 @@ int MPI_Finalize(void)
 
     MPIASP_DBG_PRINT_FCNAME();
 
-    // ASP does not need user process information because it is a global call
-    MPIASP_Func_start(MPIASP_FUNC_FINALIZE, 0, 0, MPIASP_COMM_USER_LOCAL);
+    /* Helpers do not need user process information because it is a global call. */
+    MPIASP_Func_start(MPIASP_FUNC_FINALIZE, 0, 0, 0, MPIASP_COMM_USER_LOCAL);
 
     if (MPIASP_COMM_USER_WORLD) {
         MPIASP_DBG_PRINT(" free MPIASP_COMM_USER_WORLD\n");

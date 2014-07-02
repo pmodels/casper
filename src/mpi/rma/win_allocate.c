@@ -1,110 +1,77 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
 #include "mpiasp.h"
 
-/**
- * TODO: should implement table[win_handle : ua_win object]
- */
-MPIASP_Win *ua_win_table[2];
-
-static int gather_user_ranks(MPI_Comm user_comm, MPIASP_Win * win)
+static int gather_ranks(MPIASP_Win * win, int *user_ranks_in_world, int *num_helpers,
+                        int *helper_ranks_in_world)
 {
     int mpi_errno = MPI_SUCCESS;
-    int world_rank, world_nprocs, user_nprocs, user_rank;
-    int user_world_rank, user_world_nprocs;
+    int world_rank, user_nprocs, user_rank;
+    int *nodes_bitmap = NULL;
+    int tmp_world_rank, node_id, tmp_num_helpers;
+    int i;
 
-    PMPI_Comm_size(user_comm, &user_nprocs);
-    PMPI_Comm_rank(user_comm, &user_rank);
-    PMPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    PMPI_Comm_rank(MPIASP_COMM_USER_WORLD, &user_world_rank);
+    nodes_bitmap = calloc(MPIASP_NUM_NODES, sizeof(unsigned short));
+    if (nodes_bitmap == NULL)
+        goto fn_fail;
 
-    win->user_ranks_in_world = calloc(user_nprocs, sizeof(int));
-    win->user_ranks_in_user_world = calloc(user_nprocs, sizeof(int));
-    win->user_ranks_in_world[user_rank] = world_rank;
-    win->user_ranks_in_user_world[user_rank] = user_world_rank;
+    PMPI_Comm_size(win->user_comm, &user_nprocs);
+    PMPI_Comm_rank(win->user_comm, &user_rank);
 
-    /*PREF_TODO : translate instead */
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               win->user_ranks_in_world, 1, MPI_INT, user_comm);
+    // Gather user world ranks and user_world ranks together
+    PMPI_Comm_rank(MPI_COMM_WORLD, &user_ranks_in_world[user_rank]);
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, user_ranks_in_world, 1, MPI_INT,
+                               win->user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               win->user_ranks_in_user_world, 1, MPI_INT, user_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    // Get helper ranks for all USER processes
+    // TODO: support multiple helpers
+    tmp_num_helpers = 0;
+    for (i = 0; i < user_nprocs; i++) {
+        tmp_world_rank = user_ranks_in_world[i];
+        node_id = MPIASP_ALL_NODE_IDS[tmp_world_rank];
+
+        if (!nodes_bitmap[node_id]) {
+            helper_ranks_in_world[tmp_num_helpers++] = MPIASP_ALL_ASP_IN_COMM_WORLD[node_id];
+            nodes_bitmap[node_id] = 1;
+
+            MPIASP_Assert(tmp_num_helpers <= MPIASP_NUM_NODES * MPIASP_NUM_ASP_IN_LOCAL);
+        }
+    }
+    *num_helpers = tmp_num_helpers;
 
   fn_exit:
     return mpi_errno;
 
   fn_fail:
-    if (win->user_ranks_in_world)
-        free(win->user_ranks_in_world);
-    if (win->user_ranks_in_user_world)
-        free(win->user_ranks_in_user_world);
-
-    win->user_ranks_in_world = NULL;
-    win->user_ranks_in_user_world = NULL;
-
     goto fn_exit;
 }
 
-static int create_ua_comm(MPI_Comm user_comm, int ua_tag, MPIASP_Win * win)
+static int create_ua_comm(int *user_ranks_in_world, int num_helpers, int *helper_ranks_in_world,
+                          MPIASP_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_nprocs, user_rank, world_nprocs, user_world_rank, user_local_rank;
+    int user_nprocs, user_rank, world_nprocs, tmp_world_rank;
     int *ua_ranks_in_world = NULL, *asp_info = NULL;
-    int *asp_exists_bitmap = NULL;
-    int i, j, num_ua_ranks, asp_rank;
+    int i, j, num_ua_ranks, asp_rank, node_id;
 
-    PMPI_Comm_size(user_comm, &user_nprocs);
-    PMPI_Comm_rank(user_comm, &user_rank);
+    PMPI_Comm_size(win->user_comm, &user_nprocs);
+    PMPI_Comm_rank(win->user_comm, &user_rank);
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
-    PMPI_Comm_rank(win->local_user_comm, &user_local_rank);
 
     // maximum amount equals to world size
     ua_ranks_in_world = calloc(world_nprocs, sizeof(int));
-    asp_exists_bitmap = calloc(world_nprocs, sizeof(int));
+    if (ua_ranks_in_world == NULL)
+        goto fn_fail;
 
-    for (i = 0; i < user_nprocs; i++) {
-        ua_ranks_in_world[i] = win->user_ranks_in_world[i];
-    }
+    // -Create ua communicator including all USER processes and Helper processes.
+    num_ua_ranks = user_nprocs + num_helpers;
+    MPIASP_Assert(num_ua_ranks <= world_nprocs);
+    memcpy(ua_ranks_in_world, user_ranks_in_world, user_nprocs * sizeof(int));
+    memcpy(&ua_ranks_in_world[user_nprocs], helper_ranks_in_world, num_helpers * sizeof(int));
 
-    // -Get the unique ASP ranks for all the USER ranks
-    for (i = 0; i < user_nprocs; i++) {
-        user_world_rank = win->user_ranks_in_user_world[i];
-
-        asp_rank = MPIASP_ALL_ASP_IN_COMM_WORLD[user_world_rank];
-        asp_exists_bitmap[asp_rank] = 1;
-    }
-    num_ua_ranks = user_nprocs;
-    for (i = 0; i < world_nprocs; i++) {
-        if (asp_exists_bitmap[i])
-            ua_ranks_in_world[num_ua_ranks++] = i;
-
-        if (num_ua_ranks > world_nprocs) {
-            MPIASP_ERR_PRINT("[%d] Wrong numer of UA ranks %d > %d\n",
-                             user_rank, num_ua_ranks, world_nprocs);
-            mpi_errno = -1;
-            goto fn_fail;
-        }
-    }
-
-    // -Send gathered UA ranks to ASP process
-    if (user_local_rank == 0) {
-        // --First send the number of UA ranks
-        mpi_errno = PMPI_Send(&num_ua_ranks, 1, MPI_INT,
-                              MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        // --Send UA ranks
-        mpi_errno = PMPI_Send(ua_ranks_in_world, num_ua_ranks, MPI_INT,
-                              MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    // -Create communicator
     PMPI_Group_incl(MPIASP_GROUP_WORLD, num_ua_ranks, ua_ranks_in_world, &win->ua_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, win->ua_group, 0, &win->ua_comm);
     if (mpi_errno != MPI_SUCCESS)
@@ -113,73 +80,126 @@ static int create_ua_comm(MPI_Comm user_comm, int ua_tag, MPIASP_Win * win)
   fn_exit:
     if (ua_ranks_in_world)
         free(ua_ranks_in_world);
-    if (asp_exists_bitmap)
-        free(asp_exists_bitmap);
 
     return mpi_errno;
 
   fn_fail:
-    if (win->ua_comm != MPI_COMM_NULL)
+    if (win->ua_comm != MPI_COMM_NULL) {
         PMPI_Comm_free(&win->ua_comm);
-    if (win->ua_group != MPI_GROUP_NULL)
+        win->ua_comm = MPI_COMM_NULL;
+    }
+    if (win->ua_group != MPI_GROUP_NULL) {
         PMPI_Group_free(&win->ua_group);
-    win->ua_comm = MPI_COMM_NULL;
-    win->ua_group = MPI_GROUP_NULL;
+        win->ua_group = MPI_GROUP_NULL;
+    }
 
     goto fn_exit;
 }
 
-static int create_ua_local_comm(MPI_Comm user_local_comm, int ua_tag, MPIASP_Win * win)
+
+static int create_communicators(MPIASP_Win * ua_win, int ua_tag)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_local_rank, user_local_nprocs;
-    int *ua_ranks_in_local = NULL;
-    int i;
+    int *func_params = NULL, func_param_size = 0;
+    int *user_ranks_in_world = NULL;
+    int *helper_ranks_in_world = NULL, num_helpers = 0, max_num_helpers;
+    int user_nprocs;
 
-    PMPI_Comm_size(user_local_comm, &user_local_nprocs);
-    PMPI_Comm_rank(user_local_comm, &user_local_rank);
+    PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
+    max_num_helpers = MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES;
+    func_param_size = user_nprocs + max_num_helpers + 1;
+    func_params = calloc(func_param_size, sizeof(int));
 
-    /*PERF_TODO: translate instead */
-    // -Gather rank of local USER processes and local ASP in COMM_LOCAL
-    ua_ranks_in_local = calloc(user_local_nprocs + MPIASP_NUM_ASP_IN_LOCAL, sizeof(int));
-    PMPI_Comm_rank(MPIASP_COMM_LOCAL, &ua_ranks_in_local[user_local_rank]);
+    // Optimization for user world communicator
+    if (ua_win->user_comm == MPIASP_COMM_USER_WORLD) {
+        /* Set parameters to local Helpers
+         *  [0]: is_comm_user_world
+         */
+        func_params[0] = 1;
+        MPIASP_Func_set_param((char *) func_params, sizeof(int) * func_param_size, ua_tag,
+                              ua_win->local_user_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
 
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               ua_ranks_in_local, 1, MPI_INT, user_local_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    ua_ranks_in_local[user_local_nprocs] = MPIASP_RANK_IN_COMM_LOCAL;
+        /* Create communicators
+         *  local_ua_comm: including local USER and Helper processes
+         *  ua_comm: including all USER and Helper processes
+         */
+        ua_win->local_ua_comm = MPIASP_COMM_LOCAL;
+        ua_win->ua_comm = MPI_COMM_WORLD;
+        PMPI_Comm_group(ua_win->local_ua_comm, &ua_win->local_ua_group);
+        PMPI_Comm_group(ua_win->ua_comm, &ua_win->ua_group);
 
-    // -Send USER ranks to ASP process
-    if (user_local_rank == 0) {
-        mpi_errno = PMPI_Send(ua_ranks_in_local, user_local_nprocs, MPI_INT,
-                              MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
+        // -Get all Helper rank in ua communicator */
+        num_helpers = MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES;
+        memcpy(ua_win->asp_ranks_in_ua, MPIASP_ALL_ASP_IN_COMM_WORLD, sizeof(int) * num_helpers);
+    }
+    else {
+        user_ranks_in_world = calloc(user_nprocs, sizeof(int));
+        helper_ranks_in_world = calloc(max_num_helpers, sizeof(int));
+
+        /* Gather user rank information */
+        mpi_errno = gather_ranks(ua_win, user_ranks_in_world, &num_helpers, helper_ranks_in_world);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* Set parameters to local Helpers
+         *  [0]: is_comm_user_world
+         *  [1]: num_helpers
+         *  [2:N+1]: user ranks in comm_world
+         *  [N+2:]: helper ranks in comm_world
+         */
+        int pidx;
+        func_params[0] = 0;
+        func_params[1] = num_helpers;
+        pidx = 2;
+        memcpy(&func_params[pidx], user_ranks_in_world, user_nprocs * sizeof(int));
+        pidx += user_nprocs;
+        memcpy(&func_params[pidx], helper_ranks_in_world, num_helpers * sizeof(int));
+        MPIASP_Func_set_param((char *) func_params, sizeof(int) * func_param_size, ua_tag,
+                              ua_win->local_user_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* Create communicators
+         *  ua_comm: including all USER and Helper processes
+         *  local_ua_comm: including local USER and Helper processes
+         */
+        mpi_errno = create_ua_comm(user_ranks_in_world, num_helpers, helper_ranks_in_world, ua_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Comm_split_type(ua_win->ua_comm, MPI_COMM_TYPE_SHARED, 0,
+                                         MPI_INFO_NULL, &ua_win->local_ua_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* Get all Helper rank in ua communicator */
+        mpi_errno = PMPI_Group_translate_ranks(MPIASP_GROUP_WORLD, num_helpers,
+                                               helper_ranks_in_world,
+                                               ua_win->ua_group, ua_win->asp_ranks_in_ua);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    // -Create communicator
-    PMPI_Group_incl(MPIASP_GROUP_LOCAL,
-                    user_local_nprocs + MPIASP_NUM_ASP_IN_LOCAL, ua_ranks_in_local,
-                    &win->local_ua_group);
-    mpi_errno = PMPI_Comm_create_group(MPIASP_COMM_LOCAL, win->local_ua_group,
-                                       0, &win->local_ua_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+#ifdef DEBUG
+    int user_rank = 0, i;
+    PMPI_Comm_rank(ua_win->user_comm, &user_rank);
+    for (i = 0; i < num_helpers; i++) {
+        MPIASP_DBG_PRINT("[%d]    asp_ranks_in_ua[%d] = %d\n", user_rank, i,
+                         ua_win->asp_ranks_in_ua[i]);
+    }
+#endif
 
   fn_exit:
-    if (ua_ranks_in_local)
-        free(ua_ranks_in_local);
-
     return mpi_errno;
 
   fn_fail:
-    if (win->local_ua_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&win->local_ua_group);
-    if (win->local_ua_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&win->local_ua_comm);
-    win->local_ua_group = MPI_GROUP_NULL;
-    win->local_ua_comm = MPI_COMM_NULL;
+    if (func_params)
+        free(func_params);
+    if (user_ranks_in_world)
+        free(user_ranks_in_world);
+    if (helper_ranks_in_world)
+        free(helper_ranks_in_world);
 
     goto fn_exit;
 }
@@ -190,20 +210,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     static const char FCNAME[] = "MPI_Win_allocate";
     int mpi_errno = MPI_SUCCESS;
     MPI_Group ua_group;
-    int ua_rank, user_nprocs, user_rank, user_world_rank,
+    int ua_rank, ua_nprocs, user_nprocs, user_rank, user_world_rank,
         user_local_rank, user_local_nprocs, ua_local_rank, ua_local_nprocs;
     MPIASP_Win *ua_win;
     int ua_tag;
     int i, j;
-    int func_params[1];
     void **base_pp = (void **) baseptr;
     MPI_Status stat;
-    int *asp_info = NULL;
     MPI_Aint *user_local_sizes;
-
-#ifdef DEBUG
-    int ua_nprocs;
-#endif
 
     MPIASP_DBG_PRINT_FCNAME();
 
@@ -230,7 +244,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     ua_win->base_asp_offset = calloc(user_nprocs, sizeof(MPI_Aint));
     ua_win->user_comm = user_comm;
     ua_win->disp_units = calloc(user_nprocs, sizeof(int));
-    ua_win->asp_ranks_in_ua = calloc(user_nprocs, sizeof(int));
+    ua_win->asp_ranks_in_ua = calloc(MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES, sizeof(int));
+    ua_win->ua_wins = calloc(user_nprocs, sizeof(MPI_Win));
     user_local_sizes = calloc(user_local_nprocs, sizeof(MPI_Aint));
 
     /* Gather disp_unit, used when send RMA operations */
@@ -240,59 +255,44 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Gather size from all local user processes,
-     * used for calculating the ASP offset of shared buffers  */
+    /* Notify Helper start */
+    mpi_errno = MPIASP_Tag_format((int) user_comm, &ua_tag);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    MPIASP_Func_start(MPIASP_FUNC_WIN_ALLOCATE, user_nprocs, user_local_nprocs, ua_tag,
+                      ua_win->local_user_comm);
+
+    /* Create communicators
+     *  ua_comm: including all USER and Helper processes
+     *  local_ua_comm: including local USER and Helper processes
+     */
+    mpi_errno = create_communicators(ua_win, ua_tag);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    PMPI_Comm_rank(ua_win->local_ua_comm, &ua_local_rank);
+    PMPI_Comm_size(ua_win->local_ua_comm, &ua_local_nprocs);
+
+    PMPI_Comm_size(ua_win->ua_comm, &ua_nprocs);
+    PMPI_Comm_rank(ua_win->ua_comm, &ua_rank);
+    MPIASP_DBG_PRINT(" Created ua_comm: %d/%d, local_ua_comm: %d/%d\n",
+                     ua_rank, ua_nprocs, ua_local_rank, ua_local_nprocs);
+
+    /* Allocate a shared window with local Helpers */
+
+    // -Allocate shared window
+    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, info, ua_win->local_ua_comm,
+                                         &ua_win->base, &ua_win->local_ua_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    // -Gather size from all local user processes and calculate the offset of local shared buffer
     user_local_sizes[user_local_rank] = size;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                                user_local_sizes, 1, MPI_AINT, ua_win->local_user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Gather user rank information */
-    mpi_errno = gather_user_ranks(user_comm, ua_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Ask ASP start function */
-    mpi_errno = MPIASP_Tag_format((int) user_comm, &ua_tag);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    MPIASP_Func_start(MPIASP_FUNC_WIN_ALLOCATE, user_local_nprocs, ua_tag, ua_win->local_user_comm);
-
-    /* Send parameters to ASP */
-    func_params[0] = (user_comm == MPIASP_COMM_USER_WORLD);
-    MPIASP_Func_set_param((char *) func_params, sizeof(func_params), ua_tag,
-                          ua_win->local_user_comm);
-
-    /* Allocate a shared window with local ASP */
-    MPIASP_DBG_PRINT("[%d] ---- Start allocating shared window\n", user_rank);
-
-    // -Get communicator including local USER processes and local ASP
-    if (user_comm == MPIASP_COMM_USER_WORLD) {
-        ua_win->local_ua_comm = MPIASP_COMM_LOCAL;
-        PMPI_Comm_group(ua_win->local_ua_comm, &ua_win->local_ua_group);
-    }
-    else {
-        mpi_errno = create_ua_local_comm(ua_win->local_user_comm, ua_tag, ua_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    PMPI_Comm_rank(ua_win->local_ua_comm, &ua_local_rank);
-    PMPI_Comm_size(ua_win->local_ua_comm, &ua_local_nprocs);
-
-    MPIASP_DBG_PRINT("[%d] Created local_ua_comm, %d/%d\n", user_rank,
-                     ua_local_rank, ua_local_nprocs);
-
-    // -Allocate shared window
-    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, info,
-                                         ua_win->local_ua_comm, &ua_win->base,
-                                         &ua_win->local_ua_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    // -Calculate the offset of local shared buffer
     i = 0;
     ua_win->base_asp_offset[user_rank] = 0;
     while (i < user_local_rank) {
@@ -302,9 +302,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MPIASP_DBG_PRINT("[%d] local base_asp_offset = 0x%lx, base=%p\n", user_rank,
                      ua_win->base_asp_offset[user_rank], ua_win->base);
 
-    // -Receive the address of all the shared user buffers on ASP processes
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               ua_win->base_asp_offset, 1, MPI_AINT, user_comm);
+    // -Receive the address of all the shared user buffers on Helper processes
+    // TODO: support multiple helpers
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, ua_win->base_asp_offset, 1,
+                               MPI_AINT, user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -315,53 +316,18 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     }
 #endif
 
-    /* Create a window including all USER processes and ASP processes
-     * using shared buffers. */
-    MPIASP_DBG_PRINT("[%d] ---- Start create UA window\n", user_rank);
+    /* Create windows using shared buffers. */
 
-    // -Get the communicator including all USER processes + ASP processes
-    if (user_comm == MPIASP_COMM_USER_WORLD) {
-        ua_win->ua_comm = MPI_COMM_WORLD;
-    }
-    else {
-        mpi_errno = create_ua_comm(user_comm, ua_tag, ua_win);
+    // -Create ua windows
+    //  Every User process has a dedicated window used for permission check and accessing Helpers
+    for (i = 0; i < user_nprocs; i++) {
+        mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
+                                    ua_win->ua_comm, &ua_win->ua_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        MPIASP_DBG_PRINT("[%d] Created ua windows[%d] 0x%x\n", user_rank, i, ua_win->ua_wins[i]);
     }
-
-#ifdef DEBUG
-    PMPI_Comm_size(ua_win->ua_comm, &ua_nprocs);
-    PMPI_Comm_rank(ua_win->ua_comm, &ua_rank);
-    MPIASP_DBG_PRINT("[%d] Created ua_comm, %d/%d\n", user_rank, ua_rank, ua_nprocs);
-#endif
-
-    // -Get the rank of ASP processes in USER + ASP communicator */
-    PMPI_Comm_group(ua_win->ua_comm, &ua_win->ua_group);
-    mpi_errno = PMPI_Group_translate_ranks(MPIASP_GROUP_WORLD,
-                                           MPIASP_NUM_ASP_IN_LOCAL,
-                                           &MPIASP_RANK_IN_COMM_WORLD, ua_win->ua_group,
-                                           &ua_win->asp_ranks_in_ua[user_rank]);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               ua_win->asp_ranks_in_ua, 1, MPI_INT, user_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-#ifdef DEBUG
-    for (i = 0; i < user_nprocs; i++) {
-        MPIASP_DBG_PRINT("[%d]    asp_ranks_in_ua[%d] = %d\n", user_rank, i,
-                         ua_win->asp_ranks_in_ua[i]);
-    }
-#endif
-
-    // -Create window
-    // - Internal window for accessing to helpers
-    mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
-                                ua_win->ua_comm, &ua_win->ua_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
 
     // - Only expose user window in order to hide helpers in all non-wrapped window functions
     mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
@@ -369,15 +335,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MPIASP_DBG_PRINT("[%d] Created window 0x%x, ua_window 0x%x\n",
-                     user_rank, ua_win->win, ua_win->ua_win);
+    MPIASP_DBG_PRINT("[%d] Created window 0x%x\n", user_rank, ua_win->win);
 
     *win = ua_win->win;
     *base_pp = ua_win->base;
 
+    /* Receive the handle of ASP win */
     if (user_local_rank == 0) {
-        // Receive the handle of ASP win
-        mpi_errno = PMPI_Recv(&ua_win->asp_win_handle, 1, MPI_INT,
+        mpi_errno = PMPI_Recv(&ua_win->asp_win_handle, 1, MPI_UNSIGNED_LONG,
                               MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL, &stat);
         if (mpi_errno != 0)
             goto fn_fail;
@@ -400,13 +365,19 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         PMPI_Win_free(&ua_win->local_ua_win);
     if (ua_win->win)
         PMPI_Win_free(&ua_win->win);
-    if (ua_win->ua_win)
-        PMPI_Win_free(&ua_win->ua_win);
+    if (ua_win->ua_wins) {
+        for (i = 0; i < user_nprocs; i++) {
+            if (ua_win->ua_wins)
+                PMPI_Win_free(&ua_win->ua_wins[i]);
+        }
+    }
 
     if (ua_win->local_ua_comm && ua_win->local_ua_comm != MPIASP_COMM_LOCAL)
         PMPI_Comm_free(&ua_win->local_ua_comm);
-    if (ua_win->ua_comm && ua_win->ua_comm != MPI_COMM_WORLD)
+    if (ua_win->ua_comm != MPI_COMM_NULL)
         PMPI_Comm_free(&ua_win->ua_comm);
+    if (ua_win->ua_group != MPI_GROUP_NULL)
+        PMPI_Group_free(&ua_win->ua_group);
     if (ua_win->local_user_comm && ua_win->local_user_comm != MPIASP_COMM_USER_LOCAL)
         PMPI_Comm_free(&ua_win->local_user_comm);
 
@@ -423,12 +394,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         free(ua_win->base_asp_offset);
     if (ua_win->local_ua_win_param)
         free(ua_win->local_ua_win_param);
-    if (ua_win->user_ranks_in_user_world)
-        free(ua_win->user_ranks_in_user_world);
-    if (ua_win->user_ranks_in_world)
-        free(ua_win->user_ranks_in_world);
     if (ua_win->asp_ranks_in_ua)
         free(ua_win->asp_ranks_in_ua);
+    if (ua_win->ua_wins)
+        free(ua_win->ua_wins);
     if (ua_win)
         free(ua_win);
 

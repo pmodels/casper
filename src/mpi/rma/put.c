@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-#ifdef ENABLE_SHRD_COMM_TRANS
 static int MPIASP_Put_shared_impl(const void *origin_addr, int origin_count,
                                   MPI_Datatype origin_datatype,
                                   int target_rank, MPI_Aint target_disp,
@@ -15,6 +14,9 @@ static int MPIASP_Put_shared_impl(const void *origin_addr, int origin_count,
     PMPI_Group_translate_ranks(ua_win->user_group, 1,
                                &target_rank, ua_win->local_ua_group, &target_rank_in_local_ua);
 
+    /* Issue operation to the target in local shared window, because shared
+     * communication is fully handled by local process.
+     */
     mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
                          target_rank_in_local_ua, target_disp,
                          target_count, target_datatype, ua_win->local_ua_win);
@@ -30,7 +32,6 @@ static int MPIASP_Put_shared_impl(const void *origin_addr, int origin_count,
   fn_fail:
     goto fn_exit;
 }
-#endif
 
 static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
                            MPI_Datatype origin_datatype,
@@ -40,10 +41,10 @@ static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ua_target_disp = 0;
-
-#ifdef ENABLE_SHRD_COMM_TRANS
+    int target_node_id = -1;
     int is_shared = 0;
-    mpi_errno = MPIASP_Is_in_shrd_mem(target_rank, ua_win->user_group, &is_shared);
+
+    mpi_errno = MPIASP_Is_in_shrd_mem(target_rank, ua_win->user_group, &target_node_id, &is_shared);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -52,20 +53,20 @@ static int MPIASP_Put_impl(const void *origin_addr, int origin_count,
                                            origin_datatype, target_rank, target_disp, target_count,
                                            target_datatype, win, ua_win);
     }
-    else
-#endif
-    {
+    else {
         ua_target_disp = ua_win->base_asp_offset[target_rank]
             + ua_win->disp_units[target_rank] * target_disp;
 
+        /* Issue operation to the helper process in corresponding ua-window of target process. */
         mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
-                             ua_win->asp_ranks_in_ua[target_rank], ua_target_disp,
-                             target_count, target_datatype, ua_win->ua_win);
+                             ua_win->asp_ranks_in_ua[target_node_id], ua_target_disp,
+                             target_count, target_datatype, ua_win->ua_wins[target_rank]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        MPIASP_DBG_PRINT("MPIASP Put to asp %d instead of target %d, 0x%lx(0x%lx + %d * %ld)\n",
-                         ua_win->asp_ranks_in_ua[target_rank], target_rank,
+        MPIASP_DBG_PRINT("MPIASP Put to asp %d instead of target %d(node_id %d), "
+                         "0x%lx(0x%lx + %d * %ld)\n",
+                         ua_win->asp_ranks_in_ua[target_node_id], target_rank, target_node_id,
                          ua_target_disp, ua_win->base_asp_offset[target_rank],
                          ua_win->disp_units[target_rank], target_disp);
     }

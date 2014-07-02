@@ -8,7 +8,7 @@ int run_asp_main(void)
 {
     int mpi_errno = MPI_SUCCESS;
     MPIASP_Func FUNC;
-    int user_root, user_nprocs, user_tag;
+    int user_local_root, user_nprocs, user_local_nprocs, user_tag;
 
     ASP_DBG_PRINT(" main start\n");
     init_asp_win_table();
@@ -16,20 +16,21 @@ int run_asp_main(void)
     /*TODO: init in user app or here ? */
     //    MPI_Init(&argc, &argv);
     while (1) {
-        mpi_errno = ASP_Func_start(&FUNC, &user_root, &user_nprocs, &user_tag);
+        mpi_errno = ASP_Func_start(&FUNC, &user_local_root, &user_nprocs, &user_local_nprocs,
+                                   &user_tag);
         if (mpi_errno != MPI_SUCCESS)
             break;
 
-        ASP_DBG_PRINT(" FUNC %d start, root %d, nprocs %d, tag %d\n", FUNC, user_root, user_nprocs,
-                      user_tag);
+        ASP_DBG_PRINT(" FUNC %d start, local root %d, nprocs %d, local nprocs %d, tag %d\n", FUNC,
+                      user_local_root, user_nprocs, user_local_nprocs, user_tag);
 
         switch (FUNC) {
         case MPIASP_FUNC_WIN_ALLOCATE:
-            mpi_errno = ASP_Win_allocate(user_root, user_nprocs, user_tag);
+            mpi_errno = ASP_Win_allocate(user_local_root, user_nprocs, user_local_nprocs, user_tag);
             break;
 
         case MPIASP_FUNC_WIN_FREE:
-            mpi_errno = ASP_Win_free(user_root, user_nprocs, user_tag);
+            mpi_errno = ASP_Win_free(user_local_root, user_nprocs, user_local_nprocs, user_tag);
             break;
 
             /* other commands */

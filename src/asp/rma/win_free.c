@@ -5,18 +5,18 @@
 #undef FUNCNAME
 #define FUNCNAME ASP_Win_free
 
-int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag)
+int ASP_Win_free(int user_local_root, int user_nprocs, int user_local_nprocs, int user_tag)
 {
     int mpi_errno = MPI_SUCCESS;
     int dst;
     int ua_nprocs, ua_rank;
     ASP_Win *win;
-    MPI_Win win_bkup;
-    int asp_win_handle;
+    unsigned long asp_win_handle;
     MPI_Status stat;
+    int i;
 
     // Receive the handle of ASP win
-    mpi_errno = PMPI_Recv(&asp_win_handle, 1, MPI_INT,
+    mpi_errno = PMPI_Recv(&asp_win_handle, 1, MPI_UNSIGNED_LONG,
                           user_local_root, user_tag, MPIASP_COMM_LOCAL, &stat);
     if (mpi_errno != 0)
         goto fn_fail;
@@ -27,8 +27,6 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag)
 
     /* Release ASP resources if there is a corresponding ASP-window */
     if (win > 0) {
-        win_bkup = win->win;
-
         if (win->local_ua_win) {
             ASP_DBG_PRINT(" free shared window\n");
             mpi_errno = PMPI_Win_free(&win->local_ua_win);
@@ -36,11 +34,15 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag)
                 goto fn_fail;
         }
 
-        if (win->win) {
-            ASP_DBG_PRINT(" free ua window\n");
-            mpi_errno = PMPI_Win_free(&win->win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+        if (win->ua_wins) {
+            ASP_DBG_PRINT(" free ua windows\n");
+            for (i = 0; i < user_nprocs; i++) {
+                if (win->ua_wins[i]) {
+                    mpi_errno = PMPI_Win_free(&win->ua_wins[i]);
+                    if (mpi_errno != MPI_SUCCESS)
+                        goto fn_fail;
+                }
+            }
         }
 
         if (win->local_ua_comm && win->local_ua_comm != MPIASP_COMM_LOCAL) {
@@ -59,10 +61,12 @@ int ASP_Win_free(int user_local_root, int user_local_nprocs, int user_tag)
 
         if (win->user_base_addrs_in_local)
             free(win->user_base_addrs_in_local);
+        if (win->ua_wins)
+            free(win->ua_wins);
 
         free(win);
 
-        ASP_DBG_PRINT(" Freed ASP window 0x%x\n", win_bkup);
+        ASP_DBG_PRINT(" Freed ASP window\n");
     }
     else {
         ASP_DBG_PRINT(" no corresponding ASP window, tag 0x%x\n", user_tag);
