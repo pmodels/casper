@@ -60,12 +60,13 @@ int MPI_Win_flush_all(MPI_Win win)
             mpi_errno =
                 PMPI_Win_flush(ua_win->asp_ranks_in_ua[target_node_ids[i]], ua_win->ua_wins[i]);
         }
-
-        // TODO: we have not implement translation for all operations yet.
-        // So still some of them are pushed into user window
-//      goto fn_exit;
     }
-    mpi_errno = PMPI_Win_flush_all(win);
+    /* TODO: All the operations which we have not wrapped up will be failed, because they
+     * are issued to user window. We need wrap up all operations.
+     */
+    else {
+        mpi_errno = PMPI_Win_flush_all(win);
+    }
 
   fn_exit:
     if (target_ranks)

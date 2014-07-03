@@ -54,14 +54,13 @@ int MPI_Win_unlock_all(MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-
-        // TODO: we have not implement translation for all operations yet.
-        // So still some of them are pushed into user window
-        //      goto fn_exit;
-
     }
-
-    mpi_errno = PMPI_Win_unlock_all(win);
+    /* TODO: All the operations which we have not wrapped up will be failed, because they
+     * are issued to user window. We need wrap up all operations.
+     */
+    else {
+        mpi_errno = PMPI_Win_unlock_all(win);
+    }
 
   fn_exit:
     if (target_ranks)
