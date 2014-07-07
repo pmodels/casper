@@ -38,12 +38,13 @@ int MPI_Win_free(MPI_Win * win)
                 goto fn_fail;
         }
 
-        if (ua_win->local_ua_win) {
-            MPIASP_DBG_PRINT("[%d] \t free shared window\n", user_rank);
-            mpi_errno = PMPI_Win_free(&ua_win->local_ua_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
+        /* Free ua_win before local_ua_win, because all the incoming operations
+         * should be done before free shared buffers.
+         *
+         * We do not need additional barrier in Manticore for waiting all
+         * operations complete, because Win_free already internally add a barrier
+         * for waiting operations on that window complete.
+         */
         if (ua_win->ua_wins) {
             MPIASP_DBG_PRINT("[%d] \t free ua windows\n", user_rank);
             for (i = 0; i < user_nprocs; i++) {
@@ -53,6 +54,13 @@ int MPI_Win_free(MPI_Win * win)
                         goto fn_fail;
                 }
             }
+        }
+
+        if (ua_win->local_ua_win) {
+            MPIASP_DBG_PRINT("[%d] \t free shared window\n", user_rank);
+            mpi_errno = PMPI_Win_free(&ua_win->local_ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
         }
 
         if (ua_win->local_ua_group != MPI_GROUP_NULL) {

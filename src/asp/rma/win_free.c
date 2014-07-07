@@ -27,13 +27,14 @@ int ASP_Win_free(int user_local_root, int user_nprocs, int user_local_nprocs, in
 
     /* Release ASP resources if there is a corresponding ASP-window */
     if (win > 0) {
-        if (win->local_ua_win) {
-            ASP_DBG_PRINT(" free shared window\n");
-            mpi_errno = PMPI_Win_free(&win->local_ua_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
 
+        /* Free ua_win before local_ua_win, because all the incoming operations
+         * should be done before free shared buffers.
+         *
+         * We do not need additional barrier in Manticore for waiting all
+         * operations complete, because Win_free already internally add a barrier
+         * for waiting operations on that window complete.
+         */
         if (win->ua_wins) {
             ASP_DBG_PRINT(" free ua windows\n");
             for (i = 0; i < user_nprocs; i++) {
@@ -43,6 +44,13 @@ int ASP_Win_free(int user_local_root, int user_nprocs, int user_local_nprocs, in
                         goto fn_fail;
                 }
             }
+        }
+
+        if (win->local_ua_win) {
+            ASP_DBG_PRINT(" free shared window\n");
+            mpi_errno = PMPI_Win_free(&win->local_ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
         }
 
         if (win->local_ua_comm && win->local_ua_comm != MPIASP_COMM_LOCAL) {
