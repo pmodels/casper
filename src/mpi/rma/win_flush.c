@@ -6,7 +6,7 @@ int MPI_Win_flush(int rank, MPI_Win win)
 {
     MPIASP_Win *ua_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, rank_in_local_ua = 0, rank_in_ua = 0;
+    int user_rank, local_ua_rank = 0;
     int is_shared = 0;
     int target_node_id = -1;
 
@@ -18,31 +18,29 @@ int MPI_Win_flush(int rank, MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
+        if (user_rank == rank) {
+            PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
 
-        mpi_errno = MPIASP_Is_in_shrd_mem(rank, ua_win->user_group, &target_node_id, &is_shared);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        /* If target is in shared memory, only flush target in local shared window. */
-        if (is_shared) {
-            PMPI_Group_translate_ranks(ua_win->user_group, 1, &rank,
-                                       ua_win->local_ua_group, &rank_in_local_ua);
-
-            MPIASP_DBG_PRINT("[%d]flush(%d, local_ua_win), instead of %d, node_id %d\n",
-                             user_rank, rank_in_local_ua, rank, target_node_id);
-
-            mpi_errno = PMPI_Win_flush(rank_in_local_ua, ua_win->local_ua_win);
+            /* If target is itself, only flush the target on shared window.
+             * It does not matter which window we are using for local communication,
+             * we just choose local shared window in our implementation.
+             */
+            MPIASP_DBG_PRINT("[%d]flush self(%d, local_ua_win)\n", user_rank, local_ua_rank);
+            mpi_errno = PMPI_Win_flush(local_ua_rank, ua_win->local_ua_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
         else {
+            mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &rank, &target_node_id);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+
             MPIASP_DBG_PRINT("[%d]flush(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
                              user_rank, ua_win->asp_ranks_in_ua[target_node_id], rank,
                              rank, target_node_id);
 
-            /* We only flush target helper in ua_window. Because for non-shared
-             * targets, all translated operations are issued to target helper via ua_window.
-             * Otherwise, they are issued through user window.
+            /* We flush target Helper processes in ua_window. Because for non-shared
+             * targets, all translated operations are issued to target Helpers via ua_window.
              */
             mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[target_node_id],
                                        ua_win->ua_wins[rank]);

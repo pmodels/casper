@@ -15,7 +15,7 @@ static int MPIASP_Accumulate_shared_impl(const void *origin_addr,
     PMPI_Group_translate_ranks(ua_win->user_group, 1,
                                &target_rank, ua_win->local_ua_group, &target_rank_in_local_ua);
 
-    /* Issue operation to the target in local shared window, because shared
+    /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
@@ -44,18 +44,33 @@ static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
     MPI_Aint ua_target_disp = 0;
     int is_shared = 0;
     int target_node_id = -1;
-    int node_id;
+    int rank;
 
-    mpi_errno = MPIASP_Is_in_shrd_mem(target_rank, ua_win->user_group, &target_node_id, &is_shared);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    if (is_shared) {
+    PMPI_Comm_rank(ua_win->user_comm, &rank);
+    if (target_rank == rank) {
+        /* If target is itself, we do not need translate it to any Helpers because
+         * win_lock(self) will force lock(helper) to be granted so that it is safe
+         * to send operations to the real target.
+         */
         mpi_errno = MPIASP_Accumulate_shared_impl(origin_addr, origin_count,
                                                   origin_datatype, target_rank, target_disp,
                                                   target_count, target_datatype, op, win, ua_win);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
     }
     else {
+        /* Translation for intra/inter-node operations.
+         *
+         * We do not use force flush + shared window for optimizing operations to local targets.
+         * Because: 1) we lose lock optimization on force flush; 2) Although most implementation
+         * does shared-communication for operations on shared windows, MPI standard doesn’t
+         * require it. Some implementation may use network even for shared targets for
+         * shorter CPU occupancy.
+         */
+        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
+
         ua_target_disp = ua_win->base_asp_offset[target_rank]
             + ua_win->disp_units[target_rank] * target_disp;
 

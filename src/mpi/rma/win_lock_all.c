@@ -6,7 +6,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 {
     MPIASP_Win *ua_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs, local_ua_nprocs;
+    int user_rank, user_nprocs;
     int i;
     int *target_node_ids = NULL;
     int *target_ranks = NULL;
@@ -19,7 +19,6 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        PMPI_Comm_size(ua_win->local_ua_comm, &local_ua_nprocs);
         PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
 
         target_ranks = calloc(user_nprocs, sizeof(int));
@@ -28,23 +27,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
             target_ranks[i] = i;
         }
 
-        /* Lock shared window for local communication if there is at least one
-         * local user process.
-         *
-         * We only use a single window for all the local processes because operations
-         * are directly issued to the real targets so that we do not need addition
-         * windows for permission check.
-         */
-        if (local_ua_nprocs > MPIASP_NUM_ASP_IN_LOCAL) {
-            MPIASP_DBG_PRINT("[%d]lock_all(local_ua_win)\n", user_rank);
-
-            mpi_errno = PMPI_Win_lock_all(assert, ua_win->local_ua_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-
-        mpi_errno =
-            MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks, target_node_ids);
+        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks,
+                                        target_node_ids);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -63,6 +47,15 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+
+        /* We need grant the local lock (self-target) before return.
+         * However, the actual locked processes are the Helpers whose locks may be delayed by
+         * most MPI implementation, thus we need a flush to force the lock to be granted.
+         * We also lock the target itself so that operations can be executed through self target.
+         */
+        mpi_errno = MPIASP_Win_grant_local_lock(MPI_LOCK_SHARED, 0, ua_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

@@ -18,32 +18,27 @@ int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
+        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &rank, &target_node_id);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
 
-        mpi_errno = MPIASP_Is_in_shrd_mem(rank, ua_win->user_group, &target_node_id, &is_shared);
+        /* Lock Helper processes in corresponding ua-window of target process. */
+        MPIASP_DBG_PRINT("[%d]lock(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
+                         user_rank, ua_win->asp_ranks_in_ua[target_node_id], rank, rank,
+                         target_node_id);
+
+        mpi_errno = PMPI_Win_lock(lock_type, ua_win->asp_ranks_in_ua[target_node_id],
+                                  assert, ua_win->ua_wins[rank]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        /* If target is in shared memory, only lock target in local shared window. */
-        if (is_shared) {
-            PMPI_Group_translate_ranks(ua_win->user_group, 1, &rank,
-                                       ua_win->local_ua_group, &rank_in_local_ua);
-
-            MPIASP_DBG_PRINT("[%d]lock(%d, local_ua_win), instead of %d, node_id %d\n",
-                             user_rank, rank_in_local_ua, rank, target_node_id);
-
-            mpi_errno = PMPI_Win_lock(lock_type, rank_in_local_ua, assert, ua_win->local_ua_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-        else {
-            /* Lock helper process in corresponding ua-window of target process. */
-            MPIASP_DBG_PRINT("[%d]lock(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_id], rank, rank,
-                             target_node_id);
-
-            mpi_errno =
-                PMPI_Win_lock(lock_type, ua_win->asp_ranks_in_ua[target_node_id], assert,
-                              ua_win->ua_wins[rank]);
+        /* If target is itself, we need grant this lock before return.
+         * However, the actual locked processes are the Helpers whose locks may be delayed by
+         * most MPI implementation, thus we need a flush to force the lock to be granted.
+         * We also lock the target itself so that operations can be executed through self target.
+         */
+        if (user_rank == rank) {
+            mpi_errno = MPIASP_Win_grant_local_lock(lock_type, assert, ua_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }

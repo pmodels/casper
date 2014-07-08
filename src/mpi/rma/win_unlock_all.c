@@ -28,19 +28,8 @@ int MPI_Win_unlock_all(MPI_Win win)
             target_ranks[i] = i;
         }
 
-        /* Unlock shared window for local communication if there is at least one
-         * local user process.
-         */
-        if (local_ua_nprocs > MPIASP_NUM_ASP_IN_LOCAL) {
-            MPIASP_DBG_PRINT("[%d]unlock_all(local_ua_win)\n", user_rank);
-
-            mpi_errno = PMPI_Win_unlock_all(ua_win->local_ua_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-
-        mpi_errno =
-            MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks, target_node_ids);
+        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks,
+                                        target_node_ids);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -54,6 +43,13 @@ int MPI_Win_unlock_all(MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+
+        /* We need also release the lock of local rank */
+        int local_ua_rank;
+        PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
+        mpi_errno = PMPI_Win_unlock(local_ua_rank, ua_win->local_ua_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
