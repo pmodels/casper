@@ -295,6 +295,12 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     i = 0;
     ua_win->base_asp_offset[user_rank] = 0;
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    /* Add additional bytes on Helper 0 */
+    ua_win->base_asp_offset[user_rank] += sizeof(MTCORE_GRANT_LOCK_DATATYPE);
+    /* Helper 0 is rank 0 in local_ua_comm, so its offset is 0. */
+    ua_win->grant_lock_asp_offset = 0;
+#endif
     while (i < user_local_rank) {
         ua_win->base_asp_offset[user_rank] += user_local_sizes[i];      // size in bytes
         i++;

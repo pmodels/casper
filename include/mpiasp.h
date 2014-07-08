@@ -6,7 +6,12 @@
 #include <mpi.h>
 #include "hash_table.h"
 
-#define ENABLE_SHRD_COMM_TRANS
+#define MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+#define MTCORE_GRANT_LOCK_DATATYPE char
+#define MTCORE_GRANT_LOCK_MPI_DATATYPE MPI_CHAR
+#endif
 
 #ifdef HAVE_BUILTIN_EXPECT
 #  define unlikely(x_) __builtin_expect(!!(x_),0)
@@ -75,6 +80,11 @@ typedef struct MPIASP_Win {
 
     int num_nodes;
     unsigned long asp_win_handle;
+
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    MPI_Aint grant_lock_asp_offset;     /* Hidden byte for granting lock on Helper0 */
+#endif
+
 } MPIASP_Win;
 
 typedef struct ASP_Func_info {
@@ -247,16 +257,23 @@ static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *n
 static inline int MPIASP_Win_grant_local_lock(int lock_type, int assert, MPIASP_Win * ua_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    char buf[1];
     int user_rank, node_id, local_ua_rank;
 
     PMPI_Comm_rank(ua_win->user_comm, &user_rank);
     PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
     node_id = MPIASP_ALL_NODE_IDS[MPIASP_MY_RANK_IN_WORLD];
 
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    MTCORE_GRANT_LOCK_DATATYPE buf[1];
+    mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, ua_win->asp_ranks_in_ua[node_id],
+                         ua_win->grant_lock_asp_offset, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE,
+                         ua_win->ua_wins[user_rank]);
+#else
     /* Simply get 1 byte from start, it does not affect the result of other updates */
+    char buf[1];
     mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, ua_win->asp_ranks_in_ua[node_id], 0,
                          1, MPI_CHAR, ua_win->ua_wins[user_rank]);
+#endif
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

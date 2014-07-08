@@ -146,6 +146,7 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
     ASP_Win *win;
     void **user_bases = NULL;
     int i;
+    int mtcore_buf_size = 0;
 
     win = calloc(1, sizeof(ASP_Win));
     win->ua_wins = calloc(user_nprocs, sizeof(MPI_Win));
@@ -166,9 +167,16 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
 
     /* Allocate a shared window with local USER processes */
 
-    // -Allocate shared window in CHAR type
-    // (No local buffer, only need shared buffer on user processes)
-    mpi_errno = PMPI_Win_allocate_shared(0, 1, MPI_INFO_NULL,
+    /* -Allocate shared window in CHAR type
+     * (No local buffer, only need shared buffer on user processes)
+     */
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    /* Additional byte for granting locks on Helper 0 */
+    if (local_ua_rank == 0) {
+        mtcore_buf_size += sizeof(MTCORE_GRANT_LOCK_DATATYPE);
+    }
+#endif
+    mpi_errno = PMPI_Win_allocate_shared(mtcore_buf_size, 1, MPI_INFO_NULL,
                                          win->local_ua_comm, &win->base, &win->local_ua_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
