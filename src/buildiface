@@ -173,11 +173,13 @@ while (<INFILE>) {
             }
 
             # deal with [] structures for the last bit
-            if ($argbits[$#argbits] =~ /\[\]/) {
+            if (defined($argbits[$#argbits]) && $argbits[$#argbits] =~ /\[\]/) {
                 print CFILE "x$x\[\]";
             }
-            else {
-                print CFILE "$argbits[$#argbits] x$x";
+            else { 
+		if (defined($argbits[$#argbits])) {
+                	print CFILE "$argbits[$#argbits] x$x";
+		}
             }
 
 	    if ($comm_arg eq -1 && grep/MPI_Comm/, $arglist[$x]) {
