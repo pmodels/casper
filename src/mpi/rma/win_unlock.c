@@ -31,12 +31,14 @@ int MPI_Win_unlock(int rank, MPI_Win win)
             goto fn_fail;
 
         /* If target is itself, we need also release the lock of local rank  */
-        if (user_rank == rank) {
+        if (user_rank == rank && ua_win->is_self_locked) {
             int local_ua_rank;
             PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
             mpi_errno = PMPI_Win_unlock(local_ua_rank, ua_win->local_ua_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
+
+            ua_win->is_self_locked = 0;
         }
 
     }

@@ -57,6 +57,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+        ua_win->is_self_locked = 0;
+
         /* Lock local rank so that operations can be executed through local target */
         int local_ua_rank;
         PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
@@ -65,6 +67,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, local_ua_rank, 0, ua_win->local_ua_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+        ua_win->is_self_locked = 1;
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

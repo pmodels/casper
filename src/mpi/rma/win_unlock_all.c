@@ -44,12 +44,16 @@ int MPI_Win_unlock_all(MPI_Win win)
                 goto fn_fail;
         }
 
-        /* We need also release the lock of local rank */
-        int local_ua_rank;
-        PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
-        mpi_errno = PMPI_Win_unlock(local_ua_rank, ua_win->local_ua_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        if (ua_win->is_self_locked) {
+            /* We need also release the lock of local rank */
+            int local_ua_rank;
+            PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
+            mpi_errno = PMPI_Win_unlock(local_ua_rank, ua_win->local_ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+
+            ua_win->is_self_locked = 0;
+        }
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

@@ -47,7 +47,7 @@ static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
     int rank;
 
     PMPI_Comm_rank(ua_win->user_comm, &rank);
-    if (target_rank == rank) {
+    if (target_rank == rank && ua_win->is_self_locked) {
         /* If target is itself, we do not need translate it to any Helpers because
          * win_lock(self) will force lock(helper) to be granted so that it is safe
          * to send operations to the real target.

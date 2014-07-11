@@ -85,6 +85,7 @@ typedef struct MPIASP_Win {
     MPI_Aint grant_lock_asp_offset;     /* Hidden byte for granting lock on Helper0 */
 #endif
 
+    unsigned short is_self_locked;
 } MPIASP_Win;
 
 typedef struct ASP_Func_info {

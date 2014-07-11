@@ -32,6 +32,8 @@ int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+        ua_win->is_self_locked = 0;
+
         /* If target is itself, we need grant this lock before return.
          * However, the actual locked processes are the Helpers whose locks may be delayed by
          * most MPI implementation, thus we need a flush to force the lock to be granted.
@@ -50,6 +52,7 @@ int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
             mpi_errno = PMPI_Win_lock(lock_type, local_ua_rank, assert, ua_win->local_ua_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
+            ua_win->is_self_locked = 1;
         }
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they

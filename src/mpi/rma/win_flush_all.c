@@ -28,11 +28,13 @@ int MPI_Win_flush_all(MPI_Win win)
             target_ranks[i] = i;
         }
 
-        /* Flush shared window for local communication (self-target). */
-        MPIASP_DBG_PRINT("[%d]flush self(%d, local_ua_win)\n", user_rank, local_ua_rank);
-        mpi_errno = PMPI_Win_flush(local_ua_rank, ua_win->local_ua_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        if (ua_win->is_self_locked) {
+            /* Flush shared window for local communication (self-target). */
+            MPIASP_DBG_PRINT("[%d]flush self(%d, local_ua_win)\n", user_rank, local_ua_rank);
+            mpi_errno = PMPI_Win_flush(local_ua_rank, ua_win->local_ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
 
         mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks,
                                         target_node_ids);

@@ -18,7 +18,7 @@ int MPI_Win_flush(int rank, MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        if (user_rank == rank) {
+        if (user_rank == rank && ua_win->is_self_locked) {
             PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
 
             /* If target is itself, only flush the target on shared window.
