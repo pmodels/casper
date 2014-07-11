@@ -7,5 +7,6 @@ noinst_PROGRAMS = \
 	mtcore_lockall_overhead
 	
 mtcore_lockall_overhead_SOURCES= lockall_overhead.c
-mtcore_lockall_overhead_LDFLAGS= -L$(libdir) -lasp -O2 -DASP
-lockall_overhead_LDFLAGS= -O2
+mtcore_lockall_overhead_LDFLAGS= -L$(libdir) -lasp 
+mtcore_lockall_overhead_CFLAGS= -O2 -DASP
+lockall_overhead_CFLAGS= -O2
