@@ -48,6 +48,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
                 goto fn_fail;
         }
 
+        ua_win->is_self_lock_granted = 0;
+
         /* We need grant the local lock (self-target) before return.
          * However, the actual locked processes are the Helpers whose locks may be delayed by
          * most MPI implementation, thus we need a flush to force the lock to be granted.
@@ -59,15 +61,18 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
         ua_win->is_self_locked = 0;
 
-        /* Lock local rank so that operations can be executed through local target */
-        int local_ua_rank;
-        PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
-        MPIASP_DBG_PRINT("[%d]lock self(%d, local_ua_win)\n", user_rank, local_ua_rank);
+        if (ua_win->is_self_lock_granted) {
+            /* Lock local rank so that operations can be executed through local target.
+             * Need grant lock on helper in advance due to permission check */
+            int local_ua_rank;
+            PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
+            MPIASP_DBG_PRINT("[%d]lock self(%d, local_ua_win)\n", user_rank, local_ua_rank);
 
-        mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, local_ua_rank, 0, ua_win->local_ua_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        ua_win->is_self_locked = 1;
+            mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, local_ua_rank, 0, ua_win->local_ua_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+            ua_win->is_self_locked = 1;
+        }
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
