@@ -62,4 +62,5 @@ if test $enable_weak_symbols = "yes" ; then
 fi
 
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([test/Makefile])
 AC_OUTPUT
