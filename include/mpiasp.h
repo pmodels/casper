@@ -257,10 +257,9 @@ static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *n
 static inline int MPIASP_Win_grant_local_lock(int lock_type, int assert, MPIASP_Win * ua_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, node_id, local_ua_rank;
+    int user_rank, node_id;
 
     PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-    PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
     node_id = MPIASP_ALL_NODE_IDS[MPIASP_MY_RANK_IN_WORLD];
 
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
@@ -281,15 +280,8 @@ static inline int MPIASP_Win_grant_local_lock(int lock_type, int assert, MPIASP_
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MPIASP_DBG_PRINT("[%d]grant local lock(Helper(%d), ua_wins[%d]) and lock "
-                     "self(%d, local_ua_win)\n", user_rank, ua_win->asp_ranks_in_ua[node_id],
-                     user_rank, local_ua_rank);
-
-    /* Lock local rank so that operations can be executed through local target */
-    mpi_errno = PMPI_Win_lock(lock_type, local_ua_rank, assert, ua_win->local_ua_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
+    MPIASP_DBG_PRINT("[%d]grant local lock(Helper(%d), ua_wins[%d])\n", user_rank,
+                     ua_win->asp_ranks_in_ua[node_id], user_rank);
   fn_exit:
     return mpi_errno;
 
