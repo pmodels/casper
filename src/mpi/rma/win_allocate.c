@@ -255,6 +255,22 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    /* Check if we are allowed to ignore force-lock for local target,
+     * require force-lock by default. */
+    ua_win->is_self_lock_grant_required = 1;
+    if (info != MPI_INFO_NULL) {
+        int no_local_load_store_flag = 0;
+        char no_local_load_store_value[MPI_MAX_INFO_VAL + 1];
+        PMPI_Info_get(info, "no_local_load_store", MPI_MAX_INFO_VAL,
+                      no_local_load_store_value, &no_local_load_store_flag);
+        if (no_local_load_store_flag == 1) {
+            if (!strncmp(no_local_load_store_value, "true", strlen("true")))
+                ua_win->is_self_lock_grant_required = 0;
+        }
+    }
+    MPIASP_DBG_PRINT("[%d] ua_win->is_self_lock_grant_required %d\n", user_rank,
+                     ua_win->is_self_lock_grant_required);
+
     /* Notify Helper start */
     mpi_errno = MPIASP_Tag_format((int) user_comm, &ua_tag);
     if (mpi_errno != MPI_SUCCESS)

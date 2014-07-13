@@ -85,7 +85,7 @@ typedef struct MPIASP_Win {
     MPI_Aint grant_lock_asp_offset;     /* Hidden byte for granting lock on Helper0 */
 #endif
 
-    unsigned short is_self_lock_granted;
+    unsigned short is_self_lock_grant_required;
     unsigned short is_self_locked;
 } MPIASP_Win;
 
@@ -281,8 +281,6 @@ static inline int MPIASP_Win_grant_local_lock(int lock_type, int assert, MPIASP_
     mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[node_id], ua_win->ua_wins[user_rank]);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-
-    ua_win->is_self_lock_granted = 1;
 
     MPIASP_DBG_PRINT("[%d]grant local lock(Helper(%d), ua_wins[%d])\n", user_rank,
                      ua_win->asp_ranks_in_ua[node_id], user_rank);
