@@ -71,20 +71,16 @@ static int run_test()
     /* It is wrong to load/store local winbuf with no_local_load_store */
     double result = 0;
     MPI_Get(&result, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
+    MPI_Win_unlock(rank, win);
+
     if (result != sum) {
         fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, i, result, sum);
         errs += 1;
     }
-
-    MPI_Win_unlock(rank, win);
 #endif
 
     if (rank == 0) {
-#ifdef ASP
-        fprintf(stdout, "asp: nprocs %d total_time %lf\n", nprocs, t_total);
-#else
-        fprintf(stdout, "orig: nprocs %d total_time %lf\n", nprocs, t_total);
-#endif
+        fprintf(stdout, "asp-nols: nprocs %d total_time %lf\n", nprocs, t_total);
     }
 
     return errs;
