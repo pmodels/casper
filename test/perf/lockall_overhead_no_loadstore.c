@@ -67,11 +67,15 @@ static int run_test()
      * doesn't wait for target completion in exclusive lock */
     MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
     sum = 1.0 * ITER;
-    if (winbuf[0] != sum) {
-        fprintf(stderr, "[%d]computation error : winbuf[%d] %.2lf != %.2lf\n",
-                rank, i, winbuf[0], sum);
+
+    /* It is wrong to load/store local winbuf with no_local_load_store */
+    double result = 0;
+    MPI_Get(&result, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
+    if (result != sum) {
+        fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, i, result, sum);
         errs += 1;
     }
+
     MPI_Win_unlock(rank, win);
 #endif
 
@@ -89,6 +93,7 @@ static int run_test()
 int main(int argc, char *argv[])
 {
     int errs;
+    MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -99,8 +104,11 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
+    MPI_Info_create(&win_info);
+    MPI_Info_set(win_info, (char *) "no_local_load_store", (char *) "true");
+
     locbuf[0] = (rank + 1) * 1.0;
-    MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
+    MPI_Win_allocate(sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
 
     errs = run_test();
 
