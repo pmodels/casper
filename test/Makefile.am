@@ -14,7 +14,9 @@ noinst_PROGRAMS = \
 	getacc	\
 	mtcore_getacc	\
 	self_acclock	\
-	mtcore_self_acclock
+	mtcore_self_acclock	\
+	no_loadstore	\
+	mtcore_no_loadstore
 	
 mtcore_get_SOURCES= get.c
 mtcore_get_LDFLAGS= -L$(libdir) -lasp
@@ -28,3 +30,5 @@ mtcore_getacc_SOURCES= getacc.c
 mtcore_getacc_LDFLAGS= -L$(libdir) -lasp
 mtcore_self_acclock_SOURCES= self_acclock.c
 mtcore_self_acclock_LDFLAGS= -L$(libdir) -lasp
+mtcore_no_loadstore_SOURCES= no_loadstore.c
+mtcore_no_loadstore_LDFLAGS= -L$(libdir) -lasp
