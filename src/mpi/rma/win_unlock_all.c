@@ -6,7 +6,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 {
     MPIASP_Win *ua_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs, local_ua_nprocs;
+    int user_rank, user_nprocs;
     int i;
     int *target_node_ids = NULL;
     int *target_ranks = NULL;
@@ -19,9 +19,22 @@ int MPI_Win_unlock_all(MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        PMPI_Comm_size(ua_win->local_ua_comm, &local_ua_nprocs);
         PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
 
+        /* Unlock all Helpers in corresponding ua-window of each target process. */
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+
+        /* Optimization for MPI implementations that have optimized lock_all.
+         * However, user should be noted that, if MPI implementation issues lock messages
+         * for every target even if it does not have any operation, this optimization
+         * could lose performance and even lose asynchronous! */
+        for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
+            MPIASP_DBG_PRINT("[%d]unlock_all(ua_wins[%d])\n", user_rank, i);
+            mpi_errno = PMPI_Win_unlock_all(ua_win->ua_wins[i]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+#else
         target_ranks = calloc(user_nprocs, sizeof(int));
         target_node_ids = calloc(user_nprocs, sizeof(int));
         for (i = 0; i < user_nprocs; i++) {
@@ -33,7 +46,6 @@ int MPI_Win_unlock_all(MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        /* Unlock all Helpers in corresponding ua-window of each target process. */
         for (i = 0; i < user_nprocs; i++) {
             int target_local_rank = ua_win->local_user_ranks[i];
 
@@ -45,7 +57,7 @@ int MPI_Win_unlock_all(MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-
+#endif
         if (ua_win->is_self_locked) {
             /* We need also release the lock of local rank */
             int local_ua_rank;
@@ -67,10 +79,12 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 
   fn_exit:
+#ifndef MTCORE_ENABLE_SYNC_ALL_OPT
     if (target_ranks)
         free(target_ranks);
     if (target_node_ids)
         free(target_node_ids);
+#endif
 
     return mpi_errno;
 

@@ -22,12 +22,6 @@ int MPI_Win_flush_all(MPI_Win win)
         PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
         PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
 
-        target_ranks = calloc(user_nprocs, sizeof(int));
-        target_node_ids = calloc(user_nprocs, sizeof(int));
-        for (i = 0; i < user_nprocs; i++) {
-            target_ranks[i] = i;
-        }
-
         if (ua_win->is_self_locked) {
             /* Flush shared window for local communication (self-target). */
             MPIASP_DBG_PRINT("[%d]flush self(%d, local_ua_win)\n", user_rank, local_ua_rank);
@@ -36,16 +30,33 @@ int MPI_Win_flush_all(MPI_Win win)
                 goto fn_fail;
         }
 
+        /* Flush all Helpers in corresponding ua-window of each target process.. */
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+
+        /* Optimization for MPI implementations that have optimized lock_all.
+         * However, user should be noted that, if MPI implementation issues lock messages
+         * for every target even if it does not have any operation, this optimization
+         * could lose performance and even lose asynchronous! */
+        for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
+            MPIASP_DBG_PRINT("[%d]flush_all(ua_wins[%d])\n", user_rank, i);
+            mpi_errno = PMPI_Win_flush_all(ua_win->ua_wins[i]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+#else
+        target_ranks = calloc(user_nprocs, sizeof(int));
+        target_node_ids = calloc(user_nprocs, sizeof(int));
+        for (i = 0; i < user_nprocs; i++) {
+            target_ranks[i] = i;
+        }
+
         mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks,
                                         target_node_ids);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        /* Flush all Helpers in corresponding ua-window of each target process.
-         *
-         * We cannot flush other user processes, otherwise it cannot be guaranteed
-         * to be fully asynchronous.
-         */
+        /* We do not flush other user processes, otherwise it cannot be guaranteed
+         * to be fully asynchronous. */
         for (i = 0; i < user_nprocs; i++) {
             int target_local_rank = ua_win->local_user_ranks[i];
 
@@ -55,6 +66,7 @@ int MPI_Win_flush_all(MPI_Win win)
             mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[target_node_ids[i]],
                                        ua_win->ua_wins[target_local_rank]);
         }
+#endif
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
@@ -64,10 +76,12 @@ int MPI_Win_flush_all(MPI_Win win)
     }
 
   fn_exit:
+#ifndef MTCORE_ENABLE_SYNC_ALL_OPT
     if (target_ranks)
         free(target_ranks);
     if (target_node_ids)
         free(target_node_ids);
+#endif
 
     return mpi_errno;
 

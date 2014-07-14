@@ -21,6 +21,20 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
         PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
 
+        /* Lock all Helpers in corresponding ua-window of each target process. */
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+
+        /* Optimization for MPI implementations that have optimized lock_all.
+         * However, user should be noted that, if MPI implementation issues lock messages
+         * for every target even if it does not have any operation, this optimization
+         * could lose performance and even lose asynchronous! */
+        for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
+            MPIASP_DBG_PRINT("[%d]lock_all(ua_wins[%d])\n", user_rank, i);
+            mpi_errno = PMPI_Win_lock_all(assert, ua_win->ua_wins[i]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+#else
         target_ranks = calloc(user_nprocs, sizeof(int));
         target_node_ids = calloc(user_nprocs, sizeof(int));
         for (i = 0; i < user_nprocs; i++) {
@@ -32,11 +46,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        /* Lock all Helpers in corresponding ua-window of each target process.
-         *
-         * We cannot lock other user processes, otherwise it cannot be guaranteed
-         * to be fully asynchronous.
-         */
+        /* We do not lock other user processes, otherwise it cannot be guaranteed
+         * to be fully asynchronous. */
         for (i = 0; i < user_nprocs; i++) {
             int target_local_rank = ua_win->local_user_ranks[i];
 
@@ -48,6 +59,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+#endif
 
         ua_win->is_self_locked = 0;
 
@@ -83,10 +95,12 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 
   fn_exit:
+#ifndef MTCORE_ENABLE_SYNC_ALL_OPT
     if (target_ranks)
         free(target_ranks);
     if (target_node_ids)
         free(target_node_ids);
+#endif
 
     return mpi_errno;
 
