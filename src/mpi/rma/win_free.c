@@ -47,7 +47,7 @@ int MPI_Win_free(MPI_Win * win)
          */
         if (ua_win->ua_wins) {
             MPIASP_DBG_PRINT("[%d] \t free ua windows\n", user_rank);
-            for (i = 0; i < user_nprocs; i++) {
+            for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
                 if (ua_win->ua_wins[i]) {
                     mpi_errno = PMPI_Win_free(&ua_win->ua_wins[i]);
                     if (mpi_errno != MPI_SUCCESS)
