@@ -30,7 +30,7 @@ int MPI_Win_free(MPI_Win * win)
         MPIASP_Func_start(MPIASP_FUNC_WIN_FREE, user_nprocs, user_local_nprocs, ua_tag,
                           ua_win->local_user_comm);
 
-        // Notify the handle of target ASP win
+        /* Notify the handle of target ASP win */
         if (user_local_rank == 0) {
             mpi_errno = PMPI_Send(&ua_win->asp_win_handle, 1, MPI_UNSIGNED_LONG,
                                   MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
@@ -103,7 +103,7 @@ int MPI_Win_free(MPI_Win * win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        // ua_win->user_comm is created by user, will be freed by user.
+        /* ua_win->user_comm is created by user, will be freed by user. */
 
         if (ua_win->disp_units)
             free(ua_win->disp_units);

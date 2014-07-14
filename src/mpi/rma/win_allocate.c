@@ -19,15 +19,15 @@ static int gather_ranks(MPIASP_Win * win, int *user_ranks_in_world, int *num_hel
     PMPI_Comm_size(win->user_comm, &user_nprocs);
     PMPI_Comm_rank(win->user_comm, &user_rank);
 
-    // Gather user world ranks and user_world ranks together
+    /* Gather user world ranks and user_world ranks together */
     PMPI_Comm_rank(MPI_COMM_WORLD, &user_ranks_in_world[user_rank]);
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, user_ranks_in_world, 1, MPI_INT,
                                win->user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    // Get helper ranks for all USER processes
-    // TODO: support multiple helpers
+    /* Get helper ranks for all USER processes
+     * TODO: support multiple helpers */
     tmp_num_helpers = 0;
     for (i = 0; i < user_nprocs; i++) {
         tmp_world_rank = user_ranks_in_world[i];
@@ -61,12 +61,12 @@ static int create_ua_comm(int *user_ranks_in_world, int num_helpers, int *helper
     PMPI_Comm_rank(win->user_comm, &user_rank);
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
 
-    // maximum amount equals to world size
+    /* maximum amount equals to world size */
     ua_ranks_in_world = calloc(world_nprocs, sizeof(int));
     if (ua_ranks_in_world == NULL)
         goto fn_fail;
 
-    // -Create ua communicator including all USER processes and Helper processes.
+    /* -Create ua communicator including all USER processes and Helper processes. */
     num_ua_ranks = user_nprocs + num_helpers;
     MPIASP_Assert(num_ua_ranks <= world_nprocs);
     memcpy(ua_ranks_in_world, user_ranks_in_world, user_nprocs * sizeof(int));
@@ -110,7 +110,7 @@ static int create_communicators(MPIASP_Win * ua_win, int ua_tag)
     func_param_size = user_nprocs + max_num_helpers + 1;
     func_params = calloc(func_param_size, sizeof(int));
 
-    // Optimization for user world communicator
+    /* Optimization for user world communicator */
     if (ua_win->user_comm == MPIASP_COMM_USER_WORLD) {
         /* Set parameters to local Helpers
          *  [0]: is_comm_user_world
@@ -130,7 +130,7 @@ static int create_communicators(MPIASP_Win * ua_win, int ua_tag)
         PMPI_Comm_group(ua_win->local_ua_comm, &ua_win->local_ua_group);
         PMPI_Comm_group(ua_win->ua_comm, &ua_win->ua_group);
 
-        // -Get all Helper rank in ua communicator */
+        /* -Get all Helper rank in ua communicator */
         num_helpers = MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES;
         memcpy(ua_win->asp_ranks_in_ua, MPIASP_ALL_ASP_IN_COMM_WORLD, sizeof(int) * num_helpers);
     }
@@ -296,13 +296,13 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Allocate a shared window with local Helpers */
 
-    // -Allocate shared window
+    /* -Allocate shared window */
     mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, info, ua_win->local_ua_comm,
                                          &ua_win->base, &ua_win->local_ua_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    // -Gather size from all local user processes and calculate the offset of local shared buffer
+    /* -Gather size from all local user processes and calculate the offset of local shared buffer */
     user_local_sizes[user_local_rank] = size;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                                user_local_sizes, 1, MPI_AINT, ua_win->local_user_comm);
@@ -318,14 +318,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     ua_win->grant_lock_asp_offset = 0;
 #endif
     while (i < user_local_rank) {
-        ua_win->base_asp_offset[user_rank] += user_local_sizes[i];      // size in bytes
+        ua_win->base_asp_offset[user_rank] += user_local_sizes[i];      /* size in bytes */
         i++;
     }
     MPIASP_DBG_PRINT("[%d] local base_asp_offset = 0x%lx, base=%p\n", user_rank,
                      ua_win->base_asp_offset[user_rank], ua_win->base);
 
-    // -Receive the address of all the shared user buffers on Helper processes
-    // TODO: support multiple helpers
+    /* -Receive the address of all the shared user buffers on Helper processes
+     * TODO: support multiple helpers */
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, ua_win->base_asp_offset, 1,
                                MPI_AINT, user_comm);
     if (mpi_errno != MPI_SUCCESS)
@@ -340,8 +340,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Create windows using shared buffers. */
 
-    // -Create ua windows
-    //  Every User process has a dedicated window used for permission check and accessing Helpers
+    /* -Create ua windows.
+     *  Every User process has a dedicated window used for permission check and accessing Helpers */
     for (i = 0; i < user_nprocs; i++) {
         mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
                                     ua_win->ua_comm, &ua_win->ua_wins[i]);
@@ -351,7 +351,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         MPIASP_DBG_PRINT("[%d] Created ua windows[%d] 0x%x\n", user_rank, i, ua_win->ua_wins[i]);
     }
 
-    // - Only expose user window in order to hide helpers in all non-wrapped window functions
+    /* - Only expose user window in order to hide helpers in all non-wrapped window functions */
     mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
                                 ua_win->user_comm, &ua_win->win);
     if (mpi_errno != MPI_SUCCESS)

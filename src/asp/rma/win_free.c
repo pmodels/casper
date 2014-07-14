@@ -15,7 +15,7 @@ int ASP_Win_free(int user_local_root, int user_nprocs, int user_local_nprocs, in
     MPI_Status stat;
     int i;
 
-    // Receive the handle of ASP win
+    /* Receive the handle of ASP win */
     mpi_errno = PMPI_Recv(&asp_win_handle, 1, MPI_UNSIGNED_LONG,
                           user_local_root, user_tag, MPIASP_COMM_LOCAL, &stat);
     if (mpi_errno != 0)

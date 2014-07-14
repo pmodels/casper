@@ -7,7 +7,7 @@
 #include "mpiasp.h"
 #include "hash_table.h"
 
-//#define ASP_DEBUG
+/* #define ASP_DEBUG */
 #ifdef ASP_DEBUG
 #define ASP_DBG_PRINT(str, ...) do { \
     fprintf(stdout, "[ASP][N-%d]"str, MPIASP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
@@ -27,11 +27,11 @@
 typedef struct ASP_Win {
     MPI_Aint *user_base_addrs_in_local;
 
-    // communicator including local processe and ASP
+    /* communicator including local processe and ASP */
     MPI_Comm local_ua_comm;
     MPI_Win local_ua_win;
 
-    // communicator including all the user processes and ASP
+    /* communicator including all the user processes and ASP */
     MPI_Comm ua_comm;
 
     void *base;

@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 
     locbuf[0] = (rank + 1) * 1.0;
 
-    // size in byte
+    /* size in byte */
     MPI_Win_allocate(sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
     winbuf[0] = 0.0;
 

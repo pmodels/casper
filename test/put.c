@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define SLEEP_TIME 100  // 100us
+#define SLEEP_TIME 100  /* 100us */
 #define NUM_OPS 2
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
@@ -64,7 +64,7 @@ static int run_test(int nop)
             for (i = 1; i < nop; i++) {
                 MPI_Put(&locbuf[dst + i * nprocs], 1, MPI_DOUBLE, dst, i, 1, MPI_DOUBLE, win);
 #ifdef MVA
-                MPI_Win_flush(dst, win);        // use it to poke progress in order to finish local CQEs
+                MPI_Win_flush(dst, win);        /* use it to poke progress in order to finish local CQEs */
 #endif
             }
         }
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
         locbuf[i] = 1.0 * i;
     }
 
-    // size in byte
+    /* size in byte */
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), MPI_INFO_NULL,
                      MPI_COMM_WORLD, &winbuf, &win);
 

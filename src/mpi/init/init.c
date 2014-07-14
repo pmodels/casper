@@ -10,8 +10,8 @@ MPI_Comm MPIASP_COMM_USER_ROOTS = MPI_COMM_NULL;
 MPI_Group MPIASP_GROUP_WORLD = MPI_GROUP_NULL;
 MPI_Group MPIASP_GROUP_LOCAL = MPI_GROUP_NULL;
 
-//MPI_Comm MPIASP_COMM_ASP_LOCAL = MPI_COMM_NULL;
-//MPI_Comm MPIASP_COMM_ASP_WORLD = MPI_COMM_NULL;
+/* MPI_Comm MPIASP_COMM_ASP_LOCAL = MPI_COMM_NULL; */
+/* MPI_Comm MPIASP_COMM_ASP_WORLD = MPI_COMM_NULL; */
 
 int MPIASP_NUM_ASP_IN_LOCAL = 0;
 int MPIASP_RANK_IN_COMM_WORLD = -1;
@@ -20,7 +20,7 @@ int *MPIASP_ALL_ASP_IN_COMM_WORLD = NULL;
 int MPIASP_MY_NODE_ID = -1;
 int MPIASP_NUM_NODES = 0;
 int *MPIASP_ALL_NODE_IDS = NULL;
-int MPIASP_MY_RANK_IN_WORLD = -1;       // used in debug
+int MPIASP_MY_RANK_IN_WORLD = -1;
 
 hashtable_t *ua_win_ht;
 
@@ -115,7 +115,7 @@ int MPI_Init(int *argc, char ***argv)
 
     /* Exchange node id and Helper ranks among world processes */
     tmp_node_helper_gather_buf[rank * 2] = MPIASP_MY_NODE_ID;
-    // TODO: support multiple helpers
+    /* TODO: support multiple helpers */
     tmp_node_helper_gather_buf[rank * 2 + 1] = MPIASP_RANK_IN_COMM_WORLD;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                                tmp_node_helper_gather_buf, 2, MPI_INT, MPI_COMM_WORLD);
@@ -138,7 +138,7 @@ int MPI_Init(int *argc, char ***argv)
     PMPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-    // USER processes
+    /* USER processes */
     if (local_rank >= MPIASP_NUM_ASP_IN_LOCAL) {
         MPIASP_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
                          "%d/%d in user local, asp_rank_in_world %d, node_id %d\n",
@@ -150,7 +150,7 @@ int MPI_Init(int *argc, char ***argv)
         if (mpi_errno != 0)
             goto fn_fail;
     }
-    //ASP processes
+    /* ASP processes */
     /* TODO: ASP process should not run user program */
     else {
         MPIASP_DBG_PRINT("I am helper, %d/%d in world, %d/%d in local, node_id %d\n",
@@ -192,7 +192,7 @@ int MPI_Init(int *argc, char ***argv)
     if (MPIASP_ALL_ASP_IN_COMM_WORLD)
         free(MPIASP_ALL_ASP_IN_COMM_WORLD);
 
-    // Reset global variables
+    /* Reset global variables */
     MPIASP_COMM_USER_WORLD = MPI_COMM_NULL;
     MPIASP_COMM_USER_LOCAL = MPI_COMM_NULL;
     MPIASP_COMM_LOCAL = MPI_COMM_NULL;

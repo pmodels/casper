@@ -23,18 +23,18 @@ static int create_ua_comm(int user_nprocs, int *user_ranks_in_world, int num_hel
 
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
 
-    // maximum amount equals to world size
+    /* maximum amount equals to world size */
     ua_ranks_in_world = calloc(world_nprocs, sizeof(int));
     if (ua_ranks_in_world == NULL)
         goto fn_fail;
 
-    // -Create ua communicator including all USER processes and Helper processes.
+    /* -Create ua communicator including all USER processes and Helper processes. */
     num_ua_ranks = user_nprocs + num_helpers;
     ASP_Assert(num_ua_ranks <= world_nprocs);
     memcpy(ua_ranks_in_world, user_ranks_in_world, user_nprocs * sizeof(int));
     memcpy(&ua_ranks_in_world[user_nprocs], helper_ranks_in_world, num_helpers * sizeof(int));
 
-    // -Create ua communicator.
+    /* -Create ua communicator. */
     PMPI_Group_incl(MPIASP_GROUP_WORLD, num_ua_ranks, ua_ranks_in_world, &ua_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, ua_group, 0, &win->ua_comm);
     if (mpi_errno != MPI_SUCCESS)
@@ -182,7 +182,7 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
         goto fn_fail;
     ASP_DBG_PRINT(" Created local_ua_win, base=%p\n", win->base);
 
-    // -Query address of user buffers and send to USER processes
+    /* -Query address of user buffers and send to USER processes */
     user_bases = calloc(local_ua_nprocs, sizeof(void *));
     win->user_base_addrs_in_local = calloc(local_ua_nprocs, sizeof(MPI_Aint));
 
@@ -198,7 +198,7 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
                       win->user_base_addrs_in_local[dst],
                       (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
 
-        size += r_size; // size in byte
+        size += r_size; /* size in byte */
     }
 
     /* Create ua windows including all USER processes and ASP processes

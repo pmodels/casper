@@ -21,7 +21,7 @@
 #  define likely(x_)   (x_)
 #endif
 
-//#define DEBUG
+/* #define DEBUG */
 #ifdef DEBUG
 #define MPIASP_DBG_PRINT(str...) do {fprintf(stdout, "[MPIASP]"str);fflush(stdout);} while (0)
 #else
@@ -57,19 +57,19 @@ typedef struct MPIASP_Win {
     MPI_Aint *base_asp_offset;
     int *disp_units;
 
-    // communicator including local process and ASP
+    /* communicator including local process and ASP */
     MPI_Comm local_ua_comm;
     MPI_Group local_ua_group;
     MPI_Win local_ua_win;
     ASP_Win_params *local_ua_win_param;
 
-    // communicator including all the user processes and ASP
+    /* communicator including all the user processes and ASP */
     MPI_Comm ua_comm;
     MPI_Group ua_group;
     int *asp_ranks_in_ua;
-    MPI_Win *ua_wins;           // every target has separate window for permission control
+    MPI_Win *ua_wins;           /* every target has separate window for permission control */
 
-    // communicator including all the user processes
+    /* communicator including all the user processes */
     MPI_Comm user_comm;
     MPI_Group user_group;
 
@@ -188,7 +188,7 @@ static inline int MPIASP_Tag_format(int org_tag, int *tag)
     /*
      * TODO: is there a better solution to get a unique tag ?
      */
-    // Invalid tag ERROR If ((tag) < 0 || (tag) > MPIR_Process.attrs.tag_ub))
+    /* Invalid tag ERROR If ((tag) < 0 || (tag) > MPIR_Process.attrs.tag_ub)) */
     if (org_tag < 0)
         org_tag = (~org_tag + 1);
 
@@ -242,7 +242,7 @@ static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *n
     int target_node_id = -1;
     *is_shared = 0;
 
-    // If target is in the same node, use shared window instead
+    /* If target is in the same node, use shared window instead */
     mpi_errno = MPIASP_Get_node_ids(group, 1, &target_rank, &target_node_id);
     if (mpi_errno != MPI_SUCCESS)
         return mpi_errno;

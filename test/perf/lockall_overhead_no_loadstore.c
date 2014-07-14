@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <mpi.h>
 
-//#define DEBUG
+/* #define DEBUG */
 #define CHECK
 #define ITER_S 1000
 #define ITER_L 500

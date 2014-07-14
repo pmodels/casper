@@ -14,7 +14,7 @@ int run_asp_main(void)
     init_asp_win_table();
 
     /*TODO: init in user app or here ? */
-    //    MPI_Init(&argc, &argv);
+    /*    MPI_Init(&argc, &argv); */
     while (1) {
         mpi_errno = ASP_Func_start(&FUNC, &user_local_root, &user_nprocs, &user_local_nprocs,
                                    &user_tag);
