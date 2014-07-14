@@ -35,11 +35,13 @@ int MPI_Win_unlock_all(MPI_Win win)
 
         /* Unlock all Helpers in corresponding ua-window of each target process. */
         for (i = 0; i < user_nprocs; i++) {
+            int target_local_rank = ua_win->local_user_ranks[i];
+
             MPIASP_DBG_PRINT("[%d]unlock(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]], i, i,
-                             target_node_ids[i]);
-            mpi_errno =
-                PMPI_Win_unlock(ua_win->asp_ranks_in_ua[target_node_ids[i]], ua_win->ua_wins[i]);
+                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]],
+                             target_local_rank, i, target_node_ids[i]);
+            mpi_errno = PMPI_Win_unlock(ua_win->asp_ranks_in_ua[target_node_ids[i]],
+                                        ua_win->ua_wins[target_local_rank]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -48,6 +50,8 @@ int MPI_Win_unlock_all(MPI_Win win)
             /* We need also release the lock of local rank */
             int local_ua_rank;
             PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
+
+            MPIASP_DBG_PRINT("[%d]unlock self(%d, local_ua_win)\n", user_rank, local_ua_rank);
             mpi_errno = PMPI_Win_unlock(local_ua_rank, ua_win->local_ua_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -67,6 +71,7 @@ int MPI_Win_unlock_all(MPI_Win win)
         free(target_ranks);
     if (target_node_ids)
         free(target_node_ids);
+
     return mpi_errno;
 
   fn_fail:

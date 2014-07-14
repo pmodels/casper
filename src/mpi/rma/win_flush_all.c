@@ -47,11 +47,13 @@ int MPI_Win_flush_all(MPI_Win win)
          * to be fully asynchronous.
          */
         for (i = 0; i < user_nprocs; i++) {
+            int target_local_rank = ua_win->local_user_ranks[i];
+
             MPIASP_DBG_PRINT("[%d]flush(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]], i, i,
-                             target_node_ids[i]);
+                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]],
+                             target_local_rank, i, target_node_ids[i]);
             mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[target_node_ids[i]],
-                                       ua_win->ua_wins[i]);
+                                       ua_win->ua_wins[target_local_rank]);
         }
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
@@ -66,6 +68,7 @@ int MPI_Win_flush_all(MPI_Win win)
         free(target_ranks);
     if (target_node_ids)
         free(target_node_ids);
+
     return mpi_errno;
 
   fn_fail:

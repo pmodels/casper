@@ -38,12 +38,13 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
          * to be fully asynchronous.
          */
         for (i = 0; i < user_nprocs; i++) {
+            int target_local_rank = ua_win->local_user_ranks[i];
+
             MPIASP_DBG_PRINT("[%d]lock(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]], i, i,
-                             target_node_ids[i]);
-            mpi_errno =
-                PMPI_Win_lock(MPI_LOCK_SHARED, ua_win->asp_ranks_in_ua[target_node_ids[i]], assert,
-                              ua_win->ua_wins[i]);
+                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]],
+                             target_local_rank, i, target_node_ids[i]);
+            mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ua_win->asp_ranks_in_ua[target_node_ids[i]],
+                                      assert, ua_win->ua_wins[target_local_rank]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -86,6 +87,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         free(target_ranks);
     if (target_node_ids)
         free(target_node_ids);
+
     return mpi_errno;
 
   fn_fail:

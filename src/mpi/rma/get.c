@@ -65,6 +65,8 @@ static int MPIASP_Get_impl(void *origin_addr, int origin_count,
          * require it. Some implementation may use network even for shared targets for
          * shorter CPU occupancy.
          */
+        int target_local_rank = ua_win->local_user_ranks[target_rank];
+
         mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
@@ -75,15 +77,16 @@ static int MPIASP_Get_impl(void *origin_addr, int origin_count,
         /* Issue operation to the helper process in corresponding ua-window of target process. */
         mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
                              ua_win->asp_ranks_in_ua[target_node_id], ua_target_disp,
-                             target_count, target_datatype, ua_win->ua_wins[target_rank]);
+                             target_count, target_datatype, ua_win->ua_wins[target_local_rank]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        MPIASP_DBG_PRINT("MPIASP Get from asp %d instead of target %d(node_id %d), "
-                         "0x%lx(0x%lx + %d * %ld)\n",
-                         ua_win->asp_ranks_in_ua[target_node_id], target_rank, target_node_id,
-                         ua_target_disp, ua_win->base_asp_offset[target_rank],
-                         ua_win->disp_units[target_rank], target_disp);
+        MPIASP_DBG_PRINT("MPIASP Get from (helper %d, win[%d]) instead of "
+                         "target %d(node_id %d), 0x%lx(0x%lx + %d * %ld)\n",
+                         ua_win->asp_ranks_in_ua[target_node_id], target_local_rank,
+                         target_rank, target_node_id, ua_target_disp,
+                         ua_win->base_asp_offset[target_rank], ua_win->disp_units[target_rank],
+                         target_disp);
     }
   fn_exit:
     return mpi_errno;

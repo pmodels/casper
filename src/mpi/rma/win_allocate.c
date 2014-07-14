@@ -19,7 +19,7 @@ static int gather_ranks(MPIASP_Win * win, int *user_ranks_in_world, int *num_hel
     PMPI_Comm_size(win->user_comm, &user_nprocs);
     PMPI_Comm_rank(win->user_comm, &user_rank);
 
-    /* Gather user world ranks and user_world ranks together */
+    /* Gather users' world ranks */
     PMPI_Comm_rank(MPI_COMM_WORLD, &user_ranks_in_world[user_rank]);
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, user_ranks_in_world, 1, MPI_INT,
                                win->user_comm);
@@ -107,15 +107,17 @@ static int create_communicators(MPIASP_Win * ua_win, int ua_tag)
 
     PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
     max_num_helpers = MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES;
-    func_param_size = user_nprocs + max_num_helpers + 1;
+    func_param_size = user_nprocs + max_num_helpers + 3;
     func_params = calloc(func_param_size, sizeof(int));
 
     /* Optimization for user world communicator */
     if (ua_win->user_comm == MPIASP_COMM_USER_WORLD) {
         /* Set parameters to local Helpers
          *  [0]: is_comm_user_world
+         *  [1]: max_local_user_nprocs
          */
         func_params[0] = 1;
+        func_params[1] = ua_win->max_local_user_nprocs;
         MPIASP_Func_set_param((char *) func_params, sizeof(int) * func_param_size, ua_tag,
                               ua_win->local_user_comm);
         if (mpi_errno != MPI_SUCCESS)
@@ -145,14 +147,16 @@ static int create_communicators(MPIASP_Win * ua_win, int ua_tag)
 
         /* Set parameters to local Helpers
          *  [0]: is_comm_user_world
-         *  [1]: num_helpers
-         *  [2:N+1]: user ranks in comm_world
-         *  [N+2:]: helper ranks in comm_world
+         *  [1]: max_local_user_nprocs
+         *  [2]: num_helpers
+         *  [3:N+2]: user ranks in comm_world
+         *  [N+3:]: helper ranks in comm_world
          */
         int pidx;
         func_params[0] = 0;
-        func_params[1] = num_helpers;
-        pidx = 2;
+        func_params[1] = ua_win->max_local_user_nprocs;
+        func_params[2] = num_helpers;
+        pidx = 3;
         memcpy(&func_params[pidx], user_ranks_in_world, user_nprocs * sizeof(int));
         pidx += user_nprocs;
         memcpy(&func_params[pidx], helper_ranks_in_world, num_helpers * sizeof(int));
@@ -241,17 +245,30 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_size(ua_win->local_user_comm, &user_local_nprocs);
     PMPI_Comm_rank(ua_win->local_user_comm, &user_local_rank);
 
-    ua_win->base_asp_offset = calloc(user_nprocs, sizeof(MPI_Aint));
     ua_win->user_comm = user_comm;
+    ua_win->base_asp_offset = calloc(user_nprocs, sizeof(MPI_Aint));
     ua_win->disp_units = calloc(user_nprocs, sizeof(int));
     ua_win->asp_ranks_in_ua = calloc(MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES, sizeof(int));
-    ua_win->ua_wins = calloc(user_nprocs, sizeof(MPI_Win));
+    ua_win->local_user_ranks = calloc(user_nprocs, sizeof(int));;
     user_local_sizes = calloc(user_local_nprocs, sizeof(MPI_Aint));
 
     /* Gather disp_unit, used when send RMA operations */
     ua_win->disp_units[user_rank] = disp_unit;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                                ua_win->disp_units, 1, MPI_INT, user_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Gather users' rank in local user communicator, used in RMA and sync calls */
+    ua_win->local_user_ranks[user_rank] = user_local_rank;
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                               ua_win->local_user_ranks, 1, MPI_INT, user_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Get the maximum number of processes per node */
+    mpi_errno = PMPI_Allreduce(&user_local_nprocs, &ua_win->max_local_user_nprocs,
+                               1, MPI_INT, MPI_MAX, ua_win->user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -341,8 +358,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     /* Create windows using shared buffers. */
 
     /* -Create ua windows.
-     *  Every User process has a dedicated window used for permission check and accessing Helpers */
-    for (i = 0; i < user_nprocs; i++) {
+     *  Every User process has a window used for permission check and accessing Helpers.
+     *  User processes in different nodes can share a window.
+     *      i.e., win[x] can be shared by processes whose local rank is x. */
+    ua_win->ua_wins = calloc(ua_win->max_local_user_nprocs, sizeof(MPI_Win));
+    for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
         mpi_errno = PMPI_Win_create(ua_win->base, size, disp_unit, info,
                                     ua_win->ua_comm, &ua_win->ua_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
@@ -388,7 +408,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (ua_win->win)
         PMPI_Win_free(&ua_win->win);
     if (ua_win->ua_wins) {
-        for (i = 0; i < user_nprocs; i++) {
+        for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
             if (ua_win->ua_wins)
                 PMPI_Win_free(&ua_win->ua_wins[i]);
         }
@@ -418,6 +438,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         free(ua_win->local_ua_win_param);
     if (ua_win->asp_ranks_in_ua)
         free(ua_win->asp_ranks_in_ua);
+    if (ua_win->local_user_ranks)
+        free(ua_win->local_user_ranks);
     if (ua_win->ua_wins)
         free(ua_win->ua_wins);
     if (ua_win)

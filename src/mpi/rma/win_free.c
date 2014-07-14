@@ -63,11 +63,12 @@ int MPI_Win_free(MPI_Win * win)
                 goto fn_fail;
         }
 
-        if (ua_win->local_ua_group != MPI_GROUP_NULL) {
-            mpi_errno = PMPI_Group_free(&ua_win->local_ua_group);
+        if (ua_win->user_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&ua_win->user_group);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+
         if (ua_win->ua_comm != MPI_COMM_NULL && ua_win->ua_comm != MPI_COMM_WORLD) {
             mpi_errno = PMPI_Comm_free(&ua_win->ua_comm);
             if (mpi_errno != MPI_SUCCESS)
@@ -78,15 +79,15 @@ int MPI_Win_free(MPI_Win * win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-        if (ua_win->user_group != MPI_GROUP_NULL) {
-            mpi_errno = PMPI_Group_free(&ua_win->user_group);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
 
         if (ua_win->local_ua_comm && ua_win->local_ua_comm != MPIASP_COMM_LOCAL) {
             MPIASP_DBG_PRINT("[%d] \t free shared communicator\n", user_rank);
             mpi_errno = PMPI_Comm_free(&ua_win->local_ua_comm);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+        if (ua_win->local_ua_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&ua_win->local_ua_group);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -113,6 +114,8 @@ int MPI_Win_free(MPI_Win * win)
             free(ua_win->local_ua_win_param);
         if (ua_win->asp_ranks_in_ua)
             free(ua_win->asp_ranks_in_ua);
+        if (ua_win->local_user_ranks)
+            free(ua_win->local_user_ranks);
         if (ua_win->ua_wins)
             free(ua_win->ua_wins);
 

@@ -37,7 +37,7 @@ int ASP_Win_free(int user_local_root, int user_nprocs, int user_local_nprocs, in
          */
         if (win->ua_wins) {
             ASP_DBG_PRINT(" free ua windows\n");
-            for (i = 0; i < user_nprocs; i++) {
+            for (i = 0; i < win->max_local_user_nprocs; i++) {
                 if (win->ua_wins[i]) {
                     mpi_errno = PMPI_Win_free(&win->ua_wins[i]);
                     if (mpi_errno != MPI_SUCCESS)

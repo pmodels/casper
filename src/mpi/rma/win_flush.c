@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-int MPI_Win_flush(int rank, MPI_Win win)
+int MPI_Win_flush(int target_rank, MPI_Win win)
 {
     MPIASP_Win *ua_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, local_ua_rank = 0;
     int is_shared = 0;
     int target_node_id = -1;
+    int target_local_rank = -1;
 
     MPIASP_DBG_PRINT_FCNAME();
 
@@ -18,7 +19,7 @@ int MPI_Win_flush(int rank, MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        if (user_rank == rank && ua_win->is_self_locked) {
+        if (user_rank == target_rank && ua_win->is_self_locked) {
             PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
 
             /* If target is itself, only flush the target on shared window.
@@ -31,19 +32,21 @@ int MPI_Win_flush(int rank, MPI_Win win)
                 goto fn_fail;
         }
         else {
-            mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &rank, &target_node_id);
+            target_local_rank = ua_win->local_user_ranks[target_rank];
+
+            mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
             MPIASP_DBG_PRINT("[%d]flush(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_id], rank,
-                             rank, target_node_id);
+                             user_rank, ua_win->asp_ranks_in_ua[target_node_id], target_local_rank,
+                             target_rank, target_node_id);
 
             /* We flush target Helper processes in ua_window. Because for non-shared
              * targets, all translated operations are issued to target Helpers via ua_window.
              */
             mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[target_node_id],
-                                       ua_win->ua_wins[rank]);
+                                       ua_win->ua_wins[target_local_rank]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -52,7 +55,7 @@ int MPI_Win_flush(int rank, MPI_Win win)
      * are issued to user window. We need wrap up all operations.
      */
     else {
-        mpi_errno = PMPI_Win_flush(rank, win);
+        mpi_errno = PMPI_Win_flush(target_rank, win);
     }
 
   fn_exit:

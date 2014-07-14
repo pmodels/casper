@@ -30,6 +30,7 @@ typedef struct ASP_Win {
     /* communicator including local processe and ASP */
     MPI_Comm local_ua_comm;
     MPI_Win local_ua_win;
+    int max_local_user_nprocs;
 
     /* communicator including all the user processes and ASP */
     MPI_Comm ua_comm;

@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include "mpiasp.h"
 
-int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
+int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
     MPIASP_Win *ua_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, rank_in_local_ua = 0;
     int is_shared = 0;
     int target_node_id = -1;
+    int target_local_rank;
 
     MPIASP_DBG_PRINT_FCNAME();
 
@@ -17,24 +18,26 @@ int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
         goto fn_fail;
 
     if (ua_win > 0) {
+        target_local_rank = ua_win->local_user_ranks[target_rank];
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &rank, &target_node_id);
+
+        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
 
         /* Lock Helper processes in corresponding ua-window of target process. */
         MPIASP_DBG_PRINT("[%d]lock(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                         user_rank, ua_win->asp_ranks_in_ua[target_node_id], rank, rank,
-                         target_node_id);
+                         user_rank, ua_win->asp_ranks_in_ua[target_node_id], target_local_rank,
+                         target_rank, target_node_id);
 
         mpi_errno = PMPI_Win_lock(lock_type, ua_win->asp_ranks_in_ua[target_node_id],
-                                  assert, ua_win->ua_wins[rank]);
+                                  assert, ua_win->ua_wins[target_local_rank]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         ua_win->is_self_locked = 0;
 
-        if (user_rank == rank) {
+        if (user_rank == target_rank) {
             /* If target is itself, we need grant this lock before return.
              * However, the actual locked processes are the Helpers whose locks may be delayed by
              * most MPI implementation, thus we need a flush to force the lock to be granted.
@@ -51,8 +54,8 @@ int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
                  * Need grant lock on helper in advance due to permission check */
                 int local_ua_rank;
                 PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
-                MPIASP_DBG_PRINT("[%d]lock self(%d, local_ua_win)\n", user_rank, local_ua_rank);
 
+                MPIASP_DBG_PRINT("[%d]lock self(%d, local_ua_win)\n", user_rank, local_ua_rank);
                 mpi_errno = PMPI_Win_lock(lock_type, local_ua_rank, assert, ua_win->local_ua_win);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
@@ -64,7 +67,7 @@ int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win)
      * are issued to user window. We need wrap up all operations.
      */
     else {
-        mpi_errno = PMPI_Win_lock(lock_type, rank, assert, win);
+        mpi_errno = PMPI_Win_lock(lock_type, target_rank, assert, win);
     }
 
   fn_exit:

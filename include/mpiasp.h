@@ -67,13 +67,17 @@ typedef struct MPIASP_Win {
     MPI_Comm ua_comm;
     MPI_Group ua_group;
     int *asp_ranks_in_ua;
-    MPI_Win *ua_wins;           /* every target has separate window for permission control */
+    MPI_Win *ua_wins;           /* every local process has separate window for permission control,
+                                 * processes in different node share one window */
 
     /* communicator including all the user processes */
     MPI_Comm user_comm;
     MPI_Group user_group;
 
     MPI_Comm local_user_comm;
+    int max_local_user_nprocs;
+    int *local_user_ranks;      /* ranks in local user communicator,
+                                 * gathered in win_allocate and used in lock_all/flush_all */
 
     void *base;
     MPI_Win win;
@@ -259,31 +263,32 @@ static inline int MPIASP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *n
 static inline int MPIASP_Win_grant_local_lock(int lock_type, int assert, MPIASP_Win * ua_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, node_id;
+    int user_rank, local_user_rank, node_id;
 
     PMPI_Comm_rank(ua_win->user_comm, &user_rank);
+    PMPI_Comm_rank(ua_win->local_user_comm, &local_user_rank);
     node_id = MPIASP_ALL_NODE_IDS[MPIASP_MY_RANK_IN_WORLD];
 
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
     MTCORE_GRANT_LOCK_DATATYPE buf[1];
     mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, ua_win->asp_ranks_in_ua[node_id],
                          ua_win->grant_lock_asp_offset, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE,
-                         ua_win->ua_wins[user_rank]);
+                         ua_win->ua_wins[local_user_rank]);
 #else
     /* Simply get 1 byte from start, it does not affect the result of other updates */
     char buf[1];
     mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, ua_win->asp_ranks_in_ua[node_id], 0,
-                         1, MPI_CHAR, ua_win->ua_wins[user_rank]);
+                         1, MPI_CHAR, ua_win->ua_wins[local_user_rank]);
 #endif
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[node_id], ua_win->ua_wins[user_rank]);
+    mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[node_id], ua_win->ua_wins[local_user_rank]);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     MPIASP_DBG_PRINT("[%d]grant local lock(Helper(%d), ua_wins[%d])\n", user_rank,
-                     ua_win->asp_ranks_in_ua[node_id], user_rank);
+                     ua_win->asp_ranks_in_ua[node_id], local_user_rank);
   fn_exit:
     return mpi_errno;
 

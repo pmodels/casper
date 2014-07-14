@@ -68,17 +68,21 @@ static int create_communicators(int user_local_root, int user_nprocs, int user_l
     user_ranks_in_world = calloc(user_nprocs, sizeof(int));
     helper_ranks_in_world = calloc(max_num_helpers, sizeof(int));
     max_num_helpers = MPIASP_NUM_ASP_IN_LOCAL * MPIASP_NUM_NODES;
-    func_param_size = user_nprocs + user_local_nprocs + max_num_helpers + 1;
+    func_param_size = user_nprocs + max_num_helpers + 3;
     func_params = calloc(func_param_size, sizeof(int));
 
     mpi_errno = MPIASP_Func_get_param((char *) func_params, sizeof(int) * func_param_size,
                                       user_local_root, user_tag);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+
+    /* Get parameters from local User_root
+     *  [0]: is_comm_user_world
+     *  [1]: max_local_user_nprocs */
     is_user_world = func_params[0];
+    win->max_local_user_nprocs = func_params[1];
 
     if (is_user_world) {
-
         ASP_DBG_PRINT(" Received parameters from %d: is_user_world %d\n",
                       user_local_root, is_user_world);
 
@@ -91,15 +95,13 @@ static int create_communicators(int user_local_root, int user_nprocs, int user_l
     }
     else {
 
-        /* Get parameters to ASP
-         *  [0]: is_comm_user_world
-         *  [1]: num_helpers
-         *  [2:N+1]: user ranks in comm_world
-         *  [N+2:]: helper ranks in comm_world
+        /*  [2]: num_helpers
+         *  [3:N+2]: user ranks in comm_world
+         *  [N+3:]: helper ranks in comm_world
          */
         int pidx;
-        num_helpers = func_params[1];
-        pidx = 2;
+        num_helpers = func_params[2];
+        pidx = 3;
         memcpy(user_ranks_in_world, &func_params[pidx], sizeof(int) * user_nprocs);
         pidx += user_nprocs;
         memcpy(helper_ranks_in_world, &func_params[pidx], sizeof(int) * num_helpers);
@@ -149,7 +151,6 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
     int mtcore_buf_size = 0;
 
     win = calloc(1, sizeof(ASP_Win));
-    win->ua_wins = calloc(user_nprocs, sizeof(MPI_Win));
 
     /* Create communicators
      *  ua_comm: including all USER and Helper processes
@@ -201,10 +202,13 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
         size += r_size; /* size in byte */
     }
 
-    /* Create ua windows including all USER processes and ASP processes
-     * Every User process has a dedicated window used for permission check and accessing Helpers
+    /* Create ua windows including all User and Helper processes.
+     * Every User process has a window used for permission check and accessing Helpers.
+     * User processes in different nodes can share a window.
+     *  i.e., win[x] can be shared by processes whose local rank is x.
      */
-    for (i = 0; i < user_nprocs; i++) {
+    win->ua_wins = calloc(win->max_local_user_nprocs, sizeof(MPI_Win));
+    for (i = 0; i < win->max_local_user_nprocs; i++) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->ua_comm,
                                     &win->ua_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
@@ -236,7 +240,7 @@ int ASP_Win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs
     if (win->local_ua_win)
         PMPI_Win_free(&win->local_ua_win);
     if (win->ua_wins) {
-        for (i = 0; i < user_nprocs; i++) {
+        for (i = 0; i < win->max_local_user_nprocs; i++) {
             if (win->ua_wins)
                 PMPI_Win_free(&win->ua_wins[i]);
         }
