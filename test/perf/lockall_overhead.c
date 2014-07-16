@@ -16,8 +16,9 @@
 
 /* #define DEBUG */
 #define CHECK
-#define ITER_S 1000
-#define ITER_L 500
+#define ITER_S 100000
+#define ITER_L 100000
+#define SKIP 100
 #define NPROCS_M 16
 
 double *winbuf = NULL;
@@ -43,6 +44,19 @@ static int run_test()
     }
 
     if (rank == 0) {
+        for (x = 0; x < SKIP; x++) {
+            MPI_Win_lock_all(0, win);
+            /* Send to all the other processes including itself in order to
+             * make sure that all the targets are exactly locked. */
+            for (dst = 0; dst < nprocs; dst++) {
+                MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
+            }
+            MPI_Win_unlock_all(win);
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if (rank == 0) {
         t0 = MPI_Wtime();
 
         for (x = 0; x < ITER; x++) {
@@ -55,7 +69,7 @@ static int run_test()
             MPI_Win_unlock_all(win);
         }
 
-        t_total += MPI_Wtime() - t0;
+        t_total += (MPI_Wtime() - t0) * 1000 * 1000;    /*us */
         t_total /= ITER;
     }
 
@@ -66,7 +80,7 @@ static int run_test()
      * otherwise, the result may be incorrect because flush/unlock
      * doesn't wait for target completion in exclusive lock */
     MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
-    sum = 1.0 * ITER;
+    sum = 1.0 * (ITER + SKIP);
     if (winbuf[0] != sum) {
         fprintf(stderr, "[%d]computation error : winbuf[%d] %.2lf != %.2lf\n",
                 rank, i, winbuf[0], sum);
@@ -77,9 +91,9 @@ static int run_test()
 
     if (rank == 0) {
 #ifdef MTCORE
-        fprintf(stdout, "mtcore: nprocs %d total_time %lf\n", nprocs, t_total);
+        fprintf(stdout, "mtcore: iter %d nprocs %d total_time %lf\n", ITER, nprocs, t_total);
 #else
-        fprintf(stdout, "orig: nprocs %d total_time %lf\n", nprocs, t_total);
+        fprintf(stdout, "orig: iter %d nprocs %d total_time %.2lf\n", ITER, nprocs, t_total);
 #endif
     }
 

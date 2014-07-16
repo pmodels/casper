@@ -1,9 +1,9 @@
 /*
- * win-lockall-overhead.c
+ * lockall_overhead_no_loadstore.c
  *
- *  This benchmark evaluates the overhead of Win_lock_all with
- *  user-specified number of processes (>= 2). Rank 0 locks
- *  all the processes and issues accumulate operations to all
+ *  This benchmark evaluates the overhead of Win_lock_all using
+ *  user-specified number of processes (>= 2) with no_local_load_store option.
+ *  Rank 0 locks all the processes and issues accumulate operations to all
  *  of them.
  *
  *  Author: Min Si
@@ -16,8 +16,9 @@
 
 /* #define DEBUG */
 #define CHECK
-#define ITER_S 1000
-#define ITER_L 500
+#define ITER_S 100000
+#define ITER_L 100000
+#define SKIP 100
 #define NPROCS_M 16
 
 double *winbuf = NULL;
@@ -43,6 +44,19 @@ static int run_test()
     }
 
     if (rank == 0) {
+        for (x = 0; x < SKIP; x++) {
+            MPI_Win_lock_all(0, win);
+            /* Send to all the other processes including itself in order to
+             * make sure that all the targets are exactly locked. */
+            for (dst = 0; dst < nprocs; dst++) {
+                MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
+            }
+            MPI_Win_unlock_all(win);
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if (rank == 0) {
         t0 = MPI_Wtime();
 
         for (x = 0; x < ITER; x++) {
@@ -55,7 +69,7 @@ static int run_test()
             MPI_Win_unlock_all(win);
         }
 
-        t_total += MPI_Wtime() - t0;
+        t_total += (MPI_Wtime() - t0) * 1000 * 1000;    /*us */
         t_total /= ITER;
     }
 
@@ -66,7 +80,7 @@ static int run_test()
      * otherwise, the result may be incorrect because flush/unlock
      * doesn't wait for target completion in exclusive lock */
     MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
-    sum = 1.0 * ITER;
+    sum = 1.0 * (ITER + SKIP);
 
     /* It is wrong to load/store local winbuf with no_local_load_store */
     double result = 0;
@@ -80,7 +94,7 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-        fprintf(stdout, "mtcore-nols: nprocs %d total_time %lf\n", nprocs, t_total);
+        fprintf(stdout, "mtcore-nols: iter %d nprocs %d total_time %lf\n", ITER, nprocs, t_total);
     }
 
     return errs;
@@ -112,6 +126,8 @@ int main(int argc, char *argv[])
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
+    if (win_info != MPI_INFO_NULL)
+        MPI_Info_free(&win_info);
     MPI_Finalize();
 
     return 0;
