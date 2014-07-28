@@ -76,8 +76,8 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-#ifdef ASP
-        fprintf(stdout, "asp: nprocs %d total_time %lf\n", nprocs, t_total);
+#ifdef MTCORE
+        fprintf(stdout, "mtcore: nprocs %d total_time %lf\n", nprocs, t_total);
 #else
         fprintf(stdout, "orig: nprocs %d total_time %lf\n", nprocs, t_total);
 #endif

@@ -1,43 +1,40 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mpiasp.h"
-#include "asp.h"
+#include "mtcore.h"
+#include "mtcore_helper.h"
 
-MPI_Comm MPIASP_COMM_USER_WORLD = MPI_COMM_NULL;
-MPI_Comm MPIASP_COMM_LOCAL = MPI_COMM_NULL;
-MPI_Comm MPIASP_COMM_USER_LOCAL = MPI_COMM_NULL;
-MPI_Comm MPIASP_COMM_USER_ROOTS = MPI_COMM_NULL;
-MPI_Group MPIASP_GROUP_WORLD = MPI_GROUP_NULL;
-MPI_Group MPIASP_GROUP_LOCAL = MPI_GROUP_NULL;
+MPI_Comm MTCORE_COMM_USER_WORLD = MPI_COMM_NULL;
+MPI_Comm MTCORE_COMM_LOCAL = MPI_COMM_NULL;
+MPI_Comm MTCORE_COMM_USER_LOCAL = MPI_COMM_NULL;
+MPI_Comm MTCORE_COMM_USER_ROOTS = MPI_COMM_NULL;
+MPI_Group MTCORE_GROUP_WORLD = MPI_GROUP_NULL;
+MPI_Group MTCORE_GROUP_LOCAL = MPI_GROUP_NULL;
 
-/* MPI_Comm MPIASP_COMM_ASP_LOCAL = MPI_COMM_NULL; */
-/* MPI_Comm MPIASP_COMM_ASP_WORLD = MPI_COMM_NULL; */
+int MTCORE_NUM_H_IN_LOCAL = 0;
+int MTCORE_RANK_IN_COMM_WORLD = -1;
+int MTCORE_RANK_IN_COMM_LOCAL = -1;
+int *MTCORE_ALL_H_IN_COMM_WORLD = NULL;
+int MTCORE_MY_NODE_ID = -1;
+int MTCORE_NUM_NODES = 0;
+int *MTCORE_ALL_NODE_IDS = NULL;
+int MTCORE_MY_RANK_IN_WORLD = -1;
 
-int MPIASP_NUM_ASP_IN_LOCAL = 0;
-int MPIASP_RANK_IN_COMM_WORLD = -1;
-int MPIASP_RANK_IN_COMM_LOCAL = -1;
-int *MPIASP_ALL_ASP_IN_COMM_WORLD = NULL;
-int MPIASP_MY_NODE_ID = -1;
-int MPIASP_NUM_NODES = 0;
-int *MPIASP_ALL_NODE_IDS = NULL;
-int MPIASP_MY_RANK_IN_WORLD = -1;
-
-hashtable_t *ua_win_ht;
+hashtable_t *uh_win_ht;
 
 int MPI_Init(int *argc, char ***argv)
 {
     static const char FCNAME[] = "MPI_Init";
     int mpi_errno = MPI_SUCCESS;
-    MPIASP_GROUP_LOCAL = 0;
+    MTCORE_GROUP_LOCAL = 0;
     int i;
     int local_rank, local_nprocs, rank, nprocs, user_rank, user_nprocs;
     int local_user_rank, local_user_nprocs;
     int *tmp_node_helper_gather_buf = NULL, node_id = 0;
     int tmp_local_node_bcast_buf[2];
 
-    MPIASP_DBG_PRINT_FCNAME();
+    MTCORE_DBG_PRINT_FCNAME();
 
-    MPIASP_NUM_ASP_IN_LOCAL = 1;
+    MTCORE_NUM_H_IN_LOCAL = 1;
 
     mpi_errno = PMPI_Init(argc, argv);
     if (mpi_errno != MPI_SUCCESS)
@@ -45,28 +42,28 @@ int MPI_Init(int *argc, char ***argv)
 
     /* Get a communicator only containing processes with shared memory */
     mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-                                     MPI_INFO_NULL, &MPIASP_COMM_LOCAL);
+                                     MPI_INFO_NULL, &MTCORE_COMM_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /*
-     * Specify the first N local processes to be ASP process
+     * Specify the first N local processes to be Helper processes
      */
-    mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &MPIASP_GROUP_WORLD);
+    mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &MTCORE_GROUP_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    mpi_errno = PMPI_Comm_group(MPIASP_COMM_LOCAL, &MPIASP_GROUP_LOCAL);
+    mpi_errno = PMPI_Comm_group(MTCORE_COMM_LOCAL, &MTCORE_GROUP_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MPIASP_RANK_IN_COMM_LOCAL = 0;
-    PMPI_Group_translate_ranks(MPIASP_GROUP_LOCAL, MPIASP_NUM_ASP_IN_LOCAL,
-                               &MPIASP_RANK_IN_COMM_LOCAL, MPIASP_GROUP_WORLD,
-                               &MPIASP_RANK_IN_COMM_WORLD);
+    MTCORE_RANK_IN_COMM_LOCAL = 0;
+    PMPI_Group_translate_ranks(MTCORE_GROUP_LOCAL, MTCORE_NUM_H_IN_LOCAL,
+                               &MTCORE_RANK_IN_COMM_LOCAL, MTCORE_GROUP_WORLD,
+                               &MTCORE_RANK_IN_COMM_WORLD);
 
     /* Get a user comm_world for the user to use */
-    PMPI_Comm_rank(MPIASP_COMM_LOCAL, &local_rank);
-    PMPI_Comm_size(MPIASP_COMM_LOCAL, &local_nprocs);
+    PMPI_Comm_rank(MTCORE_COMM_LOCAL, &local_rank);
+    PMPI_Comm_size(MTCORE_COMM_LOCAL, &local_nprocs);
 
     if (local_nprocs == 1) {
         fprintf(stderr, "No user process found, please run with more than 2 process per node\n");
@@ -75,48 +72,48 @@ int MPI_Init(int *argc, char ***argv)
     }
 
     mpi_errno = PMPI_Comm_split(MPI_COMM_WORLD,
-                                local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_WORLD);
+                                local_rank < MTCORE_NUM_H_IN_LOCAL, 0, &MTCORE_COMM_USER_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Get a user comm_local for the user to use */
-    mpi_errno = PMPI_Comm_split(MPIASP_COMM_LOCAL,
-                                local_rank < MPIASP_NUM_ASP_IN_LOCAL, 0, &MPIASP_COMM_USER_LOCAL);
+    mpi_errno = PMPI_Comm_split(MTCORE_COMM_LOCAL,
+                                local_rank < MTCORE_NUM_H_IN_LOCAL, 0, &MTCORE_COMM_USER_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Get a user root communicator for exchange local informations between different nodes */
-    PMPI_Comm_rank(MPIASP_COMM_USER_LOCAL, &local_user_rank);
-    PMPI_Comm_size(MPIASP_COMM_USER_LOCAL, &local_user_nprocs);
-    mpi_errno = PMPI_Comm_split(MPIASP_COMM_USER_WORLD,
-                                local_user_rank == 0, 1, &MPIASP_COMM_USER_ROOTS);
+    PMPI_Comm_rank(MTCORE_COMM_USER_LOCAL, &local_user_rank);
+    PMPI_Comm_size(MTCORE_COMM_USER_LOCAL, &local_user_nprocs);
+    mpi_errno = PMPI_Comm_split(MTCORE_COMM_USER_WORLD,
+                                local_user_rank == 0, 1, &MTCORE_COMM_USER_ROOTS);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Determine a node id for each USER processes */
     PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    PMPI_Comm_size(MPIASP_COMM_USER_ROOTS, &MPIASP_NUM_NODES);
-    PMPI_Comm_rank(MPIASP_COMM_USER_ROOTS, &MPIASP_MY_NODE_ID);
-    PMPI_Comm_size(MPIASP_COMM_USER_WORLD, &user_nprocs);
-    PMPI_Comm_rank(MPIASP_COMM_USER_WORLD, &user_rank);
-    MPIASP_MY_RANK_IN_WORLD = rank;
+    PMPI_Comm_size(MTCORE_COMM_USER_ROOTS, &MTCORE_NUM_NODES);
+    PMPI_Comm_rank(MTCORE_COMM_USER_ROOTS, &MTCORE_MY_NODE_ID);
+    PMPI_Comm_size(MTCORE_COMM_USER_WORLD, &user_nprocs);
+    PMPI_Comm_rank(MTCORE_COMM_USER_WORLD, &user_rank);
+    MTCORE_MY_RANK_IN_WORLD = rank;
 
     /* Exchange node id among local processes */
-    tmp_local_node_bcast_buf[0] = MPIASP_MY_NODE_ID;
-    tmp_local_node_bcast_buf[1] = MPIASP_NUM_NODES;
-    PMPI_Bcast(tmp_local_node_bcast_buf, 2, MPI_INT, 0, MPIASP_COMM_LOCAL);
-    MPIASP_MY_NODE_ID = tmp_local_node_bcast_buf[0];
-    MPIASP_NUM_NODES = tmp_local_node_bcast_buf[1];
+    tmp_local_node_bcast_buf[0] = MTCORE_MY_NODE_ID;
+    tmp_local_node_bcast_buf[1] = MTCORE_NUM_NODES;
+    PMPI_Bcast(tmp_local_node_bcast_buf, 2, MPI_INT, 0, MTCORE_COMM_LOCAL);
+    MTCORE_MY_NODE_ID = tmp_local_node_bcast_buf[0];
+    MTCORE_NUM_NODES = tmp_local_node_bcast_buf[1];
 
-    MPIASP_ALL_NODE_IDS = calloc(nprocs, sizeof(int));
-    MPIASP_ALL_ASP_IN_COMM_WORLD = calloc(MPIASP_NUM_NODES * MPIASP_NUM_ASP_IN_LOCAL, sizeof(int));
+    MTCORE_ALL_NODE_IDS = calloc(nprocs, sizeof(int));
+    MTCORE_ALL_H_IN_COMM_WORLD = calloc(MTCORE_NUM_NODES * MTCORE_NUM_H_IN_LOCAL, sizeof(int));
     tmp_node_helper_gather_buf = calloc(nprocs, sizeof(int) * 2);
 
     /* Exchange node id and Helper ranks among world processes */
-    tmp_node_helper_gather_buf[rank * 2] = MPIASP_MY_NODE_ID;
+    tmp_node_helper_gather_buf[rank * 2] = MTCORE_MY_NODE_ID;
     /* TODO: support multiple helpers */
-    tmp_node_helper_gather_buf[rank * 2 + 1] = MPIASP_RANK_IN_COMM_WORLD;
+    tmp_node_helper_gather_buf[rank * 2 + 1] = MTCORE_RANK_IN_COMM_WORLD;
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                                tmp_node_helper_gather_buf, 2, MPI_INT, MPI_COMM_WORLD);
     if (mpi_errno != MPI_SUCCESS)
@@ -124,40 +121,40 @@ int MPI_Init(int *argc, char ***argv)
 
     for (i = 0; i < nprocs; i++) {
         node_id = tmp_node_helper_gather_buf[i * 2];
-        MPIASP_ALL_NODE_IDS[i] = node_id;
-        MPIASP_ALL_ASP_IN_COMM_WORLD[node_id] = tmp_node_helper_gather_buf[i * 2 + 1];
+        MTCORE_ALL_NODE_IDS[i] = node_id;
+        MTCORE_ALL_H_IN_COMM_WORLD[node_id] = tmp_node_helper_gather_buf[i * 2 + 1];
     }
 
 #ifdef DEBUG
-    MPIASP_DBG_PRINT("Debug gathered info ***** \n");
+    MTCORE_DBG_PRINT("Debug gathered info ***** \n");
     for (i = 0; i < nprocs; i++) {
-        node_id = MPIASP_ALL_NODE_IDS[i];
-        MPIASP_DBG_PRINT("[%d] node_id[%d]: %d, helper_rank_in_world[%d]: %d\n", rank, i,
-                         MPIASP_ALL_NODE_IDS[i], node_id, MPIASP_ALL_ASP_IN_COMM_WORLD[node_id]);
+        node_id = MTCORE_ALL_NODE_IDS[i];
+        MTCORE_DBG_PRINT("[%d] node_id[%d]: %d, helper_rank_in_world[%d]: %d\n", rank, i,
+                         MTCORE_ALL_NODE_IDS[i], node_id, MTCORE_ALL_H_IN_COMM_WORLD[node_id]);
     }
     PMPI_Barrier(MPI_COMM_WORLD);
 #endif
 
     /* USER processes */
-    if (local_rank >= MPIASP_NUM_ASP_IN_LOCAL) {
-        MPIASP_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
-                         "%d/%d in user local, asp_rank_in_world %d, node_id %d\n",
+    if (local_rank >= MTCORE_NUM_H_IN_LOCAL) {
+        MTCORE_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
+                         "%d/%d in user local, h_rank_in_world %d, node_id %d\n",
                          rank, nprocs, local_rank, local_nprocs, user_rank, user_nprocs,
-                         local_user_rank, local_user_nprocs, MPIASP_RANK_IN_COMM_WORLD,
-                         MPIASP_ALL_NODE_IDS[rank]);
+                         local_user_rank, local_user_nprocs, MTCORE_RANK_IN_COMM_WORLD,
+                         MTCORE_ALL_NODE_IDS[rank]);
 
-        mpi_errno = init_ua_win_table();
+        mpi_errno = init_uh_win_table();
         if (mpi_errno != 0)
             goto fn_fail;
     }
-    /* ASP processes */
-    /* TODO: ASP process should not run user program */
+    /* Helper processes */
+    /* TODO: Helper process should not run user program */
     else {
-        MPIASP_DBG_PRINT("I am helper, %d/%d in world, %d/%d in local, node_id %d\n",
-                         rank, nprocs, local_rank, local_nprocs, MPIASP_RANK_IN_COMM_WORLD,
-                         MPIASP_ALL_NODE_IDS[rank]);
+        MTCORE_DBG_PRINT("I am helper, %d/%d in world, %d/%d in local, node_id %d\n",
+                         rank, nprocs, local_rank, local_nprocs, MTCORE_RANK_IN_COMM_WORLD,
+                         MTCORE_ALL_NODE_IDS[rank]);
 
-        run_asp_main();
+        run_h_main();
         exit(0);
     }
 
@@ -169,36 +166,36 @@ int MPI_Init(int *argc, char ***argv)
 
   fn_fail:
     /* --BEGIN ERROR HANDLING-- */
-    if (MPIASP_COMM_USER_WORLD != MPI_COMM_NULL) {
-        MPIASP_DBG_PRINT("free MPIASP_COMM_USER_WORLD\n");
-        PMPI_Comm_free(&MPIASP_COMM_USER_WORLD);
+    if (MTCORE_COMM_USER_WORLD != MPI_COMM_NULL) {
+        MTCORE_DBG_PRINT("free MTCORE_COMM_USER_WORLD\n");
+        PMPI_Comm_free(&MTCORE_COMM_USER_WORLD);
     }
-    if (MPIASP_COMM_LOCAL != MPI_COMM_NULL) {
-        MPIASP_DBG_PRINT("free MPIASP_COMM_LOCAL\n");
-        PMPI_Comm_free(&MPIASP_COMM_LOCAL);
+    if (MTCORE_COMM_LOCAL != MPI_COMM_NULL) {
+        MTCORE_DBG_PRINT("free MTCORE_COMM_LOCAL\n");
+        PMPI_Comm_free(&MTCORE_COMM_LOCAL);
     }
-    if (MPIASP_COMM_USER_LOCAL != MPI_COMM_NULL) {
-        MPIASP_DBG_PRINT("free MPIASP_COMM_USER_LOCAL\n");
-        PMPI_Comm_free(&MPIASP_COMM_USER_LOCAL);
+    if (MTCORE_COMM_USER_LOCAL != MPI_COMM_NULL) {
+        MTCORE_DBG_PRINT("free MTCORE_COMM_USER_LOCAL\n");
+        PMPI_Comm_free(&MTCORE_COMM_USER_LOCAL);
     }
 
-    if (MPIASP_GROUP_WORLD != MPI_GROUP_NULL)
-        PMPI_Group_free(&MPIASP_GROUP_WORLD);
-    if (MPIASP_GROUP_LOCAL != MPI_GROUP_NULL)
-        PMPI_Group_free(&MPIASP_GROUP_LOCAL);
+    if (MTCORE_GROUP_WORLD != MPI_GROUP_NULL)
+        PMPI_Group_free(&MTCORE_GROUP_WORLD);
+    if (MTCORE_GROUP_LOCAL != MPI_GROUP_NULL)
+        PMPI_Group_free(&MTCORE_GROUP_LOCAL);
 
-    if (MPIASP_ALL_NODE_IDS)
-        free(MPIASP_ALL_NODE_IDS);
-    if (MPIASP_ALL_ASP_IN_COMM_WORLD)
-        free(MPIASP_ALL_ASP_IN_COMM_WORLD);
+    if (MTCORE_ALL_NODE_IDS)
+        free(MTCORE_ALL_NODE_IDS);
+    if (MTCORE_ALL_H_IN_COMM_WORLD)
+        free(MTCORE_ALL_H_IN_COMM_WORLD);
 
     /* Reset global variables */
-    MPIASP_COMM_USER_WORLD = MPI_COMM_NULL;
-    MPIASP_COMM_USER_LOCAL = MPI_COMM_NULL;
-    MPIASP_COMM_LOCAL = MPI_COMM_NULL;
+    MTCORE_COMM_USER_WORLD = MPI_COMM_NULL;
+    MTCORE_COMM_USER_LOCAL = MPI_COMM_NULL;
+    MTCORE_COMM_LOCAL = MPI_COMM_NULL;
 
-    MPIASP_ALL_ASP_IN_COMM_WORLD = NULL;
-    MPIASP_ALL_NODE_IDS = NULL;
+    MTCORE_ALL_H_IN_COMM_WORLD = NULL;
+    MTCORE_ALL_NODE_IDS = NULL;
 
     PMPI_Abort(MPI_COMM_WORLD, 0);
 

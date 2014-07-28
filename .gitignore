@@ -7,7 +7,7 @@ Makefile.in
 aclocal.m4
 autom4te.cache/
 configure
-include/aspconf.h.in
+include/mtcoreconf.h.in
 
 ## confdb files
 confdb/ar-lib

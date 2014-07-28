@@ -1,55 +1,55 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mpiasp.h"
+#include "mtcore.h"
 
 int MPI_Win_flush(int target_rank, MPI_Win win)
 {
-    MPIASP_Win *ua_win;
+    MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, local_ua_rank = 0;
+    int user_rank, local_uh_rank = 0;
     int is_shared = 0;
     int target_node_id = -1;
     int target_local_rank = -1;
 
-    MPIASP_DBG_PRINT_FCNAME();
+    MTCORE_DBG_PRINT_FCNAME();
 
-    mpi_errno = get_ua_win(win, &ua_win);
+    mpi_errno = get_uh_win(win, &uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    if (ua_win > 0) {
-        PMPI_Comm_rank(ua_win->user_comm, &user_rank);
+    if (uh_win > 0) {
+        PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-        if (user_rank == target_rank && ua_win->is_self_locked) {
-            PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
+        if (user_rank == target_rank && uh_win->is_self_locked) {
+            PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
 
             /* If target is itself, only flush the target on shared window.
              * It does not matter which window we are using for local communication,
              * we just choose local shared window in our implementation.
              */
-            MPIASP_DBG_PRINT("[%d]flush self(%d, local_ua_win)\n", user_rank, local_ua_rank);
-            mpi_errno = PMPI_Win_flush(local_ua_rank, ua_win->local_ua_win);
+            MTCORE_DBG_PRINT("[%d]flush self(%d, local_uh_win)\n", user_rank, local_uh_rank);
+            mpi_errno = PMPI_Win_flush(local_uh_rank, uh_win->local_uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
         else
 #endif
         {
-            target_local_rank = ua_win->local_user_ranks[target_rank];
+            target_local_rank = uh_win->local_user_ranks[target_rank];
 
-            mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);
+            mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, 1, &target_rank, &target_node_id);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
-            MPIASP_DBG_PRINT("[%d]flush(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_id], target_local_rank,
+            MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of %d, node_id %d\n",
+                             user_rank, uh_win->h_ranks_in_uh[target_node_id], target_local_rank,
                              target_rank, target_node_id);
 
-            /* We flush target Helper processes in ua_window. Because for non-shared
-             * targets, all translated operations are issued to target Helpers via ua_window.
+            /* We flush target Helper processes in uh_window. Because for non-shared
+             * targets, all translated operations are issued to target Helpers via uh_window.
              */
-            mpi_errno = PMPI_Win_flush(ua_win->asp_ranks_in_ua[target_node_id],
-                                       ua_win->ua_wins[target_local_rank]);
+            mpi_errno = PMPI_Win_flush(uh_win->h_ranks_in_uh[target_node_id],
+                                       uh_win->uh_wins[target_local_rank]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }

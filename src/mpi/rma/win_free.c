@@ -1,127 +1,127 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mpiasp.h"
+#include "mtcore.h"
 
 int MPI_Win_free(MPI_Win * win)
 {
-    static const char FCNAME[] = "MPIASP_Win_free";
+    static const char FCNAME[] = "MTCORE_Win_free";
     int mpi_errno = MPI_SUCCESS;
-    MPIASP_Win *ua_win;
+    MTCORE_Win *uh_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
-    int ua_tag, i;
+    int uh_tag, i;
 
-    MPIASP_DBG_PRINT_FCNAME();
+    MTCORE_DBG_PRINT_FCNAME();
 
-    mpi_errno = get_ua_win(*win, &ua_win);
+    mpi_errno = get_uh_win(*win, &uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Release additional resources if it is an MPIASP-window */
-    if (ua_win > 0) {
-        PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
-        PMPI_Comm_rank(ua_win->local_user_comm, &user_local_rank);
-        PMPI_Comm_size(ua_win->local_user_comm, &user_local_nprocs);
+    /* Release additional resources if it is an MTCORE-window */
+    if (uh_win > 0) {
+        PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+        PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+        PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
+        PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
 
-        mpi_errno = MPIASP_Tag_format((int) ua_win->user_comm, &ua_tag);
+        mpi_errno = MTCORE_Tag_format((int) uh_win->user_comm, &uh_tag);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        MPIASP_Func_start(MPIASP_FUNC_WIN_FREE, user_nprocs, user_local_nprocs, ua_tag,
-                          ua_win->local_user_comm);
+        MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs, uh_tag,
+                          uh_win->local_user_comm);
 
-        /* Notify the handle of target ASP win */
+        /* Notify the handle of target Helper win */
         if (user_local_rank == 0) {
-            mpi_errno = PMPI_Send(&ua_win->asp_win_handle, 1, MPI_UNSIGNED_LONG,
-                                  MPIASP_RANK_IN_COMM_LOCAL, ua_tag, MPIASP_COMM_LOCAL);
+            mpi_errno = PMPI_Send(&uh_win->h_win_handle, 1, MPI_UNSIGNED_LONG,
+                                  MTCORE_RANK_IN_COMM_LOCAL, uh_tag, MTCORE_COMM_LOCAL);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        /* Free ua_win before local_ua_win, because all the incoming operations
+        /* Free uh_win before local_uh_win, because all the incoming operations
          * should be done before free shared buffers.
          *
          * We do not need additional barrier in Manticore for waiting all
          * operations complete, because Win_free already internally add a barrier
          * for waiting operations on that window complete.
          */
-        if (ua_win->ua_wins) {
-            MPIASP_DBG_PRINT("[%d] \t free ua windows\n", user_rank);
-            for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
-                if (ua_win->ua_wins[i]) {
-                    mpi_errno = PMPI_Win_free(&ua_win->ua_wins[i]);
+        if (uh_win->uh_wins) {
+            MTCORE_DBG_PRINT("[%d] \t free uh windows\n", user_rank);
+            for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
+                if (uh_win->uh_wins[i]) {
+                    mpi_errno = PMPI_Win_free(&uh_win->uh_wins[i]);
                     if (mpi_errno != MPI_SUCCESS)
                         goto fn_fail;
                 }
             }
         }
 
-        if (ua_win->local_ua_win) {
-            MPIASP_DBG_PRINT("[%d] \t free shared window\n", user_rank);
-            mpi_errno = PMPI_Win_free(&ua_win->local_ua_win);
+        if (uh_win->local_uh_win) {
+            MTCORE_DBG_PRINT("[%d] \t free shared window\n", user_rank);
+            mpi_errno = PMPI_Win_free(&uh_win->local_uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        if (ua_win->user_group != MPI_GROUP_NULL) {
-            mpi_errno = PMPI_Group_free(&ua_win->user_group);
+        if (uh_win->user_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&uh_win->user_group);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        if (ua_win->ua_comm != MPI_COMM_NULL && ua_win->ua_comm != MPI_COMM_WORLD) {
-            mpi_errno = PMPI_Comm_free(&ua_win->ua_comm);
+        if (uh_win->uh_comm != MPI_COMM_NULL && uh_win->uh_comm != MPI_COMM_WORLD) {
+            mpi_errno = PMPI_Comm_free(&uh_win->uh_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-        if (ua_win->ua_group != MPI_GROUP_NULL) {
-            mpi_errno = PMPI_Group_free(&ua_win->ua_group);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-
-        if (ua_win->local_ua_comm && ua_win->local_ua_comm != MPIASP_COMM_LOCAL) {
-            MPIASP_DBG_PRINT("[%d] \t free shared communicator\n", user_rank);
-            mpi_errno = PMPI_Comm_free(&ua_win->local_ua_comm);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-        if (ua_win->local_ua_group != MPI_GROUP_NULL) {
-            mpi_errno = PMPI_Group_free(&ua_win->local_ua_group);
+        if (uh_win->uh_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&uh_win->uh_group);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        if (ua_win->local_user_comm && ua_win->local_user_comm != MPIASP_COMM_USER_LOCAL) {
-            MPIASP_DBG_PRINT("[%d] \t free local USER communicator\n", user_rank);
-            mpi_errno = PMPI_Comm_free(&ua_win->local_user_comm);
+        if (uh_win->local_uh_comm && uh_win->local_uh_comm != MTCORE_COMM_LOCAL) {
+            MTCORE_DBG_PRINT("[%d] \t free shared communicator\n", user_rank);
+            mpi_errno = PMPI_Comm_free(&uh_win->local_uh_comm);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+        if (uh_win->local_uh_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&uh_win->local_uh_group);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        MPIASP_DBG_PRINT("[%d] \t free user window\n", user_rank);
+        if (uh_win->local_user_comm && uh_win->local_user_comm != MTCORE_COMM_USER_LOCAL) {
+            MTCORE_DBG_PRINT("[%d] \t free local USER communicator\n", user_rank);
+            mpi_errno = PMPI_Comm_free(&uh_win->local_user_comm);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
+        MTCORE_DBG_PRINT("[%d] \t free user window\n", user_rank);
         mpi_errno = PMPI_Win_free(win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        /* ua_win->user_comm is created by user, will be freed by user. */
+        /* uh_win->user_comm is created by user, will be freed by user. */
 
-        if (ua_win->disp_units)
-            free(ua_win->disp_units);
-        if (ua_win->base_asp_offset)
-            free(ua_win->base_asp_offset);
-        if (ua_win->local_ua_win_param)
-            free(ua_win->local_ua_win_param);
-        if (ua_win->asp_ranks_in_ua)
-            free(ua_win->asp_ranks_in_ua);
-        if (ua_win->local_user_ranks)
-            free(ua_win->local_user_ranks);
-        if (ua_win->ua_wins)
-            free(ua_win->ua_wins);
+        if (uh_win->disp_units)
+            free(uh_win->disp_units);
+        if (uh_win->base_h_offsets)
+            free(uh_win->base_h_offsets);
+        if (uh_win->local_uh_win_param)
+            free(uh_win->local_uh_win_param);
+        if (uh_win->h_ranks_in_uh)
+            free(uh_win->h_ranks_in_uh);
+        if (uh_win->local_user_ranks)
+            free(uh_win->local_user_ranks);
+        if (uh_win->uh_wins)
+            free(uh_win->uh_wins);
 
-        free(ua_win);
+        free(uh_win);
 
-        MPIASP_DBG_PRINT("[%d] Freed MPIASP window 0x%x\n", user_rank, *win);
+        MTCORE_DBG_PRINT("[%d] Freed MTCORE window 0x%x\n", user_rank, *win);
     }
     else {
         PMPI_Comm_rank(MPI_COMM_WORLD, &user_rank);
@@ -130,7 +130,7 @@ int MPI_Win_free(MPI_Win * win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        MPIASP_DBG_PRINT("[%d] Freed MPI window 0x%x\n", user_rank, *win);
+        MTCORE_DBG_PRINT("[%d] Freed MPI window 0x%x\n", user_rank, *win);
     }
 
   fn_exit:

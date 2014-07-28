@@ -80,7 +80,7 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-        fprintf(stdout, "asp-nols: nprocs %d total_time %lf\n", nprocs, t_total);
+        fprintf(stdout, "mtcore-nols: nprocs %d total_time %lf\n", nprocs, t_total);
     }
 
     return errs;

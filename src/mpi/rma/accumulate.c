@@ -1,28 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mpiasp.h"
+#include "mtcore.h"
 
-static int MPIASP_Accumulate_shared_impl(const void *origin_addr,
+static int MTCORE_Accumulate_shared_impl(const void *origin_addr,
                                          int origin_count,
                                          MPI_Datatype origin_datatype, int target_rank,
                                          MPI_Aint target_disp,
                                          int target_count, MPI_Datatype target_datatype,
-                                         MPI_Op op, MPI_Win win, MPIASP_Win * ua_win)
+                                         MPI_Op op, MPI_Win win, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int target_rank_in_local_ua = 0;
+    int target_rank_in_local_uh = 0;
 
-    PMPI_Group_translate_ranks(ua_win->user_group, 1,
-                               &target_rank, ua_win->local_ua_group, &target_rank_in_local_ua);
+    PMPI_Group_translate_ranks(uh_win->user_group, 1,
+                               &target_rank, uh_win->local_uh_group, &target_rank_in_local_uh);
 
     /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
-                                target_rank_in_local_ua, target_disp, target_count,
-                                target_datatype, op, ua_win->local_ua_win);
-    MPIASP_DBG_PRINT("MPIASP Accumulate to target(in local_ua) %d in shared_comm\n",
-                     target_rank_in_local_ua);
+                                target_rank_in_local_uh, target_disp, target_count,
+                                target_datatype, op, uh_win->local_uh_win);
+    MTCORE_DBG_PRINT("MTCORE Accumulate to target(in local_uh) %d in shared_comm\n",
+                     target_rank_in_local_uh);
 
     goto fn_exit;
 
@@ -33,29 +33,29 @@ static int MPIASP_Accumulate_shared_impl(const void *origin_addr,
     goto fn_exit;
 }
 
-static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
+static int MTCORE_Accumulate_impl(const void *origin_addr, int origin_count,
                                   MPI_Datatype origin_datatype,
                                   int target_rank, MPI_Aint target_disp,
                                   int target_count,
                                   MPI_Datatype target_datatype, MPI_Op op, MPI_Win win,
-                                  MPIASP_Win * ua_win)
+                                  MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Aint ua_target_disp = 0;
+    MPI_Aint uh_target_disp = 0;
     int is_shared = 0;
     int target_node_id = -1;
     int rank;
 
-    PMPI_Comm_rank(ua_win->user_comm, &rank);
+    PMPI_Comm_rank(uh_win->user_comm, &rank);
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    if (target_rank == rank && ua_win->is_self_locked) {
+    if (target_rank == rank && uh_win->is_self_locked) {
         /* If target is itself, we do not need translate it to any Helpers because
          * win_lock(self) will force lock(helper) to be granted so that it is safe
          * to send operations to the real target.
          */
-        mpi_errno = MPIASP_Accumulate_shared_impl(origin_addr, origin_count,
+        mpi_errno = MTCORE_Accumulate_shared_impl(origin_addr, origin_count,
                                                   origin_datatype, target_rank, target_disp,
-                                                  target_count, target_datatype, op, win, ua_win);
+                                                  target_count, target_datatype, op, win, uh_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -70,26 +70,26 @@ static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
          * require it. Some implementation may use network even for shared targets for
          * shorter CPU occupancy.
          */
-        int target_local_rank = ua_win->local_user_ranks[target_rank];
+        int target_local_rank = uh_win->local_user_ranks[target_rank];
 
-        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);
+        mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, 1, &target_rank, &target_node_id);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
 
-        ua_target_disp = ua_win->base_asp_offset[target_rank]
-            + ua_win->disp_units[target_rank] * target_disp;
+        uh_target_disp = uh_win->base_h_offsets[target_rank]
+            + uh_win->disp_units[target_rank] * target_disp;
 
-        /* Issue operation to the helper process in corresponding ua-window of target process. */
+        /* Issue operation to the helper process in corresponding uh-window of target process. */
         mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
-                                    ua_win->asp_ranks_in_ua[target_node_id], ua_target_disp,
+                                    uh_win->h_ranks_in_uh[target_node_id], uh_target_disp,
                                     target_count, target_datatype, op,
-                                    ua_win->ua_wins[target_local_rank]);
+                                    uh_win->uh_wins[target_local_rank]);
 
-        MPIASP_DBG_PRINT("MPIASP Accumulate to (helper %d, win[%d]) instead of "
+        MTCORE_DBG_PRINT("MTCORE Accumulate to (helper %d, win[%d]) instead of "
                          "target %d(node_id %d), 0x%lx(0x%lx + %d * %ld)\n",
-                         ua_win->asp_ranks_in_ua[target_node_id], target_local_rank,
-                         target_rank, target_node_id, ua_target_disp,
-                         ua_win->base_asp_offset[target_rank], ua_win->disp_units[target_rank],
+                         uh_win->h_ranks_in_uh[target_node_id], target_local_rank,
+                         target_rank, target_node_id, uh_target_disp,
+                         uh_win->base_h_offsets[target_rank], uh_win->disp_units[target_rank],
                          target_disp);
     }
 
@@ -109,19 +109,19 @@ int MPI_Accumulate(const void *origin_addr, int origin_count,
 {
     static const char FCNAME[] = "MPI_Accumulate";
     int mpi_errno = MPI_SUCCESS;
-    MPIASP_Win *ua_win;
+    MTCORE_Win *uh_win;
 
-    MPIASP_DBG_PRINT_FCNAME();
+    MTCORE_DBG_PRINT_FCNAME();
 
-    mpi_errno = get_ua_win(win, &ua_win);
+    mpi_errno = get_uh_win(win, &uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Replace displacement if it is an MPIASP-window */
-    if (ua_win > 0) {
-        mpi_errno = MPIASP_Accumulate_impl(origin_addr, origin_count,
+    /* Replace displacement if it is an MTCORE-window */
+    if (uh_win > 0) {
+        mpi_errno = MTCORE_Accumulate_impl(origin_addr, origin_count,
                                            origin_datatype, target_rank, target_disp, target_count,
-                                           target_datatype, op, win, ua_win);
+                                           target_datatype, op, win, uh_win);
     }
     else {
         mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,

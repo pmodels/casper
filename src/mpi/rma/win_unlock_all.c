@@ -1,36 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mpiasp.h"
+#include "mtcore.h"
 
 int MPI_Win_unlock_all(MPI_Win win)
 {
-    MPIASP_Win *ua_win;
+    MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
     int i;
     int *target_node_ids = NULL;
     int *target_ranks = NULL;
 
-    MPIASP_DBG_PRINT_FCNAME();
+    MTCORE_DBG_PRINT_FCNAME();
 
-    mpi_errno = get_ua_win(win, &ua_win);
+    mpi_errno = get_uh_win(win, &uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    if (ua_win > 0) {
-        PMPI_Comm_rank(ua_win->user_comm, &user_rank);
-        PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
+    if (uh_win > 0) {
+        PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+        PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
-        /* Unlock all Helpers in corresponding ua-window of each target process. */
+        /* Unlock all Helpers in corresponding uh-window of each target process. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
         /* Optimization for MPI implementations that have optimized lock_all.
          * However, user should be noted that, if MPI implementation issues lock messages
          * for every target even if it does not have any operation, this optimization
          * could lose performance and even lose asynchronous! */
-        for (i = 0; i < ua_win->max_local_user_nprocs; i++) {
-            MPIASP_DBG_PRINT("[%d]unlock_all(ua_wins[%d])\n", user_rank, i);
-            mpi_errno = PMPI_Win_unlock_all(ua_win->ua_wins[i]);
+        for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
+            MTCORE_DBG_PRINT("[%d]unlock_all(uh_wins[%d])\n", user_rank, i);
+            mpi_errno = PMPI_Win_unlock_all(uh_win->uh_wins[i]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -41,36 +41,36 @@ int MPI_Win_unlock_all(MPI_Win win)
             target_ranks[i] = i;
         }
 
-        mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, user_nprocs, target_ranks,
+        mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, user_nprocs, target_ranks,
                                         target_node_ids);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         for (i = 0; i < user_nprocs; i++) {
-            int target_local_rank = ua_win->local_user_ranks[i];
+            int target_local_rank = uh_win->local_user_ranks[i];
 
-            MPIASP_DBG_PRINT("[%d]unlock(Helper(%d), ua_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, ua_win->asp_ranks_in_ua[target_node_ids[i]],
+            MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins[%d]), instead of %d, node_id %d\n",
+                             user_rank, uh_win->h_ranks_in_uh[target_node_ids[i]],
                              target_local_rank, i, target_node_ids[i]);
-            mpi_errno = PMPI_Win_unlock(ua_win->asp_ranks_in_ua[target_node_ids[i]],
-                                        ua_win->ua_wins[target_local_rank]);
+            mpi_errno = PMPI_Win_unlock(uh_win->h_ranks_in_uh[target_node_ids[i]],
+                                        uh_win->uh_wins[target_local_rank]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 #endif
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-        if (ua_win->is_self_locked) {
+        if (uh_win->is_self_locked) {
             /* We need also release the lock of local rank */
-            int local_ua_rank;
-            PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
+            int local_uh_rank;
+            PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
 
-            MPIASP_DBG_PRINT("[%d]unlock self(%d, local_ua_win)\n", user_rank, local_ua_rank);
-            mpi_errno = PMPI_Win_unlock(local_ua_rank, ua_win->local_ua_win);
+            MTCORE_DBG_PRINT("[%d]unlock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
+            mpi_errno = PMPI_Win_unlock(local_uh_rank, uh_win->local_uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
-            ua_win->is_self_locked = 0;
+            uh_win->is_self_locked = 0;
         }
 #endif
     }
