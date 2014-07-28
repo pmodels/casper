@@ -58,6 +58,8 @@ int MPI_Win_unlock_all(MPI_Win win)
                 goto fn_fail;
         }
 #endif
+
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         if (ua_win->is_self_locked) {
             /* We need also release the lock of local rank */
             int local_ua_rank;
@@ -70,6 +72,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 
             ua_win->is_self_locked = 0;
         }
+#endif
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

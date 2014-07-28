@@ -35,7 +35,9 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         ua_win->is_self_locked = 0;
+#endif
 
         if (user_rank == target_rank) {
             /* If target is itself, we need grant this lock before return.
@@ -50,6 +52,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
 
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
                 /* Lock local rank so that operations can be executed through local target.
                  * Need grant lock on helper in advance due to permission check */
                 int local_ua_rank;
@@ -60,6 +63,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
                 ua_win->is_self_locked = 1;
+#endif
             }
         }
     }

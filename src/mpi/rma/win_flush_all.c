@@ -22,6 +22,7 @@ int MPI_Win_flush_all(MPI_Win win)
         PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
         PMPI_Comm_size(ua_win->user_comm, &user_nprocs);
 
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         if (ua_win->is_self_locked) {
             /* Flush shared window for local communication (self-target). */
             MPIASP_DBG_PRINT("[%d]flush self(%d, local_ua_win)\n", user_rank, local_ua_rank);
@@ -29,6 +30,7 @@ int MPI_Win_flush_all(MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+#endif
 
         /* Flush all Helpers in corresponding ua-window of each target process.. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT

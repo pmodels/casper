@@ -34,6 +34,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         /* If target is itself, we need also release the lock of local rank  */
         if (user_rank == target_rank && ua_win->is_self_locked) {
             int local_ua_rank;
@@ -46,6 +47,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 
             ua_win->is_self_locked = 0;
         }
+#endif
 
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they

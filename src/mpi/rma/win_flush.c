@@ -19,6 +19,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     if (ua_win > 0) {
         PMPI_Comm_rank(ua_win->user_comm, &user_rank);
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         if (user_rank == target_rank && ua_win->is_self_locked) {
             PMPI_Comm_rank(ua_win->local_ua_comm, &local_ua_rank);
 
@@ -31,7 +32,9 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-        else {
+        else
+#endif
+        {
             target_local_rank = ua_win->local_user_ranks[target_rank];
 
             mpi_errno = MPIASP_Get_node_ids(ua_win->user_group, 1, &target_rank, &target_node_id);

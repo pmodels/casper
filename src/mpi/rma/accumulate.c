@@ -47,6 +47,7 @@ static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
     int rank;
 
     PMPI_Comm_rank(ua_win->user_comm, &rank);
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (target_rank == rank && ua_win->is_self_locked) {
         /* If target is itself, we do not need translate it to any Helpers because
          * win_lock(self) will force lock(helper) to be granted so that it is safe
@@ -58,7 +59,9 @@ static int MPIASP_Accumulate_impl(const void *origin_addr, int origin_count,
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
-    else {
+    else
+#endif
+    {
         /* Translation for intra/inter-node operations.
          *
          * We do not use force flush + shared window for optimizing operations to local targets.

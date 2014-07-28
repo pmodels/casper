@@ -7,6 +7,9 @@
 #include "hash_table.h"
 
 #define MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+#define MTCORE_ENABLE_LOCAL_LOCK_OPT /* Optimization for local target.
+                                        Lock/RMA/Flush/Unlock local target instead of helpers.
+                                        Only available when local lock is granted. */
 
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 #define MTCORE_GRANT_LOCK_DATATYPE char
@@ -90,7 +93,9 @@ typedef struct MPIASP_Win {
 #endif
 
     unsigned short is_self_lock_grant_required;
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     unsigned short is_self_locked;
+#endif
 } MPIASP_Win;
 
 typedef struct ASP_Func_info {
