@@ -6,9 +6,8 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, rank_in_local_uh = 0;
-    int target_node_id = -1;
-    int target_local_rank = -1;
+    int user_rank, target_local_rank = -1;
+    int j;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -20,19 +19,17 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
         target_local_rank = uh_win->local_user_ranks[target_rank];
         PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-        mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, 1, &target_rank, &target_node_id);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
-
         /* Unlock helper process in corresponding uh-window of target process. */
-        MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins[%d]), instead of %d, node_id %d\n",
-                         user_rank, uh_win->h_ranks_in_uh[target_node_id], target_local_rank,
-                         target_rank, target_node_id);
+        for (j = 0; j < MTCORE_NUM_H; j++) {
+            int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
 
-        mpi_errno = PMPI_Win_unlock(uh_win->h_ranks_in_uh[target_node_id],
-                                    uh_win->uh_wins[target_local_rank]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+            MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                             user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
+
+            mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         /* If target is itself, we need also release the lock of local rank  */

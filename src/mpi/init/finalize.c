@@ -11,38 +11,51 @@ int MPI_Finalize(void)
     MTCORE_DBG_PRINT_FCNAME();
 
     /* Helpers do not need user process information because it is a global call. */
-    MTCORE_Func_start(MTCORE_FUNC_FINALIZE, 0, 0, 0, MTCORE_COMM_USER_LOCAL);
+    MTCORE_Func_start(MTCORE_FUNC_FINALIZE, 0, 0);
 
-    if (MTCORE_COMM_USER_WORLD) {
+    if (MTCORE_COMM_USER_WORLD != MPI_COMM_NULL) {
         MTCORE_DBG_PRINT(" free MTCORE_COMM_USER_WORLD\n");
         PMPI_Comm_free(&MTCORE_COMM_USER_WORLD);
     }
 
-    if (MTCORE_COMM_LOCAL) {
+    if (MTCORE_COMM_LOCAL != MPI_COMM_NULL) {
         MTCORE_DBG_PRINT(" free MTCORE_COMM_LOCAL\n");
         PMPI_Comm_free(&MTCORE_COMM_LOCAL);
     }
 
-    if (MTCORE_COMM_USER_LOCAL) {
+    if (MTCORE_COMM_USER_LOCAL != MPI_COMM_NULL) {
         MTCORE_DBG_PRINT(" free MTCORE_COMM_USER_LOCAL\n");
         PMPI_Comm_free(&MTCORE_COMM_USER_LOCAL);
     }
 
-    if (MTCORE_COMM_USER_ROOTS) {
-        MTCORE_DBG_PRINT(" free MTCORE_COMM_USER_ROOTS\n");
-        PMPI_Comm_free(&MTCORE_COMM_USER_ROOTS);
+    if (MTCORE_COMM_UR_WORLD != MPI_COMM_NULL) {
+        MTCORE_DBG_PRINT(" free MTCORE_COMM_UR_WORLD\n");
+        PMPI_Comm_free(&MTCORE_COMM_UR_WORLD);
+    }
+
+    if (MTCORE_COMM_HELPER_LOCAL != MPI_COMM_NULL) {
+        MTCORE_DBG_PRINT("free MTCORE_COMM_HELPER_LOCAL\n");
+        PMPI_Comm_free(&MTCORE_COMM_HELPER_LOCAL);
     }
 
     if (MTCORE_GROUP_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&MTCORE_GROUP_WORLD);
     if (MTCORE_GROUP_LOCAL != MPI_GROUP_NULL)
         PMPI_Group_free(&MTCORE_GROUP_LOCAL);
+    if (MTCORE_GROUP_USER_WORLD != MPI_GROUP_NULL)
+        PMPI_Group_free(&MTCORE_GROUP_USER_WORLD);
+
+    if (MTCORE_H_RANKS_IN_WORLD)
+        free(MTCORE_H_RANKS_IN_WORLD);
+
+    if (MTCORE_H_RANKS_IN_LOCAL)
+        free(MTCORE_H_RANKS_IN_LOCAL);
+
+    if (MTCORE_ALL_H_RANKS_IN_WORLD)
+        free(MTCORE_ALL_H_RANKS_IN_WORLD);
 
     if (MTCORE_ALL_NODE_IDS)
         free(MTCORE_ALL_NODE_IDS);
-
-    if (MTCORE_ALL_H_IN_COMM_WORLD)
-        free(MTCORE_ALL_H_IN_COMM_WORLD);
 
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)

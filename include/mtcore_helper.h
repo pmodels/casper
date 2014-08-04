@@ -27,6 +27,10 @@
 typedef struct MTCORE_H_win {
     MPI_Aint *user_base_addrs_in_local;
 
+    /* communicator including root user processes and all helpers,
+     * used for internal information exchange between users and helpers */
+    MPI_Comm ur_h_comm;
+
     /* communicator including local processes and helpers */
     MPI_Comm local_uh_comm;
     MPI_Win local_uh_win;
@@ -42,6 +46,11 @@ typedef struct MTCORE_H_win {
 
 extern hashtable_t *mtcore_h_win_ht;
 #define MTCORE_H_WIN_HT_SIZE 256
+
+typedef struct MTCORE_H_func_info {
+    MTCORE_Func_info info;
+    int user_root_in_local;
+} MTCORE_H_func_info;
 
 static inline int mtcore_get_h_win(unsigned long handle, MTCORE_H_win ** win)
 {
@@ -69,43 +78,14 @@ static inline void destroy_mtcore_h_win_table()
     return ht_destroy(mtcore_h_win_ht);
 }
 
-/**
- * Helper receives a new function from user root process
- */
-static inline int MTCORE_H_func_start(MTCORE_Func * FUNC, int *local_root, int *user_nprocs,
-                                 int *user_local_nprocs, int *uh_tag)
-{
-    int mpi_errno = MPI_SUCCESS;
-    MPI_Status status;
-    MTCORE_Func_info info;
-
-    mpi_errno = PMPI_Recv((char *) &info, sizeof(MTCORE_Func_info), MPI_CHAR,
-                          MPI_ANY_SOURCE, MPI_ANY_TAG, MTCORE_COMM_LOCAL, &status);
-
-    *FUNC = info.FUNC;
-    *user_nprocs = info.user_nprocs;
-    *user_local_nprocs = info.user_local_nprocs;
-    *local_root = status.MPI_SOURCE;
-    *uh_tag = status.MPI_TAG;
-
-    return mpi_errno;
-}
-
-static inline int MTCORE_H_func_get_param(char *func_params, int size,
-                                        int user_local_root, int uh_tag)
-{
-    int local_user_rank, i;
-    MPI_Status status;
-    int mpi_errno = MPI_SUCCESS;
-
-    return PMPI_Recv(func_params, size, MPI_CHAR, user_local_root, uh_tag,
-                     MTCORE_COMM_LOCAL, &status);
-}
-
-extern int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs,
-                            int user_tag);
-extern int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nprocs, int user_tag);
+extern int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs);
+extern int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nprocs);
 
 extern int MTCORE_H_finalize(void);
+
+extern int MTCORE_H_func_start(MTCORE_Func * FUNC, int *user_local_root, int *user_nprocs,
+                               int *user_local_nprocs);
+extern int MTCORE_H_func_new_ur_h_comm(int user_local_root, MPI_Comm * ur_h_comm);
+extern int MTCORE_H_func_get_param(char *func_params, int size, MPI_Comm ur_h_comm);
 
 #endif /* MTCORE_HELPER_H_ */

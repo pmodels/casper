@@ -5,21 +5,22 @@
 #undef FUNCNAME
 #define FUNCNAME MTCORE_H_win_free
 
-int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nprocs, int user_tag)
+int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
     int dst;
     int uh_nprocs, uh_rank;
     MTCORE_H_win *win;
-    unsigned long mtcore_h_win_handle;
+    unsigned long mtcore_h_win_handle = 0UL;
     MPI_Status stat;
     int i;
 
-    /* Receive the handle of helper win */
+    /* Receive the handle of helper win. */
     mpi_errno = PMPI_Recv(&mtcore_h_win_handle, 1, MPI_UNSIGNED_LONG,
-                          user_local_root, user_tag, MTCORE_COMM_LOCAL, &stat);
+                          user_local_root, 0, MTCORE_COMM_LOCAL, &stat);
     if (mpi_errno != 0)
         goto fn_fail;
+    MTCORE_H_DBG_PRINT(" Received window handler 0x%lx\n", mtcore_h_win_handle);
 
     mpi_errno = mtcore_get_h_win(mtcore_h_win_handle, &win);
     if (mpi_errno != 0)
@@ -53,6 +54,13 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
                 goto fn_fail;
         }
 
+        if (win->ur_h_comm && win->ur_h_comm != MPI_COMM_NULL) {
+            MTCORE_H_DBG_PRINT(" free user root + helpers communicator\n");
+            mpi_errno = PMPI_Comm_free(&win->ur_h_comm);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
         if (win->local_uh_comm && win->local_uh_comm != MTCORE_COMM_LOCAL) {
             MTCORE_H_DBG_PRINT(" free shared communicator\n");
             mpi_errno = PMPI_Comm_free(&win->local_uh_comm);
@@ -77,7 +85,7 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
         MTCORE_H_DBG_PRINT(" Freed MTCORE window\n");
     }
     else {
-        MTCORE_H_DBG_PRINT(" no corresponding MTCORE window, tag 0x%x\n", user_tag);
+        MTCORE_H_DBG_PRINT(" no corresponding MTCORE window\n");
     }
 
   fn_exit:

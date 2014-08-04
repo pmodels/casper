@@ -7,9 +7,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i;
-    int *target_node_ids = NULL;
-    int *target_ranks = NULL;
+    int i, j;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -35,27 +33,19 @@ int MPI_Win_unlock_all(MPI_Win win)
                 goto fn_fail;
         }
 #else
-        target_ranks = calloc(user_nprocs, sizeof(int));
-        target_node_ids = calloc(user_nprocs, sizeof(int));
-        for (i = 0; i < user_nprocs; i++) {
-            target_ranks[i] = i;
-        }
-
-        mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, user_nprocs, target_ranks,
-                                        target_node_ids);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
         for (i = 0; i < user_nprocs; i++) {
             int target_local_rank = uh_win->local_user_ranks[i];
 
-            MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, uh_win->h_ranks_in_uh[target_node_ids[i]],
-                             target_local_rank, i, target_node_ids[i]);
-            mpi_errno = PMPI_Win_unlock(uh_win->h_ranks_in_uh[target_node_ids[i]],
-                                        uh_win->uh_wins[target_local_rank]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            for (j = 0; j < MTCORE_NUM_H; j++) {
+                int target_h_rank_in_uh = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j];
+
+                MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                                 user_rank, target_h_rank_in_uh, target_local_rank, i);
+                mpi_errno =
+                    PMPI_Win_unlock(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
         }
 #endif
 
@@ -82,13 +72,6 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 
   fn_exit:
-#ifndef MTCORE_ENABLE_SYNC_ALL_OPT
-    if (target_ranks)
-        free(target_ranks);
-    if (target_node_ids)
-        free(target_node_ids);
-#endif
-
     return mpi_errno;
 
   fn_fail:

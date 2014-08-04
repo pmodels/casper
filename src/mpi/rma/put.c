@@ -69,8 +69,9 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
          * shorter CPU occupancy.
          */
         int target_local_rank = uh_win->local_user_ranks[target_rank];
+        int target_h_rank_in_uh = -1;
 
-        mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, 1, &target_rank, &target_node_id);
+        mpi_errno = MTCORE_Get_helper_rank(target_rank, uh_win, &target_h_rank_in_uh);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
 
@@ -79,15 +80,14 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
 
         /* Issue operation to the helper process in corresponding uh-window of target process. */
         mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
-                             uh_win->h_ranks_in_uh[target_node_id], uh_target_disp,
+                             target_h_rank_in_uh, uh_target_disp,
                              target_count, target_datatype, uh_win->uh_wins[target_local_rank]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win[%d]) instead of "
-                         "target %d(node_id %d), 0x%lx(0x%lx + %d * %ld)\n",
-                         uh_win->h_ranks_in_uh[target_node_id], target_local_rank,
-                         target_rank, target_node_id, uh_target_disp,
+                         "target %d, 0x%lx(0x%lx + %d * %ld)\n",
+                         target_h_rank_in_uh, target_local_rank, target_rank, uh_target_disp,
                          uh_win->base_h_offsets[target_rank], uh_win->disp_units[target_rank],
                          target_disp);
     }

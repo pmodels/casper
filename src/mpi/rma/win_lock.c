@@ -6,10 +6,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, rank_in_local_uh = 0;
-    int is_shared = 0;
-    int target_node_id = -1;
-    int target_local_rank;
+    int user_rank, target_local_rank = -1;
+    int j;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -21,20 +19,19 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         target_local_rank = uh_win->local_user_ranks[target_rank];
         PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-        mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, 1, &target_rank, &target_node_id);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
-
         /* Lock Helper processes in corresponding uh-window of target process. */
-        MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins[%d]), instead of %d, node_id %d\n",
-                         user_rank, uh_win->h_ranks_in_uh[target_node_id], target_local_rank,
-                         target_rank, target_node_id);
+        for (j = 0; j < MTCORE_NUM_H; j++) {
+            int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
 
-        mpi_errno = PMPI_Win_lock(lock_type, uh_win->h_ranks_in_uh[target_node_id],
-                                  assert, uh_win->uh_wins[target_local_rank]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+            MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                             user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
 
+            mpi_errno = PMPI_Win_lock(lock_type, target_h_rank_in_uh, assert,
+                                      uh_win->uh_wins[target_local_rank]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+        /*TODO: MTCORE_ENABLE_SYNC_ALL_OPT */
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         uh_win->is_self_locked = 0;
 #endif
@@ -48,7 +45,9 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
              * this process will not do local load/store on this window.
              */
             if (uh_win->is_self_lock_grant_required) {
-                mpi_errno = MTCORE_Win_grant_local_lock(lock_type, assert, uh_win);
+                mpi_errno =
+                    MTCORE_Win_grant_local_lock(uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H],
+                                                lock_type, assert, uh_win);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
 

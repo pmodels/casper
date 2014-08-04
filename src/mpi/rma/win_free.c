@@ -8,7 +8,9 @@ int MPI_Win_free(MPI_Win * win)
     int mpi_errno = MPI_SUCCESS;
     MTCORE_Win *uh_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
-    int uh_tag, i;
+    int i, j;
+    MPI_Request *reqs = NULL;
+    MPI_Status *stats = NULL;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -23,17 +25,20 @@ int MPI_Win_free(MPI_Win * win)
         PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
         PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
 
-        mpi_errno = MTCORE_Tag_format((int) uh_win->user_comm, &uh_tag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
 
-        MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs, uh_tag,
-                          uh_win->local_user_comm);
-
-        /* Notify the handle of target Helper win */
+        /* Notify the handle of target Helper win. It is noted that helpers cannot
+         * fetch the corresponding window without handlers so that only global communicator
+         * can be used here.*/
         if (user_local_rank == 0) {
-            mpi_errno = PMPI_Send(&uh_win->h_win_handle, 1, MPI_UNSIGNED_LONG,
-                                  MTCORE_RANK_IN_COMM_LOCAL, uh_tag, MTCORE_COMM_LOCAL);
+            reqs = calloc(MTCORE_NUM_H, sizeof(MPI_Request));
+            stats = calloc(MTCORE_NUM_H, sizeof(MPI_Status));
+
+            for (j = 0; j < MTCORE_NUM_H; j++) {
+                mpi_errno = PMPI_Isend(&uh_win->h_win_handles[j], 1, MPI_UNSIGNED_LONG,
+                                       MTCORE_H_RANKS_IN_LOCAL[j], 0, MTCORE_COMM_LOCAL, &reqs[j]);
+            }
+            mpi_errno = PMPI_Waitall(MTCORE_NUM_H, reqs, stats);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -46,7 +51,7 @@ int MPI_Win_free(MPI_Win * win)
          * for waiting operations on that window complete.
          */
         if (uh_win->uh_wins) {
-            MTCORE_DBG_PRINT("[%d] \t free uh windows\n", user_rank);
+            MTCORE_DBG_PRINT("\t free uh windows\n");
             for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
                 if (uh_win->uh_wins[i]) {
                     mpi_errno = PMPI_Win_free(&uh_win->uh_wins[i]);
@@ -57,7 +62,7 @@ int MPI_Win_free(MPI_Win * win)
         }
 
         if (uh_win->local_uh_win) {
-            MTCORE_DBG_PRINT("[%d] \t free shared window\n", user_rank);
+            MTCORE_DBG_PRINT("\t free shared window\n");
             mpi_errno = PMPI_Win_free(&uh_win->local_uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -69,19 +74,15 @@ int MPI_Win_free(MPI_Win * win)
                 goto fn_fail;
         }
 
-        if (uh_win->uh_comm != MPI_COMM_NULL && uh_win->uh_comm != MPI_COMM_WORLD) {
-            mpi_errno = PMPI_Comm_free(&uh_win->uh_comm);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-        if (uh_win->uh_group != MPI_GROUP_NULL) {
-            mpi_errno = PMPI_Group_free(&uh_win->uh_group);
+        if (uh_win->ur_h_comm && uh_win->ur_h_comm != MPI_COMM_NULL) {
+            MTCORE_DBG_PRINT("\t free user root + helpers communicator\n");
+            mpi_errno = PMPI_Comm_free(&uh_win->ur_h_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
         if (uh_win->local_uh_comm && uh_win->local_uh_comm != MTCORE_COMM_LOCAL) {
-            MTCORE_DBG_PRINT("[%d] \t free shared communicator\n", user_rank);
+            MTCORE_DBG_PRINT("\t free shared communicator\n");
             mpi_errno = PMPI_Comm_free(&uh_win->local_uh_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -92,14 +93,26 @@ int MPI_Win_free(MPI_Win * win)
                 goto fn_fail;
         }
 
+        if (uh_win->uh_comm != MPI_COMM_NULL && uh_win->uh_comm != MPI_COMM_WORLD) {
+            MTCORE_DBG_PRINT("\t free uh communicator\n");
+            mpi_errno = PMPI_Comm_free(&uh_win->uh_comm);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+        if (uh_win->uh_group != MPI_GROUP_NULL) {
+            mpi_errno = PMPI_Group_free(&uh_win->uh_group);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
         if (uh_win->local_user_comm && uh_win->local_user_comm != MTCORE_COMM_USER_LOCAL) {
-            MTCORE_DBG_PRINT("[%d] \t free local USER communicator\n", user_rank);
+            MTCORE_DBG_PRINT("\t free local USER communicator\n");
             mpi_errno = PMPI_Comm_free(&uh_win->local_user_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        MTCORE_DBG_PRINT("[%d] \t free user window\n", user_rank);
+        MTCORE_DBG_PRINT("\t free user window\n");
         mpi_errno = PMPI_Win_free(win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -116,12 +129,14 @@ int MPI_Win_free(MPI_Win * win)
             free(uh_win->h_ranks_in_uh);
         if (uh_win->local_user_ranks)
             free(uh_win->local_user_ranks);
+        if (uh_win->h_win_handles)
+            free(uh_win->h_win_handles);
         if (uh_win->uh_wins)
             free(uh_win->uh_wins);
 
         free(uh_win);
 
-        MTCORE_DBG_PRINT("[%d] Freed MTCORE window 0x%x\n", user_rank, *win);
+        MTCORE_DBG_PRINT("Freed MTCORE window 0x%x\n", *win);
     }
     else {
         PMPI_Comm_rank(MPI_COMM_WORLD, &user_rank);
@@ -130,11 +145,14 @@ int MPI_Win_free(MPI_Win * win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        MTCORE_DBG_PRINT("[%d] Freed MPI window 0x%x\n", user_rank, *win);
+        MTCORE_DBG_PRINT("Freed MPI window 0x%x\n", *win);
     }
 
   fn_exit:
-
+    if (reqs)
+        free(reqs);
+    if (stats)
+        free(stats);
     return mpi_errno;
 
   fn_fail:

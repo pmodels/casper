@@ -6,11 +6,6 @@
 #undef FUNCNAME
 #define FUNCNAME MTCORE_H_win_allocate
 
-/**
- * TODO: should implement table[user_win_handle : mtcore_h_win object]
- */
-MTCORE_H_win *mtcore_h_win_table[2];
-
 static int create_uh_comm(int user_nprocs, int *user_ranks_in_world, int num_helpers,
                           int *helper_ranks_in_world, MTCORE_H_win * win)
 {
@@ -56,8 +51,7 @@ static int create_uh_comm(int user_nprocs, int *user_ranks_in_world, int num_hel
     goto fn_exit;
 }
 
-static int create_communicators(int user_local_root, int user_nprocs, int user_local_nprocs,
-                                int user_tag, MTCORE_H_win * win)
+static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *func_params = NULL, func_param_size = 0;
@@ -66,13 +60,13 @@ static int create_communicators(int user_local_root, int user_nprocs, int user_l
     int *helper_ranks_in_world = NULL, num_helpers = 0, max_num_helpers;
 
     user_ranks_in_world = calloc(user_nprocs, sizeof(int));
+    max_num_helpers = MTCORE_NUM_H * MTCORE_NUM_NODES;
     helper_ranks_in_world = calloc(max_num_helpers, sizeof(int));
-    max_num_helpers = MTCORE_NUM_H_IN_LOCAL * MTCORE_NUM_NODES;
     func_param_size = user_nprocs + max_num_helpers + 3;
     func_params = calloc(func_param_size, sizeof(int));
 
     mpi_errno = MTCORE_H_func_get_param((char *) func_params, sizeof(int) * func_param_size,
-                                      user_local_root, user_tag);
+                                        win->ur_h_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -83,8 +77,7 @@ static int create_communicators(int user_local_root, int user_nprocs, int user_l
     win->max_local_user_nprocs = func_params[1];
 
     if (is_user_world) {
-        MTCORE_H_DBG_PRINT(" Received parameters from %d: is_user_world %d\n",
-                      user_local_root, is_user_world);
+        MTCORE_H_DBG_PRINT(" Received parameters: is_user_world %d\n", is_user_world);
 
         /* Create communicators
          *  local_uh_comm: including local USER and Helper processes
@@ -106,8 +99,8 @@ static int create_communicators(int user_local_root, int user_nprocs, int user_l
         pidx += user_nprocs;
         memcpy(helper_ranks_in_world, &func_params[pidx], sizeof(int) * num_helpers);
 
-        MTCORE_H_DBG_PRINT(" Received parameters from %d: is_user_world %d, num_helpers %d\n",
-                      user_local_root, is_user_world, num_helpers);
+        MTCORE_H_DBG_PRINT(" Received parameters: is_user_world %d, num_helpers %d\n",
+                           is_user_world, num_helpers);
 
         /* Create communicators
          *  uh_comm: including all USER and Helper processes
@@ -137,7 +130,7 @@ static int create_communicators(int user_local_root, int user_nprocs, int user_l
     goto fn_exit;
 }
 
-int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs, int user_tag)
+int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Status status;
@@ -148,23 +141,28 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     MTCORE_H_win *win;
     void **user_bases = NULL;
     int i;
-    int mtcore_buf_size = 0;
+    int mtcore_buf_size = MTCORE_HELPER_SHARED_SG_SIZE;
 
     win = calloc(1, sizeof(MTCORE_H_win));
+
+    /* Create user root + helpers communicator for
+     * internal information exchange between users and helpers. */
+    mpi_errno = MTCORE_H_func_new_ur_h_comm(user_local_root, &win->ur_h_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     /* Create communicators
      *  uh_comm: including all USER and Helper processes
      *  local_uh_comm: including local USER and Helper processes
      */
-    create_communicators(user_local_root, user_nprocs, user_local_nprocs, user_tag, win);
+    create_communicators(user_nprocs, user_local_nprocs, win);
 
     PMPI_Comm_rank(win->local_uh_comm, &local_uh_rank);
     PMPI_Comm_size(win->local_uh_comm, &local_uh_nprocs);
-
     PMPI_Comm_size(win->uh_comm, &uh_nprocs);
     PMPI_Comm_rank(win->uh_comm, &uh_rank);
     MTCORE_H_DBG_PRINT(" Created uh_comm: %d/%d, local_uh_comm: %d/%d\n",
-                  uh_rank, uh_nprocs, local_uh_rank, local_uh_rank);
+                       uh_rank, uh_nprocs, local_uh_rank, local_uh_nprocs);
 
     /* Allocate a shared window with local USER processes */
 
@@ -181,7 +179,7 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
                                          win->local_uh_comm, &win->base, &win->local_uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    MTCORE_H_DBG_PRINT(" Created local_uh_win, base=%p\n", win->base);
+    MTCORE_H_DBG_PRINT(" Created local_uh_win, base=%p, size=%d\n", win->base, mtcore_buf_size);
 
     /* -Query address of user buffers and send to USER processes */
     user_bases = calloc(local_uh_nprocs, sizeof(void *));
@@ -195,12 +193,20 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
 
         PMPI_Get_address(user_bases[dst], &win->user_base_addrs_in_local[dst]);
         MTCORE_H_DBG_PRINT("   shared base[%d]=%p, addr 0x%lx, offset 0x%lx"
-                      ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
-                      win->user_base_addrs_in_local[dst],
-                      (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
+                           ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
+                           win->user_base_addrs_in_local[dst],
+                           (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
 
         size += r_size; /* size in byte */
     }
+
+    /* All helpers create window starting from the baseptr of helper 0, so users
+     * can use the same offset for all helpers*/
+
+    /* FIXME: if size=0 and helper rank > 0, base may be returned as 0x0.
+     * Is it implementation specific ? What is the uniform solution ?
+     * It is not wrong that simply use base[0] for creating window, because it is accessible. */
+    win->base = user_bases[0];
 
     /* Create uh windows including all User and Helper processes.
      * Every User process has a window used for permission check and accessing Helpers.
@@ -222,11 +228,13 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Notify user root the handle of helper win */
-    mpi_errno =
-        PMPI_Send(&win->mtcore_h_win_handle, 1, MPI_INT, user_local_root, user_tag, MTCORE_COMM_LOCAL);
+    /* Notify user root the handle of helper win. User root is always rank num_h in
+     * user root + helpers communicator */
+    mpi_errno = PMPI_Gather(&win->mtcore_h_win_handle, 1, MPI_UNSIGNED_LONG, NULL,
+                            0, MPI_UNSIGNED_LONG, MTCORE_NUM_H, win->ur_h_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+    MTCORE_H_DBG_PRINT(" Define mtcore_h_win_handle=0x%lx\n", win->mtcore_h_win_handle);
 
   fn_exit:
 
@@ -246,6 +254,8 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         }
     }
 
+    if (win->ur_h_comm && win->ur_h_comm != MPI_COMM_NULL)
+        PMPI_Comm_free(&win->ur_h_comm);
     if (win->local_uh_comm && win->local_uh_comm != MTCORE_COMM_LOCAL)
         PMPI_Comm_free(&win->local_uh_comm);
     if (win->uh_comm && win->uh_comm != MPI_COMM_WORLD)

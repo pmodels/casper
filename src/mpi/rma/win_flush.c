@@ -6,10 +6,8 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, local_uh_rank = 0;
-    int is_shared = 0;
-    int target_node_id = -1;
-    int target_local_rank = -1;
+    int user_rank, target_local_rank = -1;
+    int j;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -21,6 +19,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
         PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
         if (user_rank == target_rank && uh_win->is_self_locked) {
+            int local_uh_rank;
             PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
 
             /* If target is itself, only flush the target on shared window.
@@ -37,21 +36,20 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
         {
             target_local_rank = uh_win->local_user_ranks[target_rank];
 
-            mpi_errno = MTCORE_Get_node_ids(uh_win->user_group, 1, &target_rank, &target_node_id);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            for (j = 0; j < MTCORE_NUM_H; j++) {
+                int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
 
-            MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of %d, node_id %d\n",
-                             user_rank, uh_win->h_ranks_in_uh[target_node_id], target_local_rank,
-                             target_rank, target_node_id);
+                MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                                 user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
 
-            /* We flush target Helper processes in uh_window. Because for non-shared
-             * targets, all translated operations are issued to target Helpers via uh_window.
-             */
-            mpi_errno = PMPI_Win_flush(uh_win->h_ranks_in_uh[target_node_id],
-                                       uh_win->uh_wins[target_local_rank]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+                /* We flush target Helper processes in uh_window. Because for non-shared
+                 * targets, all translated operations are issued to target Helpers via uh_window.
+                 */
+                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
+            /*TODO: MTCORE_ENABLE_SYNC_ALL_OPT */
         }
     }
     /* TODO: All the operations which we have not wrapped up will be failed, because they
