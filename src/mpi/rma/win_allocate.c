@@ -441,9 +441,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
             goto fn_fail;
     }
 
-    mpi_errno = put_uh_win(*win, uh_win);
-    if (mpi_errno != 0)
-        goto fn_fail;
+    MTCORE_Cache_uh_win(uh_win->win, uh_win);
 
   fn_exit:
 
@@ -455,6 +453,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     return mpi_errno;
 
   fn_fail:
+
+    /* Caching is the last possible error, so we do not need remove
+     * cache here. */
 
     if (uh_win->local_uh_win)
         PMPI_Win_free(&uh_win->local_uh_win);

@@ -113,21 +113,11 @@ int MPI_Accumulate(const void *origin_addr, int origin_count,
 
     MTCORE_DBG_PRINT_FCNAME();
 
-    mpi_errno = get_uh_win(win, &uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
-    /* Replace displacement if it is an MTCORE-window */
-    if (uh_win > 0) {
-        mpi_errno = MTCORE_Accumulate_impl(origin_addr, origin_count,
-                                           origin_datatype, target_rank, target_disp, target_count,
-                                           target_datatype, op, win, uh_win);
-    }
-    else {
-        mpi_errno = PMPI_Accumulate(origin_addr, origin_count, origin_datatype,
-                                    target_rank, target_disp, target_count, target_datatype, op,
-                                    win);
-    }
+    mpi_errno = MTCORE_Accumulate_impl(origin_addr, origin_count,
+                                       origin_datatype, target_rank, target_disp, target_count,
+                                       target_datatype, op, win, uh_win);
 
   fn_exit:
 

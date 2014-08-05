@@ -23,6 +23,8 @@ int MTCORE_NUM_NODES = 0;
 int *MTCORE_ALL_NODE_IDS = NULL;
 int MTCORE_MY_RANK_IN_WORLD = -1;
 
+MTCORE_Define_win_cache;
+
 hashtable_t *uh_win_ht;
 
 int MPI_Init(int *argc, char ***argv)
@@ -198,9 +200,7 @@ int MPI_Init(int *argc, char ***argv)
                          local_nprocs, user_rank, user_nprocs, local_user_rank,
                          local_user_nprocs, MTCORE_MY_NODE_ID);
 
-        mpi_errno = init_uh_win_table();
-        if (mpi_errno != 0)
-            goto fn_fail;
+        MTCORE_Init_win_cache();
     }
     /* Helper processes */
     /* TODO: Helper process should not run user program */
@@ -259,6 +259,8 @@ int MPI_Init(int *argc, char ***argv)
         free(MTCORE_ALL_H_RANKS_IN_WORLD);
     if (MTCORE_ALL_NODE_IDS)
         free(MTCORE_ALL_NODE_IDS);
+
+    MTCORE_Destroy_win_cache();
 
     /* Reset global variables */
     MTCORE_COMM_USER_WORLD = MPI_COMM_NULL;

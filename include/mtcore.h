@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
-#include "hash_table.h"
 
 #define MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 #define MTCORE_ENABLE_LOCAL_LOCK_OPT    /* Optimization for local target.
@@ -127,33 +126,50 @@ typedef struct MTCORE_Func_info {
 
 #define MTCORE_FUNC_TAG 9889
 
-extern hashtable_t *uh_win_ht;
-#define uh_win_HT_SIZE 256
+#define MTCORE_Define_win_cache int UH_WIN_HANDLE_KEY = MPI_KEYVAL_INVALID
+extern int UH_WIN_HANDLE_KEY;
 
-static inline int get_uh_win(int handle, MTCORE_Win ** win)
-{
-    *win = (MTCORE_Win *) ht_get(uh_win_ht, (ht_key_t) handle);
-    return 0;
+#define MTCORE_Init_win_cache() {    \
+    mpi_errno = PMPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, \
+            MPI_WIN_NULL_DELETE_FN, &UH_WIN_HANDLE_KEY, (void *) 0);    \
+    if (mpi_errno != 0) \
+        goto fn_fail;   \
 }
 
-static inline int put_uh_win(int key, MTCORE_Win * win)
-{
-    return ht_set(uh_win_ht, (ht_key_t) key, win);
+#define MTCORE_Destroy_win_cache() {    \
+    if (UH_WIN_HANDLE_KEY != MPI_KEYVAL_INVALID) {  \
+        mpi_errno = PMPI_Win_free_keyval(&UH_WIN_HANDLE_KEY);    \
+        if (mpi_errno != MPI_SUCCESS){  \
+            MTCORE_ERR_PRINT("Free UH_WIN_HANDLE_KEY %p\n", &UH_WIN_HANDLE_KEY);   \
+        }   /*Do not jump to fn_fail, because it is also used in fn_fail processing */ \
+    }   \
 }
 
-static inline int init_uh_win_table()
-{
-    uh_win_ht = ht_create(uh_win_HT_SIZE);
-
-    if (uh_win_ht == NULL)
-        return -1;
-
-    return 0;
+#define MTCORE_Fetch_uh_win_from_cache(win, uh_win) { \
+    int flag = 0;   \
+    mpi_errno = PMPI_Win_get_attr(win, UH_WIN_HANDLE_KEY, &uh_win, &flag);   \
+    if (!flag || mpi_errno != MPI_SUCCESS){  \
+        MTCORE_ERR_PRINT("Cannot fetch uh_win from win 0x%lx\n", win);   \
+         goto fn_fail;   \
+    }   \
+    MTCORE_DBG_PRINT("fetch uh_win %p from win 0x%lx \n", uh_win, win);  \
 }
 
-static inline void destroy_uh_win_table()
-{
-    return ht_destroy(uh_win_ht);
+#define MTCORE_Cache_uh_win(win, uh_win) { \
+    mpi_errno = PMPI_Win_set_attr(win, UH_WIN_HANDLE_KEY, uh_win);  \
+    if (mpi_errno != MPI_SUCCESS){  \
+        MTCORE_ERR_PRINT("Cannot cache uh_win %p for win 0x%lx\n", uh_win, win);   \
+        goto fn_fail;   \
+    }   \
+    MTCORE_DBG_PRINT("cache uh_win %p into win 0x%lx \n", uh_win, win);  \
+}
+
+#define MTCORE_Remove_uh_win_from_cache(win)  {\
+    mpi_errno = PMPI_Win_delete_attr(win, UH_WIN_HANDLE_KEY);   \
+    if (mpi_errno != MPI_SUCCESS){  \
+        MTCORE_ERR_PRINT("Cannot remove uh_win cache for win 0x%lx\n", win);   \
+        goto fn_fail;   \
+    }   \
 }
 
 extern MPI_Comm MTCORE_COMM_USER_WORLD;

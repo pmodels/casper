@@ -45,6 +45,8 @@ int MPI_Finalize(void)
     if (MTCORE_GROUP_USER_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&MTCORE_GROUP_USER_WORLD);
 
+    MTCORE_Destroy_win_cache();
+
     if (MTCORE_H_RANKS_IN_WORLD)
         free(MTCORE_H_RANKS_IN_WORLD);
 
@@ -60,8 +62,6 @@ int MPI_Finalize(void)
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-
-    destroy_uh_win_table();
 
   fn_exit:
     return mpi_errno;
