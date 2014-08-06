@@ -17,6 +17,19 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
     /* Lock Helper processes in corresponding uh-window of target process. */
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+
+    /* Optimization for MPI implementations that have optimized lock_all.
+     * However, user should be noted that, if MPI implementation issues lock messages
+     * for every target even if it does not have any operation, this optimization
+     * could lose performance and even lose asynchronous! */
+
+    MTCORE_DBG_PRINT("[%d]lock_all(uh_wins[%d]), instead of target rank %d\n",
+                     user_rank, target_local_rank, target_rank);
+    mpi_errno = PMPI_Win_lock_all(assert, uh_win->uh_wins[target_local_rank]);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+#else
     for (j = 0; j < MTCORE_NUM_H; j++) {
         int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
 
@@ -28,7 +41,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-    /*TODO: MTCORE_ENABLE_SYNC_ALL_OPT */
+#endif
+
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     uh_win->is_self_locked = 0;
 #endif
