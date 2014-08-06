@@ -68,6 +68,29 @@ static int gather_ranks(MTCORE_Win * win, int *user_ranks_in_world, int *num_hel
     goto fn_exit;
 }
 
+#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
+static void specify_user_main_helper(MTCORE_Win * uh_win)
+{
+    int i, off;
+    int permission_h_rank, user_nprocs, local_user_rank;
+
+    PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+
+    /* Specify main helper of each user following the order of users' rank
+     * in corresponding local user communicator (i.e., P0, P1, P2 will be specified
+     * to H0, H1, H0 respectively). Each main helper is stored in h_ranks_in_uh[rank][0],
+     * and the original rank is moved to main helper's place (i.e., P1's helper
+     * ranks are stored as H1, H0). */
+    for (i = 0; i < user_nprocs; i++) {
+        local_user_rank = uh_win->local_user_ranks[i];
+        off = local_user_rank % MTCORE_NUM_H;
+        permission_h_rank = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + off];
+        uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + off] = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H];
+        uh_win->h_ranks_in_uh[i * MTCORE_NUM_H] = permission_h_rank;
+    }
+}
+#endif
+
 static int create_uh_comm(int *user_ranks_in_world, int num_helpers, int *helper_ranks_in_world,
                           MTCORE_Win * win)
 {
@@ -161,6 +184,10 @@ static int create_communicators(MTCORE_Win * uh_win)
         /* -Get all Helper rank in uh communicator */
         memcpy(uh_win->h_ranks_in_uh, MTCORE_ALL_H_RANKS_IN_WORLD,
                sizeof(int) * MTCORE_NUM_H * user_nprocs);
+
+#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
+        specify_user_main_helper(uh_win);
+#endif
     }
     else {
         user_ranks_in_world = calloc(user_nprocs, sizeof(int));
@@ -218,6 +245,10 @@ static int create_communicators(MTCORE_Win * uh_win)
                                                uh_win->h_ranks_in_uh);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
+        specify_user_main_helper(uh_win);
+#endif
     }
 
 #ifdef DEBUG
@@ -288,7 +319,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     uh_win->base_h_offsets = calloc(user_nprocs, sizeof(MPI_Aint));
     uh_win->disp_units = calloc(user_nprocs, sizeof(int));
     uh_win->h_ranks_in_uh = calloc(MTCORE_NUM_H * user_nprocs, sizeof(int));
-    uh_win->local_user_ranks = calloc(user_nprocs, sizeof(int));;
+    uh_win->local_user_ranks = calloc(user_nprocs, sizeof(int));
     user_local_sizes = calloc(user_local_nprocs, sizeof(MPI_Aint));
 
     /* Gather users' disp_unit and rank in local user communicator,
@@ -301,9 +332,19 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     for (i = 0; i < user_nprocs; i++) {
-        uh_win->disp_units[i] = tmp_gather_buf[2 * user_rank];
-        uh_win->local_user_ranks[i] = tmp_gather_buf[2 * user_rank + 1];
+        uh_win->disp_units[i] = tmp_gather_buf[2 * i];
+        uh_win->local_user_ranks[i] = tmp_gather_buf[2 * i + 1];
     }
+
+#ifdef DEBUG
+    MTCORE_DBG_PRINT("my user local rank %d/%d\n", user_local_rank, user_local_nprocs);
+    for (i = 0; i < user_nprocs; i++) {
+        MTCORE_DBG_PRINT("\t disp_units[%d] = %d\n", i, uh_win->disp_units[i]);
+    }
+    for (i = 0; i < user_nprocs; i++) {
+        MTCORE_DBG_PRINT("\t local_user_ranks[%d] = %d\n", i, uh_win->local_user_ranks[i]);
+    }
+#endif
 
     /* Get the maximum number of processes per node */
     mpi_errno = PMPI_Allreduce(&user_local_nprocs, &uh_win->max_local_user_nprocs,

@@ -20,12 +20,38 @@
  * when shared segment size of each helper is 0 */
 #define MTCORE_HELPER_SHARED_SG_SIZE 4096
 
-/* Options for synchronizing permission control among multiple helpers */
-#define MTCORE_MULTI_HELPER_METHOD_SERIAL_ASYNC 1
-#define MTCORE_MULTI_HELPER_METHOD_BYTE_TRACK 2
-#define MTCORE_MULTI_HELPER_METHOD_FORCE_LOCK 3
+/* Options for lock permission controlling among multiple helpers.
+ *
+ * Since RMA Ops to a given target may be distributed to different helpers
+ * and locks will be guaranteed to be acquired only when an Op happens,
+ * two origins may access a target concurrently if their Ops are distributed
+ * to different helpers.
+ *
+ *  Serial asynchronous:
+ *      Statically specify single helper for each target, thus real locks/Ops
+ *      to a given target will only be issued to the same helper.
+ *
+ *  Byte tracking:
+ *      Statically specify single helper for each segment of shared memory,
+ *      thus real locks/Ops to a given byte will only be issued to the same
+ *      helper. Consequently, it eliminates the case that two origins concurrently
+ *      access the same address of a target.
+ *      This method has additional overhead especially for derived target datatype.
+ *      But it is more fine-grained than Serial asynchronous.
+ *
+ *  Force lock:
+ *      Force helper locks granted in lock calls, thus an origin will block in lock
+ *      calls while another origin is holding the lock of that target.
+ *      After open an epoch using this method, Ops can be safely distributed to
+ *      multiple helpers. However, it disables MPI potential optimizations such
+ *      as delaying locks and combining lock + Op packets, or ignoring locks with
+ *      no operations.
+ * */
+#define MTCORE_LOCK_OPTION_SERIAL_ASYNC 1
+#define MTCORE_LOCK_OPTION_BYTE_TRACK 2
+#define MTCORE_LOCK_OPTION_FORCE_LOCK 3
 
-#define MTCORE_MULTI_HELPER_METHOD MTCORE_MULTI_HELPER_METHOD_SERIAL_ASYNC
+#define MTCORE_LOCK_OPTION MTCORE_LOCK_OPTION_SERIAL_ASYNC
 
 #ifdef HAVE_BUILTIN_EXPECT
 #  define unlikely(x_) __builtin_expect(!!(x_),0)
@@ -185,6 +211,7 @@ extern int MTCORE_NUM_H;
 extern int *MTCORE_H_RANKS_IN_WORLD;
 extern int *MTCORE_H_RANKS_IN_LOCAL;
 extern int *MTCORE_ALL_H_RANKS_IN_WORLD;
+extern int *MTCORE_USER_RANKS_IN_WORLD;
 extern int MTCORE_NUM_NODES;
 extern int MTCORE_MY_NODE_ID;
 extern int *MTCORE_ALL_NODE_IDS;
@@ -221,8 +248,13 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 static inline int MTCORE_Get_helper_rank(int target_rank, MTCORE_Win * uh_win,
                                          int *target_h_rank_in_uh)
 {
-    /*TODO: simply return helper 0 now, should choose from multiple helpers */
+#if (MTCORE_LOCK_OPTION != MTCORE_LOCK_OPTION_FORCE_LOCK)
+    /* Both serial async and byte tracking options specify the first helper as
+     * the main helper of that user process.*/
     *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
+#endif
+    /*TODO: implement force lock */
+
     return MPI_SUCCESS;
 }
 

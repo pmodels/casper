@@ -18,6 +18,8 @@ int *MTCORE_H_RANKS_IN_WORLD = NULL;
 int *MTCORE_H_RANKS_IN_LOCAL = NULL;
 int *MTCORE_ALL_H_RANKS_IN_WORLD = NULL;        /* Helpers of user process x are stored as
                                                  * [x*num_h : (x+1)*num_h-1] */
+int *MTCORE_USER_RANKS_IN_WORLD = NULL;
+
 int MTCORE_MY_NODE_ID = -1;
 int MTCORE_NUM_NODES = 0;
 int *MTCORE_ALL_NODE_IDS = NULL;
@@ -46,6 +48,7 @@ int MPI_Init(int *argc, char ***argv)
 
     PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MTCORE_MY_RANK_IN_WORLD = rank;
 
     if ((*argc) > 1) {
         MTCORE_NUM_H = atoi((*argv)[1]);
@@ -127,7 +130,6 @@ int MPI_Init(int *argc, char ***argv)
         if (local_user_rank == 0) {
             PMPI_Comm_size(MTCORE_COMM_UR_WORLD, &MTCORE_NUM_NODES);
             PMPI_Comm_rank(MTCORE_COMM_UR_WORLD, &MTCORE_MY_NODE_ID);
-            MTCORE_MY_RANK_IN_WORLD = rank;
 
             tmp_bcast_buf[0] = MTCORE_MY_NODE_ID;
             tmp_bcast_buf[1] = MTCORE_NUM_NODES;
@@ -187,6 +189,16 @@ int MPI_Init(int *argc, char ***argv)
 
     /* USER processes */
     if (local_rank >= MTCORE_NUM_H) {
+        /* Get user ranks in world */
+        for (i = 0; i < user_nprocs; i++)
+            ranks_in_user_world[i] = i;
+        MTCORE_USER_RANKS_IN_WORLD = calloc(user_nprocs, sizeof(int));
+        mpi_errno = PMPI_Group_translate_ranks(MTCORE_GROUP_USER_WORLD, user_nprocs,
+                                               ranks_in_user_world, MTCORE_GROUP_WORLD,
+                                               MTCORE_USER_RANKS_IN_WORLD);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
 #ifdef DEBUG
         for (i = 0; i < user_nprocs; i++) {
             MTCORE_DBG_PRINT("helper_rank_in_world[%d]:\n", i);
@@ -259,6 +271,8 @@ int MPI_Init(int *argc, char ***argv)
         free(MTCORE_ALL_H_RANKS_IN_WORLD);
     if (MTCORE_ALL_NODE_IDS)
         free(MTCORE_ALL_NODE_IDS);
+    if (MTCORE_USER_RANKS_IN_WORLD)
+        free(MTCORE_USER_RANKS_IN_WORLD);
 
     MTCORE_Destroy_win_cache();
 
