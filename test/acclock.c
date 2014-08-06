@@ -54,10 +54,13 @@ static int run_test(int nop)
     target_computation_init();
     dst = (rank + 1) % nprocs;
 
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+    fprintf(stdout, "[%d]-----check lock/acc&flush %d + sleep + acc %d/unlock\n", rank, dst,
+            dst);
 
     t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+
         MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 1, 1, MPI_DOUBLE, MPI_MAX, win);
         fprintf(stdout, "dst %d += locbuf[%d] %.1lf\n", dst, dst * nop, locbuf[dst * nop]);
@@ -76,10 +79,9 @@ static int run_test(int nop)
             MPI_Win_flush(dst, win);    /* use it to poke progress in order to finish local CQEs */
 #endif
         }
-        MPI_Win_flush(dst, win);
-    }
 
-    MPI_Win_unlock(dst, win);
+        MPI_Win_unlock(dst, win);
+    }
 
     /* need barrier before checking local window buffer */
     MPI_Barrier(MPI_COMM_WORLD);

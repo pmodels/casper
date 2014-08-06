@@ -51,6 +51,9 @@ static int run_test(int nop)
     target_computation_init();
     MPI_Win_lock_all(0, win);
 
+    fprintf(stdout, "[%d]-----check lock_all/put[0 - %d] & flush_all + sleep + "
+            "put[0 - %d] & flush_all/unlock_all\n", rank, nprocs, nprocs);
+
     t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
         for (dst = 0; dst < nprocs; dst++) {

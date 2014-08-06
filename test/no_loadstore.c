@@ -30,7 +30,9 @@ static int run_test(int nop)
 
     /* Check Lock_all */
     if (rank == 0) {
-        fprintf(stderr, "[%d] -----check lockall()\n", rank);
+        fprintf(stderr, "[%d] -----check lock_all/put [0 - %d] & flush_all/unlock_all\n",
+                rank, nprocs);
+
         locbuf[0] = 1.0;
         MPI_Win_lock_all(0, win);
         for (dst = 0; dst < nprocs; dst++) {
@@ -53,9 +55,10 @@ static int run_test(int nop)
 
     /* Check Lock */
     if (rank == 0) {
-        fprintf(stderr, "[%d] -----check lock(rank)\n", rank);
         locbuf[0] = 2.0;
         dst = 1;
+        fprintf(stderr, "[%d] -----check lock/put&flush %d/unlock\n", rank, dst);
+
         MPI_Win_lock(MPI_LOCK_SHARED, dst, 0, win);
         MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
         MPI_Win_flush(dst, win);
@@ -77,10 +80,10 @@ static int run_test(int nop)
 
     /* Check Lock(self-target) */
     if (rank == 0) {
-        fprintf(stderr, "[%d] -----check lock(self-target)\n", rank);
-
         locbuf[0] = 3.0;
         dst = 0;
+        fprintf(stderr, "[%d] -----check lock/put&flush %d/unlock\n", rank, dst);
+
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
         MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
         MPI_Win_flush(dst, win);
