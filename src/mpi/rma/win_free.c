@@ -21,7 +21,9 @@ int MPI_Win_free(MPI_Win * win)
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
 
-    MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
+    if (user_local_rank == 0) {
+        MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
+    }
 
     /* Notify the handle of target Helper win. It is noted that helpers cannot
      * fetch the corresponding window without handlers so that only global communicator
