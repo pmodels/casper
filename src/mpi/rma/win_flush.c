@@ -86,6 +86,10 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     MTCORE_Reset_win_target_ordering(target_rank, uh_win);
 
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+    MTCORE_Reset_win_target_op_counting(target_rank, uh_win);
+#endif
+
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
      */

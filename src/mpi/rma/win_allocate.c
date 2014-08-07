@@ -400,6 +400,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MTCORE_DBG_PRINT(" Created uh_comm: %d/%d, local_uh_comm: %d/%d\n",
                      uh_rank, uh_nprocs, uh_local_rank, uh_local_nprocs);
 
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+    uh_win->h_ops_counts = calloc(uh_nprocs, sizeof(int));
+#endif
+
     /* Allocate a shared window with local Helpers */
 
     /* -Allocate shared window */
@@ -535,6 +540,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     if (uh_win->is_main_lock_granted)
         free(uh_win->is_main_lock_granted);
+#endif
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+    if (uh_win->h_ops_counts)
+        free(uh_win->h_ops_counts);
 #endif
     if (uh_win->order_h_ranks_in_uh)
         free(uh_win->order_h_ranks_in_uh);
