@@ -77,6 +77,10 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         }
     }
 
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    uh_win->is_main_lock_granted[target_rank] = MTCORE_MAIN_LOCK_RESET;
+#endif
+
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
      */

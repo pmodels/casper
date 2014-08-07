@@ -47,16 +47,39 @@ int MPI_Win_flush_all(MPI_Win win)
     for (i = 0; i < user_nprocs; i++) {
         int target_local_rank = uh_win->local_user_ranks[i];
 
-        /* TODO: maybe it is not necessary to flush all helpers */
-        for (j = 0; j < MTCORE_NUM_H; j++) {
-            int target_h_rank_in_uh = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j];
+        /* RMA operations are only issued to the main helper, so we only flush it. */
+        int target_h_rank_in_uh = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H];
+        MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                         user_rank, target_h_rank_in_uh, target_local_rank, i);
+        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
 
-            MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                             user_rank, target_h_rank_in_uh, target_local_rank, i);
-            mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+        if (uh_win->is_main_lock_granted[i] == MTCORE_MAIN_LOCK_GRANTED) {
+            /* flush other helpers */
+            for (j = 1; j < MTCORE_NUM_H; j++) {
+                target_h_rank_in_uh = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j];
+
+                MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                                 user_rank, target_h_rank_in_uh, target_local_rank, i);
+                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+            }
         }
-    }
 #endif
+    }
+#endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
+
+    for (i = 0; i < user_nprocs; i++) {
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+        /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
+         * Note that only target which was issued operations to is guaranteed to be granted. */
+        if (uh_win->is_main_lock_granted[i] == MTCORE_MAIN_LOCK_OP_ISSUED) {
+            uh_win->is_main_lock_granted[i] = MTCORE_MAIN_LOCK_GRANTED;
+            MTCORE_DBG_PRINT("[%d] main lock (%d) granted\n", user_rank, i);
+        }
+#endif
+
+        MTCORE_Reset_win_target_ordering(i, uh_win);
+    }
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

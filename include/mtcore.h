@@ -53,6 +53,13 @@
 
 #define MTCORE_LOCK_OPTION MTCORE_LOCK_OPTION_SERIAL_ASYNC
 
+
+#define MTCORE_LOAD_OPT_NON 0
+#define MTCORE_LOAD_OPT_RANDOM 1
+#define MTCORE_LOAD_OPT_COUNTING 2
+
+#define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_RANDOM
+
 #ifdef HAVE_BUILTIN_EXPECT
 #  define unlikely(x_) __builtin_expect(!!(x_),0)
 #  define likely(x_)   __builtin_expect(!!(x_),1)
@@ -81,6 +88,14 @@
                     MTCORE_MY_NODE_ID, MTCORE_MY_RANK_IN_WORLD, __FILE__, __LINE__, #EXPR); \
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
+
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+typedef enum {
+    MTCORE_MAIN_LOCK_RESET,
+    MTCORE_MAIN_LOCK_OP_ISSUED,
+    MTCORE_MAIN_LOCK_GRANTED
+} MTCORE_Main_lock_stat;
+#endif
 
 typedef enum {
     MTCORE_FUNC_NULL,
@@ -142,6 +157,17 @@ typedef struct MTCORE_Win {
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     unsigned short is_self_locked;
 #endif
+
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    MTCORE_Main_lock_stat *is_main_lock_granted;
+#endif
+
+    int *order_h_ranks_in_uh;
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
+    int prev_h_off;
+#endif
+
 } MTCORE_Win;
 
 typedef struct MTCORE_Func_info {
@@ -178,7 +204,7 @@ extern int UH_WIN_HANDLE_KEY;
         MTCORE_ERR_PRINT("Cannot fetch uh_win from win 0x%lx\n", win);   \
          goto fn_fail;   \
     }   \
-    MTCORE_DBG_PRINT("fetch uh_win %p from win 0x%lx \n", uh_win, win);  \
+    /* MTCORE_DBG_PRINT("fetch uh_win %p from win 0x%lx \n", uh_win, win);  */ \
 }
 
 #define MTCORE_Cache_uh_win(win, uh_win) { \
@@ -245,17 +271,61 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
     goto fn_exit;
 }
 
-static inline int MTCORE_Get_helper_rank(int target_rank, MTCORE_Win * uh_win,
-                                         int *target_h_rank_in_uh)
-{
-#if (MTCORE_LOCK_OPTION != MTCORE_LOCK_OPTION_FORCE_LOCK)
-    /* Both serial async and byte tracking options specify the first helper as
-     * the main helper of that user process.*/
-    *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
-#endif
-    /*TODO: implement force lock */
+#define MTCORE_Reset_win_target_ordering(target_rank, uh_win) {  \
+        uh_win->order_h_ranks_in_uh[target_rank] = -1; \
+    }
 
-    return MPI_SUCCESS;
+static inline void MTCORE_Get_helper_rank(int target_rank, int is_order_required,
+                                          MTCORE_Win * uh_win, int *target_h_rank_in_uh)
+{
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    /* Upgrade main lock status of target if it is the first operation of that target. */
+    if (uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_RESET) {
+        uh_win->is_main_lock_granted[target_rank] = MTCORE_MAIN_LOCK_OP_ISSUED;
+    }
+#endif
+
+#if (MTCORE_LOCK_OPTION != MTCORE_LOCK_OPTION_FORCE_LOCK)
+    /* If lock has not been granted yet, we can only use the main helper. */
+    if (uh_win->is_main_lock_granted[target_rank] != MTCORE_MAIN_LOCK_GRANTED) {
+        /* Both serial async and byte tracking options specify the first helper as
+         * the main helper of that user process.*/
+        *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
+    }
+    else
+#endif
+    {
+        /* Either Force Locked or Lock Granted targets can be load balanced using multiple
+         * helpers. */
+
+        /* For ordering required operations, just return the helper chosen in the
+         * first time. */
+        if (is_order_required && uh_win->order_h_ranks_in_uh[target_rank] != -1) {
+            *target_h_rank_in_uh = uh_win->order_h_ranks_in_uh[target_rank];
+            return;
+        }
+
+        /*TODO: implement force lock */
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
+        /* Randomly change helper offset every time using a window-level global recorder */
+        if (uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_GRANTED) {
+            int off = (uh_win->prev_h_off + 1) % MTCORE_NUM_H;  /* jump to next helper offset */
+            uh_win->prev_h_off = off;
+
+            *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + off];
+        }
+#endif
+    }
+
+    /* Remember the helper for ordering required operations to a given target
+     * if it is called for the first time in current non-synchronized
+     * communication part . */
+    if (is_order_required) {
+        uh_win->order_h_ranks_in_uh[target_rank] = *target_h_rank_in_uh;
+    }
+
+    return;
 }
 
 static inline int MTCORE_Is_in_shrd_mem(int target_rank, MPI_Group group, int *node_id,

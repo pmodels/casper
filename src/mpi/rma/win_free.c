@@ -120,6 +120,12 @@ int MPI_Win_free(MPI_Win * win)
 
     /* uh_win->user_comm is created by user, will be freed by user. */
 
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    if (uh_win->is_main_lock_granted)
+        free(uh_win->is_main_lock_granted);
+#endif
+    if (uh_win->order_h_ranks_in_uh)
+        free(uh_win->order_h_ranks_in_uh);
     if (uh_win->disp_units)
         free(uh_win->disp_units);
     if (uh_win->base_h_offsets)

@@ -46,21 +46,45 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
-        for (j = 0; j < MTCORE_NUM_H; j++) {
-            int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
+        /* RMA operations are only issued to the main helper, so we only flush it. */
+        int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
+        MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                         user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
 
-            MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                             user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
+        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
 
-            /* We flush target Helper processes in uh_window. Because for non-shared
-             * targets, all translated operations are issued to target Helpers via uh_window.
-             */
-            mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+        if (uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_GRANTED) {
+            /* RMA operations may be distributed to all helpers, so we should also
+             * flush other helpers. */
+            for (j = 1; j < MTCORE_NUM_H; j++) {
+                target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
+
+                MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
+                                 user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
+
+                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
         }
-#endif
+#endif /*end of MTCORE_LOAD_OPT */
+
+#endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
     }
+
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
+     * Note that only target which was issued operations to is guaranteed to be granted. */
+    if (uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_OP_ISSUED) {
+        uh_win->is_main_lock_granted[target_rank] = MTCORE_MAIN_LOCK_GRANTED;
+        MTCORE_DBG_PRINT("[%d] main lock (%d) granted\n", user_rank, target_rank);
+    }
+#endif
+
+    MTCORE_Reset_win_target_ordering(target_rank, uh_win);
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

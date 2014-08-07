@@ -71,9 +71,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
         int target_local_rank = uh_win->local_user_ranks[target_rank];
         int target_h_rank_in_uh = -1;
 
-        mpi_errno = MTCORE_Get_helper_rank(target_rank, uh_win, &target_h_rank_in_uh);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
+        MTCORE_Get_helper_rank(target_rank, 0, uh_win, &target_h_rank_in_uh);
 
         uh_target_disp = uh_win->base_h_offsets[target_rank]
             + uh_win->disp_units[target_rank] * target_disp;

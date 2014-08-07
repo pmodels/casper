@@ -60,6 +60,12 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 #endif
 
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    for (i = 0; i < user_nprocs; i++) {
+        uh_win->is_main_lock_granted[i] = MTCORE_MAIN_LOCK_RESET;
+    }
+#endif
+
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
      */
