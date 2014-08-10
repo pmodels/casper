@@ -33,6 +33,7 @@ static int run_test()
 
     dst = 1;
     if (rank == 0) {
+        /* Warm up */
         for (x = 0; x < SKIP; x++) {
             MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
             MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
@@ -50,13 +51,14 @@ static int run_test()
             MPI_Win_unlock(dst, win);
         }
 
-        t_total = (MPI_Wtime() - t0) * 1000 * 1000;  /*us */
+        t_total = (MPI_Wtime() - t0) * 1000 * 1000;     /*us */
         t_total /= ITER;
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef CHECK
+    /* Check result correctness */
     if (rank == dst) {
         /* need lock on self rank for checking window buffer.
          * otherwise, the result may be incorrect because flush/unlock
@@ -77,8 +79,8 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-#ifdef ASP
-        fprintf(stdout, "asp: iter %d avg_time %.2lf\n", ITER, t_total);
+#ifdef MTCORE
+        fprintf(stdout, "mtcore: iter %d avg_time %.2lf\n", ITER, t_total);
 #else
         fprintf(stdout, "orig: iter %d avg_time %.2lf\n", ITER, t_total);
 #endif

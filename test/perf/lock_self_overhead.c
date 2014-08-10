@@ -50,7 +50,7 @@ static int run_test()
         MPI_Win_unlock(dst, win);
     }
 
-    t_total = (MPI_Wtime() - t0) * 1000 * 1000;  /*us */
+    t_total = (MPI_Wtime() - t0) * 1000 * 1000; /*us */
     t_total /= ITER;
 
 
@@ -74,10 +74,10 @@ static int run_test()
         goto exit;
 #endif
 
-#ifdef ASP
-        fprintf(stdout, "asp-self: iter %d avg_time %.2lf\n", ITER, t_total);
+#ifdef MTCORE
+    fprintf(stdout, "mtcore-self: iter %d avg_time %.2lf\n", ITER, t_total);
 #else
-        fprintf(stdout, "orig-self: iter %d avg_time %.2lf\n", ITER, t_total);
+    fprintf(stdout, "orig-self: iter %d avg_time %.2lf\n", ITER, t_total);
 #endif
 
   exit:
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     locbuf[0] = 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
 
-    if(rank == 0){
+    if (rank == 0) {
         errs = run_test();
     }
 
