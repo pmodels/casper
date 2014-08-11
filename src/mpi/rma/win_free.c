@@ -123,13 +123,14 @@ int MPI_Win_free(MPI_Win * win)
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     if (uh_win->is_main_lock_granted)
         free(uh_win->is_main_lock_granted);
+    if (uh_win->order_h_ranks_in_uh)
+        free(uh_win->order_h_ranks_in_uh);
 #endif
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     if (uh_win->h_ops_counts)
         free(uh_win->h_ops_counts);
 #endif
-    if (uh_win->order_h_ranks_in_uh)
-        free(uh_win->order_h_ranks_in_uh);
+
     if (uh_win->disp_units)
         free(uh_win->disp_units);
     if (uh_win->base_h_offsets)

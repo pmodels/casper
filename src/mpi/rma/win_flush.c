@@ -84,7 +84,9 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     }
 #endif
 
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     MTCORE_Reset_win_target_ordering(target_rank, uh_win);
+#endif
 
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     MTCORE_Reset_win_target_op_counting(target_rank, uh_win);

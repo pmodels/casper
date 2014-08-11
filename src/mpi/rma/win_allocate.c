@@ -321,9 +321,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     uh_win->h_ranks_in_uh = calloc(MTCORE_NUM_H * user_nprocs, sizeof(int));
     uh_win->local_user_ranks = calloc(user_nprocs, sizeof(int));
     user_local_sizes = calloc(user_local_nprocs, sizeof(MPI_Aint));
-    uh_win->order_h_ranks_in_uh = calloc(user_nprocs, sizeof(int));
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    uh_win->order_h_ranks_in_uh = calloc(user_nprocs, sizeof(int));
     uh_win->is_main_lock_granted = calloc(user_nprocs, sizeof(int));
 #endif
 
@@ -540,13 +540,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     if (uh_win->is_main_lock_granted)
         free(uh_win->is_main_lock_granted);
+    if (uh_win->order_h_ranks_in_uh)
+        free(uh_win->order_h_ranks_in_uh);
 #endif
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     if (uh_win->h_ops_counts)
         free(uh_win->h_ops_counts);
 #endif
-    if (uh_win->order_h_ranks_in_uh)
-        free(uh_win->order_h_ranks_in_uh);
+
     if (uh_win->disp_units)
         free(uh_win->disp_units);
     if (uh_win->base_h_offsets)

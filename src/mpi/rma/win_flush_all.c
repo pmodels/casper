@@ -68,15 +68,14 @@ int MPI_Win_flush_all(MPI_Win win)
     }
 #endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
 
-    for (i = 0; i < user_nprocs; i++) {
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    for (i = 0; i < user_nprocs; i++) {
         /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
          * Note that only target which was issued operations to is guaranteed to be granted. */
         if (uh_win->is_main_lock_granted[i] == MTCORE_MAIN_LOCK_OP_ISSUED) {
             uh_win->is_main_lock_granted[i] = MTCORE_MAIN_LOCK_GRANTED;
             MTCORE_DBG_PRINT("[%d] main lock (%d) granted\n", user_rank, i);
         }
-#endif
 
         MTCORE_Reset_win_target_ordering(i, uh_win);
 
@@ -84,6 +83,7 @@ int MPI_Win_flush_all(MPI_Win win)
         MTCORE_Reset_win_target_op_counting(i, uh_win);
 #endif
     }
+#endif
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

@@ -160,9 +160,8 @@ typedef struct MTCORE_Win {
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     MTCORE_Main_lock_stat *is_main_lock_granted;
-#endif
-
     int *order_h_ranks_in_uh;
+#endif
 
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
     int prev_h_off;
@@ -275,9 +274,11 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
     goto fn_exit;
 }
 
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
 #define MTCORE_Reset_win_target_ordering(target_rank, uh_win) {  \
         uh_win->order_h_ranks_in_uh[target_rank] = -1; \
     }
+#endif
 
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
 #define MTCORE_Reset_win_target_op_counting(target_rank, uh_win) {  \
