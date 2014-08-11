@@ -58,7 +58,15 @@
 #define MTCORE_LOAD_OPT_RANDOM 1
 #define MTCORE_LOAD_OPT_COUNTING 2
 
+#ifdef MTCORE_ENABLE_LOAD_OPT_RANDOM
+#define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_RANDOM
+
+#elif defined(MTCORE_ENABLE_LOAD_OPT_COUNTING)
 #define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_COUNTING
+
+#else
+#define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_NON
+#endif
 
 #ifdef HAVE_BUILTIN_EXPECT
 #  define unlikely(x_) __builtin_expect(!!(x_),0)
@@ -353,7 +361,76 @@ extern int run_h_main(void);
 extern int MTCORE_Func_start(MTCORE_Func FUNC, int user_nprocs, int user_local_nprocs);
 extern int MTCORE_Func_new_ur_h_comm(MPI_Comm * ur_h_comm);
 extern int MTCORE_Func_set_param(char *func_params, int size, MPI_Comm ur_h_comm);
-extern void MTCORE_Get_helper_rank(int target_rank, int is_order_required,
-                                   MTCORE_Win * uh_win, int *target_h_rank_in_uh);
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_NON)
+static inline void MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_Win * uh_win,
+                                                       int *target_h_rank_in_uh)
+{
+    *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
+    MTCORE_DBG_PRINT("[opt_non] use main helper %d for target %d\n", *target_h_rank_in_uh,
+                     target_rank);
+}
+
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, uh_win, target_h_rank_in_uh) \
+        MTCORE_Get_helper_rank_load_opt_non(target_rank, uh_win, target_h_rank_in_uh)
+
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
+static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
+                                                          MTCORE_Win * uh_win,
+                                                          int *target_h_rank_in_uh)
+{
+    /* Upgrade main lock status of target if it is the first operation of that target. */
+    if (uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_RESET) {
+        uh_win->is_main_lock_granted[target_rank] = MTCORE_MAIN_LOCK_OP_ISSUED;
+    }
+
+    /* If lock has not been granted yet, we can only use the main helper. */
+    if (uh_win->is_main_lock_granted[target_rank] != MTCORE_MAIN_LOCK_GRANTED) {
+        /* Both serial async and byte tracking options specify the first helper as
+         * the main helper of that user process.*/
+        *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
+
+        MTCORE_DBG_PRINT("[opt_random] use main helper %d for target %d\n", *target_h_rank_in_uh,
+                         target_rank);
+    }
+    else {
+
+        /* For ordering required operations, just return the helper chosen in the
+         * first time. */
+        if (is_order_required && uh_win->order_h_ranks_in_uh[target_rank] != -1) {
+            *target_h_rank_in_uh = uh_win->order_h_ranks_in_uh[target_rank];
+
+            MTCORE_DBG_PRINT("[opt_random] use first ordered helper %d for target %d\n",
+                             *target_h_rank_in_uh, target_rank);
+        }
+        else {
+            /* Randomly change helper offset every time using a window-level global recorder */
+            int off = (uh_win->prev_h_off + 1) % MTCORE_NUM_H;  /* jump to next helper offset */
+            uh_win->prev_h_off = off;
+
+            *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + off];
+
+            /* Remember the helper for ordering required operations to a given target.
+             * Note that both not-lock-granted and not-first-ordered targets do not need remember */
+            if (is_order_required) {
+                uh_win->order_h_ranks_in_uh[target_rank] = *target_h_rank_in_uh;
+            }
+
+            MTCORE_DBG_PRINT("[opt_random] randomly choose helper %d for target %d\n",
+                             *target_h_rank_in_uh, target_rank);
+        }
+    }
+}
+
+#define MTCORE_Get_helper_rank MTCORE_Get_helper_rank_load_opt_random
+
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+
+extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
+                                                     MTCORE_Win * uh_win, int *target_h_rank_in_uh);
+
+#define MTCORE_Get_helper_rank  MTCORE_Get_helper_rank_load_opt_counting
+
+#endif
 
 #endif /* MTCORE_H_ */
