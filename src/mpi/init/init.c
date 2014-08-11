@@ -53,7 +53,7 @@ int MPI_Init(int *argc, char ***argv)
     if ((*argc) > 1) {
         MTCORE_NUM_H = atoi((*argv)[1]);
     }
-    MTCORE_DBG_PRINT("argc=%d\n", *argc);
+    MTCORE_DBG_PRINT("MTCORE_NUM_H=%d, MTCORE_LOAD_OPT=%d\n", MTCORE_NUM_H, MTCORE_LOAD_OPT);
 
     /* Get a communicator only containing processes with shared memory */
     mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
