@@ -13,7 +13,7 @@ MPI_Group MTCORE_GROUP_LOCAL = MPI_GROUP_NULL;
 MPI_Group MTCORE_GROUP_USER_WORLD = MPI_GROUP_NULL;
 
 /*TODO: Now user can set value directly, should be implemented as "-np N -nh X"*/
-int MTCORE_NUM_H = 3;
+int MTCORE_NUM_H = 1;
 int *MTCORE_H_RANKS_IN_WORLD = NULL;
 int *MTCORE_H_RANKS_IN_LOCAL = NULL;
 int *MTCORE_ALL_H_RANKS_IN_WORLD = NULL;        /* Helpers of user process x are stored as
