@@ -54,8 +54,7 @@ static int run_test(int nop)
     target_computation_init();
     dst = rank;
 
-    fprintf(stdout, "[%d]-----check lock/acc&flush %d + sleep + acc %d/unlock\n", rank, dst,
-            dst);
+    fprintf(stdout, "[%d]-----check lock/acc&flush %d + sleep + acc %d/unlock\n", rank, dst, dst);
 
     t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {

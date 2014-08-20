@@ -27,6 +27,10 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
 
+#ifdef MTCORE
+extern int MTCORE_NUM_H;
+#endif
+
 static int run_test()
 {
     int i, x, errs = 0;
@@ -94,7 +98,8 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-        fprintf(stdout, "mtcore-nols: iter %d nprocs %d total_time %lf\n", ITER, nprocs, t_total);
+        fprintf(stdout, "mtcore-nols: iter %d nprocs %d nh %d total_time %lf\n", ITER, nprocs,
+                MTCORE_NUM_H, t_total);
     }
 
     return errs;

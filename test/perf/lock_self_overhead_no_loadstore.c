@@ -25,6 +25,10 @@ double locbuf[1];
 int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 
+#ifdef MTCORE
+extern int MTCORE_NUM_H;
+#endif
+
 static int run_test()
 {
     int i, x, errs = 0, errs_total = 0;
@@ -73,7 +77,8 @@ static int run_test()
         goto exit;
 #endif
 
-    fprintf(stdout, "mtcore-self-nols: iter %d avg_time %.2lf\n", ITER, t_total);
+    fprintf(stdout, "mtcore-nols: iter %d nprocs %d nh %d avg_time %.2lf\n", ITER, nprocs,
+            MTCORE_NUM_H, t_total);
 
   exit:
 
@@ -88,11 +93,6 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    if (nprocs != 2) {
-        fprintf(stderr, "Please run using 2 processes\n");
-        goto exit;
-    }
 
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, (char *) "no_local_load_store", (char *) "true");
