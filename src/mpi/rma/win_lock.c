@@ -55,7 +55,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          * For performance reason, this operation is ignored if user passed information that
          * this process will not do local load/store on this window.
          */
-        if (uh_win->is_self_lock_grant_required) {
+        if (!uh_win->info_args.no_local_load_store) {
             mpi_errno =
                 MTCORE_Win_grant_local_lock(uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H],
                                             lock_type, assert, uh_win);

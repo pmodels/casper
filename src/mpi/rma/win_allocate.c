@@ -359,7 +359,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Check if we are allowed to ignore force-lock for local target,
      * require force-lock by default. */
-    uh_win->is_self_lock_grant_required = 1;
+    uh_win->info_args.no_local_load_store = 0;
     if (info != MPI_INFO_NULL) {
         int no_local_load_store_flag = 0;
         char no_local_load_store_value[MPI_MAX_INFO_VAL + 1];
@@ -367,11 +367,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                       no_local_load_store_value, &no_local_load_store_flag);
         if (no_local_load_store_flag == 1) {
             if (!strncmp(no_local_load_store_value, "true", strlen("true")))
-                uh_win->is_self_lock_grant_required = 0;
+                uh_win->info_args.no_local_load_store = 1;
         }
     }
-    MTCORE_DBG_PRINT("uh_win->is_self_lock_grant_required %d\n",
-                     uh_win->is_self_lock_grant_required);
+    MTCORE_DBG_PRINT("uh_win->info_args.no_local_load_store %d\n",
+                     uh_win->info_args.no_local_load_store);
 
     /* Notify Helpers start and create user root + helpers communicator for
      * internal information exchange between users and helpers. */

@@ -53,7 +53,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     uh_win->is_self_locked = 0;
 #endif
 
-    if (uh_win->is_self_lock_grant_required) {
+    if (!uh_win->info_args.no_local_load_store) {
         /* We need grant the local lock (self-target) before return.
          * However, the actual locked processes are the Helpers whose locks may be delayed by
          * most MPI implementation, thus we need a flush to force the lock to be granted on helper 0

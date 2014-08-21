@@ -126,6 +126,10 @@ typedef struct MTCORE_H_win_params {
     int disp_unit;
 } MTCORE_H_win_params;
 
+struct MTCORE_Win_info_args {
+    unsigned short no_local_load_store;
+};
+
 typedef struct MTCORE_Win {
     MPI_Aint *base_h_offsets;
     int *disp_units;
@@ -166,7 +170,8 @@ typedef struct MTCORE_Win {
     MPI_Aint grant_lock_h_offset;       /* Hidden byte for granting lock on Helper0 */
 #endif
 
-    unsigned short is_self_lock_grant_required;
+    struct MTCORE_Win_info_args info_args;
+
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     unsigned short is_self_locked;
 #endif
