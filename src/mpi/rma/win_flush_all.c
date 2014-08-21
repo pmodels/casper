@@ -78,10 +78,7 @@ int MPI_Win_flush_all(MPI_Win win)
         }
 
         MTCORE_Reset_win_target_ordering(i, uh_win);
-
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
-        MTCORE_Reset_win_target_op_counting(i, uh_win);
-#endif
+        MTCORE_Reset_win_target_load_opt(i, uh_win);
     }
 #endif
 

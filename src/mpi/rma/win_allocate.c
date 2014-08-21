@@ -405,6 +405,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     uh_win->h_ops_counts = calloc(uh_nprocs, sizeof(int));
 #endif
 
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+    uh_win->h_bytes_counts = calloc(uh_nprocs, sizeof(int));
+#endif
+
     /* Allocate a shared window with local Helpers */
 
     /* -Allocate shared window */
@@ -546,6 +550,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     if (uh_win->h_ops_counts)
         free(uh_win->h_ops_counts);
+#endif
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+    if (uh_win->h_bytes_counts)
+        free(uh_win->h_bytes_counts);
 #endif
 
     if (uh_win->disp_units)

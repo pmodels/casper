@@ -72,8 +72,13 @@ static int MTCORE_Accumulate_impl(const void *origin_addr, int origin_count,
          */
         int target_local_rank = uh_win->local_user_ranks[target_rank];
         int target_h_rank_in_uh = -1;
+        int data_size = 0;
 
-        MTCORE_Get_helper_rank(target_rank, 1, uh_win, &target_h_rank_in_uh);
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+        PMPI_Type_size(origin_datatype, &data_size);
+        data_size *= origin_count;
+#endif
+        MTCORE_Get_helper_rank(target_rank, 1, data_size, uh_win, &target_h_rank_in_uh);
 
         uh_target_disp = uh_win->base_h_offsets[target_rank]
             + uh_win->disp_units[target_rank] * target_disp;

@@ -57,6 +57,7 @@
 #define MTCORE_LOAD_OPT_NON 0
 #define MTCORE_LOAD_OPT_RANDOM 1
 #define MTCORE_LOAD_OPT_COUNTING 2
+#define MTCORE_LOAD_BYTE_COUNTING 3
 
 #ifdef MTCORE_ENABLE_LOAD_OPT_RANDOM
 #define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_RANDOM
@@ -64,7 +65,11 @@
 #elif defined(MTCORE_ENABLE_LOAD_OPT_COUNTING)
 #define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_COUNTING
 
+#elif defined(MTCORE_ENABLE_LOAD_OPT_BYTE_COUNTING)
+#define MTCORE_LOAD_OPT MTCORE_LOAD_BYTE_COUNTING
+
 #else
+
 #define MTCORE_LOAD_OPT MTCORE_LOAD_OPT_NON
 #endif
 
@@ -179,6 +184,10 @@ typedef struct MTCORE_Win {
     int *h_ops_counts;          /* cnt = h_ops_counts[h_rank_in_uh] */
 #endif
 
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+    unsigned long *h_bytes_counts;      /* byte = h_ops_bytes[h_rank_in_uh] */
+#endif
+
 } MTCORE_Win;
 
 typedef struct MTCORE_Func_info {
@@ -289,7 +298,7 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 #endif
 
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
-#define MTCORE_Reset_win_target_op_counting(target_rank, uh_win) {  \
+#define MTCORE_Reset_win_target_load_opt_op_counting(target_rank, uh_win) {  \
         int h_off, h_rank;  \
         for (h_off = 0; h_off < MTCORE_NUM_H; h_off++) {    \
             h_rank = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + h_off]; \
@@ -297,6 +306,23 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
         }   \
         MTCORE_DBG_PRINT("\t reset target %d op counting \n", target_rank); \
     }
+
+#define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
+        MTCORE_Reset_win_target_load_opt_op_counting(target_rank, uh_win)
+#endif
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+#define MTCORE_Reset_win_target_bytes_counting(target_rank, uh_win) {  \
+        int h_off, h_rank;  \
+        for (h_off = 0; h_off < MTCORE_NUM_H; h_off++) {    \
+            h_rank = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + h_off]; \
+            uh_win->h_bytes_counts[h_rank] = 0;    \
+        }   \
+        MTCORE_DBG_PRINT("\t reset target %d byte counting \n", target_rank); \
+    }
+
+#define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
+        MTCORE_Reset_win_target_bytes_counting(target_rank, uh_win)
 #endif
 
 static inline int MTCORE_Is_in_shrd_mem(int target_rank, MPI_Group group, int *node_id,
@@ -371,7 +397,7 @@ static inline void MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_W
                      target_rank);
 }
 
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, uh_win, target_h_rank_in_uh) \
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, target_h_rank_in_uh)  \
         MTCORE_Get_helper_rank_load_opt_non(target_rank, uh_win, target_h_rank_in_uh)
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
@@ -422,14 +448,25 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
     }
 }
 
-#define MTCORE_Get_helper_rank MTCORE_Get_helper_rank_load_opt_random
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, target_h_rank_in_uh)  \
+    MTCORE_Get_helper_rank_load_opt_random(target_rank, is_order_required, uh_win, target_h_rank_in_uh)
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
 
 extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
                                                      MTCORE_Win * uh_win, int *target_h_rank_in_uh);
 
-#define MTCORE_Get_helper_rank  MTCORE_Get_helper_rank_load_opt_counting
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, target_h_rank_in_uh)  \
+    MTCORE_Get_helper_rank_load_opt_counting(target_rank, is_order_required, uh_win, target_h_rank_in_uh)
+
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+
+extern void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required,
+                                                      int size, MTCORE_Win * uh_win,
+                                                      int *target_h_rank_in_uh);
+
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, target_h_rank_in_uh)  \
+    MTCORE_Get_helper_rank_load_byte_counting(target_rank, is_order_required, size, uh_win, target_h_rank_in_uh)
 
 #endif
 
