@@ -170,9 +170,10 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
      * (No local buffer, only need shared buffer on user processes)
      */
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    /* Additional byte for granting locks on Helper 0 */
+    /* Additional byte for granting locks on Helper 0, all the other
+     * helpers share the same byte */
     if (local_uh_rank == 0) {
-        mtcore_buf_size += sizeof(MTCORE_GRANT_LOCK_DATATYPE);
+        mtcore_buf_size = max(MTCORE_HELPER_SHARED_SG_SIZE, sizeof(MTCORE_GRANT_LOCK_DATATYPE));
     }
 #endif
     mpi_errno = PMPI_Win_allocate_shared(mtcore_buf_size, 1, MPI_INFO_NULL,

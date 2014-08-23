@@ -124,7 +124,8 @@ static int gather_ranks(MTCORE_Win * win, int *user_ranks_in_world, int *num_hel
 static void specify_user_main_helper(MTCORE_Win * uh_win)
 {
     int i, off;
-    int permission_h_rank, user_nprocs, local_user_rank;
+    int main_h_rank, user_nprocs, local_user_rank;
+    MPI_Aint main_h_off = 0;
 
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
@@ -136,9 +137,14 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
     for (i = 0; i < user_nprocs; i++) {
         local_user_rank = uh_win->local_user_ranks[i];
         off = local_user_rank % MTCORE_NUM_H;
-        permission_h_rank = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + off];
+        main_h_rank = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + off];
+        main_h_off = uh_win->base_h_offsets[i * MTCORE_NUM_H + off];
+
         uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + off] = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H];
-        uh_win->h_ranks_in_uh[i * MTCORE_NUM_H] = permission_h_rank;
+        uh_win->h_ranks_in_uh[i * MTCORE_NUM_H] = main_h_rank;
+
+        uh_win->base_h_offsets[i * MTCORE_NUM_H + off] = uh_win->base_h_offsets[i * MTCORE_NUM_H];
+        uh_win->base_h_offsets[i * MTCORE_NUM_H] = main_h_off;
     }
 }
 #endif
@@ -236,10 +242,6 @@ static int create_communicators(MTCORE_Win * uh_win)
         /* -Get all Helper rank in uh communicator */
         memcpy(uh_win->h_ranks_in_uh, MTCORE_ALL_H_RANKS_IN_WORLD,
                sizeof(int) * MTCORE_NUM_H * user_nprocs);
-
-#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
-        specify_user_main_helper(uh_win);
-#endif
     }
     else {
         user_ranks_in_world = calloc(user_nprocs, sizeof(int));
@@ -297,23 +299,7 @@ static int create_communicators(MTCORE_Win * uh_win)
                                                uh_win->h_ranks_in_uh);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-
-#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
-        specify_user_main_helper(uh_win);
-#endif
     }
-
-#ifdef DEBUG
-    int user_rank = 0, i, j;
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-    for (i = 0; i < user_nprocs; i++) {
-        MTCORE_DBG_PRINT("\t h_ranks_in_uh[%d:%d - %d] =\n", i, i * MTCORE_NUM_H,
-                         (i + 1) * MTCORE_NUM_H - 1);
-        for (j = 0; j < MTCORE_NUM_H; j++) {
-            MTCORE_DBG_PRINT("\t\t %d\n", uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j]);
-        }
-    }
-#endif
 
   fn_exit:
     if (func_params)
@@ -324,6 +310,73 @@ static int create_communicators(MTCORE_Win * uh_win)
         free(helper_ranks_in_world);
     if (unique_helper_ranks_in_world)
         free(unique_helper_ranks_in_world);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static int gather_base_offsets(MPI_Aint size, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPI_Aint *user_local_sizes, tmp_u_offsets, tmp_h_offsets;
+    int i, j;
+    int user_local_rank, user_local_nprocs, user_rank, user_nprocs;
+
+    PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
+    PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+    PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+
+    user_local_sizes = calloc(user_local_nprocs, sizeof(MPI_Aint));
+
+    /* -Gather size from all local user processes */
+    user_local_sizes[user_local_rank] = size;
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                               user_local_sizes, 1, MPI_AINT, uh_win->local_user_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* -Calculate the offset of local shared buffer  */
+    i = 0;
+    tmp_u_offsets = 0;
+    while (i < user_local_rank) {
+        tmp_u_offsets += user_local_sizes[i];   /* size in bytes */
+        i++;
+    }
+
+    /* It is noted that all the helpers start the window from baseptr of helper 0.
+     * Hence all the local helpers use the same offset of user buffers */
+
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    /* Helper 0 has hidden byte which may be larger than shared_sg_size */
+    tmp_u_offsets += max(MTCORE_HELPER_SHARED_SG_SIZE, sizeof(MTCORE_GRANT_LOCK_DATATYPE));
+    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * (MTCORE_NUM_H - 1);
+#else
+    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * MTCORE_NUM_H;
+#endif
+
+    for (i = 0; i < MTCORE_NUM_H; i++) {
+        int idx = user_rank * MTCORE_NUM_H + i;
+        uh_win->base_h_offsets[idx] = tmp_u_offsets;
+        MTCORE_DBG_PRINT("[%d] local base_h_offsets[%d(%d)] = 0x%lx\n", user_rank,
+                         idx, i, uh_win->base_h_offsets[idx]);
+    }
+
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    /* All the helpers use the byte located on helper 0. */
+    uh_win->grant_lock_h_offset = 0;
+#endif
+
+    /* -Receive the address of all the shared user buffers on Helper processes. */
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, uh_win->base_h_offsets,
+                               MTCORE_NUM_H, MPI_AINT, uh_win->user_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    if (user_local_sizes)
+        free(user_local_sizes);
     return mpi_errno;
 
   fn_fail:
@@ -342,7 +395,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int i, j;
     void **base_pp = (void **) baseptr;
     MPI_Status stat;
-    MPI_Aint *user_local_sizes;
     int *tmp_gather_buf = NULL;
 
     MTCORE_DBG_PRINT_FCNAME();
@@ -368,14 +420,13 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
 
     uh_win->user_comm = user_comm;
-    uh_win->base_h_offsets = calloc(user_nprocs, sizeof(MPI_Aint));
+    uh_win->base_h_offsets = calloc(MTCORE_NUM_H * user_nprocs, sizeof(MPI_Aint));
     uh_win->disp_units = calloc(user_nprocs, sizeof(int));
     uh_win->h_ranks_in_uh = calloc(MTCORE_NUM_H * user_nprocs, sizeof(int));
     uh_win->local_user_ranks = calloc(user_nprocs, sizeof(int));
-    user_local_sizes = calloc(user_local_nprocs, sizeof(MPI_Aint));
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    uh_win->order_h_ranks_in_uh = calloc(user_nprocs, sizeof(int));
+    uh_win->order_h_indexes = calloc(user_nprocs, sizeof(int));
     uh_win->is_main_lock_granted = calloc(user_nprocs, sizeof(int));
 #endif
 
@@ -440,7 +491,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MTCORE_DBG_PRINT(" Created uh_comm: %d/%d, local_uh_comm: %d/%d\n",
                      uh_rank, uh_nprocs, uh_local_rank, uh_local_nprocs);
 
-
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     uh_win->h_ops_counts = calloc(uh_nprocs, sizeof(int));
 #endif
@@ -450,48 +500,29 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 #endif
 
     /* Allocate a shared window with local Helpers */
-
-    /* -Allocate shared window */
     mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, info, uh_win->local_uh_comm,
                                          &uh_win->base, &uh_win->local_uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+    MTCORE_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, uh_win->base);
 
-    /* -Gather size from all local user processes and calculate the offset of local shared buffer */
-    user_local_sizes[user_local_rank] = size;
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               user_local_sizes, 1, MPI_AINT, uh_win->local_user_comm);
+    /* Gather user offsets on corresponding helper processes */
+    mpi_errno = gather_base_offsets(size, uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    i = 0;
-    uh_win->base_h_offsets[user_rank] = 0;
-#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    /* Add additional bytes on Helper 0 */
-    uh_win->base_h_offsets[user_rank] += sizeof(MTCORE_GRANT_LOCK_DATATYPE);
-    /* Helper 0 is rank 0 in local_uh_comm, so its offset is 0. */
-    uh_win->grant_lock_h_offset = 0;
+#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
+    specify_user_main_helper(uh_win);
 #endif
-    uh_win->base_h_offsets[user_rank] += MTCORE_HELPER_SHARED_SG_SIZE * MTCORE_NUM_H;
-    while (i < user_local_rank) {
-        uh_win->base_h_offsets[user_rank] += user_local_sizes[i];       /* size in bytes */
-        i++;
-    }
-    MTCORE_DBG_PRINT("[%d] local base_h_offsets = 0x%lx, base=%p\n", user_rank,
-                     uh_win->base_h_offsets[user_rank], uh_win->base);
-
-    /* -Receive the address of all the shared user buffers on Helper processes.
-     * It is noted that all the helpers have the same offsets since it is a global continuous
-     * shared memory across all local users and helpers. */
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, uh_win->base_h_offsets, 1,
-                               MPI_AINT, user_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
 
 #ifdef DEBUG
     for (i = 0; i < user_nprocs; i++) {
-        MTCORE_DBG_PRINT("[%d] base_h_offsets[%d] = 0x%lx\n", user_rank, i,
-                         uh_win->base_h_offsets[i]);
+        MTCORE_DBG_PRINT("\t h_ranks_in_uh[%d:%d - %d] =\n", i, i * MTCORE_NUM_H,
+                         (i + 1) * MTCORE_NUM_H - 1);
+        for (j = 0; j < MTCORE_NUM_H; j++) {
+            MTCORE_DBG_PRINT("\t\t%d offset 0x%lx \n", uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j],
+                             uh_win->base_h_offsets[i * MTCORE_NUM_H + j]);
+        }
     }
 #endif
 
@@ -540,8 +571,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
   fn_exit:
 
-    if (user_local_sizes)
-        free(user_local_sizes);
     if (tmp_gather_buf)
         free(tmp_gather_buf);
 
@@ -584,8 +613,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     if (uh_win->is_main_lock_granted)
         free(uh_win->is_main_lock_granted);
-    if (uh_win->order_h_ranks_in_uh)
-        free(uh_win->order_h_ranks_in_uh);
+    if (uh_win->order_h_indexes)
+        free(uh_win->order_h_indexes);
 #endif
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     if (uh_win->h_ops_counts)
