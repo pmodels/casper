@@ -87,7 +87,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     MTCORE_Reset_win_target_ordering(target_rank, uh_win);
-    MTCORE_Reset_win_target_bytes_counting(target_rank, uh_win);
+    MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
 #endif
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they

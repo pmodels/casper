@@ -76,7 +76,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
         PMPI_Type_size(origin_datatype, &data_size);
         data_size *= origin_count;
 #endif
-        MTCORE_Get_helper_rank(target_rank, 1, data_size, uh_win, &target_h_rank_in_uh);
+        MTCORE_Get_helper_rank(target_rank, 0, data_size, uh_win, &target_h_rank_in_uh);
 
 
         uh_target_disp = uh_win->base_h_offsets[target_rank]

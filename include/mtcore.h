@@ -315,9 +315,8 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 
 #define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
         MTCORE_Reset_win_target_load_opt_op_counting(target_rank, uh_win)
-#endif
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
 #define MTCORE_Reset_win_target_bytes_counting(target_rank, uh_win) {  \
         int h_off, h_rank;  \
         for (h_off = 0; h_off < MTCORE_NUM_H; h_off++) {    \
@@ -329,6 +328,8 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 
 #define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
         MTCORE_Reset_win_target_bytes_counting(target_rank, uh_win)
+#else
+#define MTCORE_Reset_win_target_load_opt(target_rank, uh_win)
 #endif
 
 static inline int MTCORE_Is_in_shrd_mem(int target_rank, MPI_Group group, int *node_id,
