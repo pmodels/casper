@@ -52,24 +52,31 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     uh_win->is_self_locked = 0;
 #endif
-
-    if (!uh_win->info_args.no_local_load_store) {
+    int is_local_lock_granted = 0;
+    if (!uh_win->info_args.no_local_load_store && !uh_win->info_args.no_conflict_epoch) {
         /* We need grant the local lock (self-target) before return.
          * However, the actual locked processes are the Helpers whose locks may be delayed by
          * most MPI implementation, thus we need a flush to force the lock to be granted on helper 0
          * who is the one actually controls the locks.
          *
-         * For performance reason, this operation is ignored if user passed information that
-         * this process will not do local load/store on this window.
+         * For performance reason, this operation is ignored if meet at least one of following conditions:
+         * 1. if user passed information that this process will not do local load/store on this window.
+         * 2. if user passed information that there is no concurrent epochs.
          */
         mpi_errno = MTCORE_Win_grant_local_lock(uh_win->h_ranks_in_uh[user_rank * MTCORE_NUM_H],
                                                 MPI_LOCK_SHARED, 0, uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+        is_local_lock_granted = 1;
+    }
+
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+    if (is_local_lock_granted || uh_win->info_args.no_conflict_epoch) {
         /* Lock local rank so that operations can be executed through local target.
-         * Need grant lock on helper in advance due to permission check */
+         * 1. Need grant lock on helper in advance due to permission check,
+         * OR
+         * 2. there is no concurrent epochs, hence it is safe to get local lock.*/
         int local_uh_rank;
         PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
         MTCORE_DBG_PRINT("[%d]lock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
@@ -78,14 +85,17 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         uh_win->is_self_locked = 1;
-#endif
     }
+#endif
 
-    for (i = 0; i < user_nprocs; i++) {
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    for (i = 0; i < user_nprocs; i++) {
         uh_win->is_main_lock_granted[i] = MTCORE_MAIN_LOCK_RESET;
-#endif
+
+        MTCORE_Reset_win_target_ordering(i, uh_win);
+        MTCORE_Reset_win_target_load_opt(i, uh_win);
     }
+#endif
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.

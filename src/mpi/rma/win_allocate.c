@@ -3,6 +3,58 @@
 #include <memory.h>
 #include "mtcore.h"
 
+static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    uh_win->info_args.no_local_load_store = 0;
+    uh_win->info_args.no_conflict_epoch = 0;
+
+    if (info != MPI_INFO_NULL) {
+        int info_flag = 0;
+        char info_value[MPI_MAX_INFO_VAL + 1];
+
+        /* Check if we are allowed to ignore force-lock for local target,
+         * require force-lock by default. */
+        memset(info_value, 0, sizeof(info_value));
+        mpi_errno = PMPI_Info_get(info, "no_local_load_store", MPI_MAX_INFO_VAL,
+                                  info_value, &info_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        if (info_flag == 1) {
+            if (!strncmp(info_value, "true", strlen("true")))
+                uh_win->info_args.no_local_load_store = 1;
+        }
+
+        /* Check if user says there is no concurrent epoch.
+         * If so we could
+         *  1. do load balancing from the first operation.
+         *  2. ignore force lock for local target but still allow local
+         *     transferring because it is not necessary to wait for lock acquired */
+        info_flag = 0;
+        memset(info_value, 0, sizeof(info_value));
+        mpi_errno = PMPI_Info_get(info, "no_conflict_epoch", MPI_MAX_INFO_VAL,
+                                  info_value, &info_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        if (info_flag == 1) {
+            if (!strncmp(info_value, "true", strlen("true")))
+                uh_win->info_args.no_conflict_epoch = 1;
+        }
+    }
+
+    MTCORE_DBG_PRINT("no_local_load_store %d, no_conflict_epoch %d\n",
+                     uh_win->info_args.no_local_load_store, uh_win->info_args.no_conflict_epoch);
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 static int gather_ranks(MTCORE_Win * win, int *user_ranks_in_world, int *num_helpers,
                         int *helper_ranks_in_world, int *unique_helper_ranks_in_world)
 {
@@ -357,21 +409,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Check if we are allowed to ignore force-lock for local target,
-     * require force-lock by default. */
-    uh_win->info_args.no_local_load_store = 0;
-    if (info != MPI_INFO_NULL) {
-        int no_local_load_store_flag = 0;
-        char no_local_load_store_value[MPI_MAX_INFO_VAL + 1];
-        PMPI_Info_get(info, "no_local_load_store", MPI_MAX_INFO_VAL,
-                      no_local_load_store_value, &no_local_load_store_flag);
-        if (no_local_load_store_flag == 1) {
-            if (!strncmp(no_local_load_store_value, "true", strlen("true")))
-                uh_win->info_args.no_local_load_store = 1;
-        }
-    }
-    MTCORE_DBG_PRINT("uh_win->info_args.no_local_load_store %d\n",
-                     uh_win->info_args.no_local_load_store);
+    mpi_errno = read_win_info(info, uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     /* Notify Helpers start and create user root + helpers communicator for
      * internal information exchange between users and helpers. */

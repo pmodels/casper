@@ -54,7 +54,8 @@ int MPI_Win_flush_all(MPI_Win win)
         mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-        if (uh_win->is_main_lock_granted[i] == MTCORE_MAIN_LOCK_GRANTED) {
+        if (uh_win->info_args.no_conflict_epoch ||
+            uh_win->is_main_lock_granted[i] == MTCORE_MAIN_LOCK_GRANTED) {
             /* flush other helpers */
             for (j = 1; j < MTCORE_NUM_H; j++) {
                 target_h_rank_in_uh = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j];
