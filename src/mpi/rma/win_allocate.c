@@ -9,6 +9,8 @@ static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
 
     uh_win->info_args.no_local_load_store = 0;
     uh_win->info_args.no_conflict_epoch = 0;
+    /*TODO : maintain user specified ordering */
+    uh_win->info_args.no_accumulate_ordering = 0;
 
     if (info != MPI_INFO_NULL) {
         int info_flag = 0;
@@ -43,10 +45,23 @@ static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
             if (!strncmp(info_value, "true", strlen("true")))
                 uh_win->info_args.no_conflict_epoch = 1;
         }
+
+        /* Check if we are allowed to ignore ordering of accumulate operations. */
+        memset(info_value, 0, sizeof(info_value));
+        mpi_errno = PMPI_Info_get(info, "accumulate_ordering", MPI_MAX_INFO_VAL,
+                                  info_value, &info_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        if (info_flag == 1) {
+            if (!strncmp(info_value, "", strlen("")))
+                uh_win->info_args.no_accumulate_ordering = 1;
+        }
     }
 
-    MTCORE_DBG_PRINT("no_local_load_store %d, no_conflict_epoch %d\n",
-                     uh_win->info_args.no_local_load_store, uh_win->info_args.no_conflict_epoch);
+    MTCORE_DBG_PRINT("no_local_load_store %d, no_conflict_epoch %d, no_accumulate_ordering=%d\n",
+                     uh_win->info_args.no_local_load_store, uh_win->info_args.no_conflict_epoch,
+                     uh_win->info_args.no_accumulate_ordering);
 
   fn_exit:
     return mpi_errno;

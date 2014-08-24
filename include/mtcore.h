@@ -137,6 +137,7 @@ typedef struct MTCORE_H_win_params {
 struct MTCORE_Win_info_args {
     unsigned short no_local_load_store;
     unsigned short no_conflict_epoch;
+    unsigned short no_accumulate_ordering;
 };
 
 typedef struct MTCORE_Win {
@@ -444,7 +445,8 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
 
         /* For ordering required operations, just return the helper chosen in the
          * first time. */
-        if (is_order_required && uh_win->order_h_indexes[target_rank] != -1) {
+        if (!uh_win->info_args.no_accumulate_ordering &&
+            is_order_required && uh_win->order_h_indexes[target_rank] != -1) {
             int h_idx = uh_win->order_h_indexes[target_rank];
             *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + h_idx];
             *target_h_offset = uh_win->base_h_offsets[target_rank * MTCORE_NUM_H + h_idx];
@@ -462,7 +464,7 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
 
             /* Remember the helper for ordering required operations to a given target.
              * Note that both not-lock-granted and not-first-ordered targets do not need remember */
-            if (is_order_required) {
+            if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
                 uh_win->order_h_indexes[target_rank] = idx;
             }
 

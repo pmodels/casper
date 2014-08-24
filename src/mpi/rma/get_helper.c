@@ -34,7 +34,8 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
 
     /* For ordering required operations, just return the helper chosen in the
      * first time. */
-    if (is_order_required && uh_win->order_h_indexes[target_rank] != -1) {
+    if (!uh_win->info_args.no_accumulate_ordering &&
+        is_order_required && uh_win->order_h_indexes[target_rank] != -1) {
         int h_idx = uh_win->order_h_indexes[target_rank];
         *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + h_idx];
         *target_h_offset = uh_win->base_h_offsets[target_rank * MTCORE_NUM_H + h_idx];
@@ -68,7 +69,7 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
     /* Remember the helper for ordering required operations to a given target.
      * Because both not-lock-granted and not-first-ordered targets do not need remember,
      * we put it before fn_exit.*/
-    if (is_order_required) {
+    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
         uh_win->order_h_indexes[target_rank] = min_idx;
     }
 
@@ -105,7 +106,8 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
 
     /* For ordering required operations, just return the helper chosen in the
      * first time. */
-    if (is_order_required && uh_win->order_h_indexes[target_rank] != -1) {
+    if (!uh_win->info_args.no_accumulate_ordering &&
+        is_order_required && uh_win->order_h_indexes[target_rank] != -1) {
         int h_idx = uh_win->order_h_indexes[target_rank];
         *target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + h_idx];
         *target_h_offset = uh_win->base_h_offsets[target_rank * MTCORE_NUM_H + h_idx];
@@ -139,7 +141,7 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
     /* Remember the helper for ordering required operations to a given target.
      * Because both not-lock-granted and not-first-ordered targets do not need remember,
      * we put it before fn_exit.*/
-    if (is_order_required) {
+    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
         uh_win->order_h_indexes[target_rank] = min_idx;
     }
 
