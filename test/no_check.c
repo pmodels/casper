@@ -120,7 +120,7 @@ static int run_test1(int nop)
                 "%d * put[0 - %d] & flush_all/unlock_all\n", rank, nprocs, nop - 1, nprocs);
 
         for (x = 0; x < ITER; x++) {
-            MPI_Win_lock_all(0, win);
+            MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
             /* change date in every interation */
             change_data(nop, x);
@@ -162,7 +162,7 @@ static int run_test2(int nop)
                 rank, nop, nprocs);
 
         for (x = 0; x < ITER; x++) {
-            MPI_Win_lock_all(0, win);
+            MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
             /* change date in every interation */
             change_data(nop, x);
@@ -205,7 +205,7 @@ static int run_test3(int nop)
                 rank, dst, nop, dst, dst);
 
         for (x = 0; x < ITER; x++) {
-            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, MPI_MODE_NOCHECK, win);
 
             /* change date in every iteration */
             change_data(nop, x);
@@ -244,7 +244,7 @@ static int run_test4(int nop)
                 dst, dst, nop - 1, dst, dst);
 
         for (x = 0; x < ITER; x++) {
-            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, MPI_MODE_NOCHECK, win);
 
             /* change date in every iteration */
             change_data(nop, x);
@@ -273,7 +273,6 @@ int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
     int i, errs = 0;
-    MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
 
@@ -291,11 +290,8 @@ int main(int argc, char *argv[])
         locbuf[i] = 1.0 * i;
     }
 
-    MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "no_conflict_epoch", (char *) "true");
-
     /* size in byte */
-    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,
+    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), MPI_INFO_NULL,
                      MPI_COMM_WORLD, &winbuf, &win);
 
     /*
@@ -339,7 +335,6 @@ int main(int argc, char *argv[])
         free(locbuf);
     if (checkbuf)
         free(checkbuf);
-    MPI_Info_free(&win_info);
 
     MPI_Finalize();
 

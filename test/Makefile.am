@@ -17,7 +17,7 @@ noinst_PROGRAMS = \
 	mtcore_self_acclock	\
 	no_loadstore	\
 	mtcore_no_loadstore	\
-	mtcore_no_conflict_epoch	\
+	mtcore_no_check	\
 	mtcore_no_accumulate_ordering
 	
 mtcore_get_SOURCES= get.c
@@ -41,8 +41,8 @@ mtcore_self_acclock_LDFLAGS= -L$(libdir) -lmtcore
 mtcore_no_loadstore_SOURCES= no_loadstore.c
 mtcore_no_loadstore_LDFLAGS= -L$(libdir) -lmtcore
 
-mtcore_no_conflict_epoch_SOURCES= no_conflict_epoch.c
-mtcore_no_conflict_epoch_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_no_check_SOURCES= no_check.c
+mtcore_no_check_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_no_accumulate_ordering_SOURCES= no_accumulate_ordering.c
 mtcore_no_accumulate_ordering_LDFLAGS= -L$(libdir) -lmtcore
