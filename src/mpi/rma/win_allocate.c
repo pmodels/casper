@@ -8,7 +8,6 @@ static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
     int mpi_errno = MPI_SUCCESS;
 
     uh_win->info_args.no_local_load_store = 0;
-    uh_win->info_args.no_conflict_epoch = 0;
     /*TODO : maintain user specified ordering */
     uh_win->info_args.no_accumulate_ordering = 0;
 
@@ -29,23 +28,6 @@ static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
                 uh_win->info_args.no_local_load_store = 1;
         }
 
-        /* Check if user says there is no concurrent epoch.
-         * If so we could
-         *  1. do load balancing from the first operation.
-         *  2. ignore force lock for local target but still allow local
-         *     transferring because it is not necessary to wait for lock acquired */
-        info_flag = 0;
-        memset(info_value, 0, sizeof(info_value));
-        mpi_errno = PMPI_Info_get(info, "no_conflict_epoch", MPI_MAX_INFO_VAL,
-                                  info_value, &info_flag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        if (info_flag == 1) {
-            if (!strncmp(info_value, "true", strlen("true")))
-                uh_win->info_args.no_conflict_epoch = 1;
-        }
-
         /* Check if we are allowed to ignore ordering of accumulate operations. */
         memset(info_value, 0, sizeof(info_value));
         mpi_errno = PMPI_Info_get(info, "accumulate_ordering", MPI_MAX_INFO_VAL,
@@ -59,8 +41,8 @@ static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
         }
     }
 
-    MTCORE_DBG_PRINT("no_local_load_store %d, no_conflict_epoch %d, no_accumulate_ordering=%d\n",
-                     uh_win->info_args.no_local_load_store, uh_win->info_args.no_conflict_epoch,
+    MTCORE_DBG_PRINT("no_local_load_store %d,  no_accumulate_ordering=%d\n",
+                     uh_win->info_args.no_local_load_store,
                      uh_win->info_args.no_accumulate_ordering);
 
   fn_exit:
@@ -439,6 +421,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     uh_win->disp_units = calloc(user_nprocs, sizeof(int));
     uh_win->h_ranks_in_uh = calloc(MTCORE_NUM_H * user_nprocs, sizeof(int));
     uh_win->local_user_ranks = calloc(user_nprocs, sizeof(int));
+    uh_win->remote_lock_assert = calloc(user_nprocs, sizeof(int));
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     uh_win->order_h_indexes = calloc(user_nprocs, sizeof(int));
@@ -640,6 +623,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         free(uh_win->h_bytes_counts);
 #endif
 
+    if (uh_win->remote_lock_assert)
+        free(uh_win->remote_lock_assert);
     if (uh_win->disp_units)
         free(uh_win->disp_units);
     if (uh_win->base_h_offsets)

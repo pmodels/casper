@@ -136,7 +136,6 @@ typedef struct MTCORE_H_win_params {
 
 struct MTCORE_Win_info_args {
     unsigned short no_local_load_store;
-    unsigned short no_conflict_epoch;
     unsigned short no_accumulate_ordering;
 };
 
@@ -181,6 +180,7 @@ typedef struct MTCORE_Win {
 #endif
 
     struct MTCORE_Win_info_args info_args;
+    int *remote_lock_assert;    /* user_nprocs */
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     unsigned short is_self_locked;
@@ -432,7 +432,7 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
     }
 
     /* If lock has not been granted yet, we can only use the main helper. */
-    if (!uh_win->info_args.no_conflict_epoch &&
+    if (!(uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK) &&
         uh_win->is_main_lock_granted[target_rank] != MTCORE_MAIN_LOCK_GRANTED) {
         /* Both serial async and byte tracking options specify the first helper as
          * the main helper of that user process.*/

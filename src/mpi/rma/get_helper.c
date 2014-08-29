@@ -20,7 +20,7 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
     }
 
     /* If lock has not been granted yet, we can only use the main helper. */
-    if (!uh_win->info_args.no_conflict_epoch &&
+    if (!(uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK) &&
         uh_win->is_main_lock_granted[target_rank] != MTCORE_MAIN_LOCK_GRANTED) {
         /* Both serial async and byte tracking options specify the first helper as
          * the main helper of that user process.*/
@@ -92,7 +92,7 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
     }
 
     /* If lock has not been granted yet, we can only use the main helper. */
-    if (!uh_win->info_args.no_conflict_epoch &&
+    if (!(uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK) &&
         uh_win->is_main_lock_granted[target_rank] != MTCORE_MAIN_LOCK_GRANTED) {
         /* Both serial async and byte tracking options specify the first helper as
          * the main helper of that user process.*/

@@ -56,7 +56,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
             goto fn_fail;
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-        if (uh_win->info_args.no_conflict_epoch ||
+        if (uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK ||
             uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_GRANTED) {
             /* RMA operations may be distributed to all helpers, so we should also
              * flush other helpers. */

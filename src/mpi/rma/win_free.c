@@ -134,6 +134,8 @@ int MPI_Win_free(MPI_Win * win)
     if (uh_win->h_bytes_counts)
         free(uh_win->h_bytes_counts);
 #endif
+    if (uh_win->remote_lock_assert)
+        free(uh_win->remote_lock_assert);
     if (uh_win->disp_units)
         free(uh_win->disp_units);
     if (uh_win->base_h_offsets)

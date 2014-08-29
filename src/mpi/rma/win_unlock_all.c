@@ -16,6 +16,10 @@ int MPI_Win_unlock_all(MPI_Win win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
+    for (i = 0; i < user_nprocs; i++) {
+        uh_win->remote_lock_assert[i] = 0;
+    }
+
     /* Unlock all Helpers in corresponding uh-window of each target process. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 

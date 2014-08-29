@@ -16,6 +16,10 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     target_local_rank = uh_win->local_user_ranks[target_rank];
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
+    uh_win->remote_lock_assert[target_rank] = assert;
+    MTCORE_DBG_PRINT("[%d]lock(%d), MPI_MODE_NOCHECK %d\n", user_rank, target_rank,
+                     !(assert & MPI_MODE_NOCHECK == 0));
+
     /* Lock Helper processes in corresponding uh-window of target process. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
@@ -58,7 +62,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          * 1. if user passed information that this process will not do local load/store on this window.
          * 2. if user passed information that there is no concurrent epochs.
          */
-        if (!uh_win->info_args.no_local_load_store && !uh_win->info_args.no_conflict_epoch) {
+        if (!uh_win->info_args.no_local_load_store &&
+            !(uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK)) {
             mpi_errno =
                 MTCORE_Win_grant_local_lock(uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H],
                                             lock_type, assert, uh_win);
@@ -69,7 +74,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         }
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-        if (is_local_lock_granted || uh_win->info_args.no_conflict_epoch) {
+        if (is_local_lock_granted || (uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK)) {
             /* Lock local rank so that operations can be executed through local target.
              * 1. Need grant lock on helper in advance due to permission check,
              * OR

@@ -16,6 +16,8 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     target_local_rank = uh_win->local_user_ranks[target_rank];
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
+    uh_win->remote_lock_assert[target_rank] = 0;
+
     /* Unlock helper process in corresponding uh-window of target process. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 

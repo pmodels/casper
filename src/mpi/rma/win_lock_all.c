@@ -16,6 +16,13 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
+    for (i = 0; i < user_nprocs; i++) {
+        uh_win->remote_lock_assert[i] = assert;
+    }
+
+    MTCORE_DBG_PRINT("[%d]lock_all, MPI_MODE_NOCHECK %d\n", user_rank,
+                     !(assert & MPI_MODE_NOCHECK == 0));
+
     /* Lock all Helpers in corresponding uh-window of each target process. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
@@ -53,7 +60,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     uh_win->is_self_locked = 0;
 #endif
     int is_local_lock_granted = 0;
-    if (!uh_win->info_args.no_local_load_store && !uh_win->info_args.no_conflict_epoch) {
+    if (!uh_win->info_args.no_local_load_store &&
+        !(uh_win->remote_lock_assert[user_rank] & MPI_MODE_NOCHECK)) {
         /* We need grant the local lock (self-target) before return.
          * However, the actual locked processes are the Helpers whose locks may be delayed by
          * most MPI implementation, thus we need a flush to force the lock to be granted on helper 0
@@ -72,7 +80,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    if (is_local_lock_granted || uh_win->info_args.no_conflict_epoch) {
+    if (is_local_lock_granted || (uh_win->remote_lock_assert[user_rank] & MPI_MODE_NOCHECK)) {
         /* Lock local rank so that operations can be executed through local target.
          * 1. Need grant lock on helper in advance due to permission check,
          * OR
