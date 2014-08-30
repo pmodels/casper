@@ -68,7 +68,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
          * require it. Some implementation may use network even for shared targets for
          * shorter CPU occupancy.
          */
-        int target_local_rank = uh_win->local_user_ranks[target_rank];
+        int target_local_rank = uh_win->targets[target_rank].local_user_rank;
         int target_h_rank_in_uh = -1;
         int data_size = 0;
         MPI_Aint target_h_offset = 0;
@@ -81,7 +81,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
                                &target_h_offset);
 
 
-        uh_target_disp = target_h_offset + uh_win->disp_units[target_rank] * target_disp;
+        uh_target_disp = target_h_offset + uh_win->targets[target_rank].disp_unit * target_disp;
 
         /* Issue operation to the helper process in corresponding uh-window of target process. */
         mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
@@ -93,7 +93,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
         MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win[%d]) instead of "
                          "target %d, 0x%lx(0x%lx + %d * %ld)\n",
                          target_h_rank_in_uh, target_local_rank, target_rank, uh_target_disp,
-                         target_h_offset, uh_win->disp_units[target_rank], target_disp);
+                         target_h_offset, uh_win->targets[target_rank].disp_unit, target_disp);
     }
   fn_exit:
     return mpi_errno;

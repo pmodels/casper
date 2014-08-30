@@ -120,12 +120,6 @@ int MPI_Win_free(MPI_Win * win)
 
     /* uh_win->user_comm is created by user, will be freed by user. */
 
-#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    if (uh_win->is_main_lock_granted)
-        free(uh_win->is_main_lock_granted);
-    if (uh_win->order_h_indexes)
-        free(uh_win->order_h_indexes);
-#endif
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     if (uh_win->h_ops_counts)
         free(uh_win->h_ops_counts);
@@ -134,18 +128,18 @@ int MPI_Win_free(MPI_Win * win)
     if (uh_win->h_bytes_counts)
         free(uh_win->h_bytes_counts);
 #endif
-    if (uh_win->remote_lock_assert)
-        free(uh_win->remote_lock_assert);
-    if (uh_win->disp_units)
-        free(uh_win->disp_units);
-    if (uh_win->base_h_offsets)
-        free(uh_win->base_h_offsets);
-    if (uh_win->local_uh_win_param)
-        free(uh_win->local_uh_win_param);
-    if (uh_win->h_ranks_in_uh)
-        free(uh_win->h_ranks_in_uh);
-    if (uh_win->local_user_ranks)
-        free(uh_win->local_user_ranks);
+
+    if (uh_win->targets) {
+        for (i = 0; i < user_nprocs; i++) {
+            if (uh_win->targets[i].base_h_offsets)
+                free(uh_win->targets[i].base_h_offsets);
+            if (uh_win->targets[i].h_ranks_in_uh)
+                free(uh_win->targets[i].h_ranks_in_uh);
+        }
+
+        free(uh_win->targets);
+    }
+
     if (uh_win->h_win_handles)
         free(uh_win->h_win_handles);
     if (uh_win->uh_wins)

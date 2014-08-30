@@ -6,19 +6,18 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, target_local_rank = -1;
+    int user_rank;
     int j;
 
     MTCORE_DBG_PRINT_FCNAME();
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
-    target_local_rank = uh_win->local_user_ranks[target_rank];
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-    uh_win->remote_lock_assert[target_rank] = assert;
-    MTCORE_DBG_PRINT("[%d]lock(%d), MPI_MODE_NOCHECK %d\n", user_rank, target_rank,
-                     !(assert & MPI_MODE_NOCHECK == 0));
+    uh_win->targets[target_rank].remote_lock_assert = assert;
+    MTCORE_DBG_PRINT("[%d]lock(%d), MPI_MODE_NOCHECK %d(assert %d)\n", user_rank,
+                     target_rank, (assert & MPI_MODE_NOCHECK) != 0, assert);
 
     /* Lock Helper processes in corresponding uh-window of target process. */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
@@ -29,19 +28,20 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
      * could lose performance and even lose asynchronous! */
 
     MTCORE_DBG_PRINT("[%d]lock_all(uh_wins[%d]), instead of target rank %d\n",
-                     user_rank, target_local_rank, target_rank);
-    mpi_errno = PMPI_Win_lock_all(assert, uh_win->uh_wins[target_local_rank]);
+                     user_rank, uh_win->targets[target_rank].local_user_rank, target_rank);
+    mpi_errno = PMPI_Win_lock_all(assert, uh_win->targets[target_rank].uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #else
     for (j = 0; j < MTCORE_NUM_H; j++) {
-        int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
+        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[j];
 
         MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                         user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
+                         user_rank, target_h_rank_in_uh,
+                         uh_win->targets[target_rank].local_user_rank, target_rank);
 
         mpi_errno = PMPI_Win_lock(lock_type, target_h_rank_in_uh, assert,
-                                  uh_win->uh_wins[target_local_rank]);
+                                  uh_win->targets[target_rank].uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -63,9 +63,9 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          * 2. if user passed information that there is no concurrent epochs.
          */
         if (!uh_win->info_args.no_local_load_store &&
-            !(uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK)) {
+            !(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
             mpi_errno =
-                MTCORE_Win_grant_local_lock(uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H],
+                MTCORE_Win_grant_local_lock(uh_win->targets[user_rank].h_ranks_in_uh[0],
                                             lock_type, assert, uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -74,7 +74,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         }
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-        if (is_local_lock_granted || (uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK)) {
+        if (is_local_lock_granted ||
+            (uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
             /* Lock local rank so that operations can be executed through local target.
              * 1. Need grant lock on helper in advance due to permission check,
              * OR
@@ -92,7 +93,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     }
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    uh_win->is_main_lock_granted[target_rank] = MTCORE_MAIN_LOCK_RESET;
+    uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
     MTCORE_Reset_win_target_ordering(target_rank, uh_win);
     MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
 #endif

@@ -17,7 +17,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
     for (i = 0; i < user_nprocs; i++) {
-        uh_win->remote_lock_assert[i] = 0;
+        uh_win->targets[i].remote_lock_assert = 0;
     }
 
     /* Unlock all Helpers in corresponding uh-window of each target process. */
@@ -35,14 +35,12 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 #else
     for (i = 0; i < user_nprocs; i++) {
-        int target_local_rank = uh_win->local_user_ranks[i];
-
         for (j = 0; j < MTCORE_NUM_H; j++) {
-            int target_h_rank_in_uh = uh_win->h_ranks_in_uh[i * MTCORE_NUM_H + j];
+            int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[j];
 
             MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                             user_rank, target_h_rank_in_uh, target_local_rank, i);
-            mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+                             user_rank, target_h_rank_in_uh, uh_win->targets[i].local_user_rank, i);
+            mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->targets[i].uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -66,7 +64,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     for (i = 0; i < user_nprocs; i++) {
-        uh_win->is_main_lock_granted[i] = MTCORE_MAIN_LOCK_RESET;
+        uh_win->targets[i].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
     }
 #endif
 

@@ -6,7 +6,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, target_local_rank = -1;
+    int user_rank;
     int j;
 
     MTCORE_DBG_PRINT_FCNAME();
@@ -31,8 +31,6 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     else
 #endif
     {
-        target_local_rank = uh_win->local_user_ranks[target_rank];
-
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
         /* Optimization for MPI implementations that have optimized lock_all.
@@ -41,32 +39,35 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          * could lose performance and even lose asynchronous! */
 
         MTCORE_DBG_PRINT("[%d]flush_all(uh_wins[%d]), instead of target rank %d\n",
-                         user_rank, target_local_rank, target_rank);
-        mpi_errno = PMPI_Win_flush_all(uh_win->uh_wins[target_local_rank]);
+                         user_rank, uh_win->targets[target_rank].local_user_rank, target_rank);
+        mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
         /* RMA operations are only issued to the main helper, so we only flush it. */
-        int target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H];
+        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[0];
         MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                         user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
+                         user_rank, target_h_rank_in_uh,
+                         uh_win->targets[target_rank].local_user_rank, target_rank);
 
-        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->targets[target_rank].uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-        if (uh_win->remote_lock_assert[target_rank] & MPI_MODE_NOCHECK ||
-            uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_GRANTED) {
+        if (uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK ||
+            uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_GRANTED) {
             /* RMA operations may be distributed to all helpers, so we should also
              * flush other helpers. */
             for (j = 1; j < MTCORE_NUM_H; j++) {
-                target_h_rank_in_uh = uh_win->h_ranks_in_uh[target_rank * MTCORE_NUM_H + j];
+                target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[j];
 
                 MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                                 user_rank, target_h_rank_in_uh, target_local_rank, target_rank);
+                                 user_rank, target_h_rank_in_uh,
+                                 uh_win->targets[target_rank].local_user_rank, target_rank);
 
-                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->uh_wins[target_local_rank]);
+                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
+                                           uh_win->targets[target_rank].uh_win);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
             }
@@ -79,8 +80,8 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
      * Note that only target which was issued operations to is guaranteed to be granted. */
-    if (uh_win->is_main_lock_granted[target_rank] == MTCORE_MAIN_LOCK_OP_ISSUED) {
-        uh_win->is_main_lock_granted[target_rank] = MTCORE_MAIN_LOCK_GRANTED;
+    if (uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
+        uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
         MTCORE_DBG_PRINT("[%d] main lock (%d) granted\n", user_rank, target_rank);
     }
 #endif
