@@ -117,16 +117,15 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
     }
 
   fn_exit:
-    return mpi_errno;
-
-  fn_fail:
     if (func_params)
         free(func_params);
     if (user_ranks_in_world)
         free(user_ranks_in_world);
     if (helper_ranks_in_world)
         free(helper_ranks_in_world);
+    return mpi_errno;
 
+  fn_fail:
     goto fn_exit;
 }
 

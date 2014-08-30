@@ -217,6 +217,14 @@ int MPI_Init(int *argc, char ***argv)
     /* Helper processes */
     /* TODO: Helper process should not run user program */
     else {
+        /* free local buffers before enter helper main function */
+        if (tmp_gather_buf)
+            free(tmp_gather_buf);
+        if (ranks_in_user_world)
+            free(ranks_in_user_world);
+        if (ranks_in_world)
+            free(ranks_in_world);
+
         MTCORE_DBG_PRINT("I am helper, %d/%d in world, %d/%d in local, node_id %d\n", rank,
                          nprocs, local_rank, local_nprocs, MTCORE_MY_NODE_ID);
         run_h_main();
