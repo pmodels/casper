@@ -117,7 +117,7 @@ static int gather_ranks(MTCORE_Win * win, int *user_ranks_in_world, int *num_hel
     goto fn_exit;
 }
 
-#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
+#if (MTCORE_LOCK_BINDING == MTCORE_LOCK_BINDING_RANK)
 static void specify_user_main_helper(MTCORE_Win * uh_win)
 {
     int i, off;
@@ -523,7 +523,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-#if (MTCORE_LOCK_OPTION == MTCORE_LOCK_OPTION_SERIAL_ASYNC)
+#if (MTCORE_LOCK_BINDING == MTCORE_LOCK_BINDING_RANK)
     specify_user_main_helper(uh_win);
 #endif
 

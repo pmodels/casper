@@ -47,11 +47,10 @@
  *      as delaying locks and combining lock + Op packets, or ignoring locks with
  *      no operations.
  * */
-#define MTCORE_LOCK_OPTION_SERIAL_ASYNC 1
-#define MTCORE_LOCK_OPTION_BYTE_TRACK 2
-#define MTCORE_LOCK_OPTION_FORCE_LOCK 3
+#define MTCORE_LOCK_BINDING_RANK 1
+#define MTCORE_LOCK_BINDING_SEGMENT 2
 
-#define MTCORE_LOCK_OPTION MTCORE_LOCK_OPTION_SERIAL_ASYNC
+#define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_RANK
 
 
 #define MTCORE_LOAD_OPT_NON 0
