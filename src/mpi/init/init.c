@@ -27,7 +27,6 @@ int MTCORE_MY_RANK_IN_WORLD = -1;
 
 MTCORE_Define_win_cache;
 
-hashtable_t *uh_win_ht;
 
 int MPI_Init(int *argc, char ***argv)
 {
