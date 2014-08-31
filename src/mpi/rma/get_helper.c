@@ -10,10 +10,23 @@
 #include "mtcore.h"
 
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
-void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
-                                              MTCORE_Win * uh_win, int *target_h_rank_in_uh,
-                                              MPI_Aint * target_h_offset)
+int MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
+                                             MTCORE_Win * uh_win, int *target_h_rank_in_uh,
+                                             MPI_Aint * target_h_offset)
 {
+    int mpi_errno = MPI_SUCCESS;
+
+#ifdef MTCORE_ENABLE_LOAD_LOCK_FORCE
+    /* Force lock when the first operation is issued. Note that nocheck epoch
+     * does not need it because no conflicting lock.*/
+    if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
+        uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
+        mpi_errno = MTCORE_Win_grant_lock(target_rank, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
+    }
+#endif
+
     /* Upgrade main lock status of target if it is the first operation of that target. */
     if (uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_RESET) {
         uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_OP_ISSUED;
@@ -76,16 +89,28 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
   fn_exit:
     /* Count the number of operations issued to every helper */
     uh_win->h_ops_counts[*target_h_rank_in_uh]++;
-
-    return;
+    return mpi_errno;
 }
 
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
-void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required, int size,
-                                               MTCORE_Win * uh_win, int *target_h_rank_in_uh,
-                                               MPI_Aint * target_h_offset)
+int MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required, int size,
+                                              MTCORE_Win * uh_win, int *target_h_rank_in_uh,
+                                              MPI_Aint * target_h_offset)
 {
+    int mpi_errno = MPI_SUCCESS;
+
+#ifdef MTCORE_ENABLE_LOAD_LOCK_FORCE
+    /* Force lock when the first operation is issued. Note that nocheck epoch
+     * does not need it because no conflicting lock.*/
+    if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
+        uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
+        mpi_errno = MTCORE_Win_grant_lock(target_rank, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
+    }
+#endif
+
     /* Upgrade main lock status of target if it is the first operation of that target. */
     if (uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_RESET) {
         uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_OP_ISSUED;
@@ -148,7 +173,6 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
   fn_exit:
     /* Count the number of operations issued to every helper */
     uh_win->h_bytes_counts[*target_h_rank_in_uh] += size;
-
-    return;
+    return mpi_errno;
 }
 #endif

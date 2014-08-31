@@ -399,6 +399,24 @@ static inline int MTCORE_Win_grant_local_lock(int target_rank, int lock_type, in
     goto fn_exit;
 }
 
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+static inline int MTCORE_Win_grant_lock(int target_rank, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    mpi_errno = PMPI_Win_flush(uh_win->targets[target_rank].h_ranks_in_uh[0],
+                               uh_win->targets[target_rank].uh_win);
+    if (mpi_errno == MPI_SUCCESS) {
+        uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
+        MTCORE_DBG_PRINT("grant lock(Helper(%d), uh_wins[%d]) for target %d\n",
+                         uh_win->targets[target_rank].h_ranks_in_uh[0],
+                         uh_win->targets[target_rank].local_user_rank, target_rank);
+    }
+
+    return mpi_errno;
+}
+#endif
+
 extern int run_h_main(void);
 
 extern int MTCORE_Func_start(MTCORE_Func FUNC, int user_nprocs, int user_local_nprocs);
@@ -422,11 +440,24 @@ static inline void MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_W
             target_h_offset)
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
-static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
-                                                          MTCORE_Win * uh_win,
-                                                          int *target_h_rank_in_uh,
-                                                          MPI_Aint * target_h_offset)
+static inline int MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
+                                                         MTCORE_Win * uh_win,
+                                                         int *target_h_rank_in_uh,
+                                                         MPI_Aint * target_h_offset)
 {
+    int mpi_errno = MPI_SUCCESS;
+
+#ifdef MTCORE_ENABLE_LOAD_LOCK_FORCE
+    /* Force lock when the first operation is issued. Note that nocheck epoch
+     * does not need it because no conflicting lock.*/
+    if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
+        uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
+        mpi_errno = MTCORE_Win_grant_lock(target_rank, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
+    }
+#endif
+
     /* Upgrade main lock status of target if it is the first operation of that target. */
     if (uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_RESET) {
         uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_OP_ISSUED;
@@ -473,6 +504,7 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
                              *target_h_rank_in_uh, *target_h_offset, target_rank);
         }
     }
+    return mpi_errno;
 }
 
 #define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
@@ -482,9 +514,9 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
 
-extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
-                                                     MTCORE_Win * uh_win, int *target_h_rank_in_uh,
-                                                     MPI_Aint * target_h_offset);
+extern int MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
+                                                    MTCORE_Win * uh_win, int *target_h_rank_in_uh,
+                                                    MPI_Aint * target_h_offset);
 
 #define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
         target_h_rank_in_uh, target_h_offset)  \
@@ -493,10 +525,10 @@ extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_ord
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
 
-extern void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required,
-                                                      int size, MTCORE_Win * uh_win,
-                                                      int *target_h_rank_in_uh,
-                                                      MPI_Aint * target_h_offset);
+extern int MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required,
+                                                     int size, MTCORE_Win * uh_win,
+                                                     int *target_h_rank_in_uh,
+                                                     MPI_Aint * target_h_offset);
 
 #define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
         target_h_rank_in_uh, target_h_offset)  \

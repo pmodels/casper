@@ -77,9 +77,10 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
         PMPI_Type_size(origin_datatype, &data_size);
         data_size *= origin_count;
 #endif
-        MTCORE_Get_helper_rank(target_rank, 0, data_size, uh_win, &target_h_rank_in_uh,
-                               &target_h_offset);
-
+        mpi_errno = MTCORE_Get_helper_rank(target_rank, 0, data_size, uh_win, &target_h_rank_in_uh,
+                                           &target_h_offset);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
 
         uh_target_disp = target_h_offset + uh_win->targets[target_rank].disp_unit * target_disp;
 
