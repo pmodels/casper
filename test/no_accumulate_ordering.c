@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define NUM_OPS 10
+#define NUM_OPS 5
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
 
@@ -193,6 +193,39 @@ static int run_test2(int nop)
     return errs;
 }
 
+static int run_test3(int nop)
+{
+    int i, x, errs = 0;
+    int dst;
+
+    if (rank == 0) {
+        dst = (rank + 1) % nprocs;
+
+        fprintf(stdout, "[%d]-----check lock/%d*acc(%d) & flush/unlock \n", rank, nop, dst);
+
+        for (x = 0; x < ITER; x++) {
+            change_data(nop, x);
+
+            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+
+            /* only do load balancing when force lock enabled */
+            for (i = 0; i < nop; i++) {
+                MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, i, 1, MPI_DOUBLE, MPI_MAX, win);
+            }
+            MPI_Win_flush(dst, win);
+
+            errs += check_data(nop, x, dst);
+
+            MPI_Win_unlock(dst, win);
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Bcast(&errs, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    return errs;
+}
+
 int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
@@ -219,16 +252,25 @@ int main(int argc, char *argv[])
     reset_win();
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test1(size);
+    if (errs)
+        goto exit;
 
     reset_win();
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test2(size);
+    if (errs)
+        goto exit;
 
+    reset_win();
+    MPI_Barrier(MPI_COMM_WORLD);
+    errs = run_test3(size);
+    if (errs)
+        goto exit;
+
+  exit:
     if (rank == 0) {
         fprintf(stdout, "%d errors\n", errs);
     }
-
-  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

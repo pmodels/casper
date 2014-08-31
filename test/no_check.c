@@ -11,7 +11,7 @@
 #include <string.h>
 #include <mpi.h>
 
-#define NUM_OPS 2
+#define NUM_OPS 5
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
 

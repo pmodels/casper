@@ -11,7 +11,7 @@
 #include <mpi.h>
 
 #define SLEEP_TIME 100  /* 100us */
-#define NUM_OPS 2
+#define NUM_OPS 5
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
 
@@ -22,46 +22,21 @@ int comp_size = 1;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 
-static int target_computation_init()
-{
-    return 0;
-}
-
-static int target_computation()
-{
-    double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
-    return 0;
-}
-
-static int target_computation_exit()
-{
-    return 0;
-}
-
-static int run_test(int nop)
+static int run_test1(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
 
-    target_computation_init();
     MPI_Win_lock_all(0, win);
 
-    fprintf(stdout, "[%d]-----check lock_all/get[0 - %d] & flush_all + sleep + "
-            "get[0 - %d] & flush_all/unlock_all \n", rank, nprocs, nprocs);
+    fprintf(stdout, "[%d]-----check lock_all/get[0 - %d] & flush_all + "
+            "get[0 - %d] & flush_all/unlock_all \n", rank, nprocs - 1, nprocs - 1);
 
-    t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
         for (dst = 0; dst < nprocs; dst++) {
             MPI_Get(&locbuf[dst], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
         }
         MPI_Win_flush_all(win);
-
-        target_computation();
 
         for (dst = 0; dst < nprocs; dst++) {
             for (i = 1; i < nop; i++) {
@@ -86,7 +61,59 @@ static int run_test(int nop)
     }
 
     MPI_Win_unlock_all(win);
-    target_computation_exit();
+
+    if (errs > 0) {
+        fprintf(stderr, "[%d] checking failed\n", rank);
+#ifdef OUTPUT_FAIL_DETAIL
+        fprintf(stderr, "[%d] locbuf:\n");
+        for (i = 0; i < nop * nprocs; i++) {
+            fprintf(stderr, "%.1lf ", locbuf[i]);
+        }
+        fprintf(stderr, "\n");
+#endif
+    }
+
+    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    return errs_total;
+}
+
+static int run_test2(int nop)
+{
+    int i, x, errs = 0, errs_total = 0;
+    int dst;
+
+    MPI_Win_lock_all(0, win);
+
+    fprintf(stdout, "[%d]-----check lock_all/%d * get[0 - %d] & flush_all/unlock_all \n",
+            rank, nop, nprocs - 1);
+
+    for (x = 0; x < ITER; x++) {
+
+        /* only do load balancing when force lock enabled */
+        for (dst = 0; dst < nprocs; dst++) {
+            for (i = 0; i < nop; i++) {
+                MPI_Get(&locbuf[dst + i * nprocs], 1, MPI_DOUBLE, dst, i, 1, MPI_DOUBLE, win);
+#ifdef MVA
+                MPI_Win_flush(dst, win);        /* use it to poke progress in order to finish local CQEs */
+#endif
+            }
+        }
+        MPI_Win_flush_all(win);
+
+        /* check in every iteration */
+        for (i = 0; i < nop; i++) {
+            for (dst = 0; dst < nprocs; dst++) {
+                if (locbuf[dst + i * nprocs] != (1.0 * i + dst * nprocs)) {
+                    fprintf(stderr, "[%d] locbuf[%d] %.1lf != %.1lf\n", rank, dst + i * nprocs,
+                            locbuf[dst + i * nprocs], 1.0 * i + dst * nprocs);
+                    errs++;
+                }
+            }
+        }
+    }
+
+    MPI_Win_unlock_all(win);
 
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
@@ -135,14 +162,19 @@ int main(int argc, char *argv[])
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    errs = run_test(size);
+    errs = run_test1(size);
+    if (errs)
+        goto exit;
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    errs = run_test2(size);
+    if (errs)
+        goto exit;
+
+  exit:
     if (rank == 0) {
         fprintf(stdout, "%d errors\n", errs);
     }
-
-  exit:
-
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
     if (locbuf)
