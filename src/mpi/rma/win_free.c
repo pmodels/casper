@@ -137,6 +137,9 @@ int MPI_Win_free(MPI_Win * win)
                 free(uh_win->targets[i].h_ranks_in_uh);
         }
 
+        if (uh_win->targets[i].segs)
+            free(uh_win->targets[i].segs);
+
         free(uh_win->targets);
     }
 

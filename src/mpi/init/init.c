@@ -27,6 +27,30 @@ int MTCORE_MY_RANK_IN_WORLD = -1;
 
 MTCORE_Define_win_cache;
 
+/* TODO: Move load balancing option into env setting */
+MTCORE_Env_param MTCORE_ENV;
+
+static int MTCORE_Initialize_env()
+{
+    char *val;
+    int mpi_errno = MPI_SUCCESS;
+
+    memset(MTCORE_ENV, 0, sizeof(MTCORE_ENV));
+    MTCORE_ENV.seg_size = MTCORE_DEFAULT_SEG_SIZE;
+
+    val = getenv("MTCORE_SEG_SIZE");
+    if (strlen(val)) {
+        MTCORE_ENV.seg_size = atoi(val);
+    }
+    if (MTCORE_ENV.seg_size <= 0) {
+        fprintf(stderr, "Wrong MTCORE_SEG_SIZE %d\n", MTCORE_ENV.seg_size);
+        return mpi_errno;
+    }
+
+    MTCORE_DBG_PRINT("ENV: seg_size=%d\n", MTCORE_ENV.seg_size);
+
+    return mpi_errno;
+}
 
 int MPI_Init(int *argc, char ***argv)
 {
@@ -53,6 +77,10 @@ int MPI_Init(int *argc, char ***argv)
         MTCORE_NUM_H = atoi((*argv)[1]);
     }
     MTCORE_DBG_PRINT("MTCORE_NUM_H=%d, MTCORE_LOAD_OPT=%d\n", MTCORE_NUM_H, MTCORE_LOAD_OPT);
+
+    mpi_errno = MTCORE_Initialize_env();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     /* Get a communicator only containing processes with shared memory */
     mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,

@@ -136,6 +136,64 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
 #endif
     }
 }
+#elif (MTCORE_LOCK_BINDING == MTCORE_LOCK_BINDING_SEGMENT)
+static void specify_user_main_helper(MTCORE_Win * uh_win)
+{
+    int i, j, off;
+    int main_h_rank, user_nprocs;
+    MPI_Aint main_h_off = 0;
+    int prev_main_h_off = 0;
+
+    PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+
+    for (i = 0; i < user_nprocs; i++) {
+        /* Initialize segments of each target */
+        int size = uh_win->targets[i].size;
+        uh_win->targets[i].num_segs = size / MTCORE_ENV.seg_size
+            + (size % MTCORE_ENV.seg_size > 0 ? 1 : 0);
+        uh_win->targets[i].segs =
+            calloc(uh_win->targets[i].num_segs, sizeof(MTCORE_Win_target_seg));
+
+        j = 0;
+        MPI_Aint cur_size = 0;
+        while (cur_size < size) {
+            MTCORE_Assert(j < uh_win->targets[i].num_segs);
+
+            uh_win->targets[i].segs[j].base_offset = cur_size;
+            if (size - cur_size < MTCORE_ENV.seg_size) {
+                uh_win->targets[i].segs[j].size = (size - cur_size) % MTCORE_ENV.seg_size;
+            }
+            else {
+                uh_win->targets[i].segs[j].size = MTCORE_ENV.seg_size;
+            }
+            cur_size += uh_win->targets[i].segs[j].size;
+            j++;
+        }
+
+#ifdef DEBUG
+        MTCORE_DBG_PRINT("\t h_ranks_in_uh[%d:%d - %d] =\n", i, i * MTCORE_NUM_H,
+                         (i + 1) * MTCORE_NUM_H - 1);
+        for (j = 0; j < MTCORE_NUM_H; j++) {
+            MTCORE_DBG_PRINT("\t\t %d offset 0x%lx \n", uh_win->targets[i].h_ranks_in_uh[j],
+                             uh_win->targets[i].base_h_offsets[j]);
+        }
+#endif
+
+        /* Specify main helper of each segment following the order of (user local rank, segment).
+         * (i.e., P0-seg0, P0-seg1, P1-seg0, P1-seg1 will be specified to H0, H1, H1, H0 respectively).
+         * All available helpers are stored in target.h_ranks_in_uh, segment only
+         * remember the offset of its main helper.*/
+        off = uh_win->targets[i].local_user_rank % MTCORE_NUM_H;
+        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+            off = off % MTCORE_NUM_H;
+            uh_win->targets[i].segs.main_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[off];
+            off++;
+
+            MTCORE_DBG_PRINT("\t\t seg[%d].main_h_ranks=%d\n", j,
+                             uh_win->targets[i].segs.main_h_rank_in_uh);
+        }
+    }
+}
 #endif
 
 
@@ -638,6 +696,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                 free(uh_win->targets[i].h_ranks_in_uh);
         }
 
+        if (uh_win->targets[i].segs)
+            free(uh_win->targets[i].segs);
         free(uh_win->targets);
     }
 

@@ -50,7 +50,7 @@
 #define MTCORE_LOCK_BINDING_RANK 1
 #define MTCORE_LOCK_BINDING_SEGMENT 2
 
-#define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_RANK
+#define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_SEGMENT
 
 
 #define MTCORE_LOAD_OPT_NON 0
@@ -109,6 +109,11 @@
        _a > _b ? _a : _b; })
 #endif
 
+#define MTCORE_DEFAULT_SEG_SIZE 4096;
+typedef struct MTCORE_Env_param {
+    int seg_size;
+} MTCORE_Env_param;
+
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
 typedef enum {
     MTCORE_MAIN_LOCK_RESET,
@@ -138,6 +143,31 @@ struct MTCORE_Win_info_args {
     unsigned short no_accumulate_ordering;
 };
 
+typedef struct MTCORE_OP_Segment {
+    void *origin_addr;
+    int origin_count;
+    MPI_Datatype origin_datatype;
+
+    int target_rank;
+    int target_seg_off;
+    MPI_Aint target_disp;
+    int target_count;
+    MPI_Datatype target_datatype;
+
+} MTCORE_OP_Segment;
+
+typedef struct MTCORE_Win_target_seg {
+    MPI_Aint base_offset;
+    int size;
+
+    int main_h_rank_in_uh;
+
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    MTCORE_Main_lock_stat main_lock_stat;
+    int order_h_index;
+#endif
+} MTCORE_Win_target_seg;
+
 typedef struct MTCORE_Win_target {
     MPI_Win uh_win;             /* Do not free it, it is freed in uh_wins */
     int disp_unit;
@@ -157,6 +187,11 @@ typedef struct MTCORE_Win_target {
     MTCORE_Main_lock_stat main_lock_stat;
     int order_h_index;
 #endif
+
+    /* Only used when segment binding enabled (MTCORE_LOCK_BINDING_SEGMENT) */
+    MTCORE_Win_target_seg *segs;
+    int num_segs;
+
 } MTCORE_Win_target;
 
 typedef struct MTCORE_Win {
@@ -286,6 +321,8 @@ extern int MTCORE_NUM_NODES;
 extern int MTCORE_MY_NODE_ID;
 extern int *MTCORE_ALL_NODE_IDS;
 extern int MTCORE_MY_RANK_IN_WORLD;
+
+extern MTCORE_Env_param MTCORE_ENV;
 
 static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[], int node_ids[])
 {
@@ -584,5 +621,13 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int is_order_
         MTCORE_Get_helper_rank_load_opt_non(target_rank, uh_win, target_h_rank_in_uh,   \
             target_h_offset)
 #endif
+
+extern int MTCORE_Op_segments_decode(void *origin_addr, int origin_count,
+                                     MPI_Datatype origin_datatype,
+                                     int target_rank, MPI_Aint target_disp,
+                                     int target_count, MPI_Datatype target_datatype,
+                                     MTCORE_Win * uh_win, MTCORE_OP_Segment ** decoded_ops_ptr,
+                                     int *num_segs);
+extern void MTCORE_Op_segments_destroy(MTCORE_OP_Segment ** decoded_ops_ptr);
 
 #endif /* MTCORE_H_ */
