@@ -141,10 +141,17 @@ struct MTCORE_Win_info_args {
 typedef struct MTCORE_Win_target {
     MPI_Win uh_win;             /* Do not free it, it is freed in uh_wins */
     int disp_unit;
+    MPI_Aint size;
+
     MPI_Aint *base_h_offsets;   /* MTCORE_NUM_H */
     int *h_ranks_in_uh;         /* MTCORE_NUM_H */
     int remote_lock_assert;
-    int local_user_rank;        /* ranks in local user communicator */
+
+    int local_user_rank;        /* rank in local user communicator */
+    int local_user_nprocs;
+    int world_rank;             /* rank in world communicator */
+    int user_world_rank;        /* rank in user world communicator */
+    int node_id;
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     MTCORE_Main_lock_stat main_lock_stat;
@@ -175,6 +182,7 @@ typedef struct MTCORE_Win {
     MPI_Comm local_user_comm;
     int max_local_user_nprocs;
     int num_nodes;
+    int node_id;
 
     void *base;
     MPI_Win win;
@@ -459,6 +467,7 @@ static inline int MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_Wi
     return mpi_errno;
 }
 
+
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
 static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
                                                           MTCORE_Win * uh_win,
@@ -484,6 +493,7 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
 
 }
+
 
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
 extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
