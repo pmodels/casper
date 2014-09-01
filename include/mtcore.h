@@ -320,7 +320,7 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
             h_rank = uh_win->targets[target_rank].h_ranks_in_uh[h_off]; \
             uh_win->h_ops_counts[h_rank] = 0;    \
         }   \
-        MTCORE_DBG_PRINT("\t reset target %d op counting \n", target_rank); \
+        MTCORE_DBG_PRINT("[load_opt_byte] reset target %d op counting \n", target_rank); \
     }
 
 #define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
@@ -333,13 +333,34 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
             h_rank = uh_win->targets[target_rank].h_ranks_in_uh[h_off]; \
             uh_win->h_bytes_counts[h_rank] = 0;    \
         }   \
-        MTCORE_DBG_PRINT("\t reset target %d byte counting \n", target_rank); \
+        MTCORE_DBG_PRINT("[load_opt_byte] reset target %d byte counting \n", target_rank); \
     }
 
 #define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
         MTCORE_Reset_win_target_bytes_counting(target_rank, uh_win)
 #else
 #define MTCORE_Reset_win_target_load_opt(target_rank, uh_win)
+#endif
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+#define MTCORE_Inc_win_target_load_opt_op_counting(h_rank_in_uh, uh_win) {  \
+        uh_win->h_ops_counts[h_rank_in_uh]++;   \
+        MTCORE_DBG_PRINT("[load_opt_op] increment helper %d\n", h_rank_in_uh); \
+    }
+
+#define MTCORE_Inc_win_target_load_opt(h_rank_in_uh, size, uh_win) \
+        MTCORE_Inc_win_target_load_opt_op_counting((h_rank_in_uh), uh_win)
+
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+#define MTCORE_Inc_win_target_load_opt_bytes_counting(h_rank_in_uh, size, uh_win) {  \
+        uh_win->h_bytes_counts[h_rank_in_uh] += size;   \
+        MTCORE_DBG_PRINT("[load_opt_byte] increment helper %d\n", h_rank_in_uh); \
+    }
+
+#define MTCORE_Inc_win_target_load_opt(h_rank_in_uh, size, uh_win) \
+        MTCORE_Inc_win_target_load_opt_bytes_counting((h_rank_in_uh), size, uh_win)
+#else
+#define MTCORE_Inc_win_target_load_opt(h_rank_in_uh, size, uh_win)
 #endif
 
 static inline int MTCORE_Is_in_shrd_mem(int target_rank, MPI_Group group, int *node_id,
@@ -398,6 +419,9 @@ static inline int MTCORE_Win_grant_local_lock(int target_rank, int lock_type, in
     goto fn_exit;
 }
 
+//#define MTCORE_Get_main_helper_rank(target_rank, uh_win) \
+//        uh_win->targets[target_rank].h_ranks_in_uh[0]
+
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
 static inline int MTCORE_Win_grant_lock(int target_rank, MTCORE_Win * uh_win)
 {
@@ -422,27 +446,61 @@ extern int MTCORE_Func_start(MTCORE_Func FUNC, int user_nprocs, int user_local_n
 extern int MTCORE_Func_new_ur_h_comm(MPI_Comm * ur_h_comm);
 extern int MTCORE_Func_set_param(char *func_params, int size, MPI_Comm ur_h_comm);
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_NON)
-static inline void MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_Win * uh_win,
+
+static inline int MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_Win * uh_win,
                                                        int *target_h_rank_in_uh,
                                                        MPI_Aint * target_h_offset)
 {
+    int mpi_errno = MPI_SUCCESS;
     *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[0];
     *target_h_offset = uh_win->targets[target_rank].base_h_offsets[0];
     MTCORE_DBG_PRINT("[opt_non] use main helper %d, off 0x%lx for target %d\n",
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
+    return mpi_errno;
 }
 
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
-    target_h_rank_in_uh, target_h_offset)  \
-        MTCORE_Get_helper_rank_load_opt_non(target_rank, uh_win, target_h_rank_in_uh,   \
-            target_h_offset)
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
+static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
+                                                          MTCORE_Win * uh_win,
+                                                          int *target_h_rank_in_uh,
+                                                          MPI_Aint * target_h_offset)
+{
 
-#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
-static inline int MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
-                                                         MTCORE_Win * uh_win,
-                                                         int *target_h_rank_in_uh,
-                                                         MPI_Aint * target_h_offset)
+
+    /* Randomly change helper offset every time using a window-level global recorder */
+    int idx = (uh_win->prev_h_off + 1) % MTCORE_NUM_H;  /* jump to next helper offset */
+    uh_win->prev_h_off = idx;
+
+    *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[idx];
+    *target_h_offset = uh_win->targets[target_rank].base_h_offsets[idx];
+
+    /* Remember the helper for ordering required operations to a given target.
+     * Note that both not-lock-granted and not-first-ordered targets do not need remember */
+    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
+        uh_win->targets[target_rank].order_h_index = idx;
+    }
+
+    MTCORE_DBG_PRINT("[load_opt_random] randomly choose helper %d, off 0x%lx for target %d\n",
+                     *target_h_rank_in_uh, *target_h_offset, target_rank);
+
+}
+
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
+                                                     MTCORE_Win * uh_win, int *target_h_rank_in_uh,
+                                                     MPI_Aint * target_h_offset);
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+extern void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required,
+                                                      int size, MTCORE_Win * uh_win,
+                                                      int *target_h_rank_in_uh,
+                                                      MPI_Aint * target_h_offset);
+#endif
+
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int is_order_required,
+                                                  int size, MTCORE_Win * uh_win,
+                                                  int *target_h_rank_in_uh,
+                                                  MPI_Aint * target_h_offset)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -469,71 +527,52 @@ static inline int MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is
          * the main helper of that user process.*/
         *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[0];
         *target_h_offset = uh_win->targets[target_rank].base_h_offsets[0];
-        MTCORE_DBG_PRINT("[opt_random] use main helper %d, off 0x%lx for target %d\n",
+        MTCORE_DBG_PRINT("[load_opt] use main helper %d, off 0x%lx for target %d\n",
                          *target_h_rank_in_uh, *target_h_offset, target_rank);
+
+        return mpi_errno;
     }
-    else {
 
-        /* For ordering required operations, just return the helper chosen in the
-         * first time. */
-        if (!uh_win->info_args.no_accumulate_ordering &&
-            is_order_required && uh_win->targets[target_rank].order_h_index != -1) {
-            int h_idx = uh_win->targets[target_rank].order_h_index;
-            *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[h_idx];
-            *target_h_offset = uh_win->targets[target_rank].base_h_offsets[h_idx];
+    /* For ordering required operations, just return the helper chosen in the
+     * first time. */
+    if (!uh_win->info_args.no_accumulate_ordering &&
+        is_order_required && uh_win->targets[target_rank].order_h_index != -1) {
+        int h_idx = uh_win->targets[target_rank].order_h_index;
+        *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[h_idx];
+        *target_h_offset = uh_win->targets[target_rank].base_h_offsets[h_idx];
 
-            MTCORE_DBG_PRINT("[opt_random] use first ordered helper %d, off 0x%lx for target %d\n",
-                             *target_h_rank_in_uh, *target_h_offset, target_rank);
-        }
-        else {
-            /* Randomly change helper offset every time using a window-level global recorder */
-            int idx = (uh_win->prev_h_off + 1) % MTCORE_NUM_H;  /* jump to next helper offset */
-            uh_win->prev_h_off = idx;
+        MTCORE_DBG_PRINT("[load_opt] use first ordered helper %d, off 0x%lx for target %d\n",
+                         *target_h_rank_in_uh, *target_h_offset, target_rank);
 
-            *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[idx];
-            *target_h_offset = uh_win->targets[target_rank].base_h_offsets[idx];
+        /* Need increase counters */
+        MTCORE_Inc_win_target_load_opt(*target_h_rank_in_uh, size, uh_win);
 
-            /* Remember the helper for ordering required operations to a given target.
-             * Note that both not-lock-granted and not-first-ordered targets do not need remember */
-            if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
-                uh_win->targets[target_rank].order_h_index = idx;
-            }
-
-            MTCORE_DBG_PRINT("[opt_random] randomly choose helper %d, off 0x%lx for target %d\n",
-                             *target_h_rank_in_uh, *target_h_offset, target_rank);
-        }
+        return mpi_errno;
     }
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
+    MTCORE_Get_helper_rank_load_opt_random(target_rank, is_order_required, uh_win,
+                                           target_h_rank_in_uh, target_h_offset);
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+    MTCORE_Get_helper_rank_load_opt_counting(target_rank, is_order_required, uh_win,
+                                             target_h_rank_in_uh, target_h_offset);
+#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
+    MTCORE_Get_helper_rank_load_byte_counting(target_rank, is_order_required, size,
+                                              uh_win, target_h_rank_in_uh, target_h_offset);
+#endif
+
     return mpi_errno;
 }
 
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
-        target_h_rank_in_uh, target_h_offset)  \
-    MTCORE_Get_helper_rank_load_opt_random(target_rank, is_order_required, uh_win,  \
-            target_h_rank_in_uh, target_h_offset)
-
-#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
-
-extern int MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
-                                                    MTCORE_Win * uh_win, int *target_h_rank_in_uh,
-                                                    MPI_Aint * target_h_offset);
-
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
-        target_h_rank_in_uh, target_h_offset)  \
-    MTCORE_Get_helper_rank_load_opt_counting(target_rank, is_order_required, uh_win,    \
-            target_h_rank_in_uh, target_h_offset)
-
-#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
-
-extern int MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required,
-                                                     int size, MTCORE_Win * uh_win,
-                                                     int *target_h_rank_in_uh,
-                                                     MPI_Aint * target_h_offset);
-
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win,    \
-        target_h_rank_in_uh, target_h_offset)  \
-    MTCORE_Get_helper_rank_load_byte_counting(target_rank, is_order_required, size, \
-            uh_win, target_h_rank_in_uh, target_h_offset)
-
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, \
+        target_h_rank_in_uh, target_h_offset) \
+        MTCORE_Get_helper_rank_load_opt(target_rank, is_order_required, size, uh_win, \
+                target_h_rank_in_uh, target_h_offset)
+#else
+#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, \
+        target_h_rank_in_uh, target_h_offset) \
+        MTCORE_Get_helper_rank_load_opt_non(target_rank, uh_win, target_h_rank_in_uh,   \
+            target_h_offset)
 #endif
 
 #endif /* MTCORE_H_ */
