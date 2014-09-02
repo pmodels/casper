@@ -62,7 +62,6 @@ static int run_test(int nop)
 
         MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 1, 1, MPI_DOUBLE, MPI_MAX, win);
-        fprintf(stdout, "dst %d += locbuf[%d] %.1lf\n", dst, dst * nop, locbuf[dst * nop]);
         MPI_Win_flush(dst, win);
 
         target_computation();
@@ -72,8 +71,6 @@ static int run_test(int nop)
                            MPI_DOUBLE, MPI_SUM, win);
             MPI_Accumulate(&locbuf[i + dst * nop], 1, MPI_DOUBLE, dst, 1, 1,
                            MPI_DOUBLE, MPI_MAX, win);
-            fprintf(stdout, "dst %d += locbuf[%d] %.1lf\n", dst, i + dst * nop,
-                    locbuf[i + dst * nop]);
 #ifdef MVA
             MPI_Win_flush(dst, win);    /* use it to poke progress in order to finish local CQEs */
 #endif
@@ -139,7 +136,6 @@ int main(int argc, char *argv[])
     locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
     for (i = 0; i < NUM_OPS * nprocs; i++) {
         locbuf[i] = 1.0 * i;
-        fprintf(stdout, "[%d] locbuf[%d] = %.1lf\n", rank, i, locbuf[i]);
     }
 
     /* size in byte */
