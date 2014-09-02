@@ -27,25 +27,17 @@
  * two origins may access a target concurrently if their Ops are distributed
  * to different helpers.
  *
- *  Serial asynchronous:
+ *  Rank binding:
  *      Statically specify single helper for each target, thus real locks/Ops
  *      to a given target will only be issued to the same helper.
  *
- *  Byte tracking:
+ *  Segment binding:
  *      Statically specify single helper for each segment of shared memory,
  *      thus real locks/Ops to a given byte will only be issued to the same
  *      helper. Consequently, it eliminates the case that two origins concurrently
  *      access the same address of a target.
  *      This method has additional overhead especially for derived target datatype.
- *      But it is more fine-grained than Serial asynchronous.
- *
- *  Force lock:
- *      Force helper locks granted in lock calls, thus an origin will block in lock
- *      calls while another origin is holding the lock of that target.
- *      After open an epoch using this method, Ops can be safely distributed to
- *      multiple helpers. However, it disables MPI potential optimizations such
- *      as delaying locks and combining lock + Op packets, or ignoring locks with
- *      no operations.
+ *      But it is more fine-grained than Rank binding.
  * */
 #define MTCORE_LOCK_BINDING_RANK 1
 #define MTCORE_LOCK_BINDING_SEGMENT 2
