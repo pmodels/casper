@@ -7,6 +7,8 @@ noinst_PROGRAMS = \
 	mtcore_get \
 	put	\
 	mtcore_put	\
+	put_l_seg	\
+	mtcore_put_l_seg	\
 	acc	\
 	mtcore_acc \
 	acclock	\
@@ -25,6 +27,9 @@ mtcore_get_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_put_SOURCES= put.c
 mtcore_put_LDFLAGS= -L$(libdir) -lmtcore
+
+mtcore_put_l_seg_SOURCES= put_l_seg.c
+mtcore_put_l_seg_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_acc_SOURCES= acc.c
 mtcore_acc_LDFLAGS= -L$(libdir) -lmtcore
