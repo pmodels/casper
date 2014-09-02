@@ -28,21 +28,21 @@ int MPI_Win_unlock_all(MPI_Win win)
      * for every target even if it does not have any operation, this optimization
      * could lose performance and even lose asynchronous! */
     for (i = 0; i < uh_win->num_uh_wins; i++) {
-        MTCORE_DBG_PRINT("[%d]unlock_all(uh_wins[%d])\n", user_rank, i);
+        MTCORE_DBG_PRINT("[%d]unlock_all(uh_win 0x%x)\n", user_rank, uh_win->uh_wins[i]);
         mpi_errno = PMPI_Win_unlock_all(uh_win->uh_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 #else
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+        for (j = 0; j < uh_win->targets[i].num_uh_wins; j++) {
             for (k = 0; k < MTCORE_NUM_H; k++) {
                 int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[k];
 
                 MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins 0x%x), instead of "
-                                 "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
-                                 uh_win->targets[i].segs[j].uh_win, i, j);
-                mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->targets[i].segs[j].uh_win);
+                                 "target rank %d\n", user_rank, target_h_rank_in_uh,
+                                 uh_win->targets[i].uh_wins[j], i);
+                mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->targets[i].uh_wins[j]);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
             }

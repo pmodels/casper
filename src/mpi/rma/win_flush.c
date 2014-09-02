@@ -31,21 +31,24 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     else
 #endif
     {
-        for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
+        for (j = 0; j < uh_win->targets[target_rank].num_uh_wins; j++) {
             /* Optimization for MPI implementations that have optimized lock_all.
              * However, user should be noted that, if MPI implementation issues lock messages
              * for every target even if it does not have any operation, this optimization
              * could lose performance and even lose asynchronous! */
-            MTCORE_DBG_PRINT("[%d]flush_all(uh_wins 0x%x), instead of target rank %d seg %d\n",
-                             user_rank, uh_win->targets[target_rank].segs[j].local_user_rank,
-                             target_rank, j);
-            mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].segs[j].uh_win);
+            MTCORE_DBG_PRINT("[%d]flush_all(uh_win 0x%x), instead of target rank %d\n",
+                             user_rank, uh_win->targets[target_rank].uh_wins[j], target_rank);
+            mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].uh_wins[j]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
+        }
 #else
-            /* RMA operations are only issued to the main helper, so we only flush it. */
+
+#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_NON)
+        /* RMA operations are only issued to the main helper, so we only flush it. */
+        for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
             int main_h_off = uh_win->targets[target_rank].segs[j].main_h_off;
             int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
             MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
@@ -56,31 +59,35 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
                                        uh_win->targets[target_rank].segs[j].uh_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
-
-#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-            if ((uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) ||
-                uh_win->targets[target_rank].segs[j].main_lock_stat == MTCORE_MAIN_LOCK_GRANTED) {
-                /* RMA operations may be distributed to all helpers, so we should also
-                 * flush other helpers. */
-                for (k = 0; k < MTCORE_NUM_H; k++) {
-                    if (k == main_h_off)
-                        continue;
-
-                    target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
-                    MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
-                                     "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
-                                     uh_win->targets[target_rank].segs[j].uh_win, target_rank, j);
-
-                    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
-                                               uh_win->targets[target_rank].segs[j].uh_win);
-                    if (mpi_errno != MPI_SUCCESS)
-                        goto fn_fail;
-                }
-            }
-#endif /*end of MTCORE_LOAD_OPT */
-
-#endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
         }
+
+#else
+        /* RMA operations may be distributed to all helpers, so we should
+         * flush all helpers on all windows.
+         *
+         * Note that some flushes could be eliminated before the main lock of a
+         * segment granted (see above). However, we have to loop all the segments
+         * in order to check each lock status, and we may flush the same helper
+         * on the same window twice if the lock is granted on that segment.
+         * i.e., flush (H0, win0) and (H1, win0) twice for seg0 and seg1.
+         *
+         * Consider flush does nothing if no operations on that target in most
+         * MPI implementation, simpler code is better */
+        for (j = 0; j < uh_win->targets[target_rank].num_uh_wins; j++) {
+            for (k = 0; k < MTCORE_NUM_H; k++) {
+                int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+                MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
+                                 "target rank %d\n", user_rank, target_h_rank_in_uh,
+                                 uh_win->targets[target_rank].uh_wins[j], target_rank);
+
+                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
+                                           uh_win->targets[target_rank].uh_wins[j]);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
+        }
+#endif /*end of MTCORE_LOAD_OPT */
+#endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
     }
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)

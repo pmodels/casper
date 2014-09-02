@@ -174,7 +174,8 @@ typedef struct MTCORE_Win_target_seg {
 } MTCORE_Win_target_seg;
 
 typedef struct MTCORE_Win_target {
-    MPI_Win uh_win;             /* Do not free it, it is freed in uh_wins */
+    MPI_Win *uh_wins;           /* Do not free the window, it is freed in uh_wins */
+    int num_uh_wins;            /* max number of segments handled by the same helper */
     int disp_unit;
     MPI_Aint size;
 
@@ -209,7 +210,8 @@ typedef struct MTCORE_Win {
     MPI_Group uh_group;
     MPI_Win *uh_wins;           /* every local process has separate window for permission control,
                                  * processes in different node share one window. */
-    int num_uh_wins;            /* = max_num_segs * max_local_user_nprocs */
+    int num_uh_wins;            /* = max targets' num_uh_wins * max_local_user_nprocs */
+    int max_local_num_uh_wins;  /* the max number of windows of each process */
 
     /* communicator including all the user processes */
     MPI_Comm user_comm;
@@ -217,7 +219,6 @@ typedef struct MTCORE_Win {
 
     MPI_Comm local_user_comm;
     int max_local_user_nprocs;
-    int max_num_segs;
     int num_nodes;
     int node_id;
 
@@ -431,41 +432,45 @@ static inline int MTCORE_Is_in_shrd_mem(int target_rank, MPI_Group group, int *n
     return mpi_errno;
 }
 
-static inline int MTCORE_Win_grant_local_lock(int target_rank, int target_seg_off, int lock_type,
+static inline int MTCORE_Win_grant_local_lock(int target_rank, int lock_type,
                                               int assert, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank;
-    int main_h_off = uh_win->targets[target_rank].segs[target_seg_off].main_h_off;
-    int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
+    int user_rank, j;
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    MTCORE_GRANT_LOCK_DATATYPE buf[1];
-    mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, target_h_rank_in_uh,
-                         uh_win->grant_lock_h_offset, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE,
-                         uh_win->targets[target_rank].segs[target_seg_off].uh_win);
-#else
-    /* Simply get 1 byte from start, it does not affect the result of other updates */
-    char buf[1];
-    mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_h_rank_in_uh, 0,
-                         1, MPI_CHAR, uh_win->targets[user_rank].segs[target_seg_off].uh_win);
-#endif
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    /* force lock all the main helpers for each segment */
+    for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
+        int main_h_off = uh_win->targets[target_rank].segs[j].main_h_off;
+        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
 
-    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
-                               uh_win->targets[target_rank].segs[target_seg_off].uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+        MTCORE_GRANT_LOCK_DATATYPE buf[1];
+        mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, target_h_rank_in_uh,
+                             uh_win->grant_lock_h_offset, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE,
+                             uh_win->targets[target_rank].segs[j].uh_win);
+#else
+        /* Simply get 1 byte from start, it does not affect the result of other updates */
+        char buf[1];
+        mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_h_rank_in_uh, 0,
+                             1, MPI_CHAR, uh_win->targets[user_rank].segs[j].uh_win);
+#endif
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
+                                   uh_win->targets[target_rank].segs[j].uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
+        uh_win->targets[target_rank].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
 #endif
-    MTCORE_DBG_PRINT("[%d]grant local lock(Helper(%d), uh_wins 0x%x) seg %d\n", user_rank,
-                     target_h_rank_in_uh, uh_win->targets[target_rank].segs[target_seg_off].uh_win,
-                     target_seg_off);
+        MTCORE_DBG_PRINT("[%d]grant local lock(Helper(%d), uh_wins 0x%x) seg %d\n", user_rank,
+                         target_h_rank_in_uh, uh_win->targets[target_rank].segs[j].uh_win, j);
+
+    }
 
   fn_exit:
     return mpi_errno;

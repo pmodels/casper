@@ -31,25 +31,26 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
      * for every target even if it does not have any operation, this optimization
      * could lose performance and even lose asynchronous! */
     for (i = 0; i < uh_win->num_uh_wins; i++) {
-        MTCORE_DBG_PRINT("[%d]lock_all(uh_wins[%d])\n", user_rank, i);
+        MTCORE_DBG_PRINT("[%d]lock_all(uh_win 0x%x)\n", user_rank, uh_win->uh_wins[i]);
         mpi_errno = PMPI_Win_lock_all(assert, uh_win->uh_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 #else
 
-    /* Lock all the helpers of each target user. We do not lock other user processes,
-     * otherwise it cannot be guaranteed to be fully asynchronous. */
+    /* Lock every helper on every window for each target.
+     * Note that a helper may be used on any window of this process for runtime
+     * load balancing whether it is binded to that segment or not. */
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+        for (j = 0; j < uh_win->targets[i].num_uh_wins; j++) {
             for (k = 0; k < MTCORE_NUM_H; k++) {
                 int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[k];
 
                 MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins 0x%x), instead of "
-                                 "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
-                                 uh_win->targets[i].segs[j].uh_win, i, j);
+                                 "target rank %d\n", user_rank, target_h_rank_in_uh,
+                                 uh_win->targets[i].uh_wins[j], i);
                 mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, target_h_rank_in_uh, assert,
-                                          uh_win->targets[i].segs[j].uh_win);
+                                          uh_win->targets[i].uh_wins[j]);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
             }
@@ -72,11 +73,9 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
          * 1. if user passed information that this process will not do local load/store on this window.
          * 2. if user passed information that there is no concurrent epochs.
          */
-        for (j = 0; j < uh_win->targets[user_rank].num_segs; j++) {
-            mpi_errno = MTCORE_Win_grant_local_lock(user_rank, j, MPI_LOCK_SHARED, 0, uh_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
+        mpi_errno = MTCORE_Win_grant_local_lock(user_rank, MPI_LOCK_SHARED, 0, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
 
         is_local_lock_granted = 1;
     }
