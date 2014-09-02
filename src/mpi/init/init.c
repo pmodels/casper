@@ -81,11 +81,29 @@ static int MTCORE_Initialize_env()
             return -1;
         }
     }
+
+    MTCORE_ENV.load_lock = MTCORE_LOAD_LOCK_NATURE;
+    val = getenv("MTCORE_RUNTIME_LOAD_LOCK");
+    if (val && strlen(val)) {
+        if (!strncmp(val, "nature", strlen("nature"))) {
+            MTCORE_ENV.load_lock = MTCORE_LOAD_LOCK_NATURE;
+        }
+        else if (!strncmp(val, "force", strlen("force"))) {
+            MTCORE_ENV.load_lock = MTCORE_LOAD_LOCK_FORCE;
+        }
+        else {
+            fprintf(stderr, "Unknown MTCORE_RUNTIME_LOAD_LOCK %s\n", val);
+            return -1;
+        }
+    }
 #else
     MTCORE_ENV.load_opt = MTCORE_LOAD_OPT_STATIC;
+    MTCORE_ENV.load_lock = MTCORE_LOAD_LOCK_NATURE;
 #endif
 
-    MTCORE_DBG_PRINT("ENV: seg_size=%d, load_opt=%d\n", MTCORE_ENV.seg_size, MTCORE_ENV.load_opt);
+    MTCORE_DBG_PRINT("ENV: seg_size=%d, lock_binding=%d, load_lock=%d, load_opt=%d\n",
+                     MTCORE_ENV.seg_size, MTCORE_ENV.lock_binding, MTCORE_ENV.load_lock,
+                     MTCORE_ENV.load_opt);
 
     return mpi_errno;
 }

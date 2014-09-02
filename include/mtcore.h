@@ -84,6 +84,10 @@ typedef enum {
     MTCORE_LOAD_BYTE_COUNTING,
 } MTCORE_Load_opt;
 
+typedef enum {
+    MTCORE_LOAD_LOCK_NATURE,
+    MTCORE_LOAD_LOCK_FORCE,
+} MTCORE_Load_lock;
 
 typedef enum {
     MTCORE_LOCK_BINDING_RANK,
@@ -94,6 +98,7 @@ typedef enum {
 typedef struct MTCORE_Env_param {
     int seg_size;               /* segment size in lock segment binding */
     MTCORE_Load_opt load_opt;   /* runtime load balancing options */
+    MTCORE_Load_lock load_lock; /* how to grant locks for runtime load balancing */
     MTCORE_Lock_binding lock_binding;   /* how to handle locks */
 } MTCORE_Env_param;
 
@@ -507,17 +512,16 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int target_se
     int main_h_off = uh_win->targets[target_rank].segs[target_seg_off].main_h_off;
     int h_idx = 0;
 
-#ifdef MTCORE_ENABLE_LOAD_LOCK_FORCE
     /* Force lock when the first operation is issued. Note that nocheck epoch
      * does not need it because no conflicting lock.*/
-    if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
+    if (MTCORE_ENV.load_lock == MTCORE_LOAD_LOCK_FORCE &&
+        !(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
         uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat ==
         MTCORE_MAIN_LOCK_OP_ISSUED) {
         mpi_errno = MTCORE_Win_grant_lock(target_rank, target_seg_off, uh_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
-#endif
 
     /* Upgrade main lock status of target if it is the first operation of that target. */
     if (uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat == MTCORE_MAIN_LOCK_RESET) {
