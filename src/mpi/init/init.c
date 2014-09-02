@@ -35,11 +35,11 @@ static int MTCORE_Initialize_env()
     char *val;
     int mpi_errno = MPI_SUCCESS;
 
-    memset(MTCORE_ENV, 0, sizeof(MTCORE_ENV));
+    memset(&MTCORE_ENV, 0, sizeof(MTCORE_ENV));
     MTCORE_ENV.seg_size = MTCORE_DEFAULT_SEG_SIZE;
 
     val = getenv("MTCORE_SEG_SIZE");
-    if (strlen(val)) {
+    if (val && strlen(val)) {
         MTCORE_ENV.seg_size = atoi(val);
     }
     if (MTCORE_ENV.seg_size <= 0) {

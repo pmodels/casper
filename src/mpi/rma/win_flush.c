@@ -7,7 +7,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
-    int j;
+    int j, k;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -31,64 +31,71 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     else
 #endif
     {
+        for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
-        /* Optimization for MPI implementations that have optimized lock_all.
-         * However, user should be noted that, if MPI implementation issues lock messages
-         * for every target even if it does not have any operation, this optimization
-         * could lose performance and even lose asynchronous! */
-
-        MTCORE_DBG_PRINT("[%d]flush_all(uh_wins[%d]), instead of target rank %d\n",
-                         user_rank, uh_win->targets[target_rank].local_user_rank, target_rank);
-        mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+            /* Optimization for MPI implementations that have optimized lock_all.
+             * However, user should be noted that, if MPI implementation issues lock messages
+             * for every target even if it does not have any operation, this optimization
+             * could lose performance and even lose asynchronous! */
+            MTCORE_DBG_PRINT("[%d]flush_all(uh_wins 0x%x), instead of target rank %d seg %d\n",
+                             user_rank, uh_win->targets[target_rank].segs[j].local_user_rank,
+                             target_rank, j);
+            mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].segs[j].uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
 #else
-        /* RMA operations are only issued to the main helper, so we only flush it. */
-        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[0];
-        MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                         user_rank, target_h_rank_in_uh,
-                         uh_win->targets[target_rank].local_user_rank, target_rank);
+            /* RMA operations are only issued to the main helper, so we only flush it. */
+            int main_h_off = uh_win->targets[target_rank].segs[j].main_h_off;
+            int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
+            MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
+                             "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
+                             uh_win->targets[target_rank].segs[j].uh_win, target_rank, j);
 
-        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->targets[target_rank].uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+            mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
+                                       uh_win->targets[target_rank].segs[j].uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-        if (uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK ||
-            uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_GRANTED) {
-            /* RMA operations may be distributed to all helpers, so we should also
-             * flush other helpers. */
-            for (j = 1; j < MTCORE_NUM_H; j++) {
-                target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[j];
+            if ((uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) ||
+                uh_win->targets[target_rank].segs[j].main_lock_stat == MTCORE_MAIN_LOCK_GRANTED) {
+                /* RMA operations may be distributed to all helpers, so we should also
+                 * flush other helpers. */
+                for (k = 0; k < MTCORE_NUM_H; k++) {
+                    if (k == main_h_off)
+                        continue;
 
-                MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                                 user_rank, target_h_rank_in_uh,
-                                 uh_win->targets[target_rank].local_user_rank, target_rank);
+                    target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+                    MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
+                                     "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
+                                     uh_win->targets[target_rank].segs[j].uh_win, target_rank, j);
 
-                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
-                                           uh_win->targets[target_rank].uh_win);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
+                    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
+                                               uh_win->targets[target_rank].segs[j].uh_win);
+                    if (mpi_errno != MPI_SUCCESS)
+                        goto fn_fail;
+                }
             }
-        }
 #endif /*end of MTCORE_LOAD_OPT */
 
 #endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
+        }
     }
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
-     * Note that only target which was issued operations to is guaranteed to be granted. */
-    if (uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
-        uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
-        MTCORE_DBG_PRINT("[%d] main lock (%d) granted\n", user_rank, target_rank);
-    }
-#endif
+    for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
+        /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
+         * Note that only target which was issued operations to is guaranteed to be granted. */
+        if (uh_win->targets[target_rank].segs[j].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
+            uh_win->targets[target_rank].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
+            MTCORE_DBG_PRINT("[%d] main lock (rank %d, seg %d) granted\n", user_rank, target_rank,
+                             j);
+        }
 
-#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    MTCORE_Reset_win_target_ordering(target_rank, uh_win);
-    MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
+        MTCORE_Reset_win_target_ordering(target_rank, j, uh_win);
+        MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
+    }
 #endif
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they

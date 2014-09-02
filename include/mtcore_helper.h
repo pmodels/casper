@@ -34,13 +34,14 @@ typedef struct MTCORE_H_win {
     /* communicator including local processes and helpers */
     MPI_Comm local_uh_comm;
     MPI_Win local_uh_win;
-    int max_local_user_nprocs;
 
     /* communicator including all the user processes and helpers */
     MPI_Comm uh_comm;
 
     void *base;
     MPI_Win *uh_wins;
+    int num_uh_wins;
+
     unsigned long mtcore_h_win_handle;
 } MTCORE_H_win;
 

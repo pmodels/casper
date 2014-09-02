@@ -62,7 +62,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
     user_ranks_in_world = calloc(user_nprocs, sizeof(int));
     max_num_helpers = MTCORE_NUM_H * MTCORE_NUM_NODES;
     helper_ranks_in_world = calloc(max_num_helpers, sizeof(int));
-    func_param_size = user_nprocs + max_num_helpers + 3;
+    func_param_size = user_nprocs + max_num_helpers + 2;
     func_params = calloc(func_param_size, sizeof(int));
 
     mpi_errno = MTCORE_H_func_get_param((char *) func_params, sizeof(int) * func_param_size,
@@ -71,10 +71,8 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
         goto fn_fail;
 
     /* Get parameters from local User_root
-     *  [0]: is_comm_user_world
-     *  [1]: max_local_user_nprocs */
+     *  [0]: is_comm_user_world */
     is_user_world = func_params[0];
-    win->max_local_user_nprocs = func_params[1];
 
     if (is_user_world) {
         MTCORE_H_DBG_PRINT(" Received parameters: is_user_world %d\n", is_user_world);
@@ -88,13 +86,12 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
     }
     else {
 
-        /*  [2]: num_helpers
-         *  [3:N+2]: user ranks in comm_world
-         *  [N+3:]: helper ranks in comm_world
+        /*  [2:N+1]: user ranks in comm_world
+         *  [N+2:]: helper ranks in comm_world
          */
         int pidx;
-        num_helpers = func_params[2];
-        pidx = 3;
+        num_helpers = func_params[1];
+        pidx = 2;
         memcpy(user_ranks_in_world, &func_params[pidx], sizeof(int) * user_nprocs);
         pidx += user_nprocs;
         memcpy(helper_ranks_in_world, &func_params[pidx], sizeof(int) * num_helpers);
@@ -213,8 +210,15 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
      * User processes in different nodes can share a window.
      *  i.e., win[x] can be shared by processes whose local rank is x.
      */
-    win->uh_wins = calloc(win->max_local_user_nprocs, sizeof(MPI_Win));
-    for (i = 0; i < win->max_local_user_nprocs; i++) {
+    int func_params[1];
+    mpi_errno = MTCORE_H_func_get_param((char *) func_params, sizeof(int), win->ur_h_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    win->num_uh_wins = func_params[0];
+    MTCORE_H_DBG_PRINT(" Received parameters: num_uh_wins = %d\n", win->num_uh_wins);
+
+    win->uh_wins = calloc(win->num_uh_wins, sizeof(MPI_Win));
+    for (i = 0; i < win->num_uh_wins; i++) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm,
                                     &win->uh_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
@@ -248,7 +252,7 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     if (win->local_uh_win)
         PMPI_Win_free(&win->local_uh_win);
     if (win->uh_wins) {
-        for (i = 0; i < win->max_local_user_nprocs; i++) {
+        for (i = 0; i < win->num_uh_wins; i++) {
             if (win->uh_wins)
                 PMPI_Win_free(&win->uh_wins[i]);
         }

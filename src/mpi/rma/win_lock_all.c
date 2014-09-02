@@ -7,7 +7,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j;
+    int i, j, k;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -30,7 +30,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
      * However, user should be noted that, if MPI implementation issues lock messages
      * for every target even if it does not have any operation, this optimization
      * could lose performance and even lose asynchronous! */
-    for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
+    for (i = 0; i < uh_win->num_uh_wins; i++) {
         MTCORE_DBG_PRINT("[%d]lock_all(uh_wins[%d])\n", user_rank, i);
         mpi_errno = PMPI_Win_lock_all(assert, uh_win->uh_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
@@ -41,15 +41,18 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     /* Lock all the helpers of each target user. We do not lock other user processes,
      * otherwise it cannot be guaranteed to be fully asynchronous. */
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < MTCORE_NUM_H; j++) {
-            int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[j];
+        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+            for (k = 0; k < MTCORE_NUM_H; k++) {
+                int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[k];
 
-            MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                             user_rank, target_h_rank_in_uh, uh_win->targets[i].local_user_rank, i);
-            mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, target_h_rank_in_uh,
-                                      assert, uh_win->targets[i].uh_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+                MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins 0x%x), instead of "
+                                 "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
+                                 uh_win->targets[i].segs[j].uh_win, i, j);
+                mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, target_h_rank_in_uh, assert,
+                                          uh_win->targets[i].segs[j].uh_win);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
         }
     }
 #endif
@@ -69,10 +72,11 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
          * 1. if user passed information that this process will not do local load/store on this window.
          * 2. if user passed information that there is no concurrent epochs.
          */
-        mpi_errno = MTCORE_Win_grant_local_lock(uh_win->targets[user_rank].h_ranks_in_uh[0],
-                                                MPI_LOCK_SHARED, 0, uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        for (j = 0; j < uh_win->targets[user_rank].num_segs; j++) {
+            mpi_errno = MTCORE_Win_grant_local_lock(user_rank, j, MPI_LOCK_SHARED, 0, uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
 
         is_local_lock_granted = 1;
     }
@@ -96,10 +100,12 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     for (i = 0; i < user_nprocs; i++) {
-        uh_win->targets[i].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
+        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+            uh_win->targets[i].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
 
-        MTCORE_Reset_win_target_ordering(i, uh_win);
-        MTCORE_Reset_win_target_load_opt(i, uh_win);
+            MTCORE_Reset_win_target_ordering(i, j, uh_win);
+            MTCORE_Reset_win_target_load_opt(i, uh_win);
+        }
     }
 #endif
 

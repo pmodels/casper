@@ -12,7 +12,7 @@
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
 void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
                                               MTCORE_Win * uh_win, int *target_h_rank_in_uh,
-                                              MPI_Aint * target_h_offset)
+                                              int *target_h_rank_idx, MPI_Aint * target_h_offset)
 {
     int idx, min_count, h_rank, min_idx;
 
@@ -31,16 +31,10 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
 
     *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[min_idx];
     *target_h_offset = uh_win->targets[target_rank].base_h_offsets[min_idx];
+    *target_h_rank_idx = min_idx;
 
-    MTCORE_DBG_PRINT("[load_opt_cnt] choose lowest counting helper %d, off 0x%lx for target %d\n",
+    MTCORE_DBG_PRINT("[load_opt_op] choose lowest counting helper %d, off 0x%lx for target %d\n",
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
-
-    /* Remember the helper for ordering required operations to a given target.
-     * Because both not-lock-granted and not-first-ordered targets do not need remember,
-     * we put it before fn_exit.*/
-    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
-        uh_win->targets[target_rank].order_h_index = min_idx;
-    }
 
     /* Count the number of operations issued to every helper */
     MTCORE_Inc_win_target_load_opt(*target_h_rank_in_uh, 0, uh_win);
@@ -51,7 +45,7 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
 void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required, int size,
                                                MTCORE_Win * uh_win, int *target_h_rank_in_uh,
-                                               MPI_Aint * target_h_offset)
+                                               int *target_h_rank_idx, MPI_Aint * target_h_offset)
 {
     int idx, min_count, h_rank, min_idx;
 
@@ -70,16 +64,10 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
 
     *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[min_idx];
     *target_h_offset = uh_win->targets[target_rank].base_h_offsets[min_idx];
+    *target_h_rank_idx = min_idx;
 
     MTCORE_DBG_PRINT("[byte_cnt] choose lowest counting helper %d, off 0x%lx for target %d\n",
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
-
-    /* Remember the helper for ordering required operations to a given target.
-     * Because both not-lock-granted and not-first-ordered targets do not need remember,
-     * we put it before fn_exit.*/
-    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
-        uh_win->targets[target_rank].order_h_index = min_idx;
-    }
 
     /* Count the number of operations issued to every helper */
     MTCORE_Inc_win_target_load_opt(*target_h_rank_in_uh, size, uh_win);

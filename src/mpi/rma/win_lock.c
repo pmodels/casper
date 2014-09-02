@@ -7,7 +7,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
-    int j;
+    int j, k;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -20,32 +20,34 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
                      target_rank, (assert & MPI_MODE_NOCHECK) != 0, assert);
 
     /* Lock Helper processes in corresponding uh-window of target process. */
+    for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
+        /* Optimization for MPI implementations that have optimized lock_all.
+         * However, user should be noted that, if MPI implementation issues lock messages
+         * for every target even if it does not have any operation, this optimization
+         * could lose performance and even lose asynchronous! */
 
-    MTCORE_DBG_PRINT("[%d]lock_all(uh_wins[%d]), instead of target rank %d\n",
-                     user_rank, uh_win->targets[target_rank].local_user_rank, target_rank);
-    mpi_errno = PMPI_Win_lock_all(assert, uh_win->targets[target_rank].uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#else
-    for (j = 0; j < MTCORE_NUM_H; j++) {
-        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[j];
-
-        MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins[%d]), instead of target rank %d\n",
-                         user_rank, target_h_rank_in_uh,
-                         uh_win->targets[target_rank].local_user_rank, target_rank);
-
-        mpi_errno = PMPI_Win_lock(lock_type, target_h_rank_in_uh, assert,
-                                  uh_win->targets[target_rank].uh_win);
+        MTCORE_DBG_PRINT("[%d]lock_all(uh_wins 0x%x), instead of target rank %d seg %d\n",
+                         user_rank, uh_win->targets[target_rank].segs[j].uh_win, target_rank, j);
+        mpi_errno = PMPI_Win_lock_all(assert, uh_win->targets[target_rank].segs[j].uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-    }
+#else
+        for (k = 0; k < MTCORE_NUM_H; k++) {
+            int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+
+            MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins 0x%x), instead of "
+                             "target rank %d seg %d\n", user_rank, target_h_rank_in_uh,
+                             uh_win->targets[target_rank].segs[j].uh_win, target_rank, j);
+
+            mpi_errno = PMPI_Win_lock(lock_type, target_h_rank_in_uh, assert,
+                                      uh_win->targets[target_rank].segs[j].uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
 #endif
+    }
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     uh_win->is_self_locked = 0;
@@ -64,12 +66,11 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          */
         if (!uh_win->info_args.no_local_load_store &&
             !(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
-            mpi_errno =
-                MTCORE_Win_grant_local_lock(uh_win->targets[user_rank].h_ranks_in_uh[0],
-                                            lock_type, assert, uh_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-
+            for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
+                mpi_errno = MTCORE_Win_grant_local_lock(user_rank, j, lock_type, assert, uh_win);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
             is_local_lock_granted = 1;
         }
 
@@ -93,9 +94,12 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     }
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
-    MTCORE_Reset_win_target_ordering(target_rank, uh_win);
-    MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
+    for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
+        uh_win->targets[target_rank].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
+
+        MTCORE_Reset_win_target_ordering(target_rank, j, uh_win);
+        MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
+    }
 #endif
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they

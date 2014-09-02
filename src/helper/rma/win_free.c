@@ -38,7 +38,7 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
          */
         if (win->uh_wins) {
             MTCORE_H_DBG_PRINT(" free uh windows\n");
-            for (i = 0; i < win->max_local_user_nprocs; i++) {
+            for (i = 0; i < win->num_uh_wins; i++) {
                 if (win->uh_wins[i]) {
                     mpi_errno = PMPI_Win_free(&win->uh_wins[i]);
                     if (mpi_errno != MPI_SUCCESS)

@@ -108,6 +108,7 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
     MPI_Aint main_h_off = 0;
 
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+    uh_win->max_num_segs = 1;
 
     /* Specify main helper of each user following the order of users' rank
      * in corresponding local user communicator (i.e., P0, P1, P2 will be specified
@@ -116,23 +117,23 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
      * ranks are stored as H1, H0). */
     for (i = 0; i < user_nprocs; i++) {
         off = uh_win->targets[i].local_user_rank % MTCORE_NUM_H;
-        main_h_rank = uh_win->targets[i].h_ranks_in_uh[off];
-        main_h_off = uh_win->targets[i].base_h_offsets[off];
 
-        uh_win->targets[i].h_ranks_in_uh[off] = uh_win->targets[i].h_ranks_in_uh[0];
-        uh_win->targets[i].h_ranks_in_uh[0] = main_h_rank;
-
-        uh_win->targets[i].base_h_offsets[off] = uh_win->targets[i].base_h_offsets[0];
-        uh_win->targets[i].base_h_offsets[0] = main_h_off;
+        /* Store as a single segment per target */
+        uh_win->targets[i].num_segs = 1;
+        uh_win->targets[i].segs = calloc(1, sizeof(MTCORE_Win_target_seg));
+        uh_win->targets[i].segs[0].size = uh_win->targets[i].size;
+        uh_win->targets[i].segs[0].base_offset = 0;
+        uh_win->targets[i].segs[0].main_h_off = off;
 
 #ifdef DEBUG
-        MTCORE_DBG_PRINT("\t h_ranks_in_uh[%d:%d - %d] =\n", i, i * MTCORE_NUM_H,
-                         (i + 1) * MTCORE_NUM_H - 1);
+        MTCORE_DBG_PRINT("\t target[%d]\n", i);
         int j;
         for (j = 0; j < MTCORE_NUM_H; j++) {
-            MTCORE_DBG_PRINT("\t\t%d offset 0x%lx \n", uh_win->targets[i].h_ranks_in_uh[j],
-                             uh_win->targets[i].base_h_offsets[j]);
+            MTCORE_DBG_PRINT("\t\t .h_rank[%d] %d, offset[%d] 0x%lx \n",
+                             j, uh_win->targets[i].h_ranks_in_uh[j],
+                             j, uh_win->targets[i].base_h_offsets[j]);
         }
+        MTCORE_DBG_PRINT("\t\t .seg[0].main_h_off=%d\n", uh_win->targets[i].segs[0].main_h_off);
 #endif
     }
 }
@@ -153,6 +154,7 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
             + (size % MTCORE_ENV.seg_size > 0 ? 1 : 0);
         uh_win->targets[i].segs =
             calloc(uh_win->targets[i].num_segs, sizeof(MTCORE_Win_target_seg));
+        uh_win->max_num_segs = max(uh_win->targets[i].num_segs, uh_win->max_num_segs);
 
         j = 0;
         MPI_Aint cur_size = 0;
@@ -171,11 +173,11 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
         }
 
 #ifdef DEBUG
-        MTCORE_DBG_PRINT("\t h_ranks_in_uh[%d:%d - %d] =\n", i, i * MTCORE_NUM_H,
-                         (i + 1) * MTCORE_NUM_H - 1);
+        MTCORE_DBG_PRINT("\t target[%d]\n", i);
         for (j = 0; j < MTCORE_NUM_H; j++) {
-            MTCORE_DBG_PRINT("\t\t %d offset 0x%lx \n", uh_win->targets[i].h_ranks_in_uh[j],
-                             uh_win->targets[i].base_h_offsets[j]);
+            MTCORE_DBG_PRINT("\t\t .h_rank[%d] %d, offset[%d] 0x%lx \n",
+                             j, uh_win->targets[i].h_ranks_in_uh[j],
+                             j, uh_win->targets[i].base_h_offsets[j]);
         }
 #endif
 
@@ -186,11 +188,11 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
         off = uh_win->targets[i].local_user_rank % MTCORE_NUM_H;
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
             off = off % MTCORE_NUM_H;
-            uh_win->targets[i].segs.main_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[off];
+            uh_win->targets[i].segs[j].main_h_off = off;
             off++;
 
-            MTCORE_DBG_PRINT("\t\t seg[%d].main_h_ranks=%d\n", j,
-                             uh_win->targets[i].segs.main_h_rank_in_uh);
+            MTCORE_DBG_PRINT("\t\t .seg[%d].main_h_off=%d\n", j,
+                             uh_win->targets[i].segs[j].main_h_off);
         }
     }
 }
@@ -260,7 +262,7 @@ static int create_communicators(MTCORE_Win * uh_win)
 
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
     max_num_helpers = MTCORE_NUM_H * MTCORE_NUM_NODES;
-    func_param_size = user_nprocs + max_num_helpers + 3;
+    func_param_size = user_nprocs + max_num_helpers + 2;
 
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
 
@@ -271,13 +273,11 @@ static int create_communicators(MTCORE_Win * uh_win)
 
             /* Set parameters to local Helpers
              *  [0]: is_comm_user_world
-             *  [1]: max_local_user_nprocs
              */
             func_params[0] = 1;
-            func_params[1] = uh_win->max_local_user_nprocs;
 
-            MTCORE_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
-                                  uh_win->ur_h_comm);
+            mpi_errno = MTCORE_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
+                                              uh_win->ur_h_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -319,23 +319,21 @@ static int create_communicators(MTCORE_Win * uh_win)
 
             /* Set parameters to local Helpers
              *  [0]: is_comm_user_world
-             *  [1]: max_local_user_nprocs
-             *  [2]: num_helpers
-             *  [3:N+2]: user ranks in comm_world
-             *  [N+3:]: helper ranks in comm_world
+             *  [1]: num_helpers
+             *  [2:N+1]: user ranks in comm_world
+             *  [N+2:]: helper ranks in comm_world
              */
             int pidx;
             func_params = calloc(func_param_size, sizeof(int));
 
             func_params[0] = 0;
-            func_params[1] = uh_win->max_local_user_nprocs;
-            func_params[2] = num_helpers;
-            pidx = 3;
+            func_params[1] = num_helpers;
+            pidx = 2;
             memcpy(&func_params[pidx], user_ranks_in_world, user_nprocs * sizeof(int));
             pidx += user_nprocs;
             memcpy(&func_params[pidx], unique_helper_ranks_in_world, num_helpers * sizeof(int));
-            MTCORE_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
-                                  uh_win->ur_h_comm);
+            mpi_errno = MTCORE_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
+                                              uh_win->ur_h_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -462,7 +460,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int i, j;
     void **base_pp = (void **) baseptr;
     MPI_Status stat;
-    MPI_Aint *tmp_gather_buf = NULL;
+    MPI_Aint *tmp_gather_buf = NULL;;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -594,11 +592,25 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     /* Create windows using shared buffers. */
 
     /* -Create uh windows.
-     *  Every User process has a window used for permission check and accessing Helpers.
-     *  User processes in different nodes can share a window.
-     *      i.e., win[x] can be shared by processes whose local rank is x. */
-    uh_win->uh_wins = calloc(uh_win->max_local_user_nprocs, sizeof(MPI_Win));
-    for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
+     *  Every segment of user process has a window used for permission check and
+     *  accessing Helpers. The same segments in different nodes can share a window.
+     *      i.e., win[max_num_segs * x + y] can be shared by segment whose local rank
+     *      is x and seg_off is y.
+     *      Note that, in rank binding option, max_num_segs == 1, thus win[x] is shared
+     *      by the rank whose local rank is x.*/
+    uh_win->num_uh_wins = uh_win->max_local_user_nprocs * uh_win->max_num_segs;
+
+    if (user_local_rank == 0) {
+        int func_params[1];
+        func_params[0] = uh_win->num_uh_wins;
+        mpi_errno = MTCORE_Func_set_param((char *) func_params, sizeof(int), uh_win->ur_h_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        MTCORE_DBG_PRINT(" Send parameters: num_uh_wins = %d\n", uh_win->num_uh_wins);
+    }
+
+    uh_win->uh_wins = calloc(uh_win->num_uh_wins, sizeof(MPI_Win));
+    for (i = 0; i < uh_win->num_uh_wins; i++) {
         mpi_errno = PMPI_Win_create(uh_win->base, size, disp_unit, info,
                                     uh_win->uh_comm, &uh_win->uh_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
@@ -606,9 +618,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     }
 
     for (i = 0; i < user_nprocs; i++) {
-        uh_win->targets[i].uh_win = uh_win->uh_wins[uh_win->targets[i].local_user_rank];
-        MTCORE_DBG_PRINT("[%d] targets[%d].local_user_rank=%d, uh_win=0x%x\n", user_rank, i,
-                         uh_win->targets[i].local_user_rank, uh_win->targets[i].uh_win);
+        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+            int win_off = uh_win->max_num_segs * uh_win->targets[i].local_user_rank + j;
+            uh_win->targets[i].segs[j].uh_win = uh_win->uh_wins[win_off];
+
+            MTCORE_DBG_PRINT("[%d] targets[%d].local_user_rank=%d, "
+                             ".seg[%d].uh_win=0x%x (win_off %d)\n",
+                             user_rank, i, uh_win->targets[i].local_user_rank, j,
+                             uh_win->targets[i].segs[j].uh_win, win_off);
+        }
     }
 
     /* - Only expose user window in order to hide helpers in all non-wrapped window functions */
@@ -655,7 +673,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (uh_win->win)
         PMPI_Win_free(&uh_win->win);
     if (uh_win->uh_wins) {
-        for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
+        for (i = 0; i < uh_win->num_uh_wins; i++) {
             if (uh_win->uh_wins)
                 PMPI_Win_free(&uh_win->uh_wins[i]);
         }
@@ -694,10 +712,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                 free(uh_win->targets[i].base_h_offsets);
             if (uh_win->targets[i].h_ranks_in_uh)
                 free(uh_win->targets[i].h_ranks_in_uh);
+            if (uh_win->targets[i].segs)
+                free(uh_win->targets[i].segs);
         }
-
-        if (uh_win->targets[i].segs)
-            free(uh_win->targets[i].segs);
         free(uh_win->targets);
     }
 

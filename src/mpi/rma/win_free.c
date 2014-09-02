@@ -50,7 +50,7 @@ int MPI_Win_free(MPI_Win * win)
      */
     if (uh_win->uh_wins) {
         MTCORE_DBG_PRINT("\t free uh windows\n");
-        for (i = 0; i < uh_win->max_local_user_nprocs; i++) {
+        for (i = 0; i < uh_win->num_uh_wins; i++) {
             if (uh_win->uh_wins[i]) {
                 mpi_errno = PMPI_Win_free(&uh_win->uh_wins[i]);
                 if (mpi_errno != MPI_SUCCESS)
@@ -135,11 +135,9 @@ int MPI_Win_free(MPI_Win * win)
                 free(uh_win->targets[i].base_h_offsets);
             if (uh_win->targets[i].h_ranks_in_uh)
                 free(uh_win->targets[i].h_ranks_in_uh);
+            if (uh_win->targets[i].segs)
+                free(uh_win->targets[i].segs);
         }
-
-        if (uh_win->targets[i].segs)
-            free(uh_win->targets[i].segs);
-
         free(uh_win->targets);
     }
 

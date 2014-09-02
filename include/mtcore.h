@@ -50,8 +50,11 @@
 #define MTCORE_LOCK_BINDING_RANK 1
 #define MTCORE_LOCK_BINDING_SEGMENT 2
 
+#ifdef MTCORE_ENABLE_LOCK_BINDING_SEGMENT
 #define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_SEGMENT
-
+#else
+#define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_RANK
+#endif
 
 #define MTCORE_LOAD_OPT_NON 0
 #define MTCORE_LOAD_OPT_RANDOM 1
@@ -152,6 +155,7 @@ typedef struct MTCORE_OP_Segment {
     int target_seg_off;
     MPI_Aint target_disp;
     int target_count;
+    int target_dtsize;
     MPI_Datatype target_datatype;
 
 } MTCORE_OP_Segment;
@@ -160,7 +164,8 @@ typedef struct MTCORE_Win_target_seg {
     MPI_Aint base_offset;
     int size;
 
-    int main_h_rank_in_uh;
+    int main_h_off;
+    MPI_Win uh_win;
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
     MTCORE_Main_lock_stat main_lock_stat;
@@ -183,12 +188,7 @@ typedef struct MTCORE_Win_target {
     int user_world_rank;        /* rank in user world communicator */
     int node_id;
 
-#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-    MTCORE_Main_lock_stat main_lock_stat;
-    int order_h_index;
-#endif
-
-    /* Only used when segment binding enabled (MTCORE_LOCK_BINDING_SEGMENT) */
+    /* Only contain 1 segment in rank binding */
     MTCORE_Win_target_seg *segs;
     int num_segs;
 
@@ -209,6 +209,7 @@ typedef struct MTCORE_Win {
     MPI_Group uh_group;
     MPI_Win *uh_wins;           /* every local process has separate window for permission control,
                                  * processes in different node share one window. */
+    int num_uh_wins;            /* = max_num_segs * max_local_user_nprocs */
 
     /* communicator including all the user processes */
     MPI_Comm user_comm;
@@ -216,6 +217,7 @@ typedef struct MTCORE_Win {
 
     MPI_Comm local_user_comm;
     int max_local_user_nprocs;
+    int max_num_segs;
     int num_nodes;
     int node_id;
 
@@ -353,8 +355,8 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 }
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-#define MTCORE_Reset_win_target_ordering(target_rank, uh_win) {  \
-        uh_win->targets[target_rank].order_h_index = -1; \
+#define MTCORE_Reset_win_target_ordering(target_rank, target_seg_off, uh_win) {  \
+        uh_win->targets[target_rank].segs[target_seg_off].order_h_index = -1; \
     }
 #endif
 
@@ -365,7 +367,7 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
             h_rank = uh_win->targets[target_rank].h_ranks_in_uh[h_off]; \
             uh_win->h_ops_counts[h_rank] = 0;    \
         }   \
-        MTCORE_DBG_PRINT("[load_opt_byte] reset target %d op counting \n", target_rank); \
+        MTCORE_DBG_PRINT("[load_opt_op] reset target %d op counting \n", target_rank); \
     }
 
 #define MTCORE_Reset_win_target_load_opt(target_rank, uh_win) \
@@ -429,34 +431,42 @@ static inline int MTCORE_Is_in_shrd_mem(int target_rank, MPI_Group group, int *n
     return mpi_errno;
 }
 
-static inline int MTCORE_Win_grant_local_lock(int target_rank, int lock_type, int assert,
-                                              MTCORE_Win * uh_win)
+static inline int MTCORE_Win_grant_local_lock(int target_rank, int target_seg_off, int lock_type,
+                                              int assert, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
+    int main_h_off = uh_win->targets[target_rank].segs[target_seg_off].main_h_off;
+    int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
     MTCORE_GRANT_LOCK_DATATYPE buf[1];
-    mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, target_rank,
+    mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, target_h_rank_in_uh,
                          uh_win->grant_lock_h_offset, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE,
-                         uh_win->targets[user_rank].uh_win);
+                         uh_win->targets[target_rank].segs[target_seg_off].uh_win);
 #else
     /* Simply get 1 byte from start, it does not affect the result of other updates */
     char buf[1];
-    mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_rank, 0,
-                         1, MPI_CHAR, uh_win->targets[user_rank].uh_win);
+    mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_h_rank_in_uh, 0,
+                         1, MPI_CHAR, uh_win->targets[user_rank].segs[target_seg_off].uh_win);
 #endif
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = PMPI_Win_flush(target_rank, uh_win->targets[user_rank].uh_win);
+    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
+                               uh_win->targets[target_rank].segs[target_seg_off].uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MTCORE_DBG_PRINT("[%d]grant local lock(Helper(%d), uh_wins[%d])\n", user_rank,
-                     target_rank, uh_win->targets[user_rank].local_user_rank);
+#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+    uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
+#endif
+    MTCORE_DBG_PRINT("[%d]grant local lock(Helper(%d), uh_wins 0x%x) seg %d\n", user_rank,
+                     target_h_rank_in_uh, uh_win->targets[target_rank].segs[target_seg_off].uh_win,
+                     target_seg_off);
+
   fn_exit:
     return mpi_errno;
 
@@ -464,21 +474,22 @@ static inline int MTCORE_Win_grant_local_lock(int target_rank, int lock_type, in
     goto fn_exit;
 }
 
-//#define MTCORE_Get_main_helper_rank(target_rank, uh_win) \
-//        uh_win->targets[target_rank].h_ranks_in_uh[0]
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-static inline int MTCORE_Win_grant_lock(int target_rank, MTCORE_Win * uh_win)
+static inline int MTCORE_Win_grant_lock(int target_rank, int target_seg_off, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
+    int main_h_off = uh_win->targets[target_rank].segs[target_seg_off].main_h_off;
 
-    mpi_errno = PMPI_Win_flush(uh_win->targets[target_rank].h_ranks_in_uh[0],
-                               uh_win->targets[target_rank].uh_win);
+    mpi_errno = PMPI_Win_flush(uh_win->targets[target_rank].h_ranks_in_uh[main_h_off],
+                               uh_win->targets[target_rank].segs[target_seg_off].uh_win);
     if (mpi_errno == MPI_SUCCESS) {
-        uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
-        MTCORE_DBG_PRINT("grant lock(Helper(%d), uh_wins[%d]) for target %d\n",
-                         uh_win->targets[target_rank].h_ranks_in_uh[0],
-                         uh_win->targets[target_rank].local_user_rank, target_rank);
+        uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
+
+        MTCORE_DBG_PRINT("grant lock(Helper(%d), uh_wins 0x%x) for target %d seg %d\n",
+                         uh_win->targets[target_rank].h_ranks_in_uh[main_h_off],
+                         uh_win->targets[target_rank].segs[target_seg_off].uh_win,
+                         target_rank, target_seg_off);
     }
 
     return mpi_errno;
@@ -492,15 +503,18 @@ extern int MTCORE_Func_new_ur_h_comm(MPI_Comm * ur_h_comm);
 extern int MTCORE_Func_set_param(char *func_params, int size, MPI_Comm ur_h_comm);
 
 
-static inline int MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_Win * uh_win,
-                                                       int *target_h_rank_in_uh,
-                                                       MPI_Aint * target_h_offset)
+static inline int MTCORE_Get_helper_rank_load_opt_non(int target_rank, int target_seg_off,
+                                                      MTCORE_Win * uh_win,
+                                                      int *target_h_rank_in_uh,
+                                                      MPI_Aint * target_h_offset)
 {
     int mpi_errno = MPI_SUCCESS;
-    *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[0];
-    *target_h_offset = uh_win->targets[target_rank].base_h_offsets[0];
-    MTCORE_DBG_PRINT("[opt_non] use main helper %d, off 0x%lx for target %d\n",
-                     *target_h_rank_in_uh, *target_h_offset, target_rank);
+    int main_h_off = uh_win->targets[target_rank].segs[target_seg_off].main_h_off;
+
+    *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
+    *target_h_offset = uh_win->targets[target_rank].base_h_offsets[main_h_off];
+    MTCORE_DBG_PRINT("[opt_non] use main helper %d, off 0x%lx for target %d seg %d\n",
+                     *target_h_rank_in_uh, *target_h_offset, target_rank, target_seg_off);
     return mpi_errno;
 }
 
@@ -509,73 +523,76 @@ static inline int MTCORE_Get_helper_rank_load_opt_non(int target_rank, MTCORE_Wi
 static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int is_order_required,
                                                           MTCORE_Win * uh_win,
                                                           int *target_h_rank_in_uh,
+                                                          int *target_h_rank_idx,
                                                           MPI_Aint * target_h_offset)
 {
-
-
     /* Randomly change helper offset every time using a window-level global recorder */
     int idx = (uh_win->prev_h_off + 1) % MTCORE_NUM_H;  /* jump to next helper offset */
     uh_win->prev_h_off = idx;
 
     *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[idx];
     *target_h_offset = uh_win->targets[target_rank].base_h_offsets[idx];
-
-    /* Remember the helper for ordering required operations to a given target.
-     * Note that both not-lock-granted and not-first-ordered targets do not need remember */
-    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
-        uh_win->targets[target_rank].order_h_index = idx;
-    }
+    *target_h_rank_idx = idx;
 
     MTCORE_DBG_PRINT("[load_opt_random] randomly choose helper %d, off 0x%lx for target %d\n",
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
 
 }
 
-
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
 extern void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
                                                      MTCORE_Win * uh_win, int *target_h_rank_in_uh,
+                                                     int *target_h_rank_idx,
                                                      MPI_Aint * target_h_offset);
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
 extern void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required,
                                                       int size, MTCORE_Win * uh_win,
                                                       int *target_h_rank_in_uh,
+                                                      int *target_h_rank_idx,
                                                       MPI_Aint * target_h_offset);
 #endif
 
 #if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
-static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int is_order_required,
+static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int target_seg_off,
+                                                  int is_order_required,
                                                   int size, MTCORE_Win * uh_win,
                                                   int *target_h_rank_in_uh,
                                                   MPI_Aint * target_h_offset)
 {
     int mpi_errno = MPI_SUCCESS;
+    int main_h_off = uh_win->targets[target_rank].segs[target_seg_off].main_h_off;
+    int h_idx = 0;
 
 #ifdef MTCORE_ENABLE_LOAD_LOCK_FORCE
     /* Force lock when the first operation is issued. Note that nocheck epoch
      * does not need it because no conflicting lock.*/
     if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
-        uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_OP_ISSUED) {
-        mpi_errno = MTCORE_Win_grant_lock(target_rank, uh_win);
+        uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat ==
+        MTCORE_MAIN_LOCK_OP_ISSUED) {
+        mpi_errno = MTCORE_Win_grant_lock(target_rank, target_seg_off, uh_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
 #endif
 
     /* Upgrade main lock status of target if it is the first operation of that target. */
-    if (uh_win->targets[target_rank].main_lock_stat == MTCORE_MAIN_LOCK_RESET) {
-        uh_win->targets[target_rank].main_lock_stat = MTCORE_MAIN_LOCK_OP_ISSUED;
+    if (uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat == MTCORE_MAIN_LOCK_RESET) {
+        uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat =
+            MTCORE_MAIN_LOCK_OP_ISSUED;
     }
 
     /* If lock has not been granted yet, we can only use the main helper. */
     if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
-        uh_win->targets[target_rank].main_lock_stat != MTCORE_MAIN_LOCK_GRANTED) {
+        uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat !=
+        MTCORE_MAIN_LOCK_GRANTED) {
         /* Both serial async and byte tracking options specify the first helper as
          * the main helper of that user process.*/
-        *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[0];
-        *target_h_offset = uh_win->targets[target_rank].base_h_offsets[0];
-        MTCORE_DBG_PRINT("[load_opt] use main helper %d, off 0x%lx for target %d\n",
-                         *target_h_rank_in_uh, *target_h_offset, target_rank);
+        *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
+        *target_h_offset = uh_win->targets[target_rank].base_h_offsets[main_h_off];
+        MTCORE_DBG_PRINT("[load_opt] use main helper %d, off 0x%lx for target %d "
+                         "seg %d (main h off %d)\n",
+                         *target_h_rank_in_uh, *target_h_offset, target_rank,
+                         target_seg_off, main_h_off);
 
         return mpi_errno;
     }
@@ -583,13 +600,14 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int is_order_
     /* For ordering required operations, just return the helper chosen in the
      * first time. */
     if (!uh_win->info_args.no_accumulate_ordering &&
-        is_order_required && uh_win->targets[target_rank].order_h_index != -1) {
-        int h_idx = uh_win->targets[target_rank].order_h_index;
+        is_order_required &&
+        uh_win->targets[target_rank].segs[target_seg_off].order_h_index != -1) {
+        h_idx = uh_win->targets[target_rank].segs[target_seg_off].order_h_index;
         *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[h_idx];
         *target_h_offset = uh_win->targets[target_rank].base_h_offsets[h_idx];
 
-        MTCORE_DBG_PRINT("[load_opt] use first ordered helper %d, off 0x%lx for target %d\n",
-                         *target_h_rank_in_uh, *target_h_offset, target_rank);
+        MTCORE_DBG_PRINT("[load_opt] use first ordered helper %d, off 0x%lx for target %d seg %d\n",
+                         *target_h_rank_in_uh, *target_h_offset, target_rank, target_seg_off);
 
         /* Need increase counters */
         MTCORE_Inc_win_target_load_opt(*target_h_rank_in_uh, size, uh_win);
@@ -597,32 +615,39 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int is_order_
         return mpi_errno;
     }
 
+    /* Runtime load balancing */
 #if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_RANDOM)
     MTCORE_Get_helper_rank_load_opt_random(target_rank, is_order_required, uh_win,
-                                           target_h_rank_in_uh, target_h_offset);
+                                           target_h_rank_in_uh, &h_idx, target_h_offset);
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
     MTCORE_Get_helper_rank_load_opt_counting(target_rank, is_order_required, uh_win,
-                                             target_h_rank_in_uh, target_h_offset);
+                                             target_h_rank_in_uh, &h_idx, target_h_offset);
 #elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
     MTCORE_Get_helper_rank_load_byte_counting(target_rank, is_order_required, size,
-                                              uh_win, target_h_rank_in_uh, target_h_offset);
+                                              uh_win, target_h_rank_in_uh, &h_idx, target_h_offset);
 #endif
+
+    /* Remember the helper for ordering required operations to a given target.
+     * Note that both not-lock-granted and not-first-ordered targets do not need remember */
+    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
+        uh_win->targets[target_rank].segs[target_seg_off].order_h_index = h_idx;
+    }
 
     return mpi_errno;
 }
 
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, \
+#define MTCORE_Get_helper_rank(target_rank, target_seg_off, is_order_required, size, uh_win, \
         target_h_rank_in_uh, target_h_offset) \
-        MTCORE_Get_helper_rank_load_opt(target_rank, is_order_required, size, uh_win, \
+        MTCORE_Get_helper_rank_load_opt(target_rank, target_seg_off, is_order_required, size, uh_win, \
                 target_h_rank_in_uh, target_h_offset)
 #else
-#define MTCORE_Get_helper_rank(target_rank, is_order_required, size, uh_win, \
+#define MTCORE_Get_helper_rank(target_rank, target_seg_off, is_order_required, size, uh_win, \
         target_h_rank_in_uh, target_h_offset) \
-        MTCORE_Get_helper_rank_load_opt_non(target_rank, uh_win, target_h_rank_in_uh,   \
+        MTCORE_Get_helper_rank_load_opt_non(target_rank, target_seg_off, uh_win, target_h_rank_in_uh,   \
             target_h_offset)
 #endif
 
-extern int MTCORE_Op_segments_decode(void *origin_addr, int origin_count,
+extern int MTCORE_Op_segments_decode(const void *origin_addr, int origin_count,
                                      MPI_Datatype origin_datatype,
                                      int target_rank, MPI_Aint target_disp,
                                      int target_count, MPI_Datatype target_datatype,
