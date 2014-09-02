@@ -39,15 +39,6 @@
  *      This method has additional overhead especially for derived target datatype.
  *      But it is more fine-grained than Rank binding.
  * */
-#define MTCORE_LOCK_BINDING_RANK 1
-#define MTCORE_LOCK_BINDING_SEGMENT 2
-
-#ifdef MTCORE_ENABLE_LOCK_BINDING_SEGMENT
-#define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_SEGMENT
-#else
-#define MTCORE_LOCK_BINDING MTCORE_LOCK_BINDING_RANK
-#endif
-
 
 #ifdef HAVE_BUILTIN_EXPECT
 #  define unlikely(x_) __builtin_expect(!!(x_),0)
@@ -93,10 +84,17 @@ typedef enum {
     MTCORE_LOAD_BYTE_COUNTING,
 } MTCORE_Load_opt;
 
+
+typedef enum {
+    MTCORE_LOCK_BINDING_RANK,
+    MTCORE_LOCK_BINDING_SEGMENT,
+} MTCORE_Lock_binding;
+
 #define MTCORE_DEFAULT_SEG_SIZE 4096;
 typedef struct MTCORE_Env_param {
     int seg_size;               /* segment size in lock segment binding */
     MTCORE_Load_opt load_opt;   /* runtime load balancing options */
+    MTCORE_Lock_binding lock_binding;   /* how to handle locks */
 } MTCORE_Env_param;
 
 

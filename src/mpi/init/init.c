@@ -47,6 +47,21 @@ static int MTCORE_Initialize_env()
         return -1;
     }
 
+    MTCORE_ENV.lock_binding = MTCORE_LOCK_BINDING_RANK;
+    val = getenv("MTCORE_LOCK_METHOD");
+    if (val && strlen(val)) {
+        if (!strncmp(val, "rank", strlen("rank"))) {
+            MTCORE_ENV.lock_binding = MTCORE_LOCK_BINDING_RANK;
+        }
+        else if (!strncmp(val, "segment", strlen("segment"))) {
+            MTCORE_ENV.lock_binding = MTCORE_LOCK_BINDING_SEGMENT;
+        }
+        else {
+            fprintf(stderr, "Unknown MTCORE_LOCK_METHOD %s\n", val);
+            return -1;
+        }
+    }
+
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     MTCORE_ENV.load_opt = MTCORE_LOAD_OPT_RANDOM;
 

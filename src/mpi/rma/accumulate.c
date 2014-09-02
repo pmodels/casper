@@ -123,8 +123,8 @@ static int MTCORE_Accumulate_impl(const void *origin_addr, int origin_count,
     else
 #endif
     {
-#if (MTCORE_LOCK_BINDING == MTCORE_LOCK_BINDING_SEGMENT)
-        if (uh_win->targets[target_rank].num_segs > 1) {
+        if (MTCORE_ENV.lock_binding == MTCORE_LOCK_BINDING_SEGMENT &&
+            uh_win->targets[target_rank].num_segs > 1) {
             mpi_errno = MTCORE_Accumulate_segment_impl(origin_addr, origin_count,
                                                        origin_datatype, target_rank, target_disp,
                                                        target_count, target_datatype, op, win,
@@ -132,9 +132,7 @@ static int MTCORE_Accumulate_impl(const void *origin_addr, int origin_count,
             if (mpi_errno != MPI_SUCCESS)
                 return mpi_errno;
         }
-        else
-#endif
-        {
+        else {
             /* Translation for intra/inter-node operations.
              *
              * We do not use force flush + shared window for optimizing operations to local targets.

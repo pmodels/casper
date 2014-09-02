@@ -100,8 +100,7 @@ static int gather_ranks(MTCORE_Win * win, int *num_helpers, int *helper_ranks_in
     goto fn_exit;
 }
 
-#if (MTCORE_LOCK_BINDING == MTCORE_LOCK_BINDING_RANK)
-static void specify_user_main_helper(MTCORE_Win * uh_win)
+static void specify_rank_binding_user_main_helper(MTCORE_Win * uh_win)
 {
     int i, off;
     int main_h_rank, user_nprocs;
@@ -139,8 +138,8 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
 #endif
     }
 }
-#elif (MTCORE_LOCK_BINDING == MTCORE_LOCK_BINDING_SEGMENT)
-static void specify_user_main_helper(MTCORE_Win * uh_win)
+
+static void specify_segment_binding_user_main_helper(MTCORE_Win * uh_win)
 {
     int i, j, off;
     int main_h_rank, user_nprocs;
@@ -204,8 +203,6 @@ static void specify_user_main_helper(MTCORE_Win * uh_win)
         }
     }
 }
-#endif
-
 
 static int create_uh_comm(int num_helpers, int *helper_ranks_in_world, MTCORE_Win * win)
 {
@@ -592,7 +589,12 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    specify_user_main_helper(uh_win);
+    if (MTCORE_ENV.lock_binding == MTCORE_LOCK_BINDING_SEGMENT) {
+        specify_segment_binding_user_main_helper(uh_win);
+    }
+    else {
+        specify_rank_binding_user_main_helper(uh_win);
+    }
 
     /* Create windows using shared buffers. */
 
