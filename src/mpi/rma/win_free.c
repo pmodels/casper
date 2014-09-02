@@ -120,11 +120,9 @@ int MPI_Win_free(MPI_Win * win)
 
     /* uh_win->user_comm is created by user, will be freed by user. */
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     if (uh_win->h_ops_counts)
         free(uh_win->h_ops_counts);
-#endif
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
     if (uh_win->h_bytes_counts)
         free(uh_win->h_bytes_counts);
 #endif

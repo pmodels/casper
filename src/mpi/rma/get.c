@@ -142,9 +142,11 @@ static int MTCORE_Get_impl(void *origin_addr, int origin_count,
             int data_size = 0;
             MPI_Aint target_h_offset = 0;
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
-            PMPI_Type_size(origin_datatype, &data_size);
-            data_size *= origin_count;
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
+            if (MTCORE_ENV.load_opt == MTCORE_LOAD_BYTE_COUNTING) {
+                PMPI_Type_size(origin_datatype, &data_size);
+                data_size *= origin_count;
+            }
 #endif
 
             mpi_errno = MTCORE_Get_helper_rank(target_rank, 0, 0, data_size, uh_win,

@@ -575,11 +575,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MTCORE_DBG_PRINT(" Created uh_comm: %d/%d, local_uh_comm: %d/%d\n",
                      uh_rank, uh_nprocs, uh_local_rank, uh_local_nprocs);
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     uh_win->h_ops_counts = calloc(uh_nprocs, sizeof(int));
-#endif
-
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
     uh_win->h_bytes_counts = calloc(uh_nprocs, sizeof(int));
 #endif
 
@@ -724,11 +721,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (uh_win->user_group != MPI_GROUP_NULL)
         PMPI_Group_free(&uh_win->user_group);
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     if (uh_win->h_ops_counts)
         free(uh_win->h_ops_counts);
-#endif
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
     if (uh_win->h_bytes_counts)
         free(uh_win->h_bytes_counts);
 #endif

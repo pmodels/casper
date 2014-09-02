@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_COUNTING)
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
 void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_required,
                                               MTCORE_Win * uh_win, int *target_h_rank_in_uh,
                                               int *target_h_rank_idx, MPI_Aint * target_h_offset)
@@ -37,12 +37,11 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
 
     /* Count the number of operations issued to every helper */
-    MTCORE_Inc_win_target_load_opt(*target_h_rank_in_uh, 0, uh_win);
+    MTCORE_Inc_win_target_load_opt_op_counting(*target_h_rank_in_uh, uh_win);
 
     return;
 }
 
-#elif (MTCORE_LOAD_OPT == MTCORE_LOAD_BYTE_COUNTING)
 void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_required, int size,
                                                MTCORE_Win * uh_win, int *target_h_rank_in_uh,
                                                int *target_h_rank_idx, MPI_Aint * target_h_offset)
@@ -66,11 +65,11 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
     *target_h_offset = uh_win->targets[target_rank].base_h_offsets[min_idx];
     *target_h_rank_idx = min_idx;
 
-    MTCORE_DBG_PRINT("[byte_cnt] choose lowest counting helper %d, off 0x%lx for target %d\n",
+    MTCORE_DBG_PRINT("[load_opt_byte] choose lowest counting helper %d, off 0x%lx for target %d\n",
                      *target_h_rank_in_uh, *target_h_offset, target_rank);
 
     /* Count the number of operations issued to every helper */
-    MTCORE_Inc_win_target_load_opt(*target_h_rank_in_uh, size, uh_win);
+    MTCORE_Inc_win_target_load_opt_bytes_counting(*target_h_rank_in_uh, size, uh_win);
 
     return;
 }

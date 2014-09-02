@@ -44,10 +44,33 @@ static int MTCORE_Initialize_env()
     }
     if (MTCORE_ENV.seg_size <= 0) {
         fprintf(stderr, "Wrong MTCORE_SEG_SIZE %d\n", MTCORE_ENV.seg_size);
-        return mpi_errno;
+        return -1;
     }
 
-    MTCORE_DBG_PRINT("ENV: seg_size=%d\n", MTCORE_ENV.seg_size);
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
+    MTCORE_ENV.load_opt = MTCORE_LOAD_OPT_RANDOM;
+
+    val = getenv("MTCORE_RUMTIME_LOAD_OPT");
+    if (val && strlen(val)) {
+        if (!strncmp(val, "random", strlen("random"))) {
+            MTCORE_ENV.load_opt = MTCORE_LOAD_OPT_RANDOM;
+        }
+        else if (!strncmp(val, "op", strlen("op"))) {
+            MTCORE_ENV.load_opt = MTCORE_LOAD_OPT_COUNTING;
+        }
+        else if (!strncmp(val, "byte", strlen("byte"))) {
+            MTCORE_ENV.load_opt = MTCORE_LOAD_BYTE_COUNTING;
+        }
+        else {
+            fprintf(stderr, "Unknown MTCORE_RUMTIME_LOAD_OPT %s\n", val);
+            return -1;
+        }
+    }
+#else
+    MTCORE_ENV.load_opt = MTCORE_LOAD_OPT_STATIC;
+#endif
+
+    MTCORE_DBG_PRINT("ENV: seg_size=%d, load_opt=%d\n", MTCORE_ENV.seg_size, MTCORE_ENV.load_opt);
 
     return mpi_errno;
 }
@@ -76,7 +99,7 @@ int MPI_Init(int *argc, char ***argv)
     if ((*argc) > 1) {
         MTCORE_NUM_H = atoi((*argv)[1]);
     }
-    MTCORE_DBG_PRINT("MTCORE_NUM_H=%d, MTCORE_LOAD_OPT=%d\n", MTCORE_NUM_H, MTCORE_LOAD_OPT);
+    MTCORE_DBG_PRINT("MTCORE_NUM_H=%d\n", MTCORE_NUM_H);
 
     mpi_errno = MTCORE_Initialize_env();
     if (mpi_errno != MPI_SUCCESS)

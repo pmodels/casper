@@ -97,7 +97,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 #endif
 
-#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
             uh_win->targets[i].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_RESET;

@@ -43,7 +43,7 @@ int MPI_Win_flush_all(MPI_Win win)
 #else
 
     for (i = 0; i < user_nprocs; i++) {
-#if (MTCORE_LOAD_OPT == MTCORE_LOAD_OPT_NON)
+#if !defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
         /* RMA operations are only issued to the main helper, so we only flush it. */
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
             int main_h_off = uh_win->targets[i].segs[j].main_h_off;
@@ -71,11 +71,11 @@ int MPI_Win_flush_all(MPI_Win win)
                     goto fn_fail;
             }
         }
-#endif /*end of MTCORE_LOAD_OPT */
+#endif /*end of MTCORE_ENABLE_RUNTIME_LOAD_OPT */
     }
 #endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */
 
-#if (MTCORE_LOAD_OPT != MTCORE_LOAD_OPT_NON)
+#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
             /* Lock of main helper is granted, we can start load balancing from the next flush/unlock.
