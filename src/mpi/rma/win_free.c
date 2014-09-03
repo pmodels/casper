@@ -110,6 +110,13 @@ int MPI_Win_free(MPI_Win * win)
             goto fn_fail;
     }
 
+    if (uh_win->user_root_comm && uh_win->user_root_comm != MTCORE_COMM_UR_WORLD) {
+        MTCORE_DBG_PRINT("\t free ur communicator\n");
+        mpi_errno = PMPI_Comm_free(&uh_win->user_root_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
     MTCORE_DBG_PRINT("\t free window cache\n");
     MTCORE_Remove_uh_win_from_cache(*win);
 

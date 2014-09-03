@@ -201,6 +201,7 @@ typedef struct MTCORE_Win {
     /* communicator including all the user processes */
     MPI_Comm user_comm;
     MPI_Group user_group;
+    MPI_Comm user_root_comm;
 
     MPI_Comm local_user_comm;
     int max_local_user_nprocs;
