@@ -120,7 +120,8 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
         sum_size += uh_win->targets[t_rank].size;
         max_t_size = max(max_t_size, uh_win->targets[t_rank].size);
     }
-    size_per_helper = sum_size / MTCORE_NUM_H;
+    /* Never divide less than segment unit */
+    size_per_helper = align(sum_size / MTCORE_NUM_H, MTCORE_SEGMENT_UNIT);
     max_t_num_seg = max_t_num_seg / size_per_helper + 3;
     t_seg_sizes = calloc(max_t_num_seg, sizeof(MPI_Aint));
 
@@ -154,12 +155,16 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
             t_size = uh_win->targets[t_rank].size;
             t_num_segs = 0;
         }
-        else if (t_size < seg_size) {
+        /* finish this target if remaining size is small than seg_size or
+         * it is already at the last helper. */
+        else if (t_size < seg_size || h_off == MTCORE_NUM_H - 1) {
             MTCORE_Assert(t_num_segs < max_t_num_seg);
 
             t_seg_sizes[t_num_segs++] = t_size;
-            seg_size -= t_size;
+            /* make sure remaining segment size is aligned */
+            seg_size -= align(t_size, MTCORE_SEGMENT_UNIT);
             t_size = 0;
+
             t_last_h_off = h_off;
         }
         else if (t_size >= seg_size) {
@@ -168,13 +173,19 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
             /* divide large target */
             t_seg_sizes[t_num_segs++] = seg_size;
             t_size -= seg_size;
+            seg_size = 0;
 
-            /* next helper */
             t_last_h_off = h_off;
+        }
+
+        /* next helper */
+        if (seg_size == 0) {
             h_off++;
             MTCORE_Assert(h_off <= MTCORE_NUM_H);
             seg_size = size_per_helper
                 + (h_off == MTCORE_NUM_H - 1 ? (sum_size % MTCORE_NUM_H) : 0);
+            /* make sure new segment size is aligned */
+            seg_size = align(seg_size, MTCORE_SEGMENT_UNIT);
         }
     }
 
@@ -491,7 +502,8 @@ static int gather_base_offsets(MPI_Aint size, MTCORE_Win * uh_win)
 
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
     /* Helper 0 has hidden byte which may be larger than shared_sg_size */
-    tmp_u_offsets += max(MTCORE_HELPER_SHARED_SG_SIZE, sizeof(MTCORE_GRANT_LOCK_DATATYPE));
+    tmp_u_offsets += max(MTCORE_HELPER_SHARED_SG_SIZE,
+                         align(sizeof(MTCORE_GRANT_LOCK_DATATYPE), MTCORE_SEGMENT_UNIT));
     tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * (MTCORE_NUM_H - 1);
 #else
     tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * MTCORE_NUM_H;

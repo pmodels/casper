@@ -16,6 +16,8 @@
 #define MTCORE_GRANT_LOCK_MPI_DATATYPE MPI_CHAR
 #endif
 
+#define MTCORE_SEGMENT_UNIT 16
+
 /*FIXME: It is a workaround for shared window overlapping problem
  * when shared segment size of each helper is 0 */
 #define MTCORE_HELPER_SHARED_SG_SIZE 4096
@@ -75,6 +77,10 @@
     ({ typeof (a) _a = (a); \
        typeof (b) _b = (b); \
        _a > _b ? _a : _b; })
+#endif
+
+#ifndef align
+#define align(val, align) (((val) + (align) - 1) & ~((align) - 1))
 #endif
 
 typedef enum {

@@ -169,7 +169,8 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     /* Additional byte for granting locks on Helper 0, all the other
      * helpers share the same byte */
     if (local_uh_rank == 0) {
-        mtcore_buf_size = max(MTCORE_HELPER_SHARED_SG_SIZE, sizeof(MTCORE_GRANT_LOCK_DATATYPE));
+        mtcore_buf_size = max(MTCORE_HELPER_SHARED_SG_SIZE,
+                              align(sizeof(MTCORE_GRANT_LOCK_DATATYPE), MTCORE_SEGMENT_UNIT));
     }
 #endif
     mpi_errno = PMPI_Win_allocate_shared(mtcore_buf_size, 1, MPI_INFO_NULL,
