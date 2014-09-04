@@ -73,6 +73,14 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 #endif
 
+    /* Decrease lock/lockall counter, change epoch status only when counter
+     * become 0. */
+    uh_win->lockall_counter--;
+    if (uh_win->lockall_counter == 0 && uh_win->lock_counter == 0) {
+        MTCORE_DBG_PRINT("all locks are cleared ! no epoch now\n");
+        uh_win->epoch_stat = MTCORE_WIN_NO_EPOCH;
+    }
+
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
      */

@@ -108,6 +108,11 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 #endif
 
+    /* Indicate epoch status, later operations will be redirected to uh_wins
+     * until lock/lockall counters decrease to 0 .*/
+    uh_win->epoch_stat = MTCORE_WIN_EPOCH_LOCK;
+    uh_win->lockall_counter++;
+
     /* TODO: All the operations which we have not wrapped up will be failed, because they
      * are issued to user window. We need wrap up all operations.
      */

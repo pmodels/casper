@@ -769,6 +769,16 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         }
     }
 
+    /* - Create fence window */
+    mpi_errno = PMPI_Win_create(uh_win->base, size, disp_unit, info,
+                                uh_win->uh_comm, &uh_win->fence_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    MTCORE_DBG_PRINT("[%d] Created fence window 0x%x\n", user_rank, uh_win->fence_win);
+    uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
+    uh_win->epoch_stat = MTCORE_WIN_NO_EPOCH;
+
     /* - Only expose user window in order to hide helpers in all non-wrapped window functions */
     mpi_errno = PMPI_Win_create(uh_win->base, size, disp_unit, info,
                                 uh_win->user_comm, &uh_win->win);
@@ -812,6 +822,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         PMPI_Win_free(&uh_win->local_uh_win);
     if (uh_win->win)
         PMPI_Win_free(&uh_win->win);
+    if (uh_win->fence_win)
+        PMPI_Win_free(&uh_win->fence_win);
     if (uh_win->uh_wins) {
         for (i = 0; i < uh_win->num_uh_wins; i++) {
             if (uh_win->uh_wins)

@@ -124,6 +124,18 @@ typedef enum {
 } MTCORE_Main_lock_stat;
 
 typedef enum {
+    MTCORE_FENCE_UNLOCKED,
+    MTCORE_FENCE_LOCKED,
+} MTCORE_Fence_lock_stat;
+
+typedef enum {
+    MTCORE_WIN_NO_EPOCH,
+    MTCORE_WIN_EPOCH_FENCE,
+    MTCORE_WIN_EPOCH_LOCK,
+    MTCORE_WIN_EPOCH_PSCW,
+} MTCORE_Win_epoch_stat;
+
+typedef enum {
     MTCORE_FUNC_NULL,
     MTCORE_FUNC_WIN_ALLOCATE,
     MTCORE_FUNC_WIN_FREE,
@@ -220,6 +232,17 @@ typedef struct MTCORE_Win {
     int max_local_user_nprocs;
     int num_nodes;
     int node_id;
+
+    MTCORE_Win_epoch_stat epoch_stat;   /* indicate which epoch is opened. thus operations
+                                         * can send to the correct window. Note that only
+                                         * change from lock to NO_EPOCH when lock counter is
+                                         * equal to 0, otherwise the whole window is still in
+                                         * LOCK epoch */
+    int lock_counter;
+    int lockall_counter;
+
+    MTCORE_Fence_lock_stat fence_stat;
+    MPI_Win fence_win;
 
     void *base;
     MPI_Win win;
@@ -639,5 +662,6 @@ extern int MTCORE_Op_segments_decode(const void *origin_addr, int origin_count,
                                      MTCORE_Win * uh_win, MTCORE_OP_Segment ** decoded_ops_ptr,
                                      int *num_segs);
 extern void MTCORE_Op_segments_destroy(MTCORE_OP_Segment ** decoded_ops_ptr);
+extern int MTCORE_Fence_win_release_locks(MTCORE_Win * uh_win);
 
 #endif /* MTCORE_H_ */

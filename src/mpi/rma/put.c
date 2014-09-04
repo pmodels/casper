@@ -125,8 +125,12 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
     else
 #endif
     {
+        /* TODO: Do we need segment load balancing in fence ?
+         * 1. No lock issue.
+         * 2. overhead of data range checking and division */
         if (MTCORE_ENV.lock_binding == MTCORE_LOCK_BINDING_SEGMENT &&
-            uh_win->targets[target_rank].num_segs > 1) {
+            uh_win->targets[target_rank].num_segs > 1 &&
+            uh_win->epoch_stat == MTCORE_WIN_EPOCH_LOCK) {
             mpi_errno = MTCORE_Put_segment_impl(origin_addr, origin_count,
                                                 origin_datatype, target_rank, target_disp,
                                                 target_count, target_datatype, win, uh_win);
@@ -145,6 +149,14 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
             int target_h_rank_in_uh = -1;
             int data_size = 0;
             MPI_Aint target_h_offset = 0;
+            MPI_Win *win_ptr = NULL;
+
+            if (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) {
+                win_ptr = &uh_win->fence_win;
+            }
+            else {
+                win_ptr = &uh_win->targets[target_rank].segs[0].uh_win;
+            }
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
             if (MTCORE_ENV.load_opt == MTCORE_LOAD_BYTE_COUNTING) {
@@ -162,14 +174,14 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
             /* Issue operation to the helper process in corresponding uh-window of target process. */
             mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
                                  target_h_rank_in_uh, uh_target_disp,
-                                 target_count, target_datatype,
-                                 uh_win->targets[target_rank].segs[0].uh_win);
+                                 target_count, target_datatype, *win_ptr);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
-            MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win 0x%x) instead of "
+            MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win 0x%x [%s]) instead of "
                              "target %d, 0x%lx(0x%lx + %d * %ld)\n",
-                             target_h_rank_in_uh, uh_win->targets[target_rank].segs[0].uh_win,
+                             target_h_rank_in_uh, *win_ptr,
+                             (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) ? "FENCE" : "LOCK",
                              target_rank, uh_target_disp, target_h_offset,
                              uh_win->targets[target_rank].disp_unit, target_disp);
         }

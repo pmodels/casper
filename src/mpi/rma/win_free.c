@@ -21,6 +21,15 @@ int MPI_Win_free(MPI_Win * win)
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
 
+    /* First unlock fence window */
+    if (uh_win->fence_stat == MTCORE_FENCE_LOCKED) {
+        mpi_errno = MTCORE_Fence_win_release_locks(uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
+    }
+
     if (user_local_rank == 0) {
         MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
     }
@@ -57,6 +66,13 @@ int MPI_Win_free(MPI_Win * win)
                     goto fn_fail;
             }
         }
+    }
+
+    if (uh_win->fence_win) {
+        MTCORE_DBG_PRINT("\t free fence window\n");
+        mpi_errno = PMPI_Win_free(&uh_win->fence_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     if (uh_win->local_uh_win) {

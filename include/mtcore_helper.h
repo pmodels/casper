@@ -42,6 +42,8 @@ typedef struct MTCORE_H_win {
     MPI_Win *uh_wins;
     int num_uh_wins;
 
+    MPI_Win fence_win;
+
     unsigned long mtcore_h_win_handle;
 } MTCORE_H_win;
 

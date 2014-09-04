@@ -228,6 +228,11 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         MTCORE_H_DBG_PRINT(" Created uh windows[%d] 0x%x\n", i, win->uh_wins[i]);
     }
 
+    /* - Create fence window */
+    mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm, &win->fence_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     win->mtcore_h_win_handle = (unsigned long) win->uh_wins;
     mpi_errno = mtcore_put_h_win(win->mtcore_h_win_handle, win);
     if (mpi_errno != MPI_SUCCESS)
@@ -252,6 +257,8 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
 
     if (win->local_uh_win)
         PMPI_Win_free(&win->local_uh_win);
+    if (win->fence_win)
+        PMPI_Win_free(&win->fence_win);
     if (win->uh_wins) {
         for (i = 0; i < win->num_uh_wins; i++) {
             if (win->uh_wins)
