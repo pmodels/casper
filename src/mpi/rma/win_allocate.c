@@ -147,6 +147,8 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
                 uh_win->targets[t_rank].segs[j].size = t_seg_sizes[j];
                 uh_win->targets[t_rank].segs[j].main_h_off = t_last_h_off + 1 - t_num_segs + j;
 
+                MTCORE_Assert(uh_win->targets[t_rank].segs[j].main_h_off < MTCORE_NUM_H);
+
                 prev_seg_base = uh_win->targets[t_rank].segs[j].base_offset;
                 prev_seg_size = uh_win->targets[t_rank].segs[j].size;
             }
@@ -167,8 +169,10 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
             MTCORE_Assert(t_num_segs < max_t_num_seg);
 
             t_seg_sizes[t_num_segs++] = t_size;
+            seg_size -= t_size;
             /* make sure remaining segment size is aligned */
-            seg_size -= align(t_size, MTCORE_SEGMENT_UNIT);
+            seg_size = align(seg_size, MTCORE_SEGMENT_UNIT);
+
             t_size = 0;
 
             t_last_h_off = h_off;
