@@ -163,7 +163,6 @@ int main(int argc, char *argv[])
     for (i = 0; i < NUM_OPS * OP_SIZE * nprocs; i++) {
         locbuf[i] = 1.0 * i;
     }
-    fprintf(stderr, "\n");
 
     /* size in byte */
     MPI_Win_allocate(OP_SIZE * NUM_OPS * sizeof(double), sizeof(double), MPI_INFO_NULL,
