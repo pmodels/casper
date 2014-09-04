@@ -152,7 +152,6 @@ int MPI_Win_fence(int assert, MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -168,6 +167,8 @@ int MPI_Win_fence(int assert, MPI_Win win)
         goto fn_fail;
     }
 
+    /* Should not consider user assert, unlock must be called if there is a
+     * previous lock even if user gives wrong assert. */
     if (uh_win->fence_stat == MTCORE_FENCE_LOCKED) {
         mpi_errno = Fence_Win_unlock_all(uh_win);
         if (mpi_errno != MPI_SUCCESS)
@@ -175,16 +176,29 @@ int MPI_Win_fence(int assert, MPI_Win win)
         uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
     }
 
-    MPI_Barrier(uh_win->user_comm);
+    /* We only eliminate barrier if user explicitly specifies it is the first fence. */
+    if (assert != MPI_MODE_NOPRECEDE) {
+        MPI_Barrier(uh_win->user_comm);
+    }
 
-    mpi_errno = Fence_Win_lock_all(assert, uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    uh_win->fence_stat = MTCORE_FENCE_LOCKED;
+    /* Do not lock if user specifies no_succeed, it is the last fence. */
+    if (assert != MPI_MODE_NOSUCCEED) {
 
-    /* later operations will be redirected to fence_win until a lock/lockall
-     * is called .*/
-    uh_win->epoch_stat = MTCORE_WIN_EPOCH_FENCE;
+        /* Fence allows following asserts, but all of them are not supported by lock,
+         * thus we just give a empty assert to lock.
+         *   MPI_MODE_NOSTORE
+         *   MPI_MODE_NOPUT
+         *   MPI_MODE_NOPRECEDE
+         *   MPI_MODE_NOSUCCEED */
+        mpi_errno = Fence_Win_lock_all(0, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        uh_win->fence_stat = MTCORE_FENCE_LOCKED;
+
+        /* later operations will be redirected to fence_win until a lock/lockall
+         * is called .*/
+        uh_win->epoch_stat = MTCORE_WIN_EPOCH_FENCE;
+    }
 
   fn_exit:
     return mpi_errno;
