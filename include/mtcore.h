@@ -18,6 +18,8 @@
 
 #define MTCORE_SEGMENT_UNIT 16
 
+#define MTCORE_PSCW_COMPLETE_TAG 900
+
 /*FIXME: It is a workaround for shared window overlapping problem
  * when shared segment size of each helper is 0 */
 #define MTCORE_HELPER_SHARED_SG_SIZE 4096
@@ -243,6 +245,11 @@ typedef struct MTCORE_Win {
 
     MTCORE_Fence_lock_stat fence_stat;
     MPI_Win fence_win;
+
+    MPI_Group start_group;
+    MPI_Group post_group;
+    int *start_ranks_in_win_group;
+    int *post_ranks_in_win_group;
 
     void *base;
     MPI_Win win;

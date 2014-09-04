@@ -141,6 +141,12 @@ int MPI_Win_free(MPI_Win * win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    /* free PSCW array in case use does not call complete/wait. */
+    if (uh_win->start_ranks_in_win_group)
+        free(uh_win->start_ranks_in_win_group);
+    if (uh_win->post_ranks_in_win_group)
+        free(uh_win->post_ranks_in_win_group);
+
     /* uh_win->user_comm is created by user, will be freed by user. */
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)

@@ -21,6 +21,10 @@ libmtcore_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/rma/win_flush.c	\
                     src/mpi/rma/win_flush_all.c	\
                     src/mpi/rma/win_fence.c	\
+                    src/mpi/rma/win_post.c	\
+                    src/mpi/rma/win_start.c	\
+                    src/mpi/rma/win_wait.c	\
+                    src/mpi/rma/win_complete.c	\
                     src/mpi/rma/get_helper.c	\
                     src/mpi/rma/segment.c	\
                     src/mpi/init/init.c \
