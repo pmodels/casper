@@ -178,7 +178,9 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     /* We only eliminate barrier if user explicitly specifies it is the first fence. */
     if (assert != MPI_MODE_NOPRECEDE) {
-        MPI_Barrier(uh_win->user_comm);
+        mpi_errno = PMPI_Barrier(uh_win->user_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     /* Do not lock if user specifies no_succeed, it is the last fence. */
