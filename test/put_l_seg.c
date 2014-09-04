@@ -11,7 +11,8 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define NUM_OPS 5
+#define NUM_OPS 3
+#define OP_SIZE 32      /*count of double, window will be divided if odd np and even nh */
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
 
@@ -19,50 +20,56 @@ double *winbuf = NULL;
 double *locbuf = NULL;
 int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
-int ITER = 2;
-int seg_size = 4096;
+int ITER = 5;
 
 static int run_test1(int nop)
 {
-    int i, x, errs = 0, errs_total = 0;
-    int dst, dst_disp = 0;
-
-    MPI_Win_lock_all(0, win);
+    int i, j, x, errs = 0, errs_total = 0;
+    int dst, dst_disp = 0, orig_disp = 0;
 
     fprintf(stdout, "[%d]-----check lock_all/put[0 - %d] & flush_all + "
-            "put[0 - %d] & flush_all/unlock_all\n", rank, nprocs - 1, nprocs - 1);
+            "%d * put[0 - %d] & flush_all/unlock_all\n", rank, nprocs - 1, nop - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
-        for (dst = 0; dst < nprocs; dst++) {
-            MPI_Put(&locbuf[dst], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
-        }
-        MPI_Win_flush_all(win);
 
-        for (dst = 0; dst < nprocs; dst++) {
-            for (i = 1; i < nop; i++) {
-                /* the start address of every segment */
-                dst_disp = seg_size * i / sizeof(double);
-                MPI_Put(&locbuf[dst + i * nprocs], 1, MPI_DOUBLE, dst, dst_disp, 1, MPI_DOUBLE,
-                        win);
-#ifdef MVA
-                MPI_Win_flush(dst, win);        /* use it to poke progress in order to finish local CQEs */
-#endif
+        if (rank == 0) {
+            MPI_Win_lock_all(0, win);
+            for (dst = 0; dst < nprocs; dst++) {
+                MPI_Put(&locbuf[dst * OP_SIZE * nop], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE,
+                        MPI_DOUBLE, win);
             }
+            MPI_Win_flush_all(win);
+
+            for (dst = 0; dst < nprocs; dst++) {
+                for (i = 1; i < nop; i++) {
+                    dst_disp = OP_SIZE * i;
+                    orig_disp = dst * OP_SIZE * nop + i * OP_SIZE;
+
+                    MPI_Put(&locbuf[orig_disp], OP_SIZE, MPI_DOUBLE, dst, dst_disp, OP_SIZE,
+                            MPI_DOUBLE, win);
+                }
+            }
+            MPI_Win_unlock_all(win);
         }
-        MPI_Win_flush_all(win);
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         /* check in every iteration */
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
         for (i = 0; i < nop; i++) {
-            dst_disp = seg_size * i / sizeof(double);
-            if (winbuf[dst_disp] != (1.0 * rank + i * nprocs)) {
-                fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", rank, dst_disp,
-                        winbuf[dst_disp], 1.0 * rank + i * nprocs);
-                errs++;
+            for (j = 0; j < OP_SIZE; j++) {
+                dst_disp = OP_SIZE * i + j;
+                orig_disp = rank * OP_SIZE * nop + i * OP_SIZE + j;
+                if (winbuf[dst_disp] != locbuf[orig_disp]) {
+                    fprintf(stderr, "[%d] winbuf[%d] %.1lf != locbuf[%d]%.1lf\n", rank, dst_disp,
+                            winbuf[dst_disp], orig_disp, locbuf[orig_disp]);
+                    errs++;
+                }
             }
         }
+        MPI_Win_unlock(rank, win);
+        MPI_Barrier(MPI_COMM_WORLD);
     }
-
-    MPI_Win_unlock_all(win);
 
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
@@ -80,40 +87,47 @@ static int run_test1(int nop)
     return errs_total;
 }
 
-
 static int run_test2(int nop)
 {
-    int i, x, errs = 0, errs_total = 0;
-    int dst, dst_disp;
+    int i, j, x, errs = 0, errs_total = 0;
+    int dst, dst_disp = 0, orig_disp = 0;
 
-    MPI_Win_lock_all(0, win);
-
-    fprintf(stdout, "[%d]-----check lock_all/ %d * put[0 - %d] & flush_all/unlock_all\n",
-            rank, nop, nprocs - 1);
+    fprintf(stdout, "[%d]-----check lock_all/%d * put[0 - %d]/unlock_all\n", rank, nop, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
-        /* only do load balancing when force lock enabled */
-        for (dst = 0; dst < nprocs; dst++) {
-            for (i = 0; i < nop; i++) {
-                dst_disp = seg_size * i / sizeof(double);
-                MPI_Put(&locbuf[dst + i * nprocs], 1, MPI_DOUBLE, dst, dst_disp, 1, MPI_DOUBLE,
-                        win);
+
+        if (rank == 0) {
+            MPI_Win_lock_all(0, win);
+            for (dst = 0; dst < nprocs; dst++) {
+                for (i = 0; i < nop; i++) {
+                    dst_disp = OP_SIZE * i;
+                    orig_disp = dst * OP_SIZE * nop + i * OP_SIZE;
+
+                    MPI_Put(&locbuf[orig_disp], OP_SIZE, MPI_DOUBLE, dst, dst_disp, OP_SIZE,
+                            MPI_DOUBLE, win);
+                }
             }
+            MPI_Win_unlock_all(win);
         }
-        MPI_Win_flush_all(win);
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         /* check in every iteration */
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
         for (i = 0; i < nop; i++) {
-            dst_disp = seg_size * i / sizeof(double);
-            if (winbuf[dst_disp] != (1.0 * rank + i * nprocs)) {
-                fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", rank, dst_disp,
-                        winbuf[dst_disp], 1.0 * rank + i * nprocs);
-                errs++;
+            for (j = 0; j < OP_SIZE; j++) {
+                dst_disp = OP_SIZE * i + j;
+                orig_disp = rank * OP_SIZE * nop + i * OP_SIZE + j;
+                if (winbuf[dst_disp] != locbuf[orig_disp]) {
+                    fprintf(stderr, "[%d] winbuf[%d] %.1lf != locbuf[%d]%.1lf\n", rank, dst_disp,
+                            winbuf[dst_disp], orig_disp, locbuf[orig_disp]);
+                    errs++;
+                }
             }
         }
+        MPI_Win_unlock(rank, win);
+        MPI_Barrier(MPI_COMM_WORLD);
     }
-
-    MPI_Win_unlock_all(win);
 
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
@@ -145,16 +159,17 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
-    for (i = 0; i < NUM_OPS * nprocs; i++) {
+    locbuf = calloc(NUM_OPS * OP_SIZE * nprocs, sizeof(double));
+    for (i = 0; i < NUM_OPS * OP_SIZE * nprocs; i++) {
         locbuf[i] = 1.0 * i;
     }
+    fprintf(stderr, "\n");
 
     /* size in byte */
-    MPI_Win_allocate(seg_size * NUM_OPS, sizeof(double), MPI_INFO_NULL,
+    MPI_Win_allocate(OP_SIZE * NUM_OPS * sizeof(double), sizeof(double), MPI_INFO_NULL,
                      MPI_COMM_WORLD, &winbuf, &win);
 
-    memset(winbuf, 0, seg_size * NUM_OPS);
+    memset(winbuf, 0, OP_SIZE * NUM_OPS * sizeof(double));
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test1(size);
