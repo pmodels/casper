@@ -26,9 +26,8 @@ static int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int
                                                     int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
-    int start_seg_off = 0, end_seg_off, o_type_size, t_type_size;
+    int o_type_size, t_type_size;
     MPI_Aint target_base_off, target_data_size;
-    int max_num_segs;
     MTCORE_OP_Segment *decoded_ops = NULL;
 
     PMPI_Type_size(origin_datatype, &o_type_size);
@@ -38,63 +37,48 @@ static int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int
 
     target_base_off = target_disp * t_type_size;
     target_data_size = target_count * t_type_size;
-    max_num_segs = target_data_size / MTCORE_ENV.seg_size + 2;
 
-    if (target_base_off + target_data_size >= uh_win->targets[target_rank].size) {
+    if (target_base_off + target_data_size > uh_win->targets[target_rank].size) {
         fprintf(stderr, "Wrong operation target_disp 0x%lx, target_count %d "
                 "(base 0x%lx + size 0x%lx > 0x%lx)\n",
-                target_disp, target_disp, target_base_off, target_data_size,
+                target_disp, target_count, target_base_off, target_data_size,
                 uh_win->targets[target_rank].size);
         return -1;
     }
 
-    decoded_ops = calloc(max_num_segs, sizeof(MTCORE_OP_Segment));
+    decoded_ops = calloc(uh_win->targets[target_rank].num_segs, sizeof(MTCORE_OP_Segment));
 
-    /* Only the first and last segment may be smaller than seg_size */
-    if (target_base_off < uh_win->targets[target_rank].segs[0].size) {
-        start_seg_off = 0;
-    }
-    else if (target_base_off >= uh_win->targets[target_rank].size -
-             uh_win->targets[target_rank].segs[uh_win->targets[target_rank].num_segs - 1].size) {
-        start_seg_off = uh_win->targets[target_rank].num_segs - 1;
-    }
-    else {
-        start_seg_off = target_base_off / MTCORE_ENV.seg_size;
-    }
+    MPI_Aint dt_size = 0, op_sg_size = 0, op_sg_base = 0, sg_base = 0, sg_size = 0;
+    int sg_off = 0, op_sg_off = 0;
 
-    MPI_Aint dt_size = 0, op_sg_size = 0;
-    int seg_off = start_seg_off, op_sg_off = 0;
-
+    op_sg_base = target_base_off;
     while (dt_size < target_data_size) {
-        MTCORE_Assert(op_sg_off < max_num_segs);
-        MTCORE_Assert(seg_off < uh_win->targets[target_rank].num_segs);
+        MTCORE_Assert(op_sg_off < uh_win->targets[target_rank].num_segs);
+        MTCORE_Assert(sg_off < uh_win->targets[target_rank].num_segs);
 
-        /* last segment */
-        if (uh_win->targets[target_rank].segs[seg_off].base_offset <= target_base_off &&
-            target_data_size - dt_size < uh_win->targets[target_rank].segs[seg_off].size) {
-            op_sg_size = target_data_size - dt_size;
-        }
-        /* first segment */
-        else if (seg_off == start_seg_off) {
-            op_sg_size = uh_win->targets[target_rank].segs[seg_off].size - target_base_off
-                + uh_win->targets[target_rank].segs[seg_off].base_offset;
-        }
-        else {
-            op_sg_size = uh_win->targets[target_rank].segs[seg_off].size;
+        sg_base = uh_win->targets[target_rank].segs[sg_off].base_offset;
+        sg_size = uh_win->targets[target_rank].segs[sg_off].size;
+
+        if (sg_base <= op_sg_base && sg_base + sg_size > op_sg_base) {
+            op_sg_size = min(sg_size - op_sg_base + sg_base, target_data_size - dt_size);
+
+            decoded_ops[op_sg_off].origin_addr = (void *) ((MPI_Aint) origin_addr + dt_size);   /* byte unit */
+            decoded_ops[op_sg_off].origin_datatype = origin_datatype;
+            decoded_ops[op_sg_off].origin_count = op_sg_size / o_type_size;
+            decoded_ops[op_sg_off].target_seg_off = sg_off;
+            decoded_ops[op_sg_off].target_disp = op_sg_base / t_type_size;      /*dt unit */
+            decoded_ops[op_sg_off].target_datatype = target_datatype;
+            decoded_ops[op_sg_off].target_count = op_sg_size / t_type_size;
+            decoded_ops[op_sg_off].target_dtsize = op_sg_size;
+
+            /* next operation segment */
+            dt_size += op_sg_size;
+            op_sg_base += op_sg_size;
+            op_sg_off++;
         }
 
-        decoded_ops[op_sg_off].origin_addr = (void *) origin_addr + dt_size;    /* byte unit */
-        decoded_ops[op_sg_off].origin_datatype = origin_datatype;
-        decoded_ops[op_sg_off].origin_count = op_sg_size / o_type_size;
-        decoded_ops[op_sg_off].target_seg_off = seg_off;
-        decoded_ops[op_sg_off].target_disp = target_disp + dt_size / t_type_size;       /*dt unit */
-        decoded_ops[op_sg_off].target_datatype = target_datatype;
-        decoded_ops[op_sg_off].target_count = op_sg_size / t_type_size;
-        decoded_ops[op_sg_off].target_dtsize = op_sg_size;
-
-        dt_size += op_sg_size;
-        seg_off++;
-        op_sg_off++;
+        /* next target segment */
+        sg_off++;
     }
 
     *num_segs = op_sg_off;

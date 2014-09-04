@@ -51,6 +51,9 @@ static int MTCORE_Put_segment_impl(const void *origin_addr, int origin_count,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    MTCORE_DBG_PRINT("MTCORE Put to target %d, target_disp=0x%lx, target_count=%d, num_segs=%d\n",
+                     target_rank, target_disp, target_count, num_segs);
+
     for (i = 0; i < num_segs; i++) {
         int target_h_rank_in_uh = -1;
         int data_size = 0;
@@ -68,7 +71,7 @@ static int MTCORE_Put_segment_impl(const void *origin_addr, int origin_count,
             + uh_win->targets[target_rank].disp_unit * decoded_ops[i].target_disp;
 
         /* Issue operation to the helper process in corresponding uh-window of target process. */
-        mpi_errno = PMPI_Get(decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
+        mpi_errno = PMPI_Put(decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
                              decoded_ops[i].origin_datatype, target_h_rank_in_uh, uh_target_disp,
                              decoded_ops[i].target_count, decoded_ops[i].target_datatype,
                              seg_uh_win);

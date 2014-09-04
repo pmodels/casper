@@ -51,6 +51,8 @@ static int MTCORE_Accumulate_segment_impl(const void *origin_addr,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    MTCORE_DBG_PRINT("MTCORE Accumulate to target %d, num_segs=%d\n", target_rank, num_segs);
+
     for (i = 0; i < num_segs; i++) {
         int target_h_rank_in_uh = -1;
         int data_size = 0;

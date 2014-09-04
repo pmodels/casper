@@ -79,6 +79,13 @@
        _a > _b ? _a : _b; })
 #endif
 
+#ifndef min
+#define min(a,b) \
+    ({ typeof (a) _a = (a); \
+       typeof (b) _b = (b); \
+       _a < _b ? _a : _b; })
+#endif
+
 #ifndef align
 #define align(val, align) (((val) + (align) - 1) & ~((align) - 1))
 #endif

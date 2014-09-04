@@ -143,14 +143,20 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
 
             MPI_Aint prev_seg_base = 0, prev_seg_size = 0;
             for (j = 0; j < t_num_segs; j++) {
-                uh_win->targets[t_rank].segs[j].base_offset = prev_seg_base + prev_seg_base;
+                uh_win->targets[t_rank].segs[j].base_offset = prev_seg_base + prev_seg_size;
                 uh_win->targets[t_rank].segs[j].size = t_seg_sizes[j];
                 uh_win->targets[t_rank].segs[j].main_h_off = t_last_h_off + 1 - t_num_segs + j;
+
+                prev_seg_base = uh_win->targets[t_rank].segs[j].base_offset;
+                prev_seg_size = uh_win->targets[t_rank].segs[j].size;
             }
 
             assigned_size += uh_win->targets[t_rank].size;
 
             /* next target */
+            if (i >= n_targets) {
+                break;
+            }
             t_rank = local_targets[++i];
             t_size = uh_win->targets[t_rank].size;
             t_num_segs = 0;
@@ -188,6 +194,8 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
             seg_size = align(seg_size, MTCORE_SEGMENT_UNIT);
         }
     }
+
+    MTCORE_Assert(assigned_size == sum_size);
 
     /* No meaning in this division, remain it for future flexible algorithms. */
     uh_win->max_local_num_uh_wins = 1;
