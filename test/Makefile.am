@@ -22,7 +22,9 @@ noinst_PROGRAMS = \
 	mtcore_no_check	\
 	mtcore_no_accumulate_ordering	\
 	put_fence	\
-	mtcore_put_fence
+	mtcore_put_fence	\
+	acc_get_fence	\
+	mtcore_acc_get_fence
 	
 mtcore_get_SOURCES= get.c
 mtcore_get_LDFLAGS= -L$(libdir) -lmtcore
@@ -56,3 +58,6 @@ mtcore_no_accumulate_ordering_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_put_fence_SOURCES= put_fence.c
 mtcore_put_fence_LDFLAGS= -L$(libdir) -lmtcore
+
+mtcore_acc_get_fence_SOURCES= acc_get_fence.c
+mtcore_acc_get_fence_LDFLAGS= -L$(libdir) -lmtcore
