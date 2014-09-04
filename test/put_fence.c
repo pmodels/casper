@@ -38,7 +38,6 @@ static int run_test1(int nop)
         MPI_Win_fence(0, win);
 
         /* check in every iteration */
-        MPI_Win_fence(0, win);
         for (i = 0; i < nop; i++) {
             if (winbuf[i] != (1.0 * rank + i * nprocs)) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", rank, i,
@@ -47,6 +46,52 @@ static int run_test1(int nop)
             }
         }
         MPI_Win_fence(0, win);
+    }
+
+    if (errs > 0) {
+        fprintf(stderr, "[%d] checking failed\n", rank);
+#ifdef OUTPUT_FAIL_DETAIL
+        fprintf(stderr, "[%d] locbuf:\n");
+        for (i = 0; i < nop * nprocs; i++) {
+            fprintf(stderr, "%.1lf ", locbuf[i]);
+        }
+        fprintf(stderr, "\n");
+#endif
+    }
+
+    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    return errs_total;
+}
+
+
+static int run_test2(int nop)
+{
+    int i, x, errs = 0, errs_total = 0;
+    int dst;
+
+    fprintf(stdout, "[%d]-----check fence(no_precede)/%d * put[0 - %d]/fence(no_succeed)\n",
+            rank, nop - 1, nprocs - 1);
+
+    for (x = 0; x < ITER; x++) {
+        MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
+
+        for (dst = 0; dst < nprocs; dst++) {
+            for (i = 0; i < nop; i++) {
+                MPI_Put(&locbuf[dst + i * nprocs], 1, MPI_DOUBLE, dst, i, 1, MPI_DOUBLE, win);
+            }
+        }
+        MPI_Win_fence(0, win);
+
+        /* check in every iteration */
+        for (i = 0; i < nop; i++) {
+            if (winbuf[i] != (1.0 * rank + i * nprocs)) {
+                fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", rank, i,
+                        winbuf[i], 1.0 * rank + i * nprocs);
+                errs++;
+            }
+        }
+        MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
     }
 
     if (errs > 0) {
@@ -99,6 +144,11 @@ int main(int argc, char *argv[])
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test1(size);
+    if (errs)
+        goto exit;
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    errs = run_test2(size);
     if (errs)
         goto exit;
 
