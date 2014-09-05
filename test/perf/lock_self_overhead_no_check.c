@@ -1,11 +1,12 @@
 /*
- * lock_self_overhead_no_loadstore.c
+ * lock_self_overhead.c
  *
  *  This benchmark evaluates the overhead of Manticore wrapped MPI_Win_lock
- *  when lock a self target using 2 processes with no_local_load_store option.
- *  (only rank 0 is used, but window requires at least 2 processes).
+ *  when lock a self target using 2 processes (only rank 0 is used, but window requires at least 2 processes).
  *
- *  Rank 0 locks itself and issues an accumulate operation to grant that lock.
+ *  Rank 0 locks itself and unlock. It does not need RMA operations because
+ *  local lock will be granted immediately. However, we still issue a accumulate
+ *  in order to comparing with lock_self_overhead_no_loadstore.c
  *
  *  Author: Min Si
  */
@@ -41,7 +42,7 @@ static int run_test()
 
     dst = 0;
     for (x = 0; x < SKIP; x++) {
-        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, MPI_MODE_NOCHECK, win);
         for (i = 0; i < NOP; i++)
             MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Win_unlock(dst, win);
@@ -50,7 +51,7 @@ static int run_test()
     t0 = MPI_Wtime();
 
     for (x = 0; x < ITER; x++) {
-        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, MPI_MODE_NOCHECK, win);
         for (i = 0; i < NOP; i++)
             MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Win_unlock(dst, win);
@@ -66,13 +67,12 @@ static int run_test()
          * doesn't wait for target completion in exclusive lock */
         MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
         sum = 1.0 * (ITER + SKIP) * NOP;
-        double buf;
-        MPI_Get(&buf, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
-        MPI_Win_unlock(rank, win);
-        if (buf != sum) {
-            fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, buf, sum);
+        if (winbuf[0] != sum) {
+            fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, winbuf[0],
+                    sum);
             errs += 1;
         }
+        MPI_Win_unlock(rank, win);
     }
 
     errs_total = errs;
@@ -80,8 +80,8 @@ static int run_test()
         goto exit;
 #endif
 
-    fprintf(stdout, "mtcore-nols: iter %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-    ITER, NOP, nprocs, MTCORE_NUM_H, t_total);
+    fprintf(stdout, "mtcore-nocheck: iter %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+            ITER, NOP, nprocs, MTCORE_NUM_H, t_total);
 
     exit:
 
@@ -91,7 +91,6 @@ static int run_test()
 int main(int argc, char *argv[])
 {
     int errs;
-    MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -108,21 +107,17 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "no_local_load_store", (char *) "true");
-
     locbuf[0] = 1.0;
-    MPI_Win_allocate(sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
+    MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
 
     if (rank == 0) {
         errs = run_test();
     }
+
     exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
-    if (win_info != MPI_INFO_NULL)
-        MPI_Info_free(&win_info);
     MPI_Finalize();
 
     return 0;

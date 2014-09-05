@@ -19,12 +19,13 @@
 /* #define DEBUG */
 #define CHECK
 #define ITER 100000
-#define SKIP 10
+#define SKIP 100
 
 double *winbuf = NULL;
 double locbuf[1];
 int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
+int NOP = 1;
 
 #ifdef MTCORE
 extern int MTCORE_NUM_H;
@@ -42,7 +43,8 @@ static int run_test()
     dst = 0;
     for (x = 0; x < SKIP; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
-        MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
+        for (i = 0; i < NOP; i++)
+            MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Win_unlock(dst, win);
     }
 
@@ -50,13 +52,13 @@ static int run_test()
 
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
-        MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
+        for (i = 0; i < NOP; i++)
+            MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Win_unlock(dst, win);
     }
 
     t_total = (MPI_Wtime() - t0) * 1000 * 1000; /*us */
     t_total /= ITER;
-
 
 #ifdef CHECK
     if (rank == dst) {
@@ -64,7 +66,7 @@ static int run_test()
          * otherwise, the result may be incorrect because flush/unlock
          * doesn't wait for target completion in exclusive lock */
         MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
-        sum = 1.0 * (ITER + SKIP);
+        sum = 1.0 * (ITER + SKIP) * NOP;
         if (winbuf[0] != sum) {
             fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, winbuf[0],
                     sum);
@@ -79,13 +81,14 @@ static int run_test()
 #endif
 
 #ifdef MTCORE
-    fprintf(stdout, "mtcore: iter %d nprocs %d nh %d avg_time %.2lf\n", ITER, nprocs, MTCORE_NUM_H,
-            t_total);
+    fprintf(stdout, "mtcore: iter %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+            ITER, NOP, nprocs, MTCORE_NUM_H, t_total);
 #else
-    fprintf(stdout, "orig: iter %d nprocs %d avg_time %.2lf\n", ITER, nprocs, t_total);
+    fprintf(stdout, "orig: iter %d num_op %d nprocs %d total_time %.2lf\n",
+            ITER, NOP, nprocs, t_total);
 #endif
 
-  exit:
+    exit:
 
     return errs_total;
 }
@@ -98,6 +101,17 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+#ifdef MTCORE
+    /* first argv is nh */
+    if (argc >= 3) {
+        NOP = atoi(argv[2]);
+    }
+#else
+    if (argc >= 2) {
+        NOP = atoi(argv[1]);
+    }
+#endif
+
     locbuf[0] = 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
 
@@ -105,7 +119,7 @@ int main(int argc, char *argv[])
         errs = run_test();
     }
 
-  exit:
+    exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
