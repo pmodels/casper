@@ -216,6 +216,7 @@ typedef struct MTCORE_Win {
     MPI_Comm local_uh_comm;
     MPI_Group local_uh_group;
     MPI_Win local_uh_win;
+    int local_uh_rank;          /* remember my rank in local shared window for local RMA. */
 
     /* communicator including all the user processes and helpers */
     MPI_Comm uh_comm;

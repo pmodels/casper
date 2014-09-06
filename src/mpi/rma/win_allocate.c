@@ -467,6 +467,8 @@ static int create_communicators(MTCORE_Win * uh_win)
                    sizeof(int) * MTCORE_NUM_H);
     }
 
+    PMPI_Comm_rank(uh_win->local_uh_comm, &uh_win->local_uh_rank);
+
   fn_exit:
     if (func_params)
         free(func_params);

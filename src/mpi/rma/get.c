@@ -8,20 +8,16 @@ static int MTCORE_Get_shared_impl(void *origin_addr, int origin_count,
                                   MPI_Datatype target_datatype, MPI_Win win, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int target_rank_in_local_uh = 0;
-
-    PMPI_Group_translate_ranks(uh_win->user_group, 1,
-                               &target_rank, uh_win->local_uh_group, &target_rank_in_local_uh);
 
     /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
-                         target_rank_in_local_uh, target_disp,
+                         uh_win->local_uh_rank, target_disp,
                          target_count, target_datatype, uh_win->local_uh_win);
 
-    MTCORE_DBG_PRINT("MTCORE GET from target(in local_uh) %d in shared_comm\n",
-                     target_rank_in_local_uh);
+    MTCORE_DBG_PRINT("MTCORE GET from self(in local_uh) %d in shared_comm\n",
+                     uh_win->local_uh_rank);
 
     goto fn_exit;
 
