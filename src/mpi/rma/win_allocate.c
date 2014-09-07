@@ -122,7 +122,7 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
     }
     /* Never divide less than segment unit */
     size_per_helper = align(sum_size / MTCORE_NUM_H, MTCORE_SEGMENT_UNIT);
-    max_t_num_seg = max_t_num_seg / size_per_helper + 3;
+    max_t_num_seg = sum_size / size_per_helper + 3;
     t_seg_sizes = calloc(max_t_num_seg, sizeof(MPI_Aint));
 
     /* Divide segments based on sizes */
