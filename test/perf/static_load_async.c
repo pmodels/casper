@@ -17,9 +17,9 @@
 /* #define DEBUG */
 #define CHECK
 #define ITER_LL 1000
-#define ITER_S 100000
-#define ITER_L 50000
-#define SKIP 100
+#define ITER_S 10000
+#define ITER_L 5000
+#define SKIP 10
 #define NPROCS_M 16
 
 double *winbuf = NULL;
@@ -37,9 +37,6 @@ int NOP = 100;
 
 static int target_computation()
 {
-    if (SLEEP_TIME == 0)
-        return 0;
-
     double start = MPI_Wtime() * 1000 * 1000;
     while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME)
         ;
@@ -65,70 +62,47 @@ static int run_test()
         ITER = ITER_L;
     }
 
-
-    if (rank == 0) {
-        for (x = 0; x < SKIP; x++) {
-            MPI_Win_lock_all(0, win);
-            for (dst = 0; dst < nprocs; dst++) {
-                MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
-            }
-            MPI_Win_unlock_all(win);
+    for (x = 0; x < SKIP; x++) {
+        MPI_Win_lock_all(0, win);
+        for (dst = 0; dst < nprocs; dst++) {
+            MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         }
+        MPI_Win_unlock_all(win);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     t0 = MPI_Wtime();
 
-    if (rank == 0) {
-        for (x = 0; x < ITER; x++) {
-            MPI_Win_lock_all(0, win);
-            for (dst = 0; dst < nprocs; dst++) {
-                for (i = 0; i < NOP; i++) {
-                    MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
-                }
+    for (x = 0; x < ITER; x++) {
+        MPI_Win_lock_all(0, win);
+
+        for (dst = 0; dst < nprocs; dst++) {
+            for (i = 0; i < NOP; i++) {
+                MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
             }
-            MPI_Win_unlock_all(win);
         }
-    } else {
-        /* target processes are computing until receives completion from origin. */
-        MPI_Irecv(buf, 1, MPI_INT, 0, 899, MPI_COMM_WORLD, &req);
-        while (!flag) {
-            target_computation();
-            MPI_Test(&req, &flag, &stat);
-        }
+
+        target_computation();
+
+        MPI_Win_unlock_all(win);
     }
 
-    t_total += (MPI_Wtime() - t0) * 1000 * 1000; /*us */
+    t_total = (MPI_Wtime() - t0) * 1000 * 1000; /*us */
     t_total /= ITER;
 
-    if (rank == 0) {
-        /* notify target rma is done. */
-        for (dst = 1; dst < nprocs; dst++) {
-            MPI_Send(buf, 1, MPI_INT, dst, 899, MPI_COMM_WORLD);
-        }
-    }
-
     MPI_Barrier(MPI_COMM_WORLD);
-
-#ifdef CHECK
-    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
-    sum = 1.0 * (ITER * NOP + SKIP);
-    if (winbuf[0] != sum) {
-        fprintf(stderr, "[%d]computation error : winbuf[%d] %.2lf != %.2lf\n",
-                rank, i, winbuf[0], sum);
-        errs += 1;
-    }
-    MPI_Win_unlock(rank, win);
-#endif
+    MPI_Reduce(&t_total, &avg_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
+        avg_total_time = avg_total_time / nprocs; /* us */
+
 #ifdef MTCORE
         fprintf(stdout, "mtcore: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, SLEEP_TIME, NOP, nprocs, MTCORE_NUM_H, t_total);
+                ITER, SLEEP_TIME, NOP, nprocs, MTCORE_NUM_H, avg_total_time);
 #else
         fprintf(stdout, "orig: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
-                ITER, SLEEP_TIME, NOP, nprocs, t_total);
+                ITER, SLEEP_TIME, NOP, nprocs, avg_total_time);
 #endif
     }
 
@@ -179,10 +153,6 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
 
         errs = run_test();
-
-        /* only run once if user disabled async */
-        if(SLEEP_TIME == 0)
-            break;
     }
 
     exit:

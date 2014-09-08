@@ -12,28 +12,30 @@ noinst_PROGRAMS = \
 	mtcore_async_2np	\
 	async_all2all	\
 	mtcore_async_all2all	\
+	lock_overhead	\
+	mtcore_lock_overhead \
 	lock_self_overhead	\
 	mtcore_lock_self_overhead \
 	mtcore_lock_self_overhead_no_loadstore \
-	mtcore_lock_self_overhead_no_check
+	mtcore_lock_self_overhead_no_check	\
+	op_overhead \
+	mtcore_op_overhead \
+	static_load_async \
+	mtcore_static_load_async \
+	static_load_nop \
+	mtcore_static_load_nop \
+	runtime_load_nop \
+	mtcore_runtime_load_nop \
+	runtime_load_opsize \
+	mtcore_runtime_load_opsize \
+	runtime_load_nop_acc \
+	mtcore_runtime_load_nop_acc \
+	async_fence	\
+	async_fence_th	\
+	mtcore_async_fence \
+	async_pscw	\
+	mtcore_async_pscw
 
-#	lock_overhead	\
-#	mtcore_lock_overhead \
-#	lock_overhead_inter	\
-#	mtcore_lock_overhead_inter	\
-#	lock_overhead_intra	\
-#	mtcore_lock_overhead_intra	\
-#	lock_overhead_intra_wincreate	\
-#	balance_put	\
-#	mtcore_balance_put \
-#	balance_put1	\
-#	mtcore_balance_put1 \
-#	balance_put2	\
-#	mtcore_balance_put2 \
-#	mtcore_balance_put2_no_loadstore \
-#	balance_acc2	\
-#	mtcore_balance_acc2
-	
 lockall_overhead_CFLAGS= -O2
 mtcore_lockall_overhead_SOURCES= lockall_overhead.c
 mtcore_lockall_overhead_LDFLAGS= -L$(libdir) -lmtcore -lmpich
@@ -43,16 +45,56 @@ mtcore_lockall_overhead_no_loadstore_SOURCES= lockall_overhead_no_loadstore.c
 mtcore_lockall_overhead_no_loadstore_LDFLAGS= -L$(libdir) -lmtcore
 mtcore_lockall_overhead_no_loadstore_CFLAGS= -O2 -DMTCORE
 
+op_overhead_CFLAGS= -O2
+mtcore_op_overhead_SOURCES= op_overhead.c
+mtcore_op_overhead_LDFLAGS= -L$(libdir) -lmtcore -lmpich
+mtcore_op_overhead_CFLAGS= -O2 -DMTCORE
 
-#lock_overhead_CFLAGS= -O2
-#mtcore_lock_overhead_SOURCES= lock_overhead.c
-#mtcore_lock_overhead_LDFLAGS= -L$(libdir) -lmtcore
-#mtcore_lock_overhead_CFLAGS= -O2 -DMTCORE
+async_fence_CFLAGS= -O2
+async_fence_th_CFLAGS= -O2 -lpthread
+mtcore_async_fence_SOURCES= async_fence.c
+mtcore_async_fence_LDFLAGS= -L$(libdir) -lmtcore -lmpich
+mtcore_async_fence_CFLAGS= -O2 -DMTCORE
+
+async_pscw_CFLAGS= -O2
+mtcore_async_pscw_SOURCES= async_pscw.c
+mtcore_async_pscw_LDFLAGS= -L$(libdir) -lmtcore -lmpich
+mtcore_async_pscw_CFLAGS= -O2 -DMTCORE
+
+lock_overhead_CFLAGS= -O2
+mtcore_lock_overhead_SOURCES= lock_overhead.c
+mtcore_lock_overhead_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_lock_overhead_CFLAGS= -O2 -DMTCORE
 
 lockall_overhead_async_CFLAGS= -O2
 mtcore_lockall_overhead_async_SOURCES= lockall_overhead_async.c
 mtcore_lockall_overhead_async_LDFLAGS= -L$(libdir) -lmtcore
 mtcore_lockall_overhead_async_CFLAGS= -O2 -DMTCORE
+
+static_load_async_CFLAGS= -O2
+mtcore_static_load_async_SOURCES= static_load_async.c
+mtcore_static_load_async_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_static_load_async_CFLAGS= -O2 -DMTCORE
+
+static_load_nop_CFLAGS= -O2
+mtcore_static_load_nop_SOURCES= static_load_nop.c
+mtcore_static_load_nop_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_static_load_nop_CFLAGS= -O2 -DMTCORE
+
+runtime_load_nop_CFLAGS= -O2
+mtcore_runtime_load_nop_SOURCES= runtime_load_nop.c
+mtcore_runtime_load_nop_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_runtime_load_nop_CFLAGS= -O2 -DMTCORE
+
+runtime_load_nop_acc_CFLAGS= -O2
+mtcore_runtime_load_nop_acc_SOURCES= runtime_load_nop_acc.c
+mtcore_runtime_load_nop_acc_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_runtime_load_nop_acc_CFLAGS= -O2 -DMTCORE
+
+runtime_load_opsize_CFLAGS= -O2
+mtcore_runtime_load_opsize_SOURCES= runtime_load_opsize.c
+mtcore_runtime_load_opsize_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_runtime_load_opsize_CFLAGS= -O2 -DMTCORE
 
 async_2np_CFLAGS= -O2
 mtcore_async_2np_SOURCES= async_2np.c
@@ -76,23 +118,3 @@ mtcore_lock_self_overhead_no_loadstore_CFLAGS= -O2 -DMTCORE
 mtcore_lock_self_overhead_no_check_SOURCES= lock_self_overhead_no_check.c
 mtcore_lock_self_overhead_no_check_LDFLAGS= -L$(libdir) -lmtcore
 mtcore_lock_self_overhead_no_check_CFLAGS= -O2 -DMTCORE
-
-#mtcore_balance_put_SOURCES= balance_put.c
-#mtcore_balance_put_LDFLAGS= -L$(libdir) -lmtcore
-#mtcore_balance_put_CFLAGS= -O2 -DMTCORE
-#
-#mtcore_balance_put1_SOURCES= balance_put1.c
-#mtcore_balance_put1_LDFLAGS= -L$(libdir) -lmtcore
-#mtcore_balance_put1_CFLAGS= -O2 -DMTCORE
-#
-#mtcore_balance_put2_SOURCES= balance_put2.c
-#mtcore_balance_put2_LDFLAGS= -L$(libdir) -lmtcore
-#mtcore_balance_put2_CFLAGS= -O2 -DMTCORE
-#
-#mtcore_balance_put2_no_loadstore_SOURCES= balance_put2_no_loadstore.c
-#mtcore_balance_put2_no_loadstore_LDFLAGS= -L$(libdir) -lmtcore
-#mtcore_balance_put2_no_loadstore_CFLAGS= -O2 -DMTCORE
-#
-#mtcore_balance_acc2_SOURCES= balance_acc2.c
-#mtcore_balance_acc2_LDFLAGS= -L$(libdir) -lmtcore
-#mtcore_balance_acc2_CFLAGS= -O2 -DMTCORE
