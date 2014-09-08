@@ -705,7 +705,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     uh_win->h_ops_counts = calloc(uh_nprocs, sizeof(int));
-    uh_win->h_bytes_counts = calloc(uh_nprocs, sizeof(int));
+    uh_win->h_bytes_counts = calloc(uh_nprocs, sizeof(unsigned long));
 #endif
 
     /* Allocate a shared window with local Helpers */
