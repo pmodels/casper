@@ -24,6 +24,8 @@ noinst_PROGRAMS = \
 	mtcore_static_load_async \
 	static_load_nop \
 	mtcore_static_load_nop \
+	static_load_nseg \
+	mtcore_static_load_nseg \
 	runtime_load_nop \
 	mtcore_runtime_load_nop \
 	runtime_load_opsize \
@@ -80,6 +82,11 @@ static_load_nop_CFLAGS= -O2
 mtcore_static_load_nop_SOURCES= static_load_nop.c
 mtcore_static_load_nop_LDFLAGS= -L$(libdir) -lmtcore
 mtcore_static_load_nop_CFLAGS= -O2 -DMTCORE
+
+static_load_nseg_CFLAGS= -O2
+mtcore_static_load_nseg_SOURCES= static_load_nseg.c
+mtcore_static_load_nseg_LDFLAGS= -L$(libdir) -lmtcore
+mtcore_static_load_nseg_CFLAGS= -O2 -DMTCORE
 
 runtime_load_nop_CFLAGS= -O2
 mtcore_runtime_load_nop_SOURCES= runtime_load_nop.c
