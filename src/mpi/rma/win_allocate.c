@@ -61,7 +61,7 @@ static int gather_ranks(MTCORE_Win * win, int *num_helpers, int *helper_ranks_in
     int user_world_rank, tmp_num_helpers;
     int i, j, helper_rank;
 
-    helper_bitmap = calloc(MTCORE_NUM_NODES, sizeof(unsigned short));
+    helper_bitmap = calloc(MTCORE_NUM_NODES * MTCORE_NUM_H, sizeof(int));
     if (helper_bitmap == NULL)
         goto fn_fail;
 
@@ -450,10 +450,29 @@ static int create_communicators(MTCORE_Win * uh_win)
         mpi_errno = create_uh_comm(num_helpers, unique_helper_ranks_in_world, uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+#ifdef DEBUG
+        {
+            int uh_rank, uh_nprocs;
+            PMPI_Comm_rank(uh_win->uh_comm, &uh_rank);
+            PMPI_Comm_size(uh_win->uh_comm, &uh_nprocs);
+            MTCORE_DBG_PRINT("created uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
+        }
+#endif
+
         mpi_errno = PMPI_Comm_split_type(uh_win->uh_comm, MPI_COMM_TYPE_SHARED, 0,
                                          MPI_INFO_NULL, &uh_win->local_uh_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+#ifdef DEBUG
+        {
+            int uh_rank, uh_nprocs;
+            PMPI_Comm_rank(uh_win->local_uh_comm, &uh_rank);
+            PMPI_Comm_size(uh_win->local_uh_comm, &uh_nprocs);
+            MTCORE_DBG_PRINT("created local_uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
+        }
+#endif
 
         /* Get all Helper rank in uh communicator */
         mpi_errno = PMPI_Group_translate_ranks(MTCORE_GROUP_WORLD, user_nprocs * MTCORE_NUM_H,
@@ -461,6 +480,8 @@ static int create_communicators(MTCORE_Win * uh_win)
                                                helper_ranks_in_uh);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        PMPI_Comm_group(uh_win->local_uh_comm, &uh_win->local_uh_group);
 
         for (i = 0; i < user_nprocs; i++)
             memcpy(uh_win->targets[i].h_ranks_in_uh, &helper_ranks_in_uh[i * MTCORE_NUM_H],

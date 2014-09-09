@@ -26,8 +26,8 @@ static int create_uh_comm(int user_nprocs, int *user_ranks_in_world, int num_hel
     /* -Create uh communicator including all USER processes and Helper processes. */
     num_uh_ranks = user_nprocs + num_helpers;
     MTCORE_H_assert(num_uh_ranks <= world_nprocs);
-    memcpy(uh_ranks_in_world, user_ranks_in_world, user_nprocs * sizeof(int));
-    memcpy(&uh_ranks_in_world[user_nprocs], helper_ranks_in_world, num_helpers * sizeof(int));
+    memcpy(uh_ranks_in_world, helper_ranks_in_world, num_helpers * sizeof(int));
+    memcpy(&uh_ranks_in_world[num_helpers], user_ranks_in_world, user_nprocs * sizeof(int));
 
     /* -Create uh communicator. */
     PMPI_Group_incl(MTCORE_GROUP_WORLD, num_uh_ranks, uh_ranks_in_world, &uh_group);
@@ -107,10 +107,28 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
                                    helper_ranks_in_world, win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+#ifdef DEBUG
+        {
+            int uh_rank, uh_nprocs;
+            PMPI_Comm_rank(win->uh_comm, &uh_rank);
+            PMPI_Comm_size(win->uh_comm, &uh_nprocs);
+            MTCORE_DBG_PRINT("created uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
+        }
+#endif
         mpi_errno = PMPI_Comm_split_type(win->uh_comm, MPI_COMM_TYPE_SHARED, 0,
                                          MPI_INFO_NULL, &win->local_uh_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+#ifdef DEBUG
+        {
+            int uh_rank, uh_nprocs;
+            PMPI_Comm_rank(win->local_uh_comm, &uh_rank);
+            PMPI_Comm_size(win->local_uh_comm, &uh_nprocs);
+            MTCORE_DBG_PRINT("created local_uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
+        }
+#endif
     }
 
   fn_exit:
