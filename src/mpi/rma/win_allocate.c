@@ -60,12 +60,14 @@ static int gather_ranks(MTCORE_Win * win, int *num_helpers, int *helper_ranks_in
     int *helper_bitmap = NULL;
     int user_world_rank, tmp_num_helpers;
     int i, j, helper_rank;
+    int world_nprocs;
 
-    helper_bitmap = calloc(MTCORE_NUM_NODES * MTCORE_NUM_H, sizeof(int));
+    PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
+    PMPI_Comm_size(win->user_comm, &user_nprocs);
+
+    helper_bitmap = calloc(world_nprocs, sizeof(int));
     if (helper_bitmap == NULL)
         goto fn_fail;
-
-    PMPI_Comm_size(win->user_comm, &user_nprocs);
 
     /* Get helper ranks of each USER process.
      *
@@ -328,7 +330,6 @@ static int create_uh_comm(int num_helpers, int *helper_ranks_in_world, MTCORE_Wi
     for (i = 0; i < user_nprocs; i++) {
         uh_ranks_in_world[num_uh_ranks++] = win->targets[i].world_rank;
     }
-    MTCORE_Assert(num_uh_ranks == num_helpers + num_helpers);
     MTCORE_Assert(num_uh_ranks <= world_nprocs);
 
     PMPI_Group_incl(MTCORE_GROUP_WORLD, num_uh_ranks, uh_ranks_in_world, &win->uh_group);
@@ -597,6 +598,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MTCORE_DBG_PRINT_FCNAME();
 
     uh_win = calloc(1, sizeof(MTCORE_Win));
+    uh_win->user_comm = user_comm;
 
     /* If user specifies comm_world directly, use user comm_world instead;
      * else this communicator directly, because it should be created from user comm_world */
@@ -617,7 +619,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         /* Create a user root communicator in order to figure out node_id and
          * num_nodes of this user communicator */
         PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
-        mpi_errno = PMPI_Comm_split(MTCORE_COMM_USER_WORLD,
+        mpi_errno = PMPI_Comm_split(uh_win->user_comm,
                                     user_local_rank == 0, 1, &uh_win->user_root_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -644,7 +646,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     PMPI_Comm_rank(MTCORE_COMM_USER_WORLD, &user_world_rank);
 
-    uh_win->user_comm = user_comm;
     uh_win->targets = calloc(user_nprocs, sizeof(MTCORE_Win_target));
     for (i = 0; i < user_nprocs; i++) {
         uh_win->targets[i].base_h_offsets = calloc(MTCORE_NUM_H, sizeof(MPI_Aint));

@@ -29,6 +29,14 @@ static int create_uh_comm(int user_nprocs, int *user_ranks_in_world, int num_hel
     memcpy(uh_ranks_in_world, helper_ranks_in_world, num_helpers * sizeof(int));
     memcpy(&uh_ranks_in_world[num_helpers], user_ranks_in_world, user_nprocs * sizeof(int));
 
+#ifdef MTCORE_H_DEBUG
+    int i;
+    MTCORE_H_DBG_PRINT("uh_ranks_in_world: (nh %d, nu %d)\n", num_helpers, user_nprocs);
+    for(i=0; i< num_uh_ranks; i++) {
+        MTCORE_H_DBG_PRINT("[%d] %d \n", i, uh_ranks_in_world[i]);
+    }
+#endif
+
     /* -Create uh communicator. */
     PMPI_Group_incl(MTCORE_GROUP_WORLD, num_uh_ranks, uh_ranks_in_world, &uh_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, uh_group, 0, &win->uh_comm);
@@ -113,7 +121,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
             int uh_rank, uh_nprocs;
             PMPI_Comm_rank(win->uh_comm, &uh_rank);
             PMPI_Comm_size(win->uh_comm, &uh_nprocs);
-            MTCORE_DBG_PRINT("created uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
+            MTCORE_H_DBG_PRINT("created uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
         }
 #endif
         mpi_errno = PMPI_Comm_split_type(win->uh_comm, MPI_COMM_TYPE_SHARED, 0,
@@ -126,7 +134,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
             int uh_rank, uh_nprocs;
             PMPI_Comm_rank(win->local_uh_comm, &uh_rank);
             PMPI_Comm_size(win->local_uh_comm, &uh_nprocs);
-            MTCORE_DBG_PRINT("created local_uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
+            MTCORE_H_DBG_PRINT("created local_uh_comm, my rank %d/%d\n", uh_rank, uh_nprocs);
         }
 #endif
     }
