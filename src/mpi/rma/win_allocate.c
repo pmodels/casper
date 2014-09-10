@@ -330,6 +330,10 @@ static int create_uh_comm(int num_helpers, int *helper_ranks_in_world, MTCORE_Wi
     for (i = 0; i < user_nprocs; i++) {
         uh_ranks_in_world[num_uh_ranks++] = win->targets[i].world_rank;
     }
+    if(num_uh_ranks > world_nprocs){
+        fprintf(stderr, "num_uh_ranks %d > world_nprocs %d, num_helpers=%d, user_nprocs=%d\n",
+                num_uh_ranks, world_nprocs, num_helpers, user_nprocs);
+    }
     MTCORE_Assert(num_uh_ranks <= world_nprocs);
 
     PMPI_Group_incl(MTCORE_GROUP_WORLD, num_uh_ranks, uh_ranks_in_world, &win->uh_group);
@@ -598,7 +602,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     MTCORE_DBG_PRINT_FCNAME();
 
     uh_win = calloc(1, sizeof(MTCORE_Win));
-    uh_win->user_comm = user_comm;
 
     /* If user specifies comm_world directly, use user comm_world instead;
      * else this communicator directly, because it should be created from user comm_world */
@@ -609,12 +612,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
         uh_win->node_id = MTCORE_MY_NODE_ID;
         uh_win->num_nodes = MTCORE_NUM_NODES;
+        uh_win->user_comm = user_comm;
     }
     else {
         mpi_errno = PMPI_Comm_split_type(user_comm, MPI_COMM_TYPE_SHARED, 0,
                                          MPI_INFO_NULL, &uh_win->local_user_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        uh_win->user_comm = user_comm;
 
         /* Create a user root communicator in order to figure out node_id and
          * num_nodes of this user communicator */
