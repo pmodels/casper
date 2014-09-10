@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <mpi.h>
 
 
@@ -29,12 +30,86 @@ int rank, nprocs, nprocs_local;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
 int NOP = 100;
+const char *OP_TYPE_NM[3] = {"ACC", "PUT", "GET"};
+enum {
+    OP_ACC,
+    OP_PUT,
+    OP_GET,
+};
+int OP_TYPE = OP_ACC;
 
 static int usleep_by_count(unsigned long us)
 {
     double start = MPI_Wtime() * 1000 * 1000;
     while (MPI_Wtime() * 1000 * 1000 - start < (double)us);
     return 0;
+}
+
+void DO_OP_LOOP(int time, int iter)
+{
+    int i, x, dst;
+
+    switch (OP_TYPE) {
+        case OP_ACC:
+            for (x = 0; x < iter; x++) {
+                MPI_Win_lock_all(0, win);
+
+                for (dst = 0; dst < nprocs; dst++) {
+                    MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM,
+                            win);
+                }
+                MPI_Win_flush_all(win);
+
+                usleep_by_count(time);
+
+                for (dst = 0; dst < nprocs; dst++) {
+                    for (i = 0; i < NOP; i++) {
+                        MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM,
+                                win);
+                    }
+                }
+                MPI_Win_unlock_all(win);
+            }
+            break;
+        case OP_PUT:
+            for (x = 0; x < iter; x++) {
+                MPI_Win_lock_all(0, win);
+                for (dst = 0; dst < nprocs; dst++) {
+                    MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, win);
+                }
+                MPI_Win_flush_all(win);
+
+                usleep_by_count(time);
+
+                for (dst = 0; dst < nprocs; dst++) {
+                    for (i = 0; i < NOP; i++) {
+                        MPI_Put(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, win);
+                    }
+                }
+                usleep_by_count(time);
+                MPI_Win_unlock_all(win);
+            }
+            break;
+        case OP_GET:
+            for (x = 0; x < iter; x++) {
+                MPI_Win_lock_all(0, win);
+                for (dst = 0; dst < nprocs; dst++) {
+                    MPI_Get(&locbuf[0], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, win);
+                }
+                MPI_Win_flush_all(win);
+
+                usleep_by_count(time);
+
+                for (dst = 0; dst < nprocs; dst++) {
+                    for (i = 0; i < NOP; i++) {
+                        MPI_Get(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, win);
+                    }
+                }
+                usleep_by_count(time);
+                MPI_Win_unlock_all(win);
+            }
+            break;
+    }
 }
 
 static int run_test(int time)
@@ -56,67 +131,31 @@ static int run_test(int time)
         ITER = ITER_L;
     }
 
-    MPI_Win_lock_all(0, win);
-
     t0 = MPI_Wtime();
-    for (x = 0; x < ITER; x++) {
 
-        // send to all the left processes in a ring style
-        for (dst = (rank + 1) % nprocs; dst != rank; dst = (dst + 1) % nprocs) {
-            MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM, win);
-        }
-        MPI_Win_flush_all(win);
+    DO_OP_LOOP(time, ITER);
 
-        usleep_by_count(time);
-
-        for (dst = (rank + 1) % nprocs; dst != rank; dst = (dst + 1) % nprocs) {
-            for (i = 1; i < NOP; i++) {
-                MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM, win);
-            }
-        }
-        MPI_Win_flush_all(win);
-
-        debug_printf("[%d]MPI_Win_flush all done\n", x);
-    }
     t_total = MPI_Wtime() - t0;
     t_total /= ITER;
 
-    MPI_Win_unlock_all(win);
     MPI_Barrier(MPI_COMM_WORLD);
 
-#ifdef CHECK
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
-    sum = 0.0;
-    for (i = 0; i < NOP; i++) {
-        sum += locbuf[i];
-    }
-    sum *= ITER;
-    for (i = 0; i < nprocs; i++) {
-        if (i == rank)
-            continue;
-        if (winbuf[i] != sum) {
-            fprintf(stderr,
-                    "[%d]computation error : winbuf[%d] %.2lf != %.2lf, nop %d\n",
-                    rank, i, winbuf[i], sum, nop);
-            errs += 1;
-        }
-    }
-    MPI_Win_unlock(rank, win);
-#endif
-
     MPI_Reduce(&t_total, &avg_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     if (rank == 0) {
         avg_total_time = avg_total_time / nprocs * 1000 * 1000;
 #ifdef MTCORE
         fprintf(stdout,
-                "mtcore: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, time, NOP, nprocs, MTCORE_NUM_H, avg_total_time);
+                "mtcore: %s iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+                OP_TYPE_NM[OP_TYPE], ITER, time, NOP, nprocs, MTCORE_NUM_H, avg_total_time);
 #else
-        fprintf(stdout,
-                "orig: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
-                ITER, time, NOP, nprocs, avg_total_time);
+        const char *async_th = getenv("MPIR_CVAR_ASYNC_PROGRESS");
+        int async_th_val = 0;
+        if (async_th && strlen(async_th)) {
+            async_th_val = atoi(async_th);
+        }
+        fprintf(stdout, "orig%s: %s iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
+                ((async_th_val == 1) ? "-th": ""), OP_TYPE_NM[OP_TYPE], ITER, time, NOP, nprocs, avg_total_time);
 #endif
     }
 
@@ -150,6 +189,9 @@ int main(int argc, char *argv[])
     if(argc >= 6){
         NOP = atoi(argv[5]);
     }
+    if (argc >= 7) {
+        OP_TYPE = atoi(argv[6]);
+    }
 #else
     if (argc >= 4) {
         min_time = atoi(argv[1]);
@@ -159,7 +201,16 @@ int main(int argc, char *argv[])
     if(argc >= 5){
         NOP = atoi(argv[4]);
     }
+    if (argc >= 6) {
+        OP_TYPE = atoi(argv[5]);
+    }
 #endif
+
+    if ((OP_TYPE != OP_ACC) && (OP_TYPE != OP_PUT) && (OP_TYPE != OP_GET)) {
+        if (rank == 0)
+            fprintf(stderr, "Wrong op type %d\n", OP_TYPE);
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
 
     locbuf = malloc(sizeof(double) * NOP);
     for (i = 0; i < NOP; i++) {
