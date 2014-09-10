@@ -30,15 +30,20 @@ void initializeSubMatrix();
 void computeLU();
 void checkSubMatrix();
 void finalizeSubMatrix();
+void initWindow();
+void freeWindow();
 
 int myrank, myrank_lu, nprocs, work_nprocs;
-int matrix_size = 4, block_size = 1, block_num = 0;     /* default values for user-defined parameters */
+int matrix_size = 4, block_size = 1, block_num = 0; /* default values for user-defined parameters */
 int validate_flag = 0;
 
 double *local_rows = NULL, *result_local_rows = NULL;
 double t0 = 0.0, t1 = 0.0, elapse_t = 0.0;
 int curr_iter = 0, iter_cnt = 1, omit_cnt = 0;
 MPI_Comm lu_comm;
+
+double *comm_buf, *compute_buf, *temp_buf;
+MPI_Win comm_win, compute_win, temp_win;
 
 int main(int argc, char *argv[])
 {
@@ -66,9 +71,9 @@ int main(int argc, char *argv[])
 
         if (matrix_size <= 0 || block_size <= 0 || matrix_size % block_size != 0) {
             printf("Arguments do not satisfy program assumptions:\n"
-                   "\t matrix_size > 0, block_size > 0, and\n"
-                   "\t block_size perfectly divides matrix_size.\n"
-                   "\t Currently matrix_size=%d, block_size=%d.\n", matrix_size, block_size);
+                    "\t matrix_size > 0, block_size > 0, and\n"
+                    "\t block_size perfectly divides matrix_size.\n"
+                    "\t Currently matrix_size=%d, block_size=%d.\n", matrix_size, block_size);
             exit(-1);
         }
     }
@@ -95,9 +100,17 @@ int main(int argc, char *argv[])
         if (remainder != 0 && myrank_lu < remainder)
             block_num++;
 
+        initWindow();
+
+        /* allocate buffer for local rows */
+        MPI_Alloc_mem(matrix_size * block_size * block_num * sizeof(double), MPI_INFO_NULL,
+                &local_rows);
+        MPI_Alloc_mem(matrix_size * block_size * block_num * sizeof(double), MPI_INFO_NULL,
+                &result_local_rows);
+
         /* do the work */
-        initializeSubMatrix();
         for (curr_iter = 0; curr_iter < iter_cnt; curr_iter++) {
+            initializeSubMatrix();
             computeLU();
             if (validate_flag)
                 checkSubMatrix();
@@ -107,18 +120,22 @@ int main(int argc, char *argv[])
         /* calculate average spent time */
         {
             double sum_elapse_t = 0.0;
-            MPI_Reduce(&elapse_t, &sum_elapse_t, 1, MPI_DOUBLE, MPI_SUM, 0 /*root */ , lu_comm);
+            MPI_Reduce(&elapse_t, &sum_elapse_t, 1, MPI_DOUBLE, MPI_SUM, 0 /*root */, lu_comm);
             if (myrank_lu == 0) {
 
 #ifdef MTCORE
-                printf("mtcore %d %.4f\n",
-                        MTCORE_NUM_H, ((sum_elapse_t / work_nprocs) * 1000000) / (iter_cnt - omit_cnt));
+                printf("mtcore: matrix %d block %d nprocs %d nh %d %.4f\n",
+                        matrix_size, block_size, work_nprocs, MTCORE_NUM_H,
+                        ((sum_elapse_t / work_nprocs) * 1000000) / (iter_cnt - omit_cnt));
 #else
-                printf("orig %.4f\n",
-                       ((sum_elapse_t / work_nprocs) * 1000000) / (iter_cnt - omit_cnt));
+                printf("orig: matrix %d block %d nprocs %d %.4f\n",
+                        matrix_size, block_size, work_nprocs,
+                        ((sum_elapse_t / work_nprocs) * 1000000) / (iter_cnt - omit_cnt));
 #endif
             }
         }
+
+        freeWindow();
     }
 
     /* free LU communicator */
@@ -129,16 +146,36 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+void initWindow()
+{
+    MPI_Info win_info;
+    /* create info */
+//    MPI_Info_create(&win_info);
+//    MPI_Info_set(win_info, "alloc_shm", "false");       /* NOTE: a bug in MPICH for PSCW with SHM window */
+//    MPI_Info_set(win_info, "same_size", "true");
+    win_info = MPI_INFO_NULL;
+
+    /* allocate RMA windows */
+    MPI_Win_allocate(matrix_size * sizeof(double), sizeof(double),
+            win_info, lu_comm, &comm_buf, &comm_win);
+    MPI_Win_allocate(matrix_size * sizeof(double), sizeof(double),
+            win_info, lu_comm, &compute_buf, &compute_win);
+
+    /* free info */
+    if (win_info != MPI_INFO_NULL)
+        MPI_Info_free(&win_info);
+}
+
+void freeWindow()
+{
+    /* free RMA windows */
+    MPI_Win_free(&comm_win);
+    MPI_Win_free(&compute_win);
+}
+
 void initializeSubMatrix()
 {
-
-    /* allocate buffer for local rows */
-    MPI_Alloc_mem(matrix_size * block_size * block_num * sizeof(double), MPI_INFO_NULL,
-                  &local_rows);
-    MPI_Alloc_mem(matrix_size * block_size * block_num * sizeof(double), MPI_INFO_NULL,
-                  &result_local_rows);
-
-    srand(time(NULL) * myrank_lu);      /* same seed will lead to same random number on different process within the node... */
+    srand(time(NULL) * myrank_lu); /* same seed will lead to same random number on different process within the node... */
 
     /* initialize local rows */
     int i;
@@ -151,23 +188,8 @@ void initializeSubMatrix()
 
 void computeLU()
 {
-    double *comm_buf, *compute_buf, *temp_buf;
-    MPI_Win comm_win, compute_win, temp_win;
-    MPI_Info win_info;
     int i, j, k, m;
-
-    /* create info */
-//    MPI_Info_create(&win_info);
-//    MPI_Info_set(win_info, "alloc_shm", "false");       /* NOTE: a bug in MPICH for PSCW with SHM window */
-//    MPI_Info_set(win_info, "same_size", "true");
-
-    win_info = MPI_INFO_NULL;
-
-    /* allocate RMA windows */
-    MPI_Win_allocate(matrix_size * sizeof(double), sizeof(double),
-                     win_info, lu_comm, &comm_buf, &comm_win);
-    MPI_Win_allocate(matrix_size * sizeof(double), sizeof(double),
-                     win_info, lu_comm, &compute_buf, &compute_win);
+    int bbuf[1];
 
     /* initialize buffers */
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, myrank_lu, 0, comm_win);
@@ -180,7 +202,7 @@ void computeLU()
     if (curr_iter >= omit_cnt)
         t0 = MPI_Wtime();
 
-    MPI_Barrier(lu_comm);       /* start LU */
+    MPI_Barrier(lu_comm); /* start LU */
 
     for (k = -1; k < matrix_size - 1; k++) {
         int n_req = 0;
@@ -228,7 +250,7 @@ void computeLU()
                     result_local_rows[k + myrow * matrix_size] /= compute_buf[k];
                     for (j = k + 1; j < matrix_size; j++)
                         result_local_rows[j + myrow * matrix_size] -=
-                            result_local_rows[k + myrow * matrix_size] * compute_buf[j];
+                                result_local_rows[k + myrow * matrix_size] * compute_buf[j];
 
                     if (i == k + 1) {
                         assert(origin_rank == myrank_lu);
@@ -263,10 +285,9 @@ void computeLU()
         if (myrank_lu == origin_rank) {
             MPI_Win_unlock_all(comm_win);
         }
-
         /* notify target processes */
-        int bbuf[1];
-        MPI_Bcast(bbuf, 1, MPI_INT, origin_rank, lu_comm);
+//        MPI_Bcast(bbuf, 1, MPI_INT, origin_rank, lu_comm);
+        MPI_Barrier(lu_comm);
 
         temp_win = comm_win;
         comm_win = compute_win;
@@ -276,20 +297,12 @@ void computeLU()
         compute_buf = temp_buf;
     }
 
-    MPI_Barrier(lu_comm);       /* end LU */
+    MPI_Barrier(lu_comm); /* end LU */
 
     if (curr_iter >= omit_cnt) {
         t1 = MPI_Wtime();
         elapse_t += t1 - t0;
     }
-
-    /* free RMA windows */
-    MPI_Win_free(&comm_win);
-    MPI_Win_free(&compute_win);
-
-    /* free info */
-    if(win_info != MPI_INFO_NULL)
-        MPI_Info_free(&win_info);
 }
 
 void checkSubMatrix()
@@ -311,7 +324,7 @@ void checkSubMatrix()
                 if (target_rank == myrank_lu) {
                     int target_row = ((p / block_size) / work_nprocs) * block_size + p % block_size;
                     temp_cols[p + j * matrix_size] =
-                        result_local_rows[i + j + target_row * matrix_size];
+                            result_local_rows[i + j + target_row * matrix_size];
                 }
             }
         }
@@ -326,21 +339,21 @@ void checkSubMatrix()
                     double current_result = 0.0;
                     for (k = 0; k < matrix_size; k++) {
                         double tmp_L = 0.0;
-                        int orig_row = (m * work_nprocs + myrank_lu) * block_size + n;  /* row id in the whole matrix */
+                        int orig_row = (m * work_nprocs + myrank_lu) * block_size + n; /* row id in the whole matrix */
                         if (k <= orig_row) {
                             if (k == orig_row)
                                 tmp_L = 1.0;
                             else
                                 tmp_L =
-                                    result_local_rows[k + n * matrix_size +
-                                                      m * matrix_size * block_size];
+                                        result_local_rows[k + n * matrix_size +
+                                                m * matrix_size * block_size];
                         }
                         current_result += tmp_L * temp_cols[k + j * matrix_size];
                     }
 
                     diff =
-                        local_rows[i + j + n * matrix_size + m * block_size * matrix_size] -
-                        current_result;
+                            local_rows[i + j + n * matrix_size + m * block_size * matrix_size] -
+                                    current_result;
                     if (fabs(diff) > 0.00001) {
                         bogus = 1;
                         if (fabs(diff) > max_diff)
