@@ -98,8 +98,8 @@ void bmodd(double *a, double *c, long dimi, long dimj, long stride_a, long strid
 void bmod(double *a, double *b, double *c, long dimi, long dimj, long dimk, long stride);
 void daxpy(double *a, double *b, long n, double alpha);
 long BlockOwner(long I, long J);
-long BlockOwnerColumn(long I, long J);
-long BlockOwnerRow(long I, long J);
+long BlockOwnerColumn(long I);
+long BlockOwnerRow(long J);
 void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats);
 void InitA(double *rhs);
 double TouchA(long bs, long MyNum);
@@ -109,11 +109,10 @@ void printerr(char *s);
 int main(int argc, char *argv[])
 {
     long i, ch;
-    extern char *optarg;
-    double mint, maxt, avgt;
-    double min_fac, min_solve, min_mod, min_bar;
-    double max_fac, max_solve, max_mod, max_bar;
-    double avg_fac, avg_solve, avg_mod, avg_bar;
+    double mint = 0.0, maxt = 0.0, avgt = 0.0;
+    double min_fac = 0.0, min_solve = 0.0, min_mod = 0.0, min_bar = 0.0;
+    double max_fac = 0.0, max_solve = 0.0, max_mod = 0.0, max_bar = 0.0;
+    double avg_fac = 0.0, avg_solve = 0.0, avg_mod = 0.0, avg_bar = 0.0;
     unsigned long start;
     {
         struct timeval FullTime;
@@ -263,7 +262,7 @@ int main(int argc, char *argv[])
         SlaveStart();
     };
     {
-        unsigned long i, Error;
+        long i, Error;
         for (i = 0; i < (P) - 1; i++) {
             Error = pthread_join(PThreadTable[i], NULL);
             if (Error != 0) {
@@ -398,7 +397,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
     /* barrier to ensure all initialization is done */
     {
         unsigned long Error, Cycle;
-        long Cancel, Temp;
+        int Cancel, Temp;
 
         Error = pthread_mutex_lock(&(Global->start).mutex);
         if (Error != 0) {
@@ -407,7 +406,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
         }
 
         Cycle = (Global->start).cycle;
-        if (++(Global->start).counter != (P)) {
+        if (++(Global->start).counter != (unsigned long)(P)) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
             while (Cycle == (Global->start).cycle) {
                 Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -428,7 +427,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
     TouchA(block_size, MyNum);
     {
         unsigned long Error, Cycle;
-        long Cancel, Temp;
+        int Cancel, Temp;
 
         Error = pthread_mutex_lock(&(Global->start).mutex);
         if (Error != 0) {
@@ -437,7 +436,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
         }
 
         Cycle = (Global->start).cycle;
-        if (++(Global->start).counter != (P)) {
+        if (++(Global->start).counter != (unsigned long)(P)) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
             while (Cycle == (Global->start).cycle) {
                 Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -475,7 +474,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
     }
     {
         unsigned long Error, Cycle;
-        long Cancel, Temp;
+        int Cancel, Temp;
 
         Error = pthread_mutex_lock(&(Global->start).mutex);
         if (Error != 0) {
@@ -484,7 +483,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
         }
 
         Cycle = (Global->start).cycle;
-        if (++(Global->start).counter != (P)) {
+        if (++(Global->start).counter != (unsigned long)(P)) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
             while (Cycle == (Global->start).cycle) {
                 Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -523,14 +522,13 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
 
 void lu0(double *a, long n, long stride)
 {
-    long j, k, length;
+    long j, k;
     double alpha;
     for (k = 0; k < n; k++) {
         /* modify subsequent columns */
         for (j = k + 1; j < n; j++) {
             a[k + j * stride] /= a[k + k * stride];
             alpha = -a[k + j * stride];
-            length = n - k - 1;
             daxpy(&a[k + 1 + j * stride], &a[k + 1 + k * stride], n - k - 1, alpha);
         }
     }
@@ -550,13 +548,12 @@ void bdiv(double *a, double *diag, long stride_a, long stride_diag, long dimi, l
 
 void bmodd(double *a, double *c, long dimi, long dimj, long stride_a, long stride_c)
 {
-    long j, k, length;
+    long j, k;
     double alpha;
     for (k = 0; k < dimi; k++)
         for (j = 0; j < dimj; j++) {
             c[k + j * stride_c] /= a[k + k * stride_a];
             alpha = -c[k + j * stride_c];
-            length = dimi - k - 1;
             daxpy(&c[k + 1 + j * stride_c], &a[k + 1 + k * stride_a], dimi - k - 1, alpha);
         }
 }
@@ -587,12 +584,12 @@ long BlockOwner(long I, long J)
     return ((I + J) % P);
 }
 
-long BlockOwnerColumn(long I, long J)
+long BlockOwnerColumn(long I)
 {
     return (I % P);
 }
 
-long BlockOwnerRow(long I, long J)
+long BlockOwnerRow(long J)
 {
     return (((J % P) + (P / 2)) % P);
 }
@@ -632,7 +629,7 @@ void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats)
         }
         {
             unsigned long Error, Cycle;
-            long Cancel, Temp;
+            int Cancel, Temp;
 
             Error = pthread_mutex_lock(&(Global->start).mutex);
             if (Error != 0) {
@@ -641,7 +638,7 @@ void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats)
             }
 
             Cycle = (Global->start).cycle;
-            if (++(Global->start).counter != (P)) {
+            if (++(Global->start).counter != (unsigned long)(P)) {
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
                 while (Cycle == (Global->start).cycle) {
                     Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -701,7 +698,7 @@ void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats)
         }
         {
             unsigned long Error, Cycle;
-            long Cancel, Temp;
+            int Cancel, Temp;
 
             Error = pthread_mutex_lock(&(Global->start).mutex);
             if (Error != 0) {
@@ -710,7 +707,7 @@ void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats)
             }
 
             Cycle = (Global->start).cycle;
-            if (++(Global->start).counter != (P)) {
+            if (++(Global->start).counter != (unsigned long)(P)) {
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
                 while (Cycle == (Global->start).cycle) {
                     Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
