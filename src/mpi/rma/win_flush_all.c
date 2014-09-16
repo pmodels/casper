@@ -60,7 +60,7 @@ int MPI_Win_flush_all(MPI_Win win)
         /* RMA operations may be distributed to all helpers, so we should
          * flush all helpers on all windows. See discussion in win_flush. */
         for (j = 0; j < uh_win->targets[i].num_uh_wins; j++) {
-            for (k = 0; k < MTCORE_NUM_H; k++) {
+            for (k = 0; k < MTCORE_ENV.num_h; k++) {
                 int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[k];
                 MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
                                  "target rank %d\n", user_rank, target_h_rank_in_uh,

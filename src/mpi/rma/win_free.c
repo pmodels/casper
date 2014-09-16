@@ -38,14 +38,14 @@ int MPI_Win_free(MPI_Win * win)
      * fetch the corresponding window without handlers so that only global communicator
      * can be used here.*/
     if (user_local_rank == 0) {
-        reqs = calloc(MTCORE_NUM_H, sizeof(MPI_Request));
-        stats = calloc(MTCORE_NUM_H, sizeof(MPI_Status));
+        reqs = calloc(MTCORE_ENV.num_h, sizeof(MPI_Request));
+        stats = calloc(MTCORE_ENV.num_h, sizeof(MPI_Status));
 
-        for (j = 0; j < MTCORE_NUM_H; j++) {
+        for (j = 0; j < MTCORE_ENV.num_h; j++) {
             mpi_errno = PMPI_Isend(&uh_win->h_win_handles[j], 1, MPI_UNSIGNED_LONG,
                                    MTCORE_H_RANKS_IN_LOCAL[j], 0, MTCORE_COMM_LOCAL, &reqs[j]);
         }
-        mpi_errno = PMPI_Waitall(MTCORE_NUM_H, reqs, stats);
+        mpi_errno = PMPI_Waitall(MTCORE_ENV.num_h, reqs, stats);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

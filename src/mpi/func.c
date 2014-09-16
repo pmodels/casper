@@ -43,13 +43,13 @@ int MTCORE_Func_new_ur_h_comm(MPI_Comm * ur_h_comm)
     PMPI_Comm_rank(MTCORE_COMM_LOCAL, &local_rank);
 
     /* Create a user root + all helpers communicator for later information exchanges. */
-    ur_h_ranks_in_local = calloc(sizeof(int), MTCORE_NUM_H + 1);
+    ur_h_ranks_in_local = calloc(sizeof(int), MTCORE_ENV.num_h + 1);
     /* Helpers' rank are always start from 0 */
-    for (i = 0; i < MTCORE_NUM_H; i++)
+    for (i = 0; i < MTCORE_ENV.num_h; i++)
         ur_h_ranks_in_local[i] = i;
-    ur_h_ranks_in_local[MTCORE_NUM_H] = local_rank;
+    ur_h_ranks_in_local[MTCORE_ENV.num_h] = local_rank;
 
-    PMPI_Group_incl(MTCORE_GROUP_LOCAL, MTCORE_NUM_H + 1, ur_h_ranks_in_local, &ur_h_group);
+    PMPI_Group_incl(MTCORE_GROUP_LOCAL, MTCORE_ENV.num_h + 1, ur_h_ranks_in_local, &ur_h_group);
     mpi_errno = PMPI_Comm_create_group(MTCORE_COMM_LOCAL, ur_h_group, 0, ur_h_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -79,5 +79,5 @@ int MTCORE_Func_set_param(char *func_params, int size, MPI_Comm ur_h_comm)
      * guaranteed to be in current function.
      * User + all helpers communicator is organized as h0, h1,...,user root */
     MTCORE_DBG_PRINT("set param to helpers: size %d\n", size);
-    return PMPI_Bcast(func_params, size, MPI_CHAR, MTCORE_NUM_H, ur_h_comm);
+    return PMPI_Bcast(func_params, size, MPI_CHAR, MTCORE_ENV.num_h, ur_h_comm);
 }

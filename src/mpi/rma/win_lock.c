@@ -36,7 +36,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         /* Lock every helper on every window.
          * Note that a helper may be used on any window of this process for runtime
          * load balancing whether it is binded to that segment or not. */
-        for (k = 0; k < MTCORE_NUM_H; k++) {
+        for (k = 0; k < MTCORE_ENV.num_h; k++) {
             int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
 
             MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins 0x%x), instead of "

@@ -78,16 +78,16 @@ static int gather_ranks(MTCORE_Win * win, int *num_helpers, int *helper_ranks_in
     for (i = 0; i < user_nprocs; i++) {
         user_world_rank = win->targets[i].user_world_rank;
 
-        for (j = 0; j < MTCORE_NUM_H; j++) {
-            helper_rank = MTCORE_ALL_H_RANKS_IN_WORLD[user_world_rank * MTCORE_NUM_H + j];
-            helper_ranks_in_world[i * MTCORE_NUM_H + j] = helper_rank;
+        for (j = 0; j < MTCORE_ENV.num_h; j++) {
+            helper_rank = MTCORE_ALL_H_RANKS_IN_WORLD[user_world_rank * MTCORE_ENV.num_h + j];
+            helper_ranks_in_world[i * MTCORE_ENV.num_h + j] = helper_rank;
 
             /* Unique helper ranks */
             if (!helper_bitmap[helper_rank]) {
                 unique_helper_ranks_in_world[tmp_num_helpers++] = helper_rank;
                 helper_bitmap[helper_rank] = 1;
 
-                MTCORE_Assert(tmp_num_helpers <= MTCORE_NUM_NODES * MTCORE_NUM_H);
+                MTCORE_Assert(tmp_num_helpers <= MTCORE_NUM_NODES * MTCORE_ENV.num_h);
             }
         }
     }
@@ -123,7 +123,7 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
         max_t_size = max(max_t_size, uh_win->targets[t_rank].size);
     }
     /* Never divide less than segment unit */
-    size_per_helper = align(sum_size / MTCORE_NUM_H, MTCORE_SEGMENT_UNIT);
+    size_per_helper = align(sum_size / MTCORE_ENV.num_h, MTCORE_SEGMENT_UNIT);
     max_t_num_seg = sum_size / size_per_helper + 3;
     t_seg_sizes = calloc(max_t_num_seg, sizeof(MPI_Aint));
 
@@ -149,7 +149,7 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
                 uh_win->targets[t_rank].segs[j].size = t_seg_sizes[j];
                 uh_win->targets[t_rank].segs[j].main_h_off = t_last_h_off + 1 - t_num_segs + j;
 
-                MTCORE_Assert(uh_win->targets[t_rank].segs[j].main_h_off < MTCORE_NUM_H);
+                MTCORE_Assert(uh_win->targets[t_rank].segs[j].main_h_off < MTCORE_ENV.num_h);
 
                 prev_seg_base = uh_win->targets[t_rank].segs[j].base_offset;
                 prev_seg_size = uh_win->targets[t_rank].segs[j].size;
@@ -167,7 +167,7 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
         }
         /* finish this target if remaining size is small than seg_size or
          * it is already at the last helper. */
-        else if (t_size < seg_size || h_off == MTCORE_NUM_H - 1) {
+        else if (t_size < seg_size || h_off == MTCORE_ENV.num_h - 1) {
             MTCORE_Assert(t_num_segs < max_t_num_seg);
 
             t_seg_sizes[t_num_segs++] = t_size;
@@ -193,9 +193,9 @@ static void specify_main_helper_binding_by_segments(int n_targets, int *local_ta
         /* next helper */
         if (seg_size == 0) {
             h_off++;
-            MTCORE_Assert(h_off <= MTCORE_NUM_H);
+            MTCORE_Assert(h_off <= MTCORE_ENV.num_h);
             seg_size = size_per_helper
-                + (h_off == MTCORE_NUM_H - 1 ? (sum_size % MTCORE_NUM_H) : 0);
+                + (h_off == MTCORE_ENV.num_h - 1 ? (sum_size % MTCORE_ENV.num_h) : 0);
             /* make sure new segment size is aligned */
             seg_size = align(seg_size, MTCORE_SEGMENT_UNIT);
         }
@@ -218,7 +218,7 @@ static void specify_main_helper_binding_by_ranks(int n_targets, int *local_targe
 
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
-    np_per_helper = n_targets / MTCORE_NUM_H;
+    np_per_helper = n_targets / MTCORE_ENV.num_h;
 
     int np = np_per_helper;
     i = 0;
@@ -229,9 +229,10 @@ static void specify_main_helper_binding_by_ranks(int n_targets, int *local_targe
         if (np == 0) {
             /* next helper */
             h_off++;
-            np = np_per_helper + ((h_off == MTCORE_NUM_H - 1) ? (n_targets % MTCORE_NUM_H) : 0);
+            np = np_per_helper +
+                ((h_off == MTCORE_ENV.num_h - 1) ? (n_targets % MTCORE_ENV.num_h) : 0);
         }
-        MTCORE_Assert(h_off <= MTCORE_NUM_H);
+        MTCORE_Assert(h_off <= MTCORE_ENV.num_h);
 
         t_rank = local_targets[i];
         uh_win->targets[t_rank].num_segs = 1;
@@ -290,7 +291,7 @@ static void specify_main_helper_binding(MTCORE_Win * uh_win)
     for (i = 0; i < user_nprocs; i++) {
         MTCORE_DBG_PRINT("\t target[%d] .num_segs %d, num_uh_wins %d\n", i,
                          uh_win->targets[i].num_segs, uh_win->targets[i].num_uh_wins);
-        for (j = 0; j < MTCORE_NUM_H; j++) {
+        for (j = 0; j < MTCORE_ENV.num_h; j++) {
             MTCORE_DBG_PRINT("\t\t .h_rank[%d] %d, offset[%d] 0x%lx \n",
                              j, uh_win->targets[i].h_ranks_in_uh[j],
                              j, uh_win->targets[i].base_h_offsets[j]);
@@ -372,7 +373,7 @@ static int create_communicators(MTCORE_Win * uh_win)
     int i;
 
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
-    max_num_helpers = MTCORE_NUM_H * MTCORE_NUM_NODES;
+    max_num_helpers = MTCORE_ENV.num_h * MTCORE_NUM_NODES;
     func_param_size = user_nprocs + max_num_helpers + 2;
 
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
@@ -404,13 +405,14 @@ static int create_communicators(MTCORE_Win * uh_win)
 
         /* -Get all Helper rank in uh communicator */
         for (i = 0; i < user_nprocs; i++)
-            memcpy(uh_win->targets[i].h_ranks_in_uh, &MTCORE_ALL_H_RANKS_IN_WORLD[i * MTCORE_NUM_H],
-                   sizeof(int) * MTCORE_NUM_H);
+            memcpy(uh_win->targets[i].h_ranks_in_uh,
+                   &MTCORE_ALL_H_RANKS_IN_WORLD[i * MTCORE_ENV.num_h],
+                   sizeof(int) * MTCORE_ENV.num_h);
     }
     else {
         /* helper ranks for every user process, used for helper fetching in epoch */
-        helper_ranks_in_world = calloc(MTCORE_NUM_H * user_nprocs, sizeof(int));
-        helper_ranks_in_uh = calloc(MTCORE_NUM_H * user_nprocs, sizeof(int));
+        helper_ranks_in_world = calloc(MTCORE_ENV.num_h * user_nprocs, sizeof(int));
+        helper_ranks_in_uh = calloc(MTCORE_ENV.num_h * user_nprocs, sizeof(int));
 
         /* unique helper ranks, used for creating communicators */
         unique_helper_ranks_in_world = calloc(max_num_helpers, sizeof(int));
@@ -480,7 +482,7 @@ static int create_communicators(MTCORE_Win * uh_win)
 #endif
 
         /* Get all Helper rank in uh communicator */
-        mpi_errno = PMPI_Group_translate_ranks(MTCORE_GROUP_WORLD, user_nprocs * MTCORE_NUM_H,
+        mpi_errno = PMPI_Group_translate_ranks(MTCORE_GROUP_WORLD, user_nprocs * MTCORE_ENV.num_h,
                                                helper_ranks_in_world, uh_win->uh_group,
                                                helper_ranks_in_uh);
         if (mpi_errno != MPI_SUCCESS)
@@ -489,8 +491,8 @@ static int create_communicators(MTCORE_Win * uh_win)
         PMPI_Comm_group(uh_win->local_uh_comm, &uh_win->local_uh_group);
 
         for (i = 0; i < user_nprocs; i++)
-            memcpy(uh_win->targets[i].h_ranks_in_uh, &helper_ranks_in_uh[i * MTCORE_NUM_H],
-                   sizeof(int) * MTCORE_NUM_H);
+            memcpy(uh_win->targets[i].h_ranks_in_uh, &helper_ranks_in_uh[i * MTCORE_ENV.num_h],
+                   sizeof(int) * MTCORE_ENV.num_h);
     }
 
     PMPI_Comm_rank(uh_win->local_uh_comm, &uh_win->local_uh_rank);
@@ -525,7 +527,7 @@ static int gather_base_offsets(MPI_Aint size, MTCORE_Win * uh_win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
-    base_h_offsets = calloc(user_nprocs * MTCORE_NUM_H, sizeof(MPI_Aint));
+    base_h_offsets = calloc(user_nprocs * MTCORE_ENV.num_h, sizeof(MPI_Aint));
 
     /* -Calculate the offset of local shared buffer  */
     i = 0;
@@ -544,13 +546,13 @@ static int gather_base_offsets(MPI_Aint size, MTCORE_Win * uh_win)
     /* Helper 0 has hidden byte which may be larger than shared_sg_size */
     tmp_u_offsets += max(MTCORE_HELPER_SHARED_SG_SIZE,
                          align(sizeof(MTCORE_GRANT_LOCK_DATATYPE), MTCORE_SEGMENT_UNIT));
-    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * (MTCORE_NUM_H - 1);
+    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * (MTCORE_ENV.num_h - 1);
 #else
-    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * MTCORE_NUM_H;
+    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * MTCORE_ENV.num_h;
 #endif
 
-    for (j = 0; j < MTCORE_NUM_H; j++) {
-        base_h_offsets[user_rank * MTCORE_NUM_H + j] = tmp_u_offsets;
+    for (j = 0; j < MTCORE_ENV.num_h; j++) {
+        base_h_offsets[user_rank * MTCORE_ENV.num_h + j] = tmp_u_offsets;
     }
     MTCORE_DBG_PRINT("[%d] local base_h_offset 0x%lx\n", user_rank, tmp_u_offsets);
 
@@ -561,16 +563,16 @@ static int gather_base_offsets(MPI_Aint size, MTCORE_Win * uh_win)
 
     /* -Receive the address of all the shared user buffers on Helper processes. */
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, base_h_offsets,
-                               MTCORE_NUM_H, MPI_AINT, uh_win->user_comm);
+                               MTCORE_ENV.num_h, MPI_AINT, uh_win->user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < MTCORE_NUM_H; j++) {
-            uh_win->targets[i].base_h_offsets[j] = base_h_offsets[i * MTCORE_NUM_H + j];
+        for (j = 0; j < MTCORE_ENV.num_h; j++) {
+            uh_win->targets[i].base_h_offsets[j] = base_h_offsets[i * MTCORE_ENV.num_h + j];
             MTCORE_DBG_PRINT("[%d] targets[%d].base_h_offsets[%d] = 0x%lx/0x%lx\n",
                              user_rank, i, j, uh_win->targets[i].base_h_offsets[j],
-                             base_h_offsets[i * MTCORE_NUM_H + j]);
+                             base_h_offsets[i * MTCORE_ENV.num_h + j]);
         }
     }
 
@@ -654,8 +656,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     uh_win->targets = calloc(user_nprocs, sizeof(MTCORE_Win_target));
     for (i = 0; i < user_nprocs; i++) {
-        uh_win->targets[i].base_h_offsets = calloc(MTCORE_NUM_H, sizeof(MPI_Aint));
-        uh_win->targets[i].h_ranks_in_uh = calloc(MTCORE_NUM_H, sizeof(MPI_Aint));
+        uh_win->targets[i].base_h_offsets = calloc(MTCORE_ENV.num_h, sizeof(MPI_Aint));
+        uh_win->targets[i].h_ranks_in_uh = calloc(MTCORE_ENV.num_h, sizeof(MPI_Aint));
     }
 
     /* Gather users' disp_unit, size, ranks and node_id */
@@ -795,7 +797,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         /* windows of each segment, used in OPs */
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
             rank_off = uh_win->max_local_num_uh_wins * uh_win->targets[i].local_user_rank;
-            win_off = rank_off + j / MTCORE_NUM_H;
+            win_off = rank_off + j / MTCORE_ENV.num_h;
             uh_win->targets[i].segs[j].uh_win = uh_win->uh_wins[win_off];
 
             MTCORE_DBG_PRINT("\t\t .seg[%d].uh_win=0x%x (win_off %d)\n",
@@ -831,9 +833,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
      * How to solve the case that different processes may have the same handler ? */
     if (user_local_rank == 0) {
         unsigned long tmp_send_buf;
-        uh_win->h_win_handles = calloc(MTCORE_NUM_H + 1, sizeof(unsigned long));
+        uh_win->h_win_handles = calloc(MTCORE_ENV.num_h + 1, sizeof(unsigned long));
         mpi_errno = PMPI_Gather(&tmp_send_buf, 1, MPI_UNSIGNED_LONG, uh_win->h_win_handles,
-                                1, MPI_UNSIGNED_LONG, MTCORE_NUM_H, uh_win->ur_h_comm);
+                                1, MPI_UNSIGNED_LONG, MTCORE_ENV.num_h, uh_win->ur_h_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

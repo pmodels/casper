@@ -43,7 +43,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
      * load balancing whether it is binded to that segment or not. */
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < uh_win->targets[i].num_uh_wins; j++) {
-            for (k = 0; k < MTCORE_NUM_H; k++) {
+            for (k = 0; k < MTCORE_ENV.num_h; k++) {
                 int target_h_rank_in_uh = uh_win->targets[i].h_ranks_in_uh[k];
 
                 MTCORE_DBG_PRINT("[%d]lock(Helper(%d), uh_wins 0x%x), instead of "

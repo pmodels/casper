@@ -110,7 +110,10 @@ typedef enum {
 } MTCORE_Lock_binding;
 
 #define MTCORE_DEFAULT_SEG_SIZE 4096;
+#define MTCORE_DEFAULT_NUM_HELPER 1
+
 typedef struct MTCORE_Env_param {
+    int num_h;
     int seg_size;               /* segment size in lock segment binding */
     MTCORE_Load_opt load_opt;   /* runtime load balancing options */
     MTCORE_Load_lock load_lock; /* how to grant locks for runtime load balancing */
@@ -191,8 +194,8 @@ typedef struct MTCORE_Win_target {
     int disp_unit;
     MPI_Aint size;
 
-    MPI_Aint *base_h_offsets;   /* MTCORE_NUM_H */
-    int *h_ranks_in_uh;         /* MTCORE_NUM_H */
+    MPI_Aint *base_h_offsets;   /* MTCORE_ENV.num_h */
+    int *h_ranks_in_uh;         /* MTCORE_ENV.num_h */
     int remote_lock_assert;
 
     int local_user_rank;        /* rank in local user communicator */
@@ -339,7 +342,6 @@ extern MPI_Group MTCORE_GROUP_WORLD;
 extern MPI_Group MTCORE_GROUP_LOCAL;
 extern MPI_Group MTCORE_GROUP_USER_WORLD;
 
-extern int MTCORE_NUM_H;
 extern int *MTCORE_H_RANKS_IN_WORLD;
 extern int *MTCORE_H_RANKS_IN_LOCAL;
 extern int *MTCORE_ALL_H_RANKS_IN_WORLD;
@@ -386,7 +388,7 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 
 #define MTCORE_Reset_win_target_load_opt_op_counting(target_rank, uh_win) {  \
         int h_off, h_rank;  \
-        for (h_off = 0; h_off < MTCORE_NUM_H; h_off++) {    \
+        for (h_off = 0; h_off < MTCORE_ENV.num_h; h_off++) {    \
             h_rank = uh_win->targets[target_rank].h_ranks_in_uh[h_off]; \
             uh_win->h_ops_counts[h_rank] = 0;    \
         }   \
@@ -395,7 +397,7 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 
 #define MTCORE_Reset_win_target_load_opt_bytes_counting(target_rank, uh_win) {  \
         int h_off, h_rank;  \
-        for (h_off = 0; h_off < MTCORE_NUM_H; h_off++) {    \
+        for (h_off = 0; h_off < MTCORE_ENV.num_h; h_off++) {    \
             h_rank = uh_win->targets[target_rank].h_ranks_in_uh[h_off]; \
             uh_win->h_bytes_counts[h_rank] = 0;    \
         }   \
@@ -525,7 +527,7 @@ static inline void MTCORE_Get_helper_rank_load_opt_random(int target_rank, int i
                                                           MPI_Aint * target_h_offset)
 {
     /* Randomly change helper offset every time using a window-level global recorder */
-    int idx = (uh_win->prev_h_off + 1) % MTCORE_NUM_H;  /* jump to next helper offset */
+    int idx = (uh_win->prev_h_off + 1) % MTCORE_ENV.num_h;      /* jump to next helper offset */
     uh_win->prev_h_off = idx;
 
     *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[idx];

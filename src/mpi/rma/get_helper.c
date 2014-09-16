@@ -21,7 +21,7 @@ void MTCORE_Get_helper_rank_load_opt_counting(int target_rank, int is_order_requ
     min_count = uh_win->h_ops_counts[h_rank];
     min_idx = 0;
 
-    for (idx = 1; idx < MTCORE_NUM_H; idx++) {
+    for (idx = 1; idx < MTCORE_ENV.num_h; idx++) {
         h_rank = uh_win->targets[target_rank].h_ranks_in_uh[idx];
         if (uh_win->h_ops_counts[h_rank] < min_count) {
             min_count = uh_win->h_ops_counts[h_rank];
@@ -53,7 +53,7 @@ void MTCORE_Get_helper_rank_load_byte_counting(int target_rank, int is_order_req
     min_count = uh_win->h_bytes_counts[h_rank];
     min_idx = 0;
 
-    for (idx = 1; idx < MTCORE_NUM_H; idx++) {
+    for (idx = 1; idx < MTCORE_ENV.num_h; idx++) {
         h_rank = uh_win->targets[target_rank].h_ranks_in_uh[idx];
         if (uh_win->h_bytes_counts[h_rank] < min_count) {
             min_count = uh_win->h_bytes_counts[h_rank];

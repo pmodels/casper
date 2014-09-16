@@ -32,7 +32,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
-        for (k = 0; k < MTCORE_NUM_H; k++) {
+        for (k = 0; k < MTCORE_ENV.num_h; k++) {
             int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
 
             MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), uh_wins 0x%x), instead of "

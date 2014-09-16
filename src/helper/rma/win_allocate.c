@@ -68,7 +68,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
     int *helper_ranks_in_world = NULL, num_helpers = 0, max_num_helpers;
 
     user_ranks_in_world = calloc(user_nprocs, sizeof(int));
-    max_num_helpers = MTCORE_NUM_H * MTCORE_NUM_NODES;
+    max_num_helpers = MTCORE_ENV.num_h * MTCORE_NUM_NODES;
     helper_ranks_in_world = calloc(max_num_helpers, sizeof(int));
     func_param_size = user_nprocs + max_num_helpers + 2;
     func_params = calloc(func_param_size, sizeof(int));
@@ -267,7 +267,7 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     /* Notify user root the handle of helper win. User root is always rank num_h in
      * user root + helpers communicator */
     mpi_errno = PMPI_Gather(&win->mtcore_h_win_handle, 1, MPI_UNSIGNED_LONG, NULL,
-                            0, MPI_UNSIGNED_LONG, MTCORE_NUM_H, win->ur_h_comm);
+                            0, MPI_UNSIGNED_LONG, MTCORE_ENV.num_h, win->ur_h_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     MTCORE_H_DBG_PRINT(" Define mtcore_h_win_handle=0x%lx\n", win->mtcore_h_win_handle);

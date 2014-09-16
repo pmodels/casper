@@ -12,8 +12,7 @@ MPI_Group MTCORE_GROUP_WORLD = MPI_GROUP_NULL;
 MPI_Group MTCORE_GROUP_LOCAL = MPI_GROUP_NULL;
 MPI_Group MTCORE_GROUP_USER_WORLD = MPI_GROUP_NULL;
 
-/*TODO: Now user can set value directly, should be implemented as "-np N -nh X"*/
-int MTCORE_NUM_H = 1;
+int MTCORE_NUM_H = MTCORE_DEFAULT_NUM_HELPER;
 int *MTCORE_H_RANKS_IN_WORLD = NULL;
 int *MTCORE_H_RANKS_IN_LOCAL = NULL;
 int *MTCORE_ALL_H_RANKS_IN_WORLD = NULL;        /* Helpers of user process x are stored as
@@ -36,8 +35,8 @@ static int MTCORE_Initialize_env()
     int mpi_errno = MPI_SUCCESS;
 
     memset(&MTCORE_ENV, 0, sizeof(MTCORE_ENV));
-    MTCORE_ENV.seg_size = MTCORE_DEFAULT_SEG_SIZE;
 
+    MTCORE_ENV.seg_size = MTCORE_DEFAULT_SEG_SIZE;
     val = getenv("MTCORE_SEG_SIZE");
     if (val && strlen(val)) {
         MTCORE_ENV.seg_size = atoi(val);
@@ -46,6 +45,17 @@ static int MTCORE_Initialize_env()
         fprintf(stderr, "Wrong MTCORE_SEG_SIZE %d\n", MTCORE_ENV.seg_size);
         return -1;
     }
+
+    MTCORE_ENV.num_h = MTCORE_DEFAULT_NUM_HELPER;
+    val = getenv("MTCORE_NUM_HELPER");
+    if (val && strlen(val)) {
+        MTCORE_ENV.num_h = atoi(val);
+    }
+    if (MTCORE_ENV.num_h <= 0) {
+        fprintf(stderr, "Wrong MTCORE_NUM_HELPER %d\n", MTCORE_ENV.num_h);
+        return -1;
+    }
+    MTCORE_NUM_H = MTCORE_ENV.num_h;    /* expose to outside programs */
 
     MTCORE_ENV.lock_binding = MTCORE_LOCK_BINDING_RANK;
     val = getenv("MTCORE_LOCK_METHOD");
@@ -101,9 +111,9 @@ static int MTCORE_Initialize_env()
     MTCORE_ENV.load_lock = MTCORE_LOAD_LOCK_NATURE;
 #endif
 
-    MTCORE_DBG_PRINT("ENV: seg_size=%d, lock_binding=%d, load_lock=%d, load_opt=%d\n",
-                     MTCORE_ENV.seg_size, MTCORE_ENV.lock_binding, MTCORE_ENV.load_lock,
-                     MTCORE_ENV.load_opt);
+    MTCORE_DBG_PRINT("ENV: seg_size=%d, lock_binding=%d, load_lock=%d, load_opt=%d, "
+                     "num_h=%d\n", MTCORE_ENV.seg_size, MTCORE_ENV.lock_binding,
+                     MTCORE_ENV.load_lock, MTCORE_ENV.load_opt, MTCORE_ENV.num_h);
 
     return mpi_errno;
 }
@@ -129,11 +139,6 @@ int MPI_Init(int *argc, char ***argv)
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MTCORE_MY_RANK_IN_WORLD = rank;
 
-    if ((*argc) > 1) {
-        MTCORE_NUM_H = atoi((*argv)[1]);
-    }
-    MTCORE_DBG_PRINT("MTCORE_NUM_H=%d\n", MTCORE_NUM_H);
-
     mpi_errno = MTCORE_Initialize_env();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -153,23 +158,23 @@ int MPI_Init(int *argc, char ***argv)
         mpi_errno = -1;
         goto fn_fail;
     }
-    if (MTCORE_NUM_H < 1 || MTCORE_NUM_H >= local_nprocs) {
+    if (MTCORE_ENV.num_h < 1 || MTCORE_ENV.num_h >= local_nprocs) {
         fprintf(stderr, "Wrong value of number of helpers, %d. lt 1 or ge %d.\n",
-                MTCORE_NUM_H, local_nprocs);
+                MTCORE_ENV.num_h, local_nprocs);
         mpi_errno = -1;
         goto fn_fail;
     }
 
     /* Specify the first N local processes to be Helper processes */
-    MTCORE_H_RANKS_IN_LOCAL = calloc(MTCORE_NUM_H, sizeof(int));
-    MTCORE_H_RANKS_IN_WORLD = calloc(MTCORE_NUM_H, sizeof(int));
-    for (i = 0; i < MTCORE_NUM_H; i++) {
+    MTCORE_H_RANKS_IN_LOCAL = calloc(MTCORE_ENV.num_h, sizeof(int));
+    MTCORE_H_RANKS_IN_WORLD = calloc(MTCORE_ENV.num_h, sizeof(int));
+    for (i = 0; i < MTCORE_ENV.num_h; i++) {
         MTCORE_H_RANKS_IN_LOCAL[i] = i;
     }
     mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &MTCORE_GROUP_WORLD);
     mpi_errno = PMPI_Comm_group(MTCORE_COMM_LOCAL, &MTCORE_GROUP_LOCAL);
 
-    mpi_errno = PMPI_Group_translate_ranks(MTCORE_GROUP_LOCAL, MTCORE_NUM_H,
+    mpi_errno = PMPI_Group_translate_ranks(MTCORE_GROUP_LOCAL, MTCORE_ENV.num_h,
                                            MTCORE_H_RANKS_IN_LOCAL, MTCORE_GROUP_WORLD,
                                            MTCORE_H_RANKS_IN_WORLD);
     if (mpi_errno != MPI_SUCCESS)
@@ -178,7 +183,7 @@ int MPI_Init(int *argc, char ***argv)
     /* Create a user comm_world including all the users,
      * user will access it instead of comm_world */
     mpi_errno = PMPI_Comm_split(MPI_COMM_WORLD,
-                                local_rank < MTCORE_NUM_H, 0, &MTCORE_COMM_USER_WORLD);
+                                local_rank < MTCORE_ENV.num_h, 0, &MTCORE_COMM_USER_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -188,20 +193,20 @@ int MPI_Init(int *argc, char ***argv)
 
     /* Create a user comm_local */
     mpi_errno = PMPI_Comm_split(MTCORE_COMM_LOCAL,
-                                local_rank < MTCORE_NUM_H, 0, &MTCORE_COMM_USER_LOCAL);
+                                local_rank < MTCORE_ENV.num_h, 0, &MTCORE_COMM_USER_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Create a helper comm_local */
     mpi_errno = PMPI_Comm_split(MTCORE_COMM_LOCAL,
-                                local_rank < MTCORE_NUM_H, 1, &MTCORE_COMM_HELPER_LOCAL);
+                                local_rank < MTCORE_ENV.num_h, 1, &MTCORE_COMM_HELPER_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Exchange node id among local processes */
     /* -Only users create a user root communicator for exchanging local informations
      * between different nodes*/
-    if (local_rank >= MTCORE_NUM_H) {
+    if (local_rank >= MTCORE_ENV.num_h) {
         PMPI_Comm_rank(MTCORE_COMM_USER_LOCAL, &local_user_rank);
         PMPI_Comm_size(MTCORE_COMM_USER_LOCAL, &local_user_nprocs);
         mpi_errno = PMPI_Comm_split(MTCORE_COMM_USER_WORLD,
@@ -219,7 +224,7 @@ int MPI_Init(int *argc, char ***argv)
         }
     }
     /* -User root broadcasts to other local processes */
-    PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, MTCORE_NUM_H, MTCORE_COMM_LOCAL);
+    PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, MTCORE_ENV.num_h, MTCORE_COMM_LOCAL);
     MTCORE_MY_NODE_ID = tmp_bcast_buf[0];
     MTCORE_NUM_NODES = tmp_bcast_buf[1];
 
@@ -236,29 +241,29 @@ int MPI_Init(int *argc, char ***argv)
         goto fn_fail;
 
     MTCORE_ALL_NODE_IDS = calloc(nprocs, sizeof(int));
-    MTCORE_ALL_H_RANKS_IN_WORLD = calloc(user_nprocs * MTCORE_NUM_H, sizeof(int));
-    tmp_gather_buf = calloc(nprocs * (1 + MTCORE_NUM_H), sizeof(int));
+    MTCORE_ALL_H_RANKS_IN_WORLD = calloc(user_nprocs * MTCORE_ENV.num_h, sizeof(int));
+    tmp_gather_buf = calloc(nprocs * (1 + MTCORE_ENV.num_h), sizeof(int));
 
-    tmp_gather_buf[rank * (1 + MTCORE_NUM_H)] = MTCORE_MY_NODE_ID;
-    for (i = 0; i < MTCORE_NUM_H; i++) {
-        tmp_gather_buf[rank * (1 + MTCORE_NUM_H) + i + 1] = MTCORE_H_RANKS_IN_WORLD[i];
+    tmp_gather_buf[rank * (1 + MTCORE_ENV.num_h)] = MTCORE_MY_NODE_ID;
+    for (i = 0; i < MTCORE_ENV.num_h; i++) {
+        tmp_gather_buf[rank * (1 + MTCORE_ENV.num_h) + i + 1] = MTCORE_H_RANKS_IN_WORLD[i];
     }
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               tmp_gather_buf, 1 + MTCORE_NUM_H, MPI_INT, MPI_COMM_WORLD);
+                               tmp_gather_buf, 1 + MTCORE_ENV.num_h, MPI_INT, MPI_COMM_WORLD);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     for (i = 0; i < nprocs; i++) {
         int i_user_rank = 0;
-        node_id = tmp_gather_buf[i * (1 + MTCORE_NUM_H)];
+        node_id = tmp_gather_buf[i * (1 + MTCORE_ENV.num_h)];
         MTCORE_ALL_NODE_IDS[i] = node_id;
 
         /* Only copy helper ranks for user processes */
         i_user_rank = ranks_in_user_world[i];
         if (i_user_rank != MPI_UNDEFINED) {
-            for (j = 0; j < MTCORE_NUM_H; j++) {
-                MTCORE_ALL_H_RANKS_IN_WORLD[i_user_rank * MTCORE_NUM_H + j] =
-                    tmp_gather_buf[i * (1 + MTCORE_NUM_H) + j + 1];
+            for (j = 0; j < MTCORE_ENV.num_h; j++) {
+                MTCORE_ALL_H_RANKS_IN_WORLD[i_user_rank * MTCORE_ENV.num_h + j] =
+                    tmp_gather_buf[i * (1 + MTCORE_ENV.num_h) + j + 1];
             }
         }
     }
@@ -271,7 +276,7 @@ int MPI_Init(int *argc, char ***argv)
 #endif
 
     /* USER processes */
-    if (local_rank >= MTCORE_NUM_H) {
+    if (local_rank >= MTCORE_ENV.num_h) {
         /* Get user ranks in world */
         for (i = 0; i < user_nprocs; i++)
             ranks_in_user_world[i] = i;
@@ -285,8 +290,8 @@ int MPI_Init(int *argc, char ***argv)
 #ifdef DEBUG
         for (i = 0; i < user_nprocs; i++) {
             MTCORE_DBG_PRINT("helper_rank_in_world[%d]:\n", i);
-            for (j = 0; j < MTCORE_NUM_H; j++) {
-                MTCORE_DBG_PRINT("    %d\n", MTCORE_ALL_H_RANKS_IN_WORLD[i * MTCORE_NUM_H + j]);
+            for (j = 0; j < MTCORE_ENV.num_h; j++) {
+                MTCORE_DBG_PRINT("    %d\n", MTCORE_ALL_H_RANKS_IN_WORLD[i * MTCORE_ENV.num_h + j]);
             }
         }
 #endif

@@ -74,7 +74,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          * Consider flush does nothing if no operations on that target in most
          * MPI implementation, simpler code is better */
         for (j = 0; j < uh_win->targets[target_rank].num_uh_wins; j++) {
-            for (k = 0; k < MTCORE_NUM_H; k++) {
+            for (k = 0; k < MTCORE_ENV.num_h; k++) {
                 int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
                 MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
                                  "target rank %d\n", user_rank, target_h_rank_in_uh,
