@@ -83,7 +83,7 @@ static int run_test()
     fprintf(stdout, "mtcore-nocheck: iter %d num_op %d nprocs %d nh %d total_time %.2lf\n",
             ITER, NOP, nprocs, MTCORE_NUM_H, t_total);
 
-    exit:
+  exit:
 
     return errs_total;
 }
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
         errs = run_test();
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

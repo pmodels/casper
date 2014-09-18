@@ -31,15 +31,14 @@ int ITER = ITER_S;
 extern int MTCORE_NUM_H;
 #endif
 
-unsigned long SLEEP_MAX = 100, SLEEP_MIN = 100, SLEEP_ITER=2; /* us */
+unsigned long SLEEP_MAX = 100, SLEEP_MIN = 100, SLEEP_ITER = 2; /* us */
 unsigned long SLEEP_TIME;
 int NOP = 100;
 
 static int target_computation()
 {
     double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME)
-        ;
+    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
     return 0;
 }
 
@@ -56,9 +55,10 @@ static int run_test()
     if (nprocs <= NPROCS_M) {
         ITER = ITER_S;
     }
-    else if(nprocs > NPROCS_M && SLEEP_TIME < 50 ){
+    else if (nprocs > NPROCS_M && SLEEP_TIME < 50) {
         ITER = ITER_L;
-    }else{
+    }
+    else {
         ITER = ITER_L;
     }
 
@@ -95,7 +95,7 @@ static int run_test()
     MPI_Reduce(&t_total, &avg_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        avg_total_time = avg_total_time / nprocs; /* us */
+        avg_total_time = avg_total_time / nprocs;       /* us */
 
 #ifdef MTCORE
         fprintf(stdout, "mtcore: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
         errs = run_test();
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

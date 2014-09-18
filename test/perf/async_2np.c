@@ -11,7 +11,7 @@
 #include <mpi.h>
 
 #define SIZE 4
-#define SLEEP_TIME 100        //us
+#define SLEEP_TIME 100  //us
 
 //#define DEBUG
 #define CHECK

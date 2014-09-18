@@ -88,7 +88,7 @@ static int run_test()
             ITER, NOP, nprocs, t_total);
 #endif
 
-    exit:
+  exit:
 
     return errs_total;
 }
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
         errs = run_test();
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

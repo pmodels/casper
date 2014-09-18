@@ -406,7 +406,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
         }
 
         Cycle = (Global->start).cycle;
-        if (++(Global->start).counter != (unsigned long)(P)) {
+        if (++(Global->start).counter != (unsigned long) (P)) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
             while (Cycle == (Global->start).cycle) {
                 Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -436,7 +436,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
         }
 
         Cycle = (Global->start).cycle;
-        if (++(Global->start).counter != (unsigned long)(P)) {
+        if (++(Global->start).counter != (unsigned long) (P)) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
             while (Cycle == (Global->start).cycle) {
                 Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -483,7 +483,7 @@ void OneSolve(long n, long block_size, long MyNum, long dostats)
         }
 
         Cycle = (Global->start).cycle;
-        if (++(Global->start).counter != (unsigned long)(P)) {
+        if (++(Global->start).counter != (unsigned long) (P)) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
             while (Cycle == (Global->start).cycle) {
                 Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -638,7 +638,7 @@ void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats)
             }
 
             Cycle = (Global->start).cycle;
-            if (++(Global->start).counter != (unsigned long)(P)) {
+            if (++(Global->start).counter != (unsigned long) (P)) {
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
                 while (Cycle == (Global->start).cycle) {
                     Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);
@@ -707,7 +707,7 @@ void lu(long n, long bs, long MyNum, struct LocalCopies *lc, long dostats)
             }
 
             Cycle = (Global->start).cycle;
-            if (++(Global->start).counter != (unsigned long)(P)) {
+            if (++(Global->start).counter != (unsigned long) (P)) {
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &Cancel);
                 while (Cycle == (Global->start).cycle) {
                     Error = pthread_cond_wait(&(Global->start).cv, &(Global->start).mutex);

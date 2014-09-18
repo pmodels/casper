@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include <sched.h>
 
-#define D_SLEEP_TIME 100  // 100us
+#define D_SLEEP_TIME 100        // 100us
 
 #define DEBUG
 //#define CHECK
@@ -46,8 +46,7 @@ int NOP = 100;
 static int usleep_by_count(unsigned long us)
 {
     double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < (double) us)
-        ;
+    while (MPI_Wtime() * 1000 * 1000 - start < (double) us);
     return 0;
 }
 
@@ -239,7 +238,8 @@ static void check_cpu_binding()
         for (i = 0; i < nprocs * 2; i++) {
             if (cpuid_bitmap[all_cpuids[i]] == -1) {
                 cpuid_bitmap[all_cpuids[i]] = i;
-            } else {
+            }
+            else {
                 fprintf(stderr, "%d and %d are binded to the same cpu id %d\n",
                         cpuid_bitmap[all_cpuids[i]], i, all_cpuids[i]);
             }
@@ -249,6 +249,7 @@ static void check_cpu_binding()
     free(all_cpuids);
     free(cpuid_bitmap);
 }
+
 int main(int argc, char *argv[])
 {
     int i, errs;
@@ -279,7 +280,7 @@ int main(int argc, char *argv[])
         max_time = atoi(argv[3]);
         iter_time = atoi(argv[4]);
     }
-    if(argc >= 6) {
+    if (argc >= 6) {
         NOP = atoi(argv[5]);
     }
 #else
@@ -300,7 +301,7 @@ int main(int argc, char *argv[])
 
     // size in byte
     MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), MPI_INFO_NULL,
-            MPI_COMM_WORLD, &winbuf, &win);
+                     MPI_COMM_WORLD, &winbuf, &win);
     debug_printf("[%d]win_allocate done\n", rank);
 
     init_async_thread();
@@ -319,7 +320,7 @@ int main(int argc, char *argv[])
 
     check_cpu_binding();
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

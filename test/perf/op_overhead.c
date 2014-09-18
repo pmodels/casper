@@ -27,7 +27,7 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int NOP = 1;
 int OP_SIZE = 1;
-const char *OP_TYPE_NM[3] = {"ACC", "PUT", "GET"};
+const char *OP_TYPE_NM[3] = { "ACC", "PUT", "GET" };
 
 enum {
     OP_ACC,
@@ -45,28 +45,28 @@ void DO_OP_LOOP(int dst, int iter)
     int i, x;
 
     switch (OP_TYPE) {
-        case OP_ACC:
-            for (x = 0; x < iter; x++) {
-                for (i = 0; i < NOP; i++)
-                    MPI_Accumulate(&locbuf[0], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE, MPI_DOUBLE,
-                            MPI_SUM, win);
-                MPI_Win_flush(dst, win);
-            }
-            break;
-        case OP_PUT:
-            for (x = 0; x < iter; x++) {
-                for (i = 0; i < NOP; i++)
-                    MPI_Put(&locbuf[0], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE, MPI_DOUBLE, win);
-                MPI_Win_flush(dst, win);
-            }
-            break;
-        case OP_GET:
-            for (x = 0; x < iter; x++) {
-                for (i = 0; i < NOP; i++)
-                    MPI_Get(&locbuf[0], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE, MPI_DOUBLE, win);
-                MPI_Win_flush(dst, win);
-            }
-            break;
+    case OP_ACC:
+        for (x = 0; x < iter; x++) {
+            for (i = 0; i < NOP; i++)
+                MPI_Accumulate(&locbuf[0], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE, MPI_DOUBLE,
+                               MPI_SUM, win);
+            MPI_Win_flush(dst, win);
+        }
+        break;
+    case OP_PUT:
+        for (x = 0; x < iter; x++) {
+            for (i = 0; i < NOP; i++)
+                MPI_Put(&locbuf[0], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE, MPI_DOUBLE, win);
+            MPI_Win_flush(dst, win);
+        }
+        break;
+    case OP_GET:
+        for (x = 0; x < iter; x++) {
+            for (i = 0; i < NOP; i++)
+                MPI_Get(&locbuf[0], OP_SIZE, MPI_DOUBLE, dst, 0, OP_SIZE, MPI_DOUBLE, win);
+            MPI_Win_flush(dst, win);
+        }
+        break;
     }
 }
 
@@ -90,7 +90,7 @@ static int run_test()
 
         t0 = MPI_Wtime();
         DO_OP_LOOP(dst, ITER);
-        t_total = (MPI_Wtime() - t0) * 1000 * 1000; /*us */
+        t_total = (MPI_Wtime() - t0) * 1000 * 1000;     /*us */
         t_total /= ITER;
 
         MPI_Win_unlock(dst, win);
@@ -104,11 +104,11 @@ static int run_test()
                 ITER, OP_TYPE_NM[OP_TYPE], NOP, OP_SIZE, nprocs, MTCORE_NUM_H, t_total);
 #else
         fprintf(stdout, "orig: iter %d %s num_op %d opsize %d nprocs %d total_time %.2lf\n",
-        ITER, OP_TYPE_NM[OP_TYPE], NOP, OP_SIZE, nprocs, t_total);
+                ITER, OP_TYPE_NM[OP_TYPE], NOP, OP_SIZE, nprocs, t_total);
 #endif
     }
 
-    exit:
+  exit:
 
     return errs_total;
 }
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 
     locbuf = calloc(OP_SIZE_MAX, sizeof(double));
     MPI_Win_allocate(sizeof(double) * OP_SIZE_MAX, sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD,
-            &winbuf, &win);
+                     &winbuf, &win);
 
     for (i = 0; i < OP_SIZE_MAX; i++) {
         locbuf[i] = i * 1.0;
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
             break;
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

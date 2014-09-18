@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Reduce(&t, &avgt, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    avgt = avgt / nprocs * 2 * 1000 * 1000 / ITER;     /* us */
+    avgt = avgt / nprocs * 2 * 1000 * 1000 / ITER;      /* us */
 
     if (rank == 0) {
         printf("np %d size %d time %.2f\n", nprocs, size, avgt);

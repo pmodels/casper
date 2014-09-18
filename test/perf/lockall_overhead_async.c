@@ -31,7 +31,7 @@ int ITER = ITER_S;
 extern int MTCORE_NUM_H;
 #endif
 
-unsigned long SLEEP_MAX = 100, SLEEP_MIN = 100, SLEEP_ITER=2; /* us */
+unsigned long SLEEP_MAX = 100, SLEEP_MIN = 100, SLEEP_ITER = 2; /* us */
 unsigned long SLEEP_TIME;
 int NOP = 100;
 
@@ -41,8 +41,7 @@ static int target_computation()
         return 0;
 
     double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME)
-        ;
+    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
     return 0;
 }
 
@@ -59,9 +58,10 @@ static int run_test()
     if (nprocs <= NPROCS_M) {
         ITER = ITER_S;
     }
-    else if(nprocs > NPROCS_M && SLEEP_TIME < 50 ){
+    else if (nprocs > NPROCS_M && SLEEP_TIME < 50) {
         ITER = ITER_L;
-    }else{
+    }
+    else {
         ITER = ITER_L;
     }
 
@@ -90,7 +90,8 @@ static int run_test()
             }
             MPI_Win_unlock_all(win);
         }
-    } else {
+    }
+    else {
         /* target processes are computing until receives completion from origin. */
         MPI_Irecv(buf, 1, MPI_INT, 0, 899, MPI_COMM_WORLD, &req);
         while (!flag) {
@@ -99,7 +100,7 @@ static int run_test()
         }
     }
 
-    t_total += (MPI_Wtime() - t0) * 1000 * 1000; /*us */
+    t_total += (MPI_Wtime() - t0) * 1000 * 1000;        /*us */
     t_total /= ITER;
 
     if (rank == 0) {
@@ -181,11 +182,11 @@ int main(int argc, char *argv[])
         errs = run_test();
 
         /* only run once if user disabled async */
-        if(SLEEP_TIME == 0)
+        if (SLEEP_TIME == 0)
             break;
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

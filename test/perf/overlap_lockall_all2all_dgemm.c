@@ -61,11 +61,11 @@ static int target_computation()
     beta = 2.0;
 
     for (i = 0; i < (m * k); i++) {
-        A[i] = (doublereal)(i + 1);
+        A[i] = (doublereal) (i + 1);
     }
 
     for (i = 0; i < (k * n); i++) {
-        B[i] = (doublereal)(-i - 1);
+        B[i] = (doublereal) (-i - 1);
     }
 
     for (i = 0; i < (m * n); i++) {
@@ -140,7 +140,7 @@ static int run_test(int nop)
     sum *= ITER;
     for (i = 0; i < nprocs; i++) {
         if (i == rank)
-        continue;
+            continue;
         if (winbuf[i] != sum) {
             fprintf(stderr,
                     "[%d]computation error : winbuf[%d] %.2lf != %.2lf, nop %d\n",
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
     // size in byte
     MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), MPI_INFO_NULL,
-            MPI_COMM_WORLD, &winbuf, &win);
+                     MPI_COMM_WORLD, &winbuf, &win);
     debug_printf("[%d]win_allocate done\n", rank);
 
     for (size = min_dg_size; size <= max_dg_size; size *= iter_dg_size) {
@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
             break;
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

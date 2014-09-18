@@ -4,7 +4,7 @@
 #include <mpi.h>
 
 
-#define D_SLEEP_TIME 100  // 100us
+#define D_SLEEP_TIME 100        // 100us
 
 //#define DEBUG
 //#define CHECK
@@ -33,7 +33,7 @@ int NOP = 100;
 static int usleep_by_count(unsigned long us)
 {
     double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < (double)us);
+    while (MPI_Wtime() * 1000 * 1000 - start < (double) us);
     return 0;
 }
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         max_time = atoi(argv[3]);
         iter_time = atoi(argv[4]);
     }
-    if(argc >= 6){
+    if (argc >= 6) {
         NOP = atoi(argv[5]);
     }
 #else
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
         max_time = atoi(argv[2]);
         iter_time = atoi(argv[3]);
     }
-    if(argc >= 5){
+    if (argc >= 5) {
         NOP = atoi(argv[4]);
     }
 #endif

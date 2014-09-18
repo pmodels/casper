@@ -35,15 +35,14 @@ int ITER = ITER_S;
 extern int MTCORE_NUM_H;
 #endif
 
-int NOP_MAX = 1, NOP_MIN = 1, NOP = 1, NOP_ITER = 2; /* us */
+int NOP_MAX = 1, NOP_MIN = 1, NOP = 1, NOP_ITER = 2;    /* us */
 unsigned long SLEEP_TIME = 100;
 int *target_shm_ranks = NULL;
 
 static int target_computation()
 {
     double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME)
-        ;
+    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
     return 0;
 }
 
@@ -107,11 +106,12 @@ static int run_test()
     MPI_Reduce(&t_total, &avg_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        avg_total_time = avg_total_time / nprocs; /* us */
+        avg_total_time = avg_total_time / nprocs;       /* us */
         const char *lock_mtd = getenv("MTCORE_LOCK_METHOD");
 
 #ifdef MTCORE
-        fprintf(stdout, "mtcore-%s: iter %d comp_size %d num_op %d %d nprocs %d nh %d total_time %.2lf\n",
+        fprintf(stdout,
+                "mtcore-%s: iter %d comp_size %d num_op %d %d nprocs %d nh %d total_time %.2lf\n",
                 lock_mtd, ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, MTCORE_NUM_H, avg_total_time);
 #else
         fprintf(stdout, "orig: iter %d comp_size %d num_op %d %d nprocs %d total_time %.2lf\n",
@@ -132,8 +132,7 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-            MPI_INFO_NULL, &shm_comm);
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shm_comm);
     MPI_Comm_rank(shm_comm, &shm_rank);
 
     if (nprocs < 2) {
@@ -165,24 +164,24 @@ int main(int argc, char *argv[])
     target_shm_ranks = calloc(nprocs, sizeof(int));
 
     target_shm_ranks[rank] = shm_rank;
-    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-            target_shm_ranks, 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, target_shm_ranks, 1, MPI_INT, MPI_COMM_WORLD);
 
     if (shm_rank == 0) {
         win_size = NOP_MAX;
-    } else {
+    }
+    else {
         win_size = 2;
     }
 
     locbuf[0] = (rank + 1) * 1.0;
     MPI_Win_allocate(win_size * sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD,
-            &winbuf, &win);
+                     &winbuf, &win);
 
     for (NOP = NOP_MIN; NOP <= NOP_MAX; NOP *= NOP_ITER) {
         errs = run_test();
     }
 
-    exit:
+  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

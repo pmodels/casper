@@ -331,7 +331,7 @@ static int create_uh_comm(int num_helpers, int *helper_ranks_in_world, MTCORE_Wi
     for (i = 0; i < user_nprocs; i++) {
         uh_ranks_in_world[num_uh_ranks++] = win->targets[i].world_rank;
     }
-    if(num_uh_ranks > world_nprocs){
+    if (num_uh_ranks > world_nprocs) {
         fprintf(stderr, "num_uh_ranks %d > world_nprocs %d, num_helpers=%d, user_nprocs=%d\n",
                 num_uh_ranks, world_nprocs, num_helpers, user_nprocs);
     }
