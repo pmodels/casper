@@ -11,6 +11,8 @@ noinst_PROGRAMS = \
 	mtcore_put_l_seg	\
 	acc	\
 	mtcore_acc \
+	acc_flush_local	\
+	mtcore_acc_flush_local \
 	acclock	\
 	mtcore_acclock \
 	getacc	\
@@ -39,6 +41,9 @@ mtcore_put_l_seg_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_acc_SOURCES= acc.c
 mtcore_acc_LDFLAGS= -L$(libdir) -lmtcore
+
+mtcore_acc_flush_local_SOURCES= acc_flush_local.c
+mtcore_acc_flush_local_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_acclock_SOURCES= acclock.c
 mtcore_acclock_LDFLAGS= -L$(libdir) -lmtcore
