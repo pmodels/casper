@@ -32,7 +32,7 @@ static int create_uh_comm(int user_nprocs, int *user_ranks_in_world, int num_hel
 #ifdef MTCORE_H_DEBUG
     int i;
     MTCORE_H_DBG_PRINT("uh_ranks_in_world: (nh %d, nu %d)\n", num_helpers, user_nprocs);
-    for(i=0; i< num_uh_ranks; i++) {
+    for (i = 0; i < num_uh_ranks; i++) {
         MTCORE_H_DBG_PRINT("[%d] %d \n", i, uh_ranks_in_world[i]);
     }
 #endif
