@@ -28,7 +28,9 @@ noinst_PROGRAMS = \
 	put_fence	\
 	mtcore_put_fence	\
 	acc_get_fence	\
-	mtcore_acc_get_fence
+	mtcore_acc_get_fence	\
+	fetch_and_op	\
+	mtcore_fetch_and_op
 	
 mtcore_get_SOURCES= get.c
 mtcore_get_LDFLAGS= -L$(libdir) -lmtcore
@@ -71,3 +73,6 @@ mtcore_put_fence_LDFLAGS= -L$(libdir) -lmtcore
 
 mtcore_acc_get_fence_SOURCES= acc_get_fence.c
 mtcore_acc_get_fence_LDFLAGS= -L$(libdir) -lmtcore
+
+mtcore_fetch_and_op_SOURCES= fetch_and_op.c
+mtcore_fetch_and_op_LDFLAGS= -L$(libdir) -lmtcore
