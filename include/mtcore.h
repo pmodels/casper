@@ -671,6 +671,13 @@ extern int MTCORE_Op_segments_decode(const void *origin_addr, int origin_count,
                                      int target_count, MPI_Datatype target_datatype,
                                      MTCORE_Win * uh_win, MTCORE_OP_Segment ** decoded_ops_ptr,
                                      int *num_segs);
+extern int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
+                                                    MPI_Datatype origin_datatype,
+                                                    int target_rank, MPI_Aint target_disp,
+                                                    int target_count, MPI_Datatype target_datatype,
+                                                    MTCORE_Win * uh_win,
+                                                    MTCORE_OP_Segment ** decoded_ops_ptr,
+                                                    int *num_segs);
 extern void MTCORE_Op_segments_destroy(MTCORE_OP_Segment ** decoded_ops_ptr);
 extern int MTCORE_Fence_win_release_locks(MTCORE_Win * uh_win);
 

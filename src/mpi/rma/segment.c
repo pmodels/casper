@@ -17,13 +17,12 @@ void MTCORE_Op_segments_destroy(MTCORE_OP_Segment ** decoded_ops_ptr)
     }
 }
 
-static int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
-                                                    MPI_Datatype origin_datatype,
-                                                    int target_rank, MPI_Aint target_disp,
-                                                    int target_count, MPI_Datatype target_datatype,
-                                                    MTCORE_Win * uh_win,
-                                                    MTCORE_OP_Segment ** decoded_ops_ptr,
-                                                    int *num_segs)
+int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
+                                             MPI_Datatype origin_datatype,
+                                             int target_rank, MPI_Aint target_disp,
+                                             int target_count, MPI_Datatype target_datatype,
+                                             MTCORE_Win * uh_win,
+                                             MTCORE_OP_Segment ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
     int o_type_size, t_type_size;
