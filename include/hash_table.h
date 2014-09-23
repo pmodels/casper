@@ -29,5 +29,5 @@ extern hashtable_t *ht_create(int size);
 extern int ht_set(hashtable_t * hashtable, ht_key_t key, void *value);
 extern void *ht_get(hashtable_t * hashtable, ht_key_t key);
 extern void ht_destroy(hashtable_t * hashtable);
-
+extern int ht_remove(hashtable_t * hashtable, ht_key_t key);
 #endif /* HASH_TABLE_H_ */

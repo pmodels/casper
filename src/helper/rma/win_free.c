@@ -82,6 +82,11 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
                 goto fn_fail;
         }
 
+        MTCORE_H_DBG_PRINT(" release key 0x%lx from hash table\n", mtcore_h_win_handle);
+        mpi_errno = mtcore_remove_h_win(mtcore_h_win_handle);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
         if (win->user_base_addrs_in_local)
             free(win->user_base_addrs_in_local);
         if (win->uh_wins)

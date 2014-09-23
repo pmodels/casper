@@ -72,6 +72,7 @@ int ht_set(hashtable_t * hashtable, ht_key_t key, void *value)
 
     /* If key already exists, return error */
     if (next != NULL && next->key == key) {
+        fprintf(stderr, "key 0x%lx already exists\n", key);
         goto fn_fail;
 
     }
@@ -127,11 +128,45 @@ void *ht_get(hashtable_t * hashtable, ht_key_t key)
     }
 }
 
+int ht_remove(hashtable_t * hashtable, ht_key_t key)
+{
+    int bin = 0;
+    entry_t *current = NULL;
+    entry_t *prev = NULL;
+
+    bin = ht_hash(hashtable, key);
+
+    /* Step through the bin, looking for our value. */
+    current = hashtable->table[bin];
+    while (current != NULL && current->key != key) {
+        prev = current;
+        current = current->next;
+    }
+
+    /* Did we actually find anything? */
+    if (current != NULL && current->key == key) {
+        /* At start of the linked list */
+        if (prev == NULL) {
+            hashtable->table[bin] = current->next;
+        }
+        else {
+            prev->next = current->next;
+        }
+
+        free(current);
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
 void ht_destroy(hashtable_t * hashtable)
 {
     int bin = 0;
     entry_t *next = NULL;
     entry_t *current = NULL;
+    int not_freed = 0;
 
     if (hashtable == NULL)
         return;
@@ -145,10 +180,15 @@ void ht_destroy(hashtable_t * hashtable)
                 next = next->next;
 
                 free(current);
+                not_freed++;
             }
         }
 
         free(hashtable->table);
     }
+
+    if (not_freed > 0)
+        fprintf(stderr, "hash table not empty, %d objects are not freed!\n", not_freed);
+
     free(hashtable);
 }

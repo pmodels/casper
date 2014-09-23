@@ -55,15 +55,20 @@ typedef struct MTCORE_H_func_info {
     int user_root_in_local;
 } MTCORE_H_func_info;
 
-static inline int mtcore_get_h_win(unsigned long handle, MTCORE_H_win ** win)
+static inline int mtcore_get_h_win(unsigned long key, MTCORE_H_win ** win)
 {
-    *win = (MTCORE_H_win *) ht_get(mtcore_h_win_ht, (ht_key_t) handle);
+    *win = (MTCORE_H_win *) ht_get(mtcore_h_win_ht, (ht_key_t) key);
     return 0;
 }
 
 static inline int mtcore_put_h_win(unsigned long key, MTCORE_H_win * win)
 {
     return ht_set(mtcore_h_win_ht, (ht_key_t) key, win);
+}
+
+static inline int mtcore_remove_h_win(unsigned long key)
+{
+    return ht_remove(mtcore_h_win_ht, (ht_key_t) key);
 }
 
 static inline int mtcore_init_h_win_table()
