@@ -85,7 +85,6 @@ int MPI_Win_flush_all(MPI_Win win)
                 MTCORE_DBG_PRINT("[%d] main lock (rank %d, seg %d) granted\n", user_rank, i, j);
             }
 
-            MTCORE_Reset_win_target_ordering(i, j, uh_win);
             MTCORE_Reset_win_target_load_opt(i, uh_win);
         }
     }

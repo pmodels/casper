@@ -97,8 +97,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
         uh_win->targets[target_rank].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
-
-        MTCORE_Reset_win_target_ordering(target_rank, j, uh_win);
         MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
     }
 #endif

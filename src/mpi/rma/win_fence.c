@@ -131,7 +131,6 @@ static int Fence_Win_lock_all(int assert, MTCORE_Win * uh_win)
              * 2. no conflicting lock/lockall on fence window. */
             uh_win->targets[i].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
 
-            MTCORE_Reset_win_target_ordering(i, j, uh_win);
             MTCORE_Reset_win_target_load_opt(i, uh_win);
         }
     }

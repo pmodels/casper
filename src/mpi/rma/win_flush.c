@@ -100,7 +100,6 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
                              j);
         }
 
-        MTCORE_Reset_win_target_ordering(target_rank, j, uh_win);
         MTCORE_Reset_win_target_load_opt(target_rank, uh_win);
     }
 #endif

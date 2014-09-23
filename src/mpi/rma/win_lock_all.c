@@ -102,7 +102,6 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
             uh_win->targets[i].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
 
-            MTCORE_Reset_win_target_ordering(i, j, uh_win);
             MTCORE_Reset_win_target_load_opt(i, uh_win);
         }
     }

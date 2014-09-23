@@ -158,7 +158,6 @@ typedef struct MTCORE_H_win_params {
 
 struct MTCORE_Win_info_args {
     unsigned short no_local_load_store;
-    unsigned short no_accumulate_ordering;
 };
 
 typedef struct MTCORE_OP_Segment {
@@ -184,7 +183,6 @@ typedef struct MTCORE_Win_target_seg {
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     MTCORE_Main_lock_stat main_lock_stat;
-    int order_h_index;
 #endif
 } MTCORE_Win_target_seg;
 
@@ -382,10 +380,6 @@ static inline int MTCORE_Get_node_ids(MPI_Group group, int n, const int ranks[],
 }
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
-#define MTCORE_Reset_win_target_ordering(target_rank, target_seg_off, uh_win) {  \
-        uh_win->targets[target_rank].segs[target_seg_off].order_h_index = -1; \
-    }
-
 #define MTCORE_Reset_win_target_load_opt_op_counting(target_rank, uh_win) {  \
         int h_off, h_rank;  \
         for (h_off = 0; h_off < MTCORE_ENV.num_h; h_off++) {    \
@@ -576,10 +570,12 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int target_se
             MTCORE_MAIN_LOCK_OP_ISSUED;
     }
 
-    /* If lock has not been granted yet, we can only use the main helper. */
-    if (!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
-        uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat !=
-        MTCORE_MAIN_LOCK_GRANTED) {
+    /* If lock has not been granted yet, we can only use the main helper.
+     * Accumulate operations have to be always sent to main helper in order to
+     * guarantee atomicity and ordering.*/
+    if ((!(uh_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
+         uh_win->targets[target_rank].segs[target_seg_off].main_lock_stat !=
+         MTCORE_MAIN_LOCK_GRANTED) || is_order_required) {
         /* Both serial async and byte tracking options specify the first helper as
          * the main helper of that user process.*/
         *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
@@ -588,21 +584,6 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int target_se
                          "seg %d (main h off %d)\n",
                          *target_h_rank_in_uh, *target_h_offset, target_rank,
                          target_seg_off, main_h_off);
-
-        return mpi_errno;
-    }
-
-    /* For ordering required operations, just return the helper chosen in the
-     * first time. */
-    if (!uh_win->info_args.no_accumulate_ordering &&
-        is_order_required &&
-        uh_win->targets[target_rank].segs[target_seg_off].order_h_index != -1) {
-        h_idx = uh_win->targets[target_rank].segs[target_seg_off].order_h_index;
-        *target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[h_idx];
-        *target_h_offset = uh_win->targets[target_rank].base_h_offsets[h_idx];
-
-        MTCORE_DBG_PRINT("[load_opt] use first ordered helper %d, off 0x%lx for target %d seg %d\n",
-                         *target_h_rank_in_uh, *target_h_offset, target_rank, target_seg_off);
 
         /* Need increase counters */
         if (MTCORE_ENV.load_opt == MTCORE_LOAD_OPT_COUNTING) {
@@ -628,12 +609,6 @@ static inline int MTCORE_Get_helper_rank_load_opt(int target_rank, int target_se
         MTCORE_Get_helper_rank_load_byte_counting(target_rank, is_order_required, size,
                                                   uh_win, target_h_rank_in_uh, &h_idx,
                                                   target_h_offset);
-    }
-
-    /* Remember the helper for ordering required operations to a given target.
-     * Note that both not-lock-granted and not-first-ordered targets do not need remember */
-    if (!uh_win->info_args.no_accumulate_ordering && is_order_required) {
-        uh_win->targets[target_rank].segs[target_seg_off].order_h_index = h_idx;
     }
 
     return mpi_errno;
