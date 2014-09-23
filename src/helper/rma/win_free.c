@@ -105,6 +105,6 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
     return mpi_errno;
 
   fn_fail:
-
-    goto fn_exit;
+    fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
+    PMPI_Abort(MPI_COMM_WORLD, 0);
 }

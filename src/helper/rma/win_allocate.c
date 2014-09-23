@@ -258,6 +258,7 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm, &win->fence_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+    MTCORE_H_DBG_PRINT(" Created fence windows 0x%x\n", win->fence_win);
 
     win->mtcore_h_win_handle = (unsigned long) win->uh_wins;
     mpi_errno = mtcore_put_h_win(win->mtcore_h_win_handle, win);
@@ -280,24 +281,8 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     return mpi_errno;
 
   fn_fail:
-
-    if (win->local_uh_win)
-        PMPI_Win_free(&win->local_uh_win);
-    if (win->fence_win)
-        PMPI_Win_free(&win->fence_win);
-    if (win->uh_wins) {
-        for (i = 0; i < win->num_uh_wins; i++) {
-            if (win->uh_wins)
-                PMPI_Win_free(&win->uh_wins[i]);
-        }
-    }
-
-    if (win->ur_h_comm && win->ur_h_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&win->ur_h_comm);
-    if (win->local_uh_comm && win->local_uh_comm != MTCORE_COMM_LOCAL)
-        PMPI_Comm_free(&win->local_uh_comm);
-    if (win->uh_comm && win->uh_comm != MPI_COMM_WORLD)
-        PMPI_Comm_free(&win->uh_comm);
+    fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
+    /* cannot release global comm/win/group */
 
     if (win->user_base_addrs_in_local)
         free(win->user_base_addrs_in_local);
@@ -305,6 +290,8 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         free(win->uh_wins);
     if (win)
         free(win);
+
+    PMPI_Abort(MPI_COMM_WORLD, 0);
 
     goto fn_exit;
 }

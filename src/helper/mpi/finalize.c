@@ -65,5 +65,6 @@ int MTCORE_H_finalize(void)
     return mpi_errno;
 
   fn_fail:
-    goto fn_exit;
+    fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
+    PMPI_Abort(MPI_COMM_WORLD, 0);
 }
