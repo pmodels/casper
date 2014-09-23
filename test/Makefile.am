@@ -30,7 +30,8 @@ noinst_PROGRAMS = \
 	acc_get_fence	\
 	mtcore_acc_get_fence	\
 	fetch_and_op	\
-	mtcore_fetch_and_op
+	mtcore_fetch_and_op	\
+	win_allocate
 	
 mtcore_get_SOURCES= get.c
 mtcore_get_LDFLAGS= -L$(libdir) -lmtcore
