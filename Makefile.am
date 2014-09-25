@@ -19,6 +19,7 @@ libmtcore_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/rma/win_unlock_all.c	\
                     src/mpi/rma/win_lock.c	\
                     src/mpi/rma/win_unlock.c	\
+                    src/mpi/rma/win_sync.c	\
                     src/mpi/rma/win_flush.c	\
                     src/mpi/rma/win_flush_all.c	\
                     src/mpi/rma/win_flush_local.c	\
