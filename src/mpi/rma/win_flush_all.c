@@ -13,6 +13,13 @@ int MPI_Win_flush_all(MPI_Win win)
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_flush_all(win);
+    }
+
+    /* mtcore window starts */
+
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
     PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);

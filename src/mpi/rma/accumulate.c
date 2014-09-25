@@ -204,9 +204,18 @@ int MPI_Accumulate(const void *origin_addr, int origin_count,
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
-    mpi_errno = MTCORE_Accumulate_impl(origin_addr, origin_count,
-                                       origin_datatype, target_rank, target_disp, target_count,
-                                       target_datatype, op, win, uh_win);
+    if (uh_win) {
+        /* mtcore window */
+        mpi_errno = MTCORE_Accumulate_impl(origin_addr, origin_count,
+                                           origin_datatype, target_rank, target_disp, target_count,
+                                           target_datatype, op, win, uh_win);
+    }
+    else {
+        /* normal window */
+        mpi_errno = PMPI_Accumulate(origin_addr, origin_count,
+                                    origin_datatype, target_rank, target_disp, target_count,
+                                    target_datatype, op, win);
+    }
 
   fn_exit:
 

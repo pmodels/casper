@@ -156,6 +156,13 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_fence(assert, win);
+    }
+
+    /* mtcore window starts */
+
     /* We do not support conflicting lock/fence epoch, because operations
      * must choose different window. Because user may not specify assert for the
      * last fence, we do not check the epoch status in lock/lockall. */

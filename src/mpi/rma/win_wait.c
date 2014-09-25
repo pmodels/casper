@@ -23,6 +23,13 @@ int MPI_Win_wait(MPI_Win win)
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_wait(win);
+    }
+
+    /* mtcore window starts */
+
     if (uh_win->post_group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
         MTCORE_DBG_PRINT("Wait empty group\n");

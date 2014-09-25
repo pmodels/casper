@@ -13,6 +13,13 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_flush(target_rank, win);
+    }
+
+    /* mtcore window starts */
+
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (user_rank == target_rank && uh_win->is_self_locked) {

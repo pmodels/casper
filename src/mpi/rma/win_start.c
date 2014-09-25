@@ -50,6 +50,13 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_start(group, assert, win);
+    }
+
+    /* mtcore window starts */
+
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
         MTCORE_DBG_PRINT("Start empty group\n");

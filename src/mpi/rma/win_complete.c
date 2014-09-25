@@ -23,6 +23,13 @@ int MPI_Win_complete(MPI_Win win)
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_complete(win);
+    }
+
+    /* mtcore window starts */
+
     if (uh_win->start_group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
         MTCORE_DBG_PRINT("Complete empty group\n");

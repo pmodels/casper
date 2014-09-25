@@ -198,9 +198,16 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
-    mpi_errno = MTCORE_Fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
-                                         target_disp, op, win, uh_win);
-
+    if (uh_win) {
+        /* mtcore window */
+        mpi_errno = MTCORE_Fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
+                                             target_disp, op, win, uh_win);
+    }
+    else {
+        /* normal window */
+        mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_rank,
+                                      target_disp, op, win);
+    }
   fn_exit:
 
     return mpi_errno;

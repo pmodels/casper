@@ -19,6 +19,14 @@ int MPI_Win_sync(MPI_Win win)
     MTCORE_DBG_PRINT_FCNAME();
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
+
+    if (uh_win == NULL) {
+        /* normal window */
+        return PMPI_Win_sync(win);
+    }
+
+    /* mtcore window starts */
+
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
     if (uh_win->is_self_locked) {

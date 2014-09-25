@@ -199,9 +199,17 @@ int MPI_Get(void *origin_addr, int origin_count,
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
-    mpi_errno = MTCORE_Get_impl(origin_addr, origin_count, origin_datatype,
-                                target_rank, target_disp, target_count, target_datatype, win,
-                                uh_win);
+    if (uh_win) {
+        /* mtcore window */
+        mpi_errno = MTCORE_Get_impl(origin_addr, origin_count, origin_datatype,
+                                    target_rank, target_disp, target_count, target_datatype, win,
+                                    uh_win);
+    }
+    else {
+        /* normal window */
+        mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
+                             target_rank, target_disp, target_count, target_datatype, win);
+    }
 
   fn_exit:
     return mpi_errno;

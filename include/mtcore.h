@@ -318,10 +318,9 @@ extern int UH_WIN_HANDLE_KEY;
     int flag = 0;   \
     mpi_errno = PMPI_Win_get_attr(win, UH_WIN_HANDLE_KEY, &uh_win, &flag);   \
     if (!flag || mpi_errno != MPI_SUCCESS){  \
-        MTCORE_ERR_PRINT("Cannot fetch uh_win from win 0x%lx\n", win);   \
-         goto fn_fail;   \
+        MTCORE_DBG_PRINT("Cannot fetch uh_win from win 0x%lx\n", win);   \
+        uh_win = NULL; \
     }   \
-    /* MTCORE_DBG_PRINT("fetch uh_win %p from win 0x%lx \n", uh_win, win);  */ \
 }
 
 #define MTCORE_Cache_uh_win(win, uh_win) { \
