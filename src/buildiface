@@ -108,6 +108,9 @@ while (<INFILE>) {
     # Comm_spawn should not be in this list
     if (($routine eq "MPI_Init")
         || ($routine eq "MPI_Win_allocate")
+        || ($routine eq "MPI_Win_allocate_shared")
+        || ($routine eq "MPI_Win_create")
+        || ($routine eq "MPI_Win_create_dynamic")
         || ($routine eq "MPI_Comm_free")
         || ($routine eq "MPI_DUP_DN")
         || ($routine eq "MPI_Comm_disconnect")

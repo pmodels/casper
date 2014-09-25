@@ -10,6 +10,9 @@ lib_LTLIBRARIES = libmtcore.la
 libmtcore_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/func.c \
                     src/mpi/rma/win_allocate.c \
+                    src/mpi/rma/win_create.c \
+                    src/mpi/rma/win_create_dynamic.c \
+                    src/mpi/rma/win_allocate_shared.c \
                     src/mpi/rma/win_free.c \
                     src/mpi/rma/put.c \
                     src/mpi/rma/get.c \

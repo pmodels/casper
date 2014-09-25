@@ -61,6 +61,16 @@
 #define MTCORE_DBG_PRINT(str,...) {}
 #endif
 
+#define WARN
+#ifdef WARN
+#define MTCORE_WARN_PRINT(str,...) do { \
+    fprintf(stdout, "[MTCORE][%d]"str, MTCORE_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fflush(stdout); \
+    } while (0)
+#else
+#define MTCORE_WARN_PRINT(str,...) {}
+#endif
+
 #define MTCORE_DBG_PRINT_FCNAME() MTCORE_DBG_PRINT("in %s\n", __FUNCTION__)
 #define MTCORE_ERR_PRINT(str,...) do { \
     fprintf(stderr, "[%d]"str, MTCORE_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
