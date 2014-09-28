@@ -93,11 +93,12 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
          * 1. Need grant lock on helper in advance due to permission check,
          * OR
          * 2. there is no concurrent epochs, hence it is safe to get local lock.*/
-        int local_uh_rank;
-        PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
-        MTCORE_DBG_PRINT("[%d]lock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
 
-        mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, local_uh_rank, 0, uh_win->local_uh_win);
+        MTCORE_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
+                         uh_win->my_rank_in_local_win, uh_win->local_win);
+
+        mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->my_rank_in_local_win,
+                                  0, uh_win->local_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         uh_win->is_self_locked = 1;

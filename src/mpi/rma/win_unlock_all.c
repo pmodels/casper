@@ -60,11 +60,10 @@ int MPI_Win_unlock_all(MPI_Win win)
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (uh_win->is_self_locked) {
         /* We need also release the lock of local rank */
-        int local_uh_rank;
-        PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
 
-        MTCORE_DBG_PRINT("[%d]unlock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
-        mpi_errno = PMPI_Win_unlock(local_uh_rank, uh_win->local_uh_win);
+        MTCORE_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
+                         uh_win->my_rank_in_local_win, uh_win->local_win);
+        mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_local_win, uh_win->local_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 

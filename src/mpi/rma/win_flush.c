@@ -23,15 +23,13 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (user_rank == target_rank && uh_win->is_self_locked) {
-        int local_uh_rank;
-        PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
 
-        /* If target is itself, only flush the target on shared window.
-         * It does not matter which window we are using for local communication,
-         * we just choose local shared window in our implementation.
+        /* If target is itself, only flush the target on local window.
+         * Local window is referred from another internal window in win_allocate
          */
-        MTCORE_DBG_PRINT("[%d]flush self(%d, local_uh_win)\n", user_rank, local_uh_rank);
-        mpi_errno = PMPI_Win_flush(local_uh_rank, uh_win->local_uh_win);
+        MTCORE_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
+                         uh_win->my_rank_in_local_win, uh_win->local_win);
+        mpi_errno = PMPI_Win_flush(uh_win->my_rank_in_local_win, uh_win->local_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

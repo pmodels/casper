@@ -16,11 +16,9 @@ int MTCORE_Fence_win_release_locks(MTCORE_Win * uh_win)
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     /* We need also release the lock of local rank */
-    int local_uh_rank;
-    PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
-
-    MTCORE_DBG_PRINT("[%d]unlock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
-    mpi_errno = PMPI_Win_unlock(local_uh_rank, uh_win->local_uh_win);
+    MTCORE_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
+                     uh_win->my_rank_in_local_win, uh_win->local_win);
+    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_local_win, uh_win->local_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #endif
@@ -56,11 +54,9 @@ static int Fence_Win_unlock_all(MTCORE_Win * uh_win)
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     /* We need also release the lock of local rank */
-    int local_uh_rank;
-    PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
-
-    MTCORE_DBG_PRINT("[%d]unlock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
-    mpi_errno = PMPI_Win_unlock(local_uh_rank, uh_win->local_uh_win);
+    MTCORE_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
+                     uh_win->my_rank_in_local_win, uh_win->local_win);
+    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_local_win, uh_win->local_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -113,13 +109,13 @@ static int Fence_Win_lock_all(int assert, MTCORE_Win * uh_win)
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     /* Lock local rank so that operations can be executed through local target.
      * We do not need force lock in fence.*/
-    int local_uh_rank;
-    PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
-    MTCORE_DBG_PRINT("[%d]lock self(%d, local_uh_win)\n", user_rank, local_uh_rank);
+    MTCORE_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
+                     uh_win->my_rank_in_local_win, uh_win->local_win);
 
-    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, local_uh_rank, 0, uh_win->local_uh_win);
+    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->my_rank_in_local_win, 0, uh_win->local_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+
     uh_win->is_self_locked = 1;
 #endif
 

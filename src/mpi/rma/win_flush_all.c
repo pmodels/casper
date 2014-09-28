@@ -6,7 +6,7 @@ int MPI_Win_flush_all(MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs, local_uh_rank;
+    int user_rank, user_nprocs;
     int i, j, k;
 
     MTCORE_DBG_PRINT_FCNAME();
@@ -21,14 +21,14 @@ int MPI_Win_flush_all(MPI_Win win)
     /* mtcore window starts */
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-    PMPI_Comm_rank(uh_win->local_uh_comm, &local_uh_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (uh_win->is_self_locked) {
-        /* Flush shared window for local communication (self-target). */
-        MTCORE_DBG_PRINT("[%d]flush self(%d, local_uh_win)\n", user_rank, local_uh_rank);
-        mpi_errno = PMPI_Win_flush(local_uh_rank, uh_win->local_uh_win);
+        /* Flush local window for local communication (self-target). */
+        MTCORE_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
+                         uh_win->my_rank_in_local_win, uh_win->local_win);
+        mpi_errno = PMPI_Win_flush(uh_win->my_rank_in_local_win, uh_win->local_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

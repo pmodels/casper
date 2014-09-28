@@ -479,8 +479,6 @@ static int create_communicators(MTCORE_Win * uh_win)
                    sizeof(int) * MTCORE_ENV.num_h);
     }
 
-    PMPI_Comm_rank(uh_win->local_uh_comm, &uh_win->local_uh_rank);
-
   fn_exit:
     if (func_params)
         free(func_params);
@@ -823,6 +821,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
+
+    /* Setup window for local target */
+#if 0
+    PMPI_Comm_rank(uh_win->local_uh_comm, &uh_win->my_rank_in_local_win);
+    uh_win->local_win = uh_win->local_uh_win;
+#else
+    PMPI_Comm_rank(uh_win->uh_comm, &uh_win->my_rank_in_local_win);
+    uh_win->local_win = uh_win->targets[user_rank].segs[0].uh_win;
+#endif
 
     MTCORE_Cache_uh_win(uh_win->win, uh_win);
 

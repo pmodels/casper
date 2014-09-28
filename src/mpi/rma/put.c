@@ -14,10 +14,10 @@ static int MTCORE_Put_shared_impl(const void *origin_addr, int origin_count,
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
-                         uh_win->local_uh_rank, target_disp,
-                         target_count, target_datatype, uh_win->local_uh_win);
-
-    MTCORE_DBG_PRINT("MTCORE PUT to self(in local_uh) %d in shared_comm\n", uh_win->local_uh_rank);
+                         uh_win->my_rank_in_local_win, target_disp,
+                         target_count, target_datatype, uh_win->local_win);
+    MTCORE_DBG_PRINT("MTCORE PUT to self(%d, in local win 0x%x)\n",
+                     uh_win->my_rank_in_local_win, uh_win->local_win);
 
     goto fn_exit;
 

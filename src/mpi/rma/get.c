@@ -9,15 +9,14 @@ static int MTCORE_Get_shared_impl(void *origin_addr, int origin_count,
 {
     int mpi_errno = MPI_SUCCESS;
 
-    /* Issue operation to the target through local shared window, because shared
+    /* Issue operation to the target through local window, because shared
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
-                         uh_win->local_uh_rank, target_disp,
-                         target_count, target_datatype, uh_win->local_uh_win);
-
-    MTCORE_DBG_PRINT("MTCORE GET from self(in local_uh) %d in shared_comm\n",
-                     uh_win->local_uh_rank);
+                         uh_win->my_rank_in_local_win, target_disp,
+                         target_count, target_datatype, uh_win->local_win);
+    MTCORE_DBG_PRINT("MTCORE GET from self(%d, in local win 0x%x)\n",
+                     uh_win->my_rank_in_local_win, uh_win->local_win);
 
     goto fn_exit;
 

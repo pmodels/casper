@@ -7,9 +7,13 @@
 #include <mpi.h>
 
 #define MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+
+/* Enable local lock opt by default, unless disable it explicitly */
+#ifndef MTCORE_DISABLE_LOCAL_LOCK_OPT
 #define MTCORE_ENABLE_LOCAL_LOCK_OPT    /* Optimization for local target.
                                          * Lock/RMA/Flush/Unlock local target instead of helpers.
                                          * Only available when local lock is granted. */
+#endif
 
 #ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 #define MTCORE_GRANT_LOCK_DATATYPE char
@@ -227,7 +231,10 @@ typedef struct MTCORE_Win {
     MPI_Comm local_uh_comm;
     MPI_Group local_uh_group;
     MPI_Win local_uh_win;
-    int local_uh_rank;          /* remember my rank in local shared window for local RMA. */
+
+    int my_rank_in_local_win;   /* remember my rank in internal window for local RMA. Specified in win_allocate. */
+    MPI_Win local_win;          /* Do not free the window, it is referred from another window. Specified in win_allocate. */
+    unsigned short is_self_locked;
 
     /* communicator including all the user processes and helpers */
     MPI_Comm uh_comm;
@@ -274,10 +281,6 @@ typedef struct MTCORE_Win {
 #endif
 
     struct MTCORE_Win_info_args info_args;
-
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    unsigned short is_self_locked;
-#endif
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     int prev_h_off;
