@@ -41,7 +41,7 @@ int MPI_Win_flush_all(MPI_Win win)
      * However, user should be noted that, if MPI implementation issues lock messages
      * for every target even if it does not have any operation, this optimization
      * could lose performance and even lose asynchronous! */
-    for (i = 0; i < uh_win->num_uh_win; i++) {
+    for (i = 0; i < uh_win->num_uh_wins; i++) {
         MTCORE_DBG_PRINT("[%d]flush_all(uh_win 0x%x)\n", user_rank, uh_win->uh_wins[i]);
         mpi_errno = PMPI_Win_flush_all(uh_win->uh_wins[i]);
         if (mpi_errno != MPI_SUCCESS)

@@ -87,7 +87,13 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         is_local_lock_granted = 1;
     }
 
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    /* lockall already locked window for local target */
+    if (is_local_lock_granted) {
+        uh_win->is_self_locked = 1;
+    }
+
+#elif defined(MTCORE_ENABLE_LOCAL_LOCK_OPT)
     if (is_local_lock_granted || (uh_win->targets[user_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
         /* Lock local rank so that operations can be executed through local target.
          * 1. Need grant lock on helper in advance due to permission check,

@@ -53,10 +53,16 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
         }
 #endif
     }
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+
+
     /* If target is itself, we need also release the lock of local rank  */
     if (user_rank == target_rank && uh_win->is_self_locked) {
 
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+        /* unlockall already released window for local target */
+        uh_win->is_self_locked = 0;
+
+#elif defined(MTCORE_ENABLE_LOCAL_LOCK_OPT)
         MTCORE_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
                          uh_win->my_rank_in_local_win, uh_win->local_win);
         mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_local_win, uh_win->local_win);
@@ -64,8 +70,9 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
             goto fn_fail;
 
         uh_win->is_self_locked = 0;
-    }
 #endif
+    }
+
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {

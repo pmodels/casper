@@ -57,7 +57,11 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 #endif
 
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    /* unlockall already released window for local target */
+    uh_win->is_self_locked = 0;
+
+#elif defined(MTCORE_ENABLE_LOCAL_LOCK_OPT)
     if (uh_win->is_self_locked) {
         /* We need also release the lock of local rank */
 
