@@ -30,7 +30,7 @@ int MPI_Win_sync(MPI_Win win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
     if (uh_win->is_self_locked) {
-        mpi_errno = PMPI_Win_sync(uh_win->local_uh_win);
+        mpi_errno = PMPI_Win_sync(uh_win->local_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
