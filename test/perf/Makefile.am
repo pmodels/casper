@@ -36,7 +36,8 @@ noinst_PROGRAMS = \
 	async_fence_th	\
 	mtcore_async_fence \
 	async_pscw	\
-	mtcore_async_pscw
+	mtcore_async_pscw	\
+	win_alloc_overhead
 
 lockall_overhead_CFLAGS= -O2
 mtcore_lockall_overhead_SOURCES= lockall_overhead.c
