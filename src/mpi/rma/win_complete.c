@@ -43,7 +43,7 @@ int MPI_Win_complete(MPI_Win win)
         goto fn_fail;
     MTCORE_Assert(start_grp_size > 0);
 
-    MTCORE_DBG_PRINT("Complete group %p, size %d\n", uh_win->start_group, start_grp_size);
+    MTCORE_DBG_PRINT("Complete group 0x%x, size %d\n", uh_win->start_group, start_grp_size);
 
     reqs = calloc(start_grp_size, sizeof(MPI_Request));
     stats = calloc(start_grp_size, sizeof(MPI_Status));

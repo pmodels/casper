@@ -74,7 +74,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 
     uh_win->post_group = group;
     uh_win->post_ranks_in_win_group = calloc(post_grp_size, sizeof(int));
-    MTCORE_DBG_PRINT("post group %p, size %d\n", uh_win->post_group, post_grp_size);
+    MTCORE_DBG_PRINT("post group 0x%x, size %d\n", uh_win->post_group, post_grp_size);
 
     /* Both lock and start only allow no_check assert. */
     assert = (assert == MPI_MODE_NOCHECK) ? MPI_MODE_NOCHECK : 0;

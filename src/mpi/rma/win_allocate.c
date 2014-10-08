@@ -312,7 +312,7 @@ static void specify_main_helper_binding(MTCORE_Win * uh_win)
                              j, uh_win->targets[i].base_h_offsets[j]);
         }
         for (j = 0; j < uh_win->targets[i].num_segs; j++) {
-            MTCORE_DBG_PRINT("\t\t .seg[%d].main_h_off=%d, base_offset=0x%lx, size=0x%lx\n",
+            MTCORE_DBG_PRINT("\t\t .seg[%d].main_h_off=%d, base_offset=0x%lx, size=0x%x\n",
                              j, uh_win->targets[i].segs[j].main_h_off,
                              uh_win->targets[i].segs[j].base_offset,
                              uh_win->targets[i].segs[j].size);

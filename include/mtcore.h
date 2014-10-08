@@ -329,7 +329,7 @@ extern int UH_WIN_HANDLE_KEY;
     int flag = 0;   \
     mpi_errno = PMPI_Win_get_attr(win, UH_WIN_HANDLE_KEY, &uh_win, &flag);   \
     if (!flag || mpi_errno != MPI_SUCCESS){  \
-        MTCORE_DBG_PRINT("Cannot fetch uh_win from win 0x%lx\n", win);   \
+        MTCORE_DBG_PRINT("Cannot fetch uh_win from win 0x%x\n", win);   \
         uh_win = NULL; \
     }   \
 }
@@ -337,16 +337,16 @@ extern int UH_WIN_HANDLE_KEY;
 #define MTCORE_Cache_uh_win(win, uh_win) { \
     mpi_errno = PMPI_Win_set_attr(win, UH_WIN_HANDLE_KEY, uh_win);  \
     if (mpi_errno != MPI_SUCCESS){  \
-        MTCORE_ERR_PRINT("Cannot cache uh_win %p for win 0x%lx\n", uh_win, win);   \
+        MTCORE_ERR_PRINT("Cannot cache uh_win %p for win 0x%x\n", uh_win, win);   \
         goto fn_fail;   \
     }   \
-    MTCORE_DBG_PRINT("cache uh_win %p into win 0x%lx \n", uh_win, win);  \
+    MTCORE_DBG_PRINT("cache uh_win %p into win 0x%x \n", uh_win, win);  \
 }
 
 #define MTCORE_Remove_uh_win_from_cache(win)  {\
     mpi_errno = PMPI_Win_delete_attr(win, UH_WIN_HANDLE_KEY);   \
     if (mpi_errno != MPI_SUCCESS){  \
-        MTCORE_ERR_PRINT("Cannot remove uh_win cache for win 0x%lx\n", win);   \
+        MTCORE_ERR_PRINT("Cannot remove uh_win cache for win 0x%x\n", win);   \
         goto fn_fail;   \
     }   \
 }

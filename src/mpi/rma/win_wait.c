@@ -43,7 +43,7 @@ int MPI_Win_wait(MPI_Win win)
         goto fn_fail;
     MTCORE_Assert(post_grp_size > 0);
 
-    MTCORE_DBG_PRINT("Wait group %p, size %d\n", uh_win->post_group, post_grp_size);
+    MTCORE_DBG_PRINT("Wait group 0x%x, size %d\n", uh_win->post_group, post_grp_size);
 
     reqs = calloc(post_grp_size, sizeof(MPI_Request));
     stats = calloc(post_grp_size, sizeof(MPI_Status));

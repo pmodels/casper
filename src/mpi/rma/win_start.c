@@ -77,7 +77,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     uh_win->start_group = group;
     uh_win->start_ranks_in_win_group = calloc(start_grp_size, sizeof(int));
-    MTCORE_DBG_PRINT("start group %p, size %d\n", uh_win->start_group, start_grp_size);
+    MTCORE_DBG_PRINT("start group 0x%x, size %d\n", uh_win->start_group, start_grp_size);
 
     /* Both lock and start only allow no_check assert. */
     assert = (assert == MPI_MODE_NOCHECK) ? MPI_MODE_NOCHECK : 0;
