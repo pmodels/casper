@@ -33,7 +33,9 @@ noinst_PROGRAMS = \
 	mtcore_fetch_and_op	\
 	win_allocate	\
 	win_create_acc	\
-	init_thread_acc
+	init_thread_acc	\
+	epoch_type	\
+	epoch_type_assert
 	
 mtcore_get_SOURCES= get.c
 mtcore_get_LDFLAGS= -L$(libdir) -lmtcore
