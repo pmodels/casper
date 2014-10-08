@@ -54,6 +54,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 
     /* mtcore window starts */
 
+    MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW));
 
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */

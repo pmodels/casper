@@ -20,6 +20,9 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     /* mtcore window starts */
 
+    MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ||
+                  (uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL));
+
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (user_rank == target_rank && uh_win->is_self_locked) {

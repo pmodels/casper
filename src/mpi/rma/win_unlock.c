@@ -20,6 +20,9 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 
     /* mtcore window starts */
 
+    MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ||
+                  (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW));
+
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
     uh_win->targets[target_rank].remote_lock_assert = 0;

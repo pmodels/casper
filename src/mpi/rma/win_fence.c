@@ -159,6 +159,8 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     /* mtcore window starts */
 
+    MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_FENCE));
+
     /* We do not support conflicting lock/fence epoch, because operations
      * must choose different window. Because user may not specify assert for the
      * last fence, we do not check the epoch status in lock/lockall. */
