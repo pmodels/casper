@@ -165,6 +165,13 @@ typedef enum {
     MTCORE_FUNC_MAX,
 } MTCORE_Func;
 
+typedef enum {
+    MTCORE_EPOCH_LOCK_ALL = 1,
+    MTCORE_EPOCH_LOCK = 2,
+    MTCORE_EPOCH_PSCW = 4,
+    MTCORE_EPOCH_FENCE = 8,
+} MTCORE_Epoch_type;
+
 typedef struct MTCORE_H_win_params {
     MPI_Aint size;
     int disp_unit;
@@ -172,6 +179,7 @@ typedef struct MTCORE_H_win_params {
 
 struct MTCORE_Win_info_args {
     unsigned short no_local_load_store;
+    int epoch_type;
 };
 
 typedef struct MTCORE_OP_Segment {
@@ -201,8 +209,7 @@ typedef struct MTCORE_Win_target_seg {
 } MTCORE_Win_target_seg;
 
 typedef struct MTCORE_Win_target {
-    MPI_Win *uh_wins;           /* Do not free the window, it is freed in uh_wins */
-    int num_uh_wins;            /* max number of segments handled by the same helper */
+    MPI_Win uh_win;             /* Do not free the window, it is freed in uh_wins */
     int disp_unit;
     MPI_Aint size;
 

@@ -1,13 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <memory.h>
 #include "mtcore.h"
+
+#include <ctype.h>
 
 static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
 
     uh_win->info_args.no_local_load_store = 0;
+    uh_win->info_args.epoch_type = MTCORE_EPOCH_LOCK_ALL | MTCORE_EPOCH_LOCK |
+        MTCORE_EPOCH_PSCW | MTCORE_EPOCH_FENCE;
 
     if (info != MPI_INFO_NULL) {
         int info_flag = 0;
@@ -25,9 +30,46 @@ static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
             if (!strncmp(info_value, "true", strlen("true")))
                 uh_win->info_args.no_local_load_store = 1;
         }
+
+        /* Check if user specifies epoch types */
+        memset(info_value, 0, sizeof(info_value));
+        mpi_errno = PMPI_Info_get(info, "epoch_type", MPI_MAX_INFO_VAL, info_value, &info_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        if (info_flag == 1) {
+            int user_epoch_type = 0;
+            char *type = NULL;
+
+            type = strtok(info_value, "|");
+            while (type != NULL) {
+                if (!strncmp(type, "lockall", strlen("lockall"))) {
+                    user_epoch_type |= MTCORE_EPOCH_LOCK_ALL;
+                }
+                else if (!strncmp(type, "lock", strlen("lock"))) {
+                    user_epoch_type |= MTCORE_EPOCH_LOCK;
+                }
+                else if (!strncmp(type, "pscw", strlen("pscw"))) {
+                    user_epoch_type |= MTCORE_EPOCH_PSCW;
+                }
+                else if (!strncmp(type, "fence", strlen("fence"))) {
+                    user_epoch_type |= MTCORE_EPOCH_FENCE;
+                }
+                type = strtok(NULL, "|");
+            }
+
+            if (user_epoch_type != 0)
+                uh_win->info_args.epoch_type = user_epoch_type;
+        }
     }
 
-    MTCORE_DBG_PRINT("no_local_load_store %d\n", uh_win->info_args.no_local_load_store);
+    MTCORE_DBG_PRINT("no_local_load_store %d, epoch_type=%s|%s|%s|%s\n",
+                     uh_win->info_args.no_local_load_store,
+                     ((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                     ((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ? "lock" : ""),
+                     ((uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW) ? "pscw" : ""),
+                     ((uh_win->info_args.epoch_type & MTCORE_EPOCH_FENCE) ? "fence" : "")
+);
 
   fn_exit:
     return mpi_errno;
