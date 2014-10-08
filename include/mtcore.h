@@ -239,8 +239,10 @@ typedef struct MTCORE_Win {
     MPI_Group local_uh_group;
     MPI_Win local_uh_win;
 
-    int my_rank_in_local_win;   /* remember my rank in internal window for local RMA. Specified in win_allocate. */
-    MPI_Win local_win;          /* Do not free the window, it is referred from another window. Specified in win_allocate. */
+    int num_h_ranks_in_uh;      /* number of unique helper ranks */
+    int *h_ranks_in_uh;         /* unique helper ranks in world, used in lockall only epoches. */
+    int my_rank_in_uh_comm;     /* remember my rank in internal uh_comm for local RMA. Specified in win_allocate. */
+    MPI_Win my_uh_win;          /* Do not free the window, it is referred from another window. Specified in win_allocate. */
     unsigned short is_self_locked;
 
     /* communicator including all the user processes and helpers */
@@ -248,8 +250,7 @@ typedef struct MTCORE_Win {
     MPI_Group uh_group;
     MPI_Win *uh_wins;           /* every local process has separate window for permission control,
                                  * processes in different node share one window. */
-    int num_uh_wins;            /* = max targets' num_uh_wins * max_local_user_nprocs */
-    int max_local_num_uh_wins;  /* the max number of windows of each process */
+    int num_uh_wins;            /* = max_local_user_nprocs */
 
     /* communicator including all the user processes */
     MPI_Comm user_comm;
@@ -362,6 +363,7 @@ extern MPI_Group MTCORE_GROUP_USER_WORLD;
 extern int *MTCORE_H_RANKS_IN_WORLD;
 extern int *MTCORE_H_RANKS_IN_LOCAL;
 extern int *MTCORE_ALL_H_RANKS_IN_WORLD;
+extern int *MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD;
 extern int *MTCORE_USER_RANKS_IN_WORLD;
 extern int MTCORE_NUM_NODES;
 extern int MTCORE_MY_NODE_ID;

@@ -60,6 +60,9 @@ int MPI_Finalize(void)
     if (MTCORE_ALL_H_RANKS_IN_WORLD)
         free(MTCORE_ALL_H_RANKS_IN_WORLD);
 
+    if (MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD)
+        free(MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD);
+
     if (MTCORE_ALL_NODE_IDS)
         free(MTCORE_ALL_NODE_IDS);
 

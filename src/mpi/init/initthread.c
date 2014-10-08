@@ -17,6 +17,7 @@ int *MTCORE_H_RANKS_IN_WORLD = NULL;
 int *MTCORE_H_RANKS_IN_LOCAL = NULL;
 int *MTCORE_ALL_H_RANKS_IN_WORLD = NULL;        /* Helpers of user process x are stored as
                                                  * [x*num_h : (x+1)*num_h-1] */
+int *MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD = NULL;
 int *MTCORE_USER_RANKS_IN_WORLD = NULL;
 
 int MTCORE_MY_NODE_ID = -1;
@@ -250,6 +251,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
     MTCORE_ALL_NODE_IDS = calloc(nprocs, sizeof(int));
     MTCORE_ALL_H_RANKS_IN_WORLD = calloc(user_nprocs * MTCORE_ENV.num_h, sizeof(int));
+    MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD = calloc(MTCORE_NUM_NODES * MTCORE_ENV.num_h, sizeof(int));
     tmp_gather_buf = calloc(nprocs * (1 + MTCORE_ENV.num_h), sizeof(int));
 
     tmp_gather_buf[rank * (1 + MTCORE_ENV.num_h)] = MTCORE_MY_NODE_ID;
@@ -271,6 +273,8 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         if (i_user_rank != MPI_UNDEFINED) {
             for (j = 0; j < MTCORE_ENV.num_h; j++) {
                 MTCORE_ALL_H_RANKS_IN_WORLD[i_user_rank * MTCORE_ENV.num_h + j] =
+                    tmp_gather_buf[i * (1 + MTCORE_ENV.num_h) + j + 1];
+                MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD[node_id * MTCORE_ENV.num_h + j] =
                     tmp_gather_buf[i * (1 + MTCORE_ENV.num_h) + j + 1];
             }
         }
@@ -373,6 +377,8 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         free(MTCORE_H_RANKS_IN_LOCAL);
     if (MTCORE_ALL_H_RANKS_IN_WORLD)
         free(MTCORE_ALL_H_RANKS_IN_WORLD);
+    if (MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD)
+        free(MTCORE_ALL_UNIQUE_H_RANKS_IN_WORLD);
     if (MTCORE_ALL_NODE_IDS)
         free(MTCORE_ALL_NODE_IDS);
     if (MTCORE_USER_RANKS_IN_WORLD)

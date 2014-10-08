@@ -8,14 +8,19 @@ static int MTCORE_Fetch_and_op_shared_impl(const void *origin_addr, void *result
                                            MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
+    MPI_Win *win_ptr = &uh_win->my_uh_win;
+
+    if (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) {
+        win_ptr = &uh_win->fence_win;
+    }
 
     /* Issue operation to the target through local window, because shared
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype,
-                                  uh_win->my_rank_in_local_win, target_disp, op, uh_win->local_win);
+                                  uh_win->my_rank_in_uh_comm, target_disp, op, *win_ptr);
     MTCORE_DBG_PRINT("MTCORE Fetch_and_op to self(%d, in local win 0x%x)\n",
-                     uh_win->my_rank_in_local_win, uh_win->local_win);
+                     uh_win->my_rank_in_uh_comm, *win_ptr);
 
     goto fn_exit;
 

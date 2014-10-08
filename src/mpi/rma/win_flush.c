@@ -31,8 +31,8 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          * Local window is referred from another internal window in win_allocate
          */
         MTCORE_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
-                         uh_win->my_rank_in_local_win, uh_win->local_win);
-        mpi_errno = PMPI_Win_flush(uh_win->my_rank_in_local_win, uh_win->local_win);
+                         uh_win->my_rank_in_uh_comm, uh_win->my_uh_win);
+        mpi_errno = PMPI_Win_flush(uh_win->my_rank_in_uh_comm, uh_win->my_uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -41,17 +41,15 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     {
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
-        for (j = 0; j < uh_win->targets[target_rank].num_uh_wins; j++) {
-            /* Optimization for MPI implementations that have optimized lock_all.
-             * However, user should be noted that, if MPI implementation issues lock messages
-             * for every target even if it does not have any operation, this optimization
-             * could lose performance and even lose asynchronous! */
-            MTCORE_DBG_PRINT("[%d]flush_all(uh_win 0x%x), instead of target rank %d\n",
-                             user_rank, uh_win->targets[target_rank].uh_wins[j], target_rank);
-            mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].uh_wins[j]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
+        /* Optimization for MPI implementations that have optimized lock_all.
+         * However, user should be noted that, if MPI implementation issues lock messages
+         * for every target even if it does not have any operation, this optimization
+         * could lose performance and even lose asynchronous! */
+        MTCORE_DBG_PRINT("[%d]flush_all(uh_win 0x%x), instead of target rank %d\n",
+                         user_rank, uh_win->targets[target_rank].uh_win, target_rank);
+        mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
 #else
 
 #if !defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
@@ -81,18 +79,16 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          *
          * Consider flush does nothing if no operations on that target in most
          * MPI implementation, simpler code is better */
-        for (j = 0; j < uh_win->targets[target_rank].num_uh_wins; j++) {
-            for (k = 0; k < MTCORE_ENV.num_h; k++) {
-                int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
-                MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
-                                 "target rank %d\n", user_rank, target_h_rank_in_uh,
-                                 uh_win->targets[target_rank].uh_wins[j], target_rank);
+        j = 0;
+        for (k = 0; k < MTCORE_ENV.num_h; k++) {
+            int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+            MTCORE_DBG_PRINT("[%d]flush(Helper(%d), uh_wins 0x%x), instead of "
+                             "target rank %d\n", user_rank, target_h_rank_in_uh,
+                             uh_win->targets[target_rank].uh_win, target_rank);
 
-                mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
-                                           uh_win->targets[target_rank].uh_wins[j]);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
-            }
+            mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->targets[target_rank].uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
         }
 #endif /*end of MTCORE_ENABLE_RUNTIME_LOAD_OPT */
 #endif /*end of MTCORE_ENABLE_SYNC_ALL_OPT */

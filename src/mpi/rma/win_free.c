@@ -64,7 +64,7 @@ int MPI_Win_free(MPI_Win * win)
      * operations complete, because Win_free already internally add a barrier
      * for waiting operations on that window complete.
      */
-    if (uh_win->uh_wins) {
+    if (uh_win->num_uh_wins > 0 && uh_win->uh_wins) {
         MTCORE_DBG_PRINT("\t free uh windows\n");
         for (i = 0; i < uh_win->num_uh_wins; i++) {
             if (uh_win->uh_wins[i]) {
@@ -75,7 +75,7 @@ int MPI_Win_free(MPI_Win * win)
         }
     }
 
-    if (uh_win->fence_win) {
+    if ((uh_win->info_args.epoch_type & MTCORE_EPOCH_FENCE) && uh_win->fence_win) {
         MTCORE_DBG_PRINT("\t free fence window\n");
         mpi_errno = PMPI_Win_free(&uh_win->fence_win);
         if (mpi_errno != MPI_SUCCESS)
@@ -171,12 +171,11 @@ int MPI_Win_free(MPI_Win * win)
                 free(uh_win->targets[i].h_ranks_in_uh);
             if (uh_win->targets[i].segs)
                 free(uh_win->targets[i].segs);
-            if (uh_win->targets[i].uh_wins)
-                free(uh_win->targets[i].uh_wins);
         }
         free(uh_win->targets);
     }
-
+    if (uh_win->h_ranks_in_uh)
+        free(uh_win->h_ranks_in_uh);
     if (uh_win->h_win_handles)
         free(uh_win->h_win_handles);
     if (uh_win->uh_wins)

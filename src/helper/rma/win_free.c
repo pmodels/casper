@@ -36,7 +36,7 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
          * operations complete, because Win_free already internally add a barrier
          * for waiting operations on that window complete.
          */
-        if (win->uh_wins) {
+        if (win->num_uh_wins > 0 && win->uh_wins) {
             MTCORE_H_DBG_PRINT(" free uh windows\n");
             for (i = 0; i < win->num_uh_wins; i++) {
                 if (win->uh_wins[i]) {

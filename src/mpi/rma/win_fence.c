@@ -14,15 +14,6 @@ int MTCORE_Fence_win_release_locks(MTCORE_Win * uh_win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    /* We need also release the lock of local rank */
-    MTCORE_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
-                     uh_win->my_rank_in_local_win, uh_win->local_win);
-    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_local_win, uh_win->local_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#endif
-
   fn_exit:
     return mpi_errno;
 
@@ -53,13 +44,7 @@ static int Fence_Win_unlock_all(MTCORE_Win * uh_win)
         goto fn_fail;
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    /* We need also release the lock of local rank */
-    MTCORE_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
-                     uh_win->my_rank_in_local_win, uh_win->local_win);
-    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_local_win, uh_win->local_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
+    /* During fence epoch, it is allowed to access local target directly */
     uh_win->is_self_locked = 0;
 #endif
 
@@ -107,15 +92,7 @@ static int Fence_Win_lock_all(int assert, MTCORE_Win * uh_win)
 
     uh_win->is_self_locked = 0;
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    /* Lock local rank so that operations can be executed through local target.
-     * We do not need force lock in fence.*/
-    MTCORE_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
-                     uh_win->my_rank_in_local_win, uh_win->local_win);
-
-    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->my_rank_in_local_win, 0, uh_win->local_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
+    /* During fence epoch, it is allowed to access local target directly */
     uh_win->is_self_locked = 1;
 #endif
 

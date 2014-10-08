@@ -29,14 +29,13 @@ int MPI_Win_sync(MPI_Win win)
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-    if (uh_win->is_self_locked) {
-        mpi_errno = PMPI_Win_sync(uh_win->local_win);
+    if (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) {
+        mpi_errno = PMPI_Win_sync(uh_win->fence_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-
-    for (i = 0; i < uh_win->targets[user_rank].num_uh_wins; i++) {
-        mpi_errno = PMPI_Win_sync(uh_win->targets[user_rank].uh_wins[i]);
+    else {
+        mpi_errno = PMPI_Win_sync(uh_win->targets[user_rank].uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

@@ -237,28 +237,36 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
      * User processes in different nodes can share a window.
      *  i.e., win[x] can be shared by processes whose local rank is x.
      */
-    int func_params[1];
-    mpi_errno = MTCORE_H_func_get_param((char *) func_params, sizeof(int), win->ur_h_comm);
+    int func_params[2];
+    mpi_errno = MTCORE_H_func_get_param((char *) func_params, sizeof(func_params), win->ur_h_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     win->num_uh_wins = func_params[0];
-    MTCORE_H_DBG_PRINT(" Received parameters: num_uh_wins = %d\n", win->num_uh_wins);
+    win->info_args.epoch_type = func_params[1];
+    MTCORE_H_DBG_PRINT(" Received parameters: num_uh_wins = %d, epoch_type=%d\n", win->num_uh_wins,
+                       win->info_args.epoch_type);
 
-    win->uh_wins = calloc(win->num_uh_wins, sizeof(MPI_Win));
-    for (i = 0; i < win->num_uh_wins; i++) {
-        mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm,
-                                    &win->uh_wins[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+    /* - Create lock/lockall.pscw windows, do not need if only fence epoch */
+    if (win->num_uh_wins > 0) {
+        win->uh_wins = calloc(win->num_uh_wins, sizeof(MPI_Win));
+        for (i = 0; i < win->num_uh_wins; i++) {
+            mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm,
+                                        &win->uh_wins[i]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
 
-        MTCORE_H_DBG_PRINT(" Created uh windows[%d] 0x%x\n", i, win->uh_wins[i]);
+            MTCORE_H_DBG_PRINT(" Created uh windows[%d] 0x%x\n", i, win->uh_wins[i]);
+        }
     }
 
     /* - Create fence window */
-    mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm, &win->fence_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    MTCORE_H_DBG_PRINT(" Created fence windows 0x%x\n", win->fence_win);
+    if (win->info_args.epoch_type & MTCORE_EPOCH_FENCE) {
+        mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm,
+                                    &win->fence_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        MTCORE_H_DBG_PRINT(" Created fence windows 0x%x\n", win->fence_win);
+    }
 
     win->mtcore_h_win_handle = (unsigned long) win->uh_wins;
     mpi_errno = mtcore_put_h_win(win->mtcore_h_win_handle, win);
