@@ -119,11 +119,16 @@ int MPI_Win_unlock_all(MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
+        mpi_errno = PMPI_Win_unlock_all(uh_win->uh_wins[0]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+#if 0
         for (i = 0; i < uh_win->num_h_ranks_in_uh; i++) {
             mpi_errno = PMPI_Win_unlock(uh_win->h_ranks_in_uh[i], uh_win->uh_wins[0]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+#endif
 #endif
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mtcore.h"
-
 static inline int MTCORE_Win_lock_self_impl(MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -151,12 +150,17 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
+        mpi_errno = PMPI_Win_lock_all(assert, uh_win->uh_wins[0]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+#if 0
         for (i = 0; i < uh_win->num_h_ranks_in_uh; i++) {
             mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->h_ranks_in_uh[i],
                                       assert, uh_win->uh_wins[0]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+#endif
 #endif
 
         uh_win->is_self_locked = 0;
