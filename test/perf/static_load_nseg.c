@@ -127,6 +127,7 @@ int main(int argc, char *argv[])
     int errs = 0;
     int win_size = 0;
     MPI_Comm shm_comm = MPI_COMM_NULL;
+    MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -174,7 +175,11 @@ int main(int argc, char *argv[])
     }
 
     locbuf[0] = (rank + 1) * 1.0;
-    MPI_Win_allocate(win_size * sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD,
+
+    MPI_Info_create(&win_info);
+    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall");
+
+    MPI_Win_allocate(win_size * sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD,
                      &winbuf, &win);
 
     for (NOP = NOP_MIN; NOP <= NOP_MAX; NOP *= NOP_ITER) {
@@ -182,7 +187,8 @@ int main(int argc, char *argv[])
     }
 
   exit:
-
+    if (win_info != MPI_INFO_NULL)
+        MPI_Info_free(&win_info);
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
     if (target_shm_ranks)

@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
 {
     int i, errs;
     int min_time = D_SLEEP_TIME, max_time = D_SLEEP_TIME, iter_time = 2, time;
+    MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
 
@@ -134,8 +135,11 @@ int main(int argc, char *argv[])
         locbuf[i] = 1.0;
     }
 
+    MPI_Info_create(&win_info);
+    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "fence");
+
     // size in byte
-    MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), MPI_INFO_NULL,
+    MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), win_info,
                      MPI_COMM_WORLD, &winbuf, &win);
     debug_printf("[%d]win_allocate done\n", rank);
 
@@ -151,7 +155,8 @@ int main(int argc, char *argv[])
     }
 
   exit:
-
+    if (win_info != MPI_INFO_NULL)
+        MPI_Info_free(&win_info);
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
     if (locbuf)
