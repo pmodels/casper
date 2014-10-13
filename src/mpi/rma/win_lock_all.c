@@ -153,7 +153,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         mpi_errno = PMPI_Win_lock_all(assert, uh_win->uh_wins[0]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-#if 0
+#if 0   /* segmentation fault */
         for (i = 0; i < uh_win->num_h_ranks_in_uh; i++) {
             mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->h_ranks_in_uh[i],
                                       assert, uh_win->uh_wins[0]);
@@ -165,11 +165,15 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
         uh_win->is_self_locked = 0;
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+#if 0   /* workaround of lock_all */
         /* Do not need grant lock before lock local target, because only shared lock
          * in current epoch. */
         mpi_errno = MTCORE_Win_lock_self_impl(uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+#else
+        uh_win->is_self_locked = 1;
+#endif
 #endif
     }
     else {
