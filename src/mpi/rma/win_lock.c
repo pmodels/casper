@@ -41,7 +41,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     /* mtcore window starts */
 
     MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ||
-                  (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW));
+                  (uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
