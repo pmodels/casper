@@ -39,6 +39,81 @@ static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
     goto fn_exit;
 }
 
+static inline int MTCORE_Win_lock_self_impl(MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank;
+
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    /* lockall already locked window for local target */
+#else
+    MTCORE_DBG_PRINT("[%d]lock self(%d, local pscw_win 0x%x)\n", user_rank,
+                     uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
+    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->my_rank_in_uh_comm,
+                              MPI_MODE_NOCHECK, uh_win->my_pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
+#endif
+
+    uh_win->is_self_locked = 1;
+    return mpi_errno;
+}
+
+static int MTCORE_Win_Pscw_lock(int target_rank, int assert, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank;
+    int k;
+
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+
+    uh_win->targets[target_rank].remote_lock_assert = assert;
+    MTCORE_DBG_PRINT("[%d]pscw_lock(%d), MPI_MODE_NOCHECK %d(assert %d)\n", user_rank,
+                     target_rank, (assert & MPI_MODE_NOCHECK) != 0, assert);
+
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    MTCORE_DBG_PRINT("[%d]lock_all(pscw_win 0x%x), instead of target rank %d\n",
+                     user_rank, uh_win->targets[target_rank].pscw_win, target_rank);
+    mpi_errno = PMPI_Win_lock_all(assert, uh_win->targets[target_rank].pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+#else
+    /* Lock every helper on every window.
+     * Note that a helper may be used on any window of this process for runtime
+     * load balancing whether it is bound to that segment or not. */
+    for (k = 0; k < MTCORE_ENV.num_h; k++) {
+        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+
+        MTCORE_DBG_PRINT("[%d]lock(Helper(%d), pscw_wins 0x%x), instead of "
+                         "target rank %d\n", user_rank, target_h_rank_in_uh,
+                         uh_win->targets[target_rank].pscw_win, target_rank);
+
+        mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, target_h_rank_in_uh, assert,
+                                  uh_win->targets[target_rank].pscw_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+#endif
+
+    uh_win->is_self_locked = 0;
+
+    if (user_rank == target_rank) {
+        /* During pscw epoch, it is allowed to access local target directly */
+
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+        mpi_errno = MTCORE_Win_lock_self_impl(uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+#endif
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 {
     MTCORE_Win *uh_win;
@@ -88,12 +163,15 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     for (i = 0; i < start_grp_size; i++) {
         MTCORE_DBG_PRINT("\t\t start target %d\n", uh_win->start_ranks_in_win_group[i]);
-
-        /* Use manticore lock */
-        mpi_errno = MPI_Win_lock(MPI_LOCK_SHARED, uh_win->start_ranks_in_win_group[i], assert, win);
+        mpi_errno = MTCORE_Win_Pscw_lock(uh_win->start_ranks_in_win_group[i], assert, uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
+
+    /* Indicate epoch status, later operations will be redirected to pscw_win
+     * until start counter decreases to 0 .*/
+    uh_win->epoch_stat = MTCORE_WIN_EPOCH_PSCW;
+    uh_win->start_counter++;
 
   fn_exit:
     return mpi_errno;

@@ -29,20 +29,19 @@ int MPI_Win_sync(MPI_Win win)
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-    if (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) {
-        mpi_errno = PMPI_Win_sync(uh_win->fence_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-    else {
-        mpi_errno = PMPI_Win_sync(uh_win->targets[user_rank].uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
+    MPI_Win *win_ptr = NULL;
+    MTCORE_Get_epoch_local_win(uh_win, win_ptr);
+
+    mpi_errno = PMPI_Win_sync(*win_ptr);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    MTCORE_DBG_PRINT("[%d] win sync on %s local win 0x%x\n", user_rank,
+                     MTCORE_Win_epoch_stat_name[uh_win->epoch_stat], *win_ptr);
 
   fn_exit:
     return mpi_errno;
 
   fn_fail:
-    return mpi_errno;
+    goto fn_exit;
 }

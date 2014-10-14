@@ -9,6 +9,14 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
+static inline int set_pscw_wait_counter(int size, MTCORE_Win * uh_win)
+{
+    *uh_win->wait_counter_ptr = size;
+
+    /* need memory barrier because it will be updated by remote origin */
+    return PMPI_Win_sync(uh_win->my_pscw_win);
+}
+
 static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -80,6 +88,16 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     assert = (assert == MPI_MODE_NOCHECK) ? MPI_MODE_NOCHECK : 0;
 
     mpi_errno = fill_ranks_in_win_grp(uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    mpi_errno = set_pscw_wait_counter(post_grp_size, uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Unlock self exclusive lock.
+     * Origins cannot access this target before self lock is released. */
+    mpi_errno = MTCORE_Win_unlock_self_pscw_win(uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

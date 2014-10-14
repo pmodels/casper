@@ -11,9 +11,7 @@ static int MTCORE_Put_shared_impl(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     MPI_Win *win_ptr = &uh_win->my_uh_win;
 
-    if (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) {
-        win_ptr = &uh_win->fence_win;
-    }
+    MTCORE_Get_epoch_local_win(uh_win, win_ptr);
 
     /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
@@ -151,12 +149,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
             MPI_Aint target_h_offset = 0;
             MPI_Win *win_ptr = NULL;
 
-            if (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) {
-                win_ptr = &uh_win->fence_win;
-            }
-            else {
-                win_ptr = &uh_win->targets[target_rank].segs[0].uh_win;
-            }
+            MTCORE_Get_epoch_win(target_rank, 0, uh_win, win_ptr);
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
             if (MTCORE_ENV.load_opt == MTCORE_LOAD_BYTE_COUNTING) {
@@ -181,7 +174,7 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
             MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win 0x%x [%s]) instead of "
                              "target %d, 0x%lx(0x%lx + %d * %ld)\n",
                              target_h_rank_in_uh, *win_ptr,
-                             (uh_win->epoch_stat == MTCORE_WIN_EPOCH_FENCE) ? "FENCE" : "LOCK",
+                             MTCORE_Win_epoch_stat_name[uh_win->epoch_stat],
                              target_rank, uh_target_disp, target_h_offset,
                              uh_win->targets[target_rank].disp_unit, target_disp);
         }

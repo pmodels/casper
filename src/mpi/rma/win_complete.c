@@ -9,15 +9,120 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
+static inline int MTCORE_Win_unlock_self_impl(MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank;
+
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    /* unlockall already unlocked window for local target */
+#else
+    MTCORE_DBG_PRINT("[%d]unlock self(%d, local pscw_win 0x%x)\n", user_rank,
+                     uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
+    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
+#endif
+
+    uh_win->is_self_locked = 0;
+    return mpi_errno;
+}
+
+static inline int decrease_pscw_target_wait_counter(int target_rank, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int main_h_off = uh_win->targets[target_rank].segs[0].main_h_off;
+    int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
+
+    int cnt = -1;
+
+    /* Decrease target wait counter on the main helper.
+     * Do not send to another helper, because we may need wait for lock acquired
+     * for that helper. */
+    MTCORE_DBG_PRINT("decrease pscw counter(Helper %d, offset 0x%lx)\n",
+                     target_h_rank_in_uh, uh_win->targets[target_rank].wait_counter_offset);
+    mpi_errno = PMPI_Accumulate(&cnt, 1, MPI_INT, target_h_rank_in_uh,
+                                uh_win->targets[target_rank].wait_counter_offset, 1,
+                                MPI_INT, MPI_SUM, uh_win->targets[target_rank].pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
+}
+
+static int MTCORE_Win_Pscw_unlock(int target_rank, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank;
+    int k;
+
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    MTCORE_DBG_PRINT("[%d]flush_all(pscw_win 0x%x), instead of target rank %d\n",
+                     user_rank, uh_win->targets[target_rank].pscw_win, target_rank);
+    mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+#else
+    /* Flush every helper on every window. */
+    for (k = 0; k < MTCORE_ENV.num_h; k++) {
+        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+
+        MTCORE_DBG_PRINT("[%d]flush(Helper(%d), pscw_wins 0x%x), instead of "
+                         "target rank %d\n", user_rank, target_h_rank_in_uh,
+                         uh_win->targets[target_rank].pscw_win, target_rank);
+
+        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->targets[target_rank].pscw_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+#endif
+
+    mpi_errno = decrease_pscw_target_wait_counter(target_rank, uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
+    MTCORE_DBG_PRINT("[%d]unlock_all(pscw_win 0x%x), instead of target rank %d\n",
+                     user_rank, uh_win->targets[target_rank].pscw_win, target_rank);
+    mpi_errno = PMPI_Win_unlock_all(uh_win->targets[target_rank].pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+#else
+    /* Unlock every helper on every window. */
+    for (k = 0; k < MTCORE_ENV.num_h; k++) {
+        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
+
+        MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), pscw_wins 0x%x), instead of "
+                         "target rank %d\n", user_rank, target_h_rank_in_uh,
+                         uh_win->targets[target_rank].pscw_win, target_rank);
+
+        mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->targets[target_rank].pscw_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+#endif
+
+    if (user_rank == target_rank) {
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+        mpi_errno = MTCORE_Win_unlock_self_impl(uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+#endif
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 int MPI_Win_complete(MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
     int i;
-    MPI_Request *reqs = NULL;
-    MPI_Status *stats = NULL;
-    char *bufs;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -45,28 +150,21 @@ int MPI_Win_complete(MPI_Win win)
 
     MTCORE_DBG_PRINT("Complete group 0x%x, size %d\n", uh_win->start_group, start_grp_size);
 
-    reqs = calloc(start_grp_size, sizeof(MPI_Request));
-    stats = calloc(start_grp_size, sizeof(MPI_Status));
-    bufs = calloc(start_grp_size, sizeof(char));
-
     for (i = 0; i < start_grp_size; i++) {
         MTCORE_DBG_PRINT("\t\t complete target %d\n", uh_win->start_ranks_in_win_group[i]);
 
-        /* use manticore unlock */
-        mpi_errno = MPI_Win_unlock(uh_win->start_ranks_in_win_group[i], win);
+        mpi_errno = MTCORE_Win_Pscw_unlock(uh_win->start_ranks_in_win_group[i], uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-
-        /* notify target it is done, target is blocking in complete */
-        mpi_errno = PMPI_Isend(&bufs[i], 1, MPI_CHAR, uh_win->start_ranks_in_win_group[i],
-                               MTCORE_PSCW_COMPLETE_TAG, uh_win->user_comm, &reqs[i]);
     }
 
-    /* TODO: can we do testall instead ? complete does not wait for the completion on target.
-     * However, can we free send buffers before all sends are done ? */
-    mpi_errno = PMPI_Waitall(start_grp_size, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    /* Decrease start counter, change epoch status only when counter
+     * become 0. */
+    uh_win->start_counter--;
+    if (uh_win->start_counter == 0) {
+        MTCORE_DBG_PRINT("all starts are completed ! no epoch now\n");
+        uh_win->epoch_stat = MTCORE_WIN_NO_EPOCH;
+    }
 
     MTCORE_DBG_PRINT("Complete done\n");
 
@@ -75,13 +173,6 @@ int MPI_Win_complete(MPI_Win win)
         free(uh_win->start_ranks_in_win_group);
     uh_win->start_group = MPI_GROUP_NULL;
     uh_win->start_ranks_in_win_group = NULL;
-
-    if (reqs)
-        free(reqs);
-    if (stats)
-        free(stats);
-    if (bufs)
-        free(bufs);
 
     return mpi_errno;
 

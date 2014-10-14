@@ -37,6 +37,13 @@ int MPI_Win_free(MPI_Win * win)
         uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
     }
 
+    /* Release self exclusive lock for pscw */
+    if (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW) {
+        mpi_errno = MTCORE_Win_unlock_self_pscw_win(uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
     if (user_local_rank == 0) {
         MTCORE_Func_start(MTCORE_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
     }
@@ -69,6 +76,17 @@ int MPI_Win_free(MPI_Win * win)
         for (i = 0; i < uh_win->num_uh_wins; i++) {
             if (uh_win->uh_wins[i]) {
                 mpi_errno = PMPI_Win_free(&uh_win->uh_wins[i]);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
+        }
+    }
+
+    if (uh_win->num_pscw_uh_wins > 0 && uh_win->pscw_wins) {
+        MTCORE_DBG_PRINT("\t free pscw windows\n");
+        for (i = 0; i < uh_win->num_pscw_uh_wins; i++) {
+            if (uh_win->pscw_wins) {
+                mpi_errno = PMPI_Win_free(&uh_win->pscw_wins[i]);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
             }
@@ -180,6 +198,8 @@ int MPI_Win_free(MPI_Win * win)
         free(uh_win->h_win_handles);
     if (uh_win->uh_wins)
         free(uh_win->uh_wins);
+    if (uh_win->pscw_wins)
+        free(uh_win->pscw_wins);
 
     free(uh_win);
 

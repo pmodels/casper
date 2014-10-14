@@ -46,7 +46,16 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
                 }
             }
         }
-
+        if (win->num_pscw_uh_wins > 0 && win->pscw_wins) {
+            MTCORE_DBG_PRINT("\t free pscw windows\n");
+            for (i = 0; i < win->num_pscw_uh_wins; i++) {
+                if (win->pscw_wins) {
+                    mpi_errno = PMPI_Win_free(&win->pscw_wins[i]);
+                    if (mpi_errno != MPI_SUCCESS)
+                        goto fn_fail;
+                }
+            }
+        }
         if (win->fence_win) {
             MTCORE_H_DBG_PRINT(" free fence window\n");
             mpi_errno = PMPI_Win_free(&win->fence_win);
@@ -91,6 +100,8 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
             free(win->user_base_addrs_in_local);
         if (win->uh_wins)
             free(win->uh_wins);
+        if (win->pscw_wins)
+            free(win->pscw_wins);
 
         free(win);
 

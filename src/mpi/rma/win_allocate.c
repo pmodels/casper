@@ -6,6 +6,14 @@
 
 #include <ctype.h>
 
+const char *MTCORE_Win_epoch_stat_name[4] = {
+    "NO_EPOCH",
+    "FENCE",
+    "LOCK",
+    "PSCW"
+};
+
+
 static int read_win_info(MPI_Info info, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -538,68 +546,188 @@ static int create_communicators(MTCORE_Win * uh_win)
 static int gather_base_offsets(MPI_Aint size, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Aint tmp_u_offsets, tmp_h_offsets;
+    MPI_Aint tmp_u_offsets, tmp_h_offsets, wait_counter_offset;
     int i, j;
     int user_local_rank, user_local_nprocs, user_rank, user_nprocs;
     MPI_Aint *base_h_offsets;
+    MPI_Aint r_size;
+    int r_disp_unit;
 
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
-    base_h_offsets = calloc(user_nprocs * MTCORE_ENV.num_h, sizeof(MPI_Aint));
+    base_h_offsets = calloc(user_nprocs * (MTCORE_ENV.num_h + 1), sizeof(MPI_Aint));
 
-    /* -Calculate the offset of local shared buffer  */
+
+    tmp_h_offsets = 0;
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    /* All the helpers use the byte located on helper 0. */
+    uh_win->grant_lock_h_offset = tmp_h_offsets;
+    tmp_h_offsets += sizeof(uh_win->grant_lock_h_offset);
+#endif
+
+    /* -Calculate the offset of local shared buffer and wait_counter.
+     * All wait_counters are on helper 0.  */
     i = 0;
     tmp_u_offsets = 0;
     while (i < user_rank) {
         if (uh_win->targets[i].node_id == uh_win->node_id) {
             tmp_u_offsets += uh_win->targets[i].size;   /* size in bytes */
+            tmp_h_offsets += sizeof(int);
         }
         i++;
     }
 
     /* Note that all the helpers start the window from baseptr of helper 0.
      * Hence all the local helpers use the same offset of user buffers */
-
-#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    /* Helper 0 has hidden byte which may be larger than shared_sg_size */
-    tmp_u_offsets += max(MTCORE_HELPER_SHARED_SG_SIZE,
-                         align(sizeof(MTCORE_GRANT_LOCK_DATATYPE), MTCORE_SEGMENT_UNIT));
-    tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * (MTCORE_ENV.num_h - 1);
-#else
     tmp_u_offsets += MTCORE_HELPER_SHARED_SG_SIZE * MTCORE_ENV.num_h;
-#endif
-
+    wait_counter_offset = tmp_h_offsets;
     for (j = 0; j < MTCORE_ENV.num_h; j++) {
-        base_h_offsets[user_rank * MTCORE_ENV.num_h + j] = tmp_u_offsets;
+        base_h_offsets[user_rank * (MTCORE_ENV.num_h + 1) + j] = tmp_u_offsets;
     }
-    MTCORE_DBG_PRINT("[%d] local base_h_offset 0x%lx\n", user_rank, tmp_u_offsets);
+    base_h_offsets[user_rank * (MTCORE_ENV.num_h + 1) + MTCORE_ENV.num_h] = wait_counter_offset;
 
-#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    /* All the helpers use the byte located on helper 0. */
-    uh_win->grant_lock_h_offset = 0;
-#endif
+    /* The address of wait_counter = start address of helper 0 + offset */
+    mpi_errno = PMPI_Win_shared_query(uh_win->local_uh_win, 0, &r_size, &r_disp_unit,
+                                      &uh_win->wait_counter_ptr);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    uh_win->wait_counter_ptr = (int *) ((unsigned long) uh_win->wait_counter_ptr
+                                        + wait_counter_offset);
+
+    MTCORE_DBG_PRINT("[%d] local base_h_offset 0x%lx, wait_counter_offset=0x%lx, "
+                     "wait_counter_ptr=%p\n",
+                     user_rank, tmp_u_offsets, wait_counter_offset, uh_win->wait_counter_ptr);
 
     /* -Receive the address of all the shared user buffers on Helper processes. */
     mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, base_h_offsets,
-                               MTCORE_ENV.num_h, MPI_AINT, uh_win->user_comm);
+                               MTCORE_ENV.num_h + 1, MPI_AINT, uh_win->user_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     for (i = 0; i < user_nprocs; i++) {
+        uh_win->targets[i].wait_counter_offset =
+            base_h_offsets[i * (MTCORE_ENV.num_h + 1) + MTCORE_ENV.num_h];
+        MTCORE_DBG_PRINT("[%d] targets[%d].wait_counter_offset=0x%lx\n",
+                         user_rank, i, uh_win->targets[i].wait_counter_offset);
+
         for (j = 0; j < MTCORE_ENV.num_h; j++) {
-            uh_win->targets[i].base_h_offsets[j] = base_h_offsets[i * MTCORE_ENV.num_h + j];
-            MTCORE_DBG_PRINT("[%d] targets[%d].base_h_offsets[%d] = 0x%lx/0x%lx\n",
-                             user_rank, i, j, uh_win->targets[i].base_h_offsets[j],
-                             base_h_offsets[i * MTCORE_ENV.num_h + j]);
+            uh_win->targets[i].base_h_offsets[j] = base_h_offsets[i * (MTCORE_ENV.num_h + 1) + j];
+            MTCORE_DBG_PRINT("\t.base_h_offsets[%d] = 0x%lx/0x%lx\n",
+                             j, uh_win->targets[i].base_h_offsets[j]);
         }
     }
 
   fn_exit:
     if (base_h_offsets)
         free(base_h_offsets);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i, j;
+    int user_rank, user_nprocs;
+
+    PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+
+    /* Need multiple windows for single lock synchronization */
+    if (uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) {
+        uh_win->num_uh_wins = uh_win->max_local_user_nprocs;
+    }
+    /* Need a single window for lock_all only synchronization */
+    else if (uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL) {
+        uh_win->num_uh_wins = 1;
+    }
+
+    uh_win->uh_wins = calloc(uh_win->num_uh_wins, sizeof(MPI_Win));
+    for (i = 0; i < uh_win->num_uh_wins; i++) {
+        mpi_errno = PMPI_Win_create(uh_win->base, size, disp_unit, info,
+                                    uh_win->uh_comm, &uh_win->uh_wins[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    for (i = 0; i < user_nprocs; i++) {
+        int win_off;
+        MTCORE_DBG_PRINT("[%d] targets[%d].\n", user_rank, i);
+
+        /* unique windows of each process, used in lock/flush */
+        win_off = uh_win->targets[i].local_user_rank % uh_win->num_uh_wins;
+        uh_win->targets[i].uh_win = uh_win->uh_wins[win_off];
+        MTCORE_DBG_PRINT("\t\t .uh_win=0x%x (win_off %d)\n", uh_win->targets[i].uh_win, win_off);
+
+        /* windows of each segment, used in OPs */
+        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+            win_off = uh_win->targets[i].local_user_rank % uh_win->num_uh_wins;
+            uh_win->targets[i].segs[j].uh_win = uh_win->uh_wins[win_off];
+
+            MTCORE_DBG_PRINT("\t\t .seg[%d].uh_win=0x%x (win_off %d)\n",
+                             j, uh_win->targets[i].segs[j].uh_win, win_off);
+        }
+    }
+
+    /* Setup window for local target */
+    uh_win->my_uh_win = uh_win->targets[user_rank].segs[0].uh_win;
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+static int create_pscw_windows(MPI_Aint size, int disp_unit, MPI_Info info, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i, j;
+    int user_rank, user_nprocs;
+
+    PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+
+    uh_win->num_pscw_uh_wins = uh_win->max_local_user_nprocs;
+
+    uh_win->pscw_wins = calloc(uh_win->num_pscw_uh_wins, sizeof(MPI_Win));
+    for (i = 0; i < uh_win->num_pscw_uh_wins; i++) {
+        mpi_errno = PMPI_Win_create(uh_win->base, size, disp_unit, info,
+                                    uh_win->uh_comm, &uh_win->pscw_wins[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    for (i = 0; i < user_nprocs; i++) {
+        int win_off;
+        MTCORE_DBG_PRINT("[%d] targets[%d].\n", user_rank, i);
+
+        /* unique windows of each process, used in lock/flush */
+        win_off = uh_win->targets[i].local_user_rank % uh_win->num_pscw_uh_wins;
+        uh_win->targets[i].pscw_win = uh_win->pscw_wins[win_off];
+        MTCORE_DBG_PRINT("\t\t .pscw_win=0x%x (win_off %d)\n", uh_win->targets[i].pscw_win,
+                         win_off);
+
+        /* windows of each segment, used in OPs */
+        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
+            win_off = uh_win->targets[i].local_user_rank % uh_win->num_pscw_uh_wins;
+            uh_win->targets[i].segs[j].pscw_win = uh_win->pscw_wins[win_off];
+
+            MTCORE_DBG_PRINT("\t\t .seg[%d].pscw_win=0x%x (win_off %d)\n",
+                             j, uh_win->targets[i].segs[j].pscw_win, win_off);
+        }
+    }
+
+    /* Setup window for local target */
+    uh_win->my_pscw_win = uh_win->targets[user_rank].segs[0].pscw_win;
+
+  fn_exit:
     return mpi_errno;
 
   fn_fail:
@@ -777,69 +905,25 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Create windows using shared buffers. */
 
-    /* Need multiple windows for lock synchronization */
-    if ((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ||
-        (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW)) {
-        uh_win->num_uh_wins = uh_win->max_local_user_nprocs;
-    }
-    /* Need a single window for lock_all only synchronization */
-    else if (uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL) {
-        uh_win->num_uh_wins = 1;
-    }
-    /* Do not need window except fence_win for fence only synchronization */
-    else {
-        uh_win->num_uh_wins = 0;
-    }
-
     /* Send information to helpers */
     if (user_local_rank == 0) {
         int func_params[2];
-        func_params[0] = uh_win->num_uh_wins;
+        func_params[0] = uh_win->max_local_user_nprocs;
         func_params[1] = uh_win->info_args.epoch_type;
         mpi_errno = MTCORE_Func_set_param((char *) func_params, sizeof(func_params),
                                           uh_win->ur_h_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        MTCORE_DBG_PRINT(" Send parameters: num_uh_wins %d, epoch_type %d \n",
-                         uh_win->num_uh_wins, uh_win->info_args.epoch_type);
+        MTCORE_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d \n",
+                         uh_win->max_local_user_nprocs, uh_win->info_args.epoch_type);
     }
 
-    if (uh_win->num_uh_wins > 0) {
-        /* -Create uh windows for lock/lockall/pscw, do not need if only fence epoch.
-         *  Every user process has a window used for permission check and accessing Helpers.
-         *  Two processes can share a single window if they are on different node (no sharing helper)
-         *  We define that processes having the same local user rank share a window. */
+    if ((uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ||
+        (uh_win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL)) {
 
-        uh_win->uh_wins = calloc(uh_win->num_uh_wins, sizeof(MPI_Win));
-        for (i = 0; i < uh_win->num_uh_wins; i++) {
-            mpi_errno = PMPI_Win_create(uh_win->base, size, disp_unit, info,
-                                        uh_win->uh_comm, &uh_win->uh_wins[i]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-
-        for (i = 0; i < user_nprocs; i++) {
-            int win_off;
-            MTCORE_DBG_PRINT("[%d] targets[%d].\n", user_rank, i);
-
-            /* unique windows of each process, used in lock/flush */
-            win_off = uh_win->targets[i].local_user_rank % uh_win->num_uh_wins;
-            uh_win->targets[i].uh_win = uh_win->uh_wins[win_off];
-            MTCORE_DBG_PRINT("\t\t .uh_win=0x%x (win_off %d)\n", uh_win->targets[i].uh_win,
-                             win_off);
-
-            /* windows of each segment, used in OPs */
-            for (j = 0; j < uh_win->targets[i].num_segs; j++) {
-                win_off = uh_win->targets[i].local_user_rank % uh_win->num_uh_wins;
-                uh_win->targets[i].segs[j].uh_win = uh_win->uh_wins[win_off];
-
-                MTCORE_DBG_PRINT("\t\t .seg[%d].uh_win=0x%x (win_off %d)\n",
-                                 j, uh_win->targets[i].segs[j].uh_win, win_off);
-            }
-        }
-
-        /* Setup window for local target */
-        uh_win->my_uh_win = uh_win->targets[user_rank].segs[0].uh_win;
+        mpi_errno = create_lock_windows(size, disp_unit, info, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     /* - Create fence window */
@@ -852,6 +936,22 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         MTCORE_DBG_PRINT("[%d] Created fence window 0x%x\n", user_rank, uh_win->fence_win);
         uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
     }
+
+    /* - Create PSCW windows */
+    if (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW) {
+        mpi_errno = create_pscw_windows(size, disp_unit, info, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        uh_win->pscw_stat = MTCORE_PSCW_SELF_UNLOCKED;  /* reset */
+
+        /* Issue self exclusive lock.
+         * Origins cannot access this target after self lock is issued and force acquired.*/
+        mpi_errno = MTCORE_Win_lock_self_pscw_win(uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
     uh_win->epoch_stat = MTCORE_WIN_NO_EPOCH;
 
     /* - Only expose user window in order to hide helpers in all non-wrapped window functions */
@@ -905,6 +1005,12 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                 PMPI_Win_free(&uh_win->uh_wins[i]);
         }
     }
+    if (uh_win->num_pscw_uh_wins > 0 && uh_win->pscw_wins) {
+        for (i = 0; i < uh_win->num_pscw_uh_wins; i++) {
+            if (uh_win->pscw_wins)
+                PMPI_Win_free(&uh_win->pscw_wins[i]);
+        }
+    }
 
     if (uh_win->ur_h_comm && uh_win->ur_h_comm != MPI_COMM_NULL)
         PMPI_Comm_free(&uh_win->ur_h_comm);
@@ -950,6 +1056,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         free(uh_win->h_win_handles);
     if (uh_win->uh_wins)
         free(uh_win->uh_wins);
+    if (uh_win->pscw_wins)
+        free(uh_win->pscw_wins);
     if (uh_win)
         free(uh_win);
 

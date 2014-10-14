@@ -9,15 +9,40 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
+static int wait_pscw_origin_completion(MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank;
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+
+    /* We are not in any epoch now, need lock for accessing local window. */
+    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->my_rank_in_uh_comm, 0, uh_win->my_pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    while ((*uh_win->wait_counter_ptr) > 0) {
+        mpi_errno = PMPI_Win_sync(uh_win->my_pscw_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 int MPI_Win_wait(MPI_Win win)
 {
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
     int i;
-    MPI_Request *reqs = NULL;
-    MPI_Status *stats = NULL;
-    char *bufs;
 
     MTCORE_DBG_PRINT_FCNAME();
 
@@ -43,21 +68,17 @@ int MPI_Win_wait(MPI_Win win)
         goto fn_fail;
     MTCORE_Assert(post_grp_size > 0);
 
-    MTCORE_DBG_PRINT("Wait group 0x%x, size %d\n", uh_win->post_group, post_grp_size);
+    MTCORE_DBG_PRINT("Wait group 0x%x, size %d, wait_counter %d\n",
+                     uh_win->post_group, post_grp_size, *(uh_win->wait_counter_ptr));
 
-    reqs = calloc(post_grp_size, sizeof(MPI_Request));
-    stats = calloc(post_grp_size, sizeof(MPI_Status));
-    bufs = calloc(post_grp_size, sizeof(char));
+    /* Wait for the completion on all origin processes */
+    mpi_errno = wait_pscw_origin_completion(uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
-    /* block until all completes are done */
-    for (i = 0; i < post_grp_size; i++) {
-        mpi_errno = PMPI_Irecv(&bufs[i], 1, MPI_CHAR, uh_win->post_ranks_in_win_group[i],
-                               MTCORE_PSCW_COMPLETE_TAG, uh_win->user_comm, &reqs[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    mpi_errno = PMPI_Waitall(post_grp_size, reqs, stats);
+    /* Issue self exclusive lock.
+     * Origins cannot access this target after self lock is issued and force acquired. */
+    mpi_errno = MTCORE_Win_lock_self_pscw_win(uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -68,13 +89,6 @@ int MPI_Win_wait(MPI_Win win)
         free(uh_win->post_ranks_in_win_group);
     uh_win->post_group = MPI_GROUP_NULL;
     uh_win->post_ranks_in_win_group = NULL;
-
-    if (reqs)
-        free(reqs);
-    if (stats)
-        free(stats);
-    if (bufs)
-        free(bufs);
 
     return mpi_errno;
 

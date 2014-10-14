@@ -152,6 +152,64 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, MTCORE_H
     goto fn_exit;
 }
 
+static int create_lock_windows(MPI_Aint size, MTCORE_H_win * win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i, j;
+    int user_rank, user_nprocs;
+
+    /* Need multiple windows for single lock synchronization */
+    if (win->info_args.epoch_type & MTCORE_EPOCH_LOCK) {
+        win->num_uh_wins = win->max_local_user_nprocs;
+    }
+    /* Need a single window for lock_all only synchronization */
+    else if (win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL) {
+        win->num_uh_wins = 1;
+    }
+
+    win->uh_wins = calloc(win->num_uh_wins, sizeof(MPI_Win));
+    for (i = 0; i < win->num_uh_wins; i++) {
+        mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL,
+                                    win->uh_comm, &win->uh_wins[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        MTCORE_H_DBG_PRINT(" Created uh windows[%d] 0x%x\n", i, win->uh_wins[i]);
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+static int create_pscw_windows(MPI_Aint size, MTCORE_H_win * win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i, j;
+    int user_rank, user_nprocs;
+
+    win->num_pscw_uh_wins = win->max_local_user_nprocs;
+
+    win->pscw_wins = calloc(win->num_pscw_uh_wins, sizeof(MPI_Win));
+    for (i = 0; i < win->num_pscw_uh_wins; i++) {
+        mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL,
+                                    win->uh_comm, &win->pscw_wins[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        MTCORE_H_DBG_PRINT(" Created pscw windows[%d] 0x%x\n", i, win->pscw_wins[i]);
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -191,14 +249,6 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     /* -Allocate shared window in CHAR type
      * (No local buffer, only need shared buffer on user processes)
      */
-#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    /* Additional byte for granting locks on Helper 0, all the other
-     * helpers share the same byte */
-    if (local_uh_rank == 0) {
-        mtcore_buf_size = max(MTCORE_HELPER_SHARED_SG_SIZE,
-                              align(sizeof(MTCORE_GRANT_LOCK_DATATYPE), MTCORE_SEGMENT_UNIT));
-    }
-#endif
     mpi_errno = PMPI_Win_allocate_shared(mtcore_buf_size, 1, MPI_INFO_NULL,
                                          win->local_uh_comm, &win->base, &win->local_uh_win);
     if (mpi_errno != MPI_SUCCESS)
@@ -241,22 +291,18 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
     mpi_errno = MTCORE_H_func_get_param((char *) func_params, sizeof(func_params), win->ur_h_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    win->num_uh_wins = func_params[0];
+    win->max_local_user_nprocs = func_params[0];
     win->info_args.epoch_type = func_params[1];
-    MTCORE_H_DBG_PRINT(" Received parameters: num_uh_wins = %d, epoch_type=%d\n", win->num_uh_wins,
-                       win->info_args.epoch_type);
+    MTCORE_H_DBG_PRINT(" Received parameters: max_local_user_nprocs = %d, epoch_type=%d\n",
+                       win->max_local_user_nprocs, win->info_args.epoch_type);
 
-    /* - Create lock/lockall.pscw windows, do not need if only fence epoch */
-    if (win->num_uh_wins > 0) {
-        win->uh_wins = calloc(win->num_uh_wins, sizeof(MPI_Win));
-        for (i = 0; i < win->num_uh_wins; i++) {
-            mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm,
-                                        &win->uh_wins[i]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+    /* - Create lock/lockall windows */
+    if ((win->info_args.epoch_type & MTCORE_EPOCH_LOCK) ||
+        (win->info_args.epoch_type & MTCORE_EPOCH_LOCK_ALL)) {
 
-            MTCORE_H_DBG_PRINT(" Created uh windows[%d] 0x%x\n", i, win->uh_wins[i]);
-        }
+        mpi_errno = create_lock_windows(size, win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     /* - Create fence window */
@@ -266,6 +312,13 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         MTCORE_H_DBG_PRINT(" Created fence windows 0x%x\n", win->fence_win);
+    }
+
+    /* - Create PSCW windows */
+    if (win->info_args.epoch_type & MTCORE_EPOCH_PSCW) {
+        mpi_errno = create_pscw_windows(size, win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     win->mtcore_h_win_handle = (unsigned long) win->uh_wins;
@@ -296,6 +349,8 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         free(win->user_base_addrs_in_local);
     if (win->uh_wins)
         free(win->uh_wins);
+    if (win->pscw_wins)
+        free(win->pscw_wins);
     if (win)
         free(win);
 
