@@ -230,7 +230,8 @@ typedef struct MTCORE_Win_target {
     int user_world_rank;        /* rank in user world communicator */
     int node_id;
 
-    MPI_Aint wait_counter_offset;       /* counter for pscw synchronization. allocated in main helper. */
+    MPI_Aint wait_counter_offset;       /* counter for complete-wait synchronization. allocated in main helper. */
+    MPI_Aint post_flg_offset;   /* flag for post-start synchronization. allocated in main helper. */
 
     /* Only contain 1 segment in rank binding */
     MTCORE_Win_target_seg *segs;
@@ -284,9 +285,11 @@ typedef struct MTCORE_Win {
 
     MTCORE_Pscw_lock_stat pscw_stat;
     int num_pscw_uh_wins;
-    MPI_Win *pscw_wins;
-    MPI_Win my_pscw_win;
-    int *wait_counter_ptr;      /* counter for pscw synchronization. allocated in main helper. */
+    MPI_Win *pscw_wins;         /* permission windows */
+    MPI_Win pscw_sync_win;      /* pscw sync window */
+    MPI_Win my_pscw_win;        /* refer to the pscw window owned by local rank */
+    int *wait_counter_ptr;      /* counter for complete-wait synchronization. */
+    int *post_flg_ptr;          /* flag for post-start synchronization. */
     int start_counter;
 
     MPI_Group start_group;

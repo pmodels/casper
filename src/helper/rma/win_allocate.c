@@ -203,6 +203,12 @@ static int create_pscw_windows(MPI_Aint size, MTCORE_H_win * win)
         MTCORE_H_DBG_PRINT(" Created pscw windows[%d] 0x%x\n", i, win->pscw_wins[i]);
     }
 
+    mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL,
+                                win->uh_comm, &win->pscw_sync_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    MTCORE_H_DBG_PRINT(" Created pscw sync windows 0x%x\n", win->pscw_sync_win);
+
   fn_exit:
     return mpi_errno;
 
@@ -246,9 +252,15 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
 
     /* Allocate a shared window with local USER processes */
 
+    if (local_uh_rank == 0) {
+#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+        mtcore_buf_size = max(mtcore_buf_size, sizeof(MTCORE_GRANT_LOCK_DATATYPE));
+#endif
+        mtcore_buf_size = max(mtcore_buf_size, sizeof(int) * user_nprocs);
+    }
+
     /* -Allocate shared window in CHAR type
-     * (No local buffer, only need shared buffer on user processes)
-     */
+     * (No local buffer, only need shared buffer on user processes) */
     mpi_errno = PMPI_Win_allocate_shared(mtcore_buf_size, 1, MPI_INFO_NULL,
                                          win->local_uh_comm, &win->base, &win->local_uh_win);
     if (mpi_errno != MPI_SUCCESS)

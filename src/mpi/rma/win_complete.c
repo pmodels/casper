@@ -28,7 +28,7 @@ static inline int MTCORE_Win_unlock_self_impl(MTCORE_Win * uh_win)
     return mpi_errno;
 }
 
-static inline int isend_pscw_complete_msg(int target_rank, MTCORE_Win * uh_win)
+static inline int send_pscw_complete_msg(int target_rank, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int main_h_off = uh_win->targets[target_rank].segs[0].main_h_off;
@@ -36,14 +36,16 @@ static inline int isend_pscw_complete_msg(int target_rank, MTCORE_Win * uh_win)
 
     int cnt = 1;
 
-    /* Increase target wait counter on the main helper.
-     * Do not send to another helper, because we may need wait for lock acquired
-     * for that helper. */
-    MTCORE_DBG_PRINT("decrease pscw counter(Helper %d, offset 0x%lx)\n",
+    /* Increase wait counter on the main helper of target process. */
+    MTCORE_DBG_PRINT("increase pscw counter(Helper %d, offset 0x%lx)\n",
                      target_h_rank_in_uh, uh_win->targets[target_rank].wait_counter_offset);
     mpi_errno = PMPI_Accumulate(&cnt, 1, MPI_INT, target_h_rank_in_uh,
                                 uh_win->targets[target_rank].wait_counter_offset, 1,
-                                MPI_INT, MPI_SUM, uh_win->targets[target_rank].pscw_win);
+                                MPI_INT, MPI_SUM, uh_win->pscw_sync_win);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
+
+    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->pscw_sync_win);
     if (mpi_errno != MPI_SUCCESS)
         return mpi_errno;
 }
@@ -77,7 +79,7 @@ static int MTCORE_Win_Pscw_unlock(int target_rank, MTCORE_Win * uh_win)
     }
 #endif
 
-    mpi_errno = isend_pscw_complete_msg(target_rank, uh_win);
+    mpi_errno = send_pscw_complete_msg(target_rank, uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

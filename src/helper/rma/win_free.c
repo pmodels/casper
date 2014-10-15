@@ -56,6 +56,9 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
                 }
             }
         }
+        if (win->pscw_sync_win)
+            PMPI_Win_free(&win->pscw_sync_win);
+
         if (win->fence_win) {
             MTCORE_H_DBG_PRINT(" free fence window\n");
             mpi_errno = PMPI_Win_free(&win->fence_win);

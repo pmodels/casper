@@ -9,9 +9,30 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
-static inline int set_pscw_wait_counter(int size, MTCORE_Win * uh_win)
+static inline int send_pscw_post_msg(int origin_rank, MTCORE_Win * uh_win)
 {
-    return 0;
+    int mpi_errno = MPI_SUCCESS;
+    int main_h_off = uh_win->targets[origin_rank].segs[0].main_h_off;
+    int target_h_rank_in_uh = uh_win->targets[origin_rank].h_ranks_in_uh[main_h_off];
+    MPI_Aint post_bit_offset = uh_win->targets[origin_rank].post_flg_offset;
+    int flg = 1;
+    int user_rank;
+
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+    post_bit_offset += user_rank * sizeof(int);
+
+    /* Set post flag to true on the main helper of post origin. */
+    MTCORE_DBG_PRINT("set pscw post(Helper %d, offset 0x%lx(+%d)) for origin %d \n",
+                     target_h_rank_in_uh, post_bit_offset, user_rank, origin_rank);
+
+    mpi_errno = PMPI_Accumulate(&flg, 1, MPI_INT, target_h_rank_in_uh,
+                                post_bit_offset, 1, MPI_INT, MPI_REPLACE, uh_win->pscw_sync_win);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
+
+    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->pscw_sync_win);
+    if (mpi_errno != MPI_SUCCESS)
+        return mpi_errno;
 }
 
 static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
@@ -49,6 +70,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     MTCORE_Win *uh_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
+    int i;
 
     MTCORE_Fetch_uh_win_from_cache(win, uh_win);
 
@@ -88,9 +110,14 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = set_pscw_wait_counter(post_grp_size, uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    /* Synchronize start-post if user does not specify nocheck */
+    if ((assert & MPI_MODE_NOCHECK) == 0) {
+        for (i = 0; i < post_grp_size; i++) {
+            mpi_errno = send_pscw_post_msg(uh_win->post_ranks_in_win_group[i], uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+    }
 
     /* Unlock self exclusive lock.
      * Origins cannot access this target before self lock is released. */

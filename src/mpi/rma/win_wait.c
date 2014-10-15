@@ -15,20 +15,19 @@ static int wait_pscw_origin_completion(int post_grp_size, MTCORE_Win * uh_win)
     int user_rank;
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
-    /* We are not in any epoch now, need lock for accessing local window. */
-    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, uh_win->my_rank_in_uh_comm, 0, uh_win->my_pscw_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    MTCORE_DBG_PRINT("wait pscw completion at %p (%d != %d)\n", uh_win->wait_counter_ptr,
+            *uh_win->wait_counter_ptr, post_grp_size);
 
     /* Weak sync, the next origin start can go first. */
     while ((*uh_win->wait_counter_ptr) < post_grp_size) {
-        mpi_errno = PMPI_Win_sync(uh_win->my_pscw_win);
+        mpi_errno = PMPI_Win_sync(uh_win->pscw_sync_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-    *uh_win->wait_counter_ptr -= post_grp_size;
 
-    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
+    (*uh_win->wait_counter_ptr) -= post_grp_size;
+    /* avoid instruction reordering */
+    mpi_errno = PMPI_Win_sync(uh_win->pscw_sync_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

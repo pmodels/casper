@@ -39,6 +39,41 @@ static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
     goto fn_exit;
 }
 
+static int wait_pscw_target_post(int target_rank, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank;
+    int *target_post_flg_ptr;
+
+    /* every process has separate flag */
+    target_post_flg_ptr = (int *) ((unsigned long) uh_win->post_flg_ptr
+                                   + target_rank * sizeof(int));
+
+    MTCORE_DBG_PRINT("wait pscw post at %p(%p + 0x%x) for target %d\n",
+                     target_post_flg_ptr, uh_win->post_flg_ptr, target_rank * sizeof(int),
+                     target_rank);
+
+    /* Wait for the remote post call updating local flag. */
+    while (*target_post_flg_ptr != 1) {
+        mpi_errno = PMPI_Win_sync(uh_win->pscw_sync_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    *target_post_flg_ptr = 0;
+    /* avoid instruction reordering */
+    mpi_errno = PMPI_Win_sync(uh_win->pscw_sync_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
 static inline int MTCORE_Win_lock_self_impl(MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -162,6 +197,14 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
         goto fn_fail;
 
     for (i = 0; i < start_grp_size; i++) {
+
+        /* Synchronize start-post if user does not specify nocheck */
+        if ((assert & MPI_MODE_NOCHECK) == 0) {
+            mpi_errno = wait_pscw_target_post(uh_win->start_ranks_in_win_group[i], uh_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
         MTCORE_DBG_PRINT("\t\t start target %d\n", uh_win->start_ranks_in_win_group[i]);
         mpi_errno = MTCORE_Win_Pscw_lock(uh_win->start_ranks_in_win_group[i], assert, uh_win);
         if (mpi_errno != MPI_SUCCESS)

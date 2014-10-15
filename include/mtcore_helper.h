@@ -47,6 +47,7 @@ typedef struct MTCORE_H_win {
 
     int num_pscw_uh_wins;
     MPI_Win *pscw_wins;
+    MPI_Win pscw_sync_win;
 
     struct MTCORE_Win_info_args info_args;
     unsigned long mtcore_h_win_handle;
