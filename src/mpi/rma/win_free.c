@@ -39,6 +39,9 @@ int MPI_Win_free(MPI_Win * win)
 
     /* Release self exclusive lock for pscw */
     if (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW) {
+        /* make sure the pairs of complete and wait calls are matched. */
+        MTCORE_Assert((*uh_win->wait_counter_ptr) == 0);
+
         mpi_errno = MTCORE_Win_unlock_self_pscw_win(uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

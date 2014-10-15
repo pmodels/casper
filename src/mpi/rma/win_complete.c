@@ -28,15 +28,15 @@ static inline int MTCORE_Win_unlock_self_impl(MTCORE_Win * uh_win)
     return mpi_errno;
 }
 
-static inline int decrease_pscw_target_wait_counter(int target_rank, MTCORE_Win * uh_win)
+static inline int isend_pscw_complete_msg(int target_rank, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int main_h_off = uh_win->targets[target_rank].segs[0].main_h_off;
     int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
 
-    int cnt = -1;
+    int cnt = 1;
 
-    /* Decrease target wait counter on the main helper.
+    /* Increase target wait counter on the main helper.
      * Do not send to another helper, because we may need wait for lock acquired
      * for that helper. */
     MTCORE_DBG_PRINT("decrease pscw counter(Helper %d, offset 0x%lx)\n",
@@ -77,7 +77,7 @@ static int MTCORE_Win_Pscw_unlock(int target_rank, MTCORE_Win * uh_win)
     }
 #endif
 
-    mpi_errno = decrease_pscw_target_wait_counter(target_rank, uh_win);
+    mpi_errno = isend_pscw_complete_msg(target_rank, uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

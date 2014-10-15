@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
-static int wait_pscw_origin_completion(MTCORE_Win * uh_win)
+static int wait_pscw_origin_completion(int post_grp_size, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -20,11 +20,13 @@ static int wait_pscw_origin_completion(MTCORE_Win * uh_win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    while ((*uh_win->wait_counter_ptr) > 0) {
+    /* Weak sync, the next origin start can go first. */
+    while ((*uh_win->wait_counter_ptr) < post_grp_size) {
         mpi_errno = PMPI_Win_sync(uh_win->my_pscw_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
+    *uh_win->wait_counter_ptr -= post_grp_size;
 
     mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
     if (mpi_errno != MPI_SUCCESS)
@@ -72,7 +74,7 @@ int MPI_Win_wait(MPI_Win win)
                      uh_win->post_group, post_grp_size, *(uh_win->wait_counter_ptr));
 
     /* Wait for the completion on all origin processes */
-    mpi_errno = wait_pscw_origin_completion(uh_win);
+    mpi_errno = wait_pscw_origin_completion(post_grp_size, uh_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

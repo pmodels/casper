@@ -11,10 +11,7 @@
 
 static inline int set_pscw_wait_counter(int size, MTCORE_Win * uh_win)
 {
-    *uh_win->wait_counter_ptr = size;
-
-    /* need memory barrier because it will be updated by remote origin */
-    return PMPI_Win_sync(uh_win->my_pscw_win);
+    return 0;
 }
 
 static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)

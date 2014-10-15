@@ -950,6 +950,12 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         mpi_errno = MTCORE_Win_lock_self_pscw_win(uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        /* Reset wait counter */
+        *uh_win->wait_counter_ptr = 0;
+        mpi_errno = PMPI_Win_sync(uh_win->my_pscw_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     uh_win->epoch_stat = MTCORE_WIN_NO_EPOCH;
