@@ -54,6 +54,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
 #if !defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
         /* RMA operations are only issued to the main helper, so we only flush it. */
+        /* TODO: track op issuing, only flush the helpers which receive ops. */
         for (j = 0; j < uh_win->targets[target_rank].num_segs; j++) {
             int main_h_off = uh_win->targets[target_rank].segs[j].main_h_off;
             int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];

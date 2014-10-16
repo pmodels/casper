@@ -22,7 +22,8 @@
 
 #define MTCORE_SEGMENT_UNIT 16
 
-#define MTCORE_PSCW_COMPLETE_TAG 900
+#define MTCORE_PSCW_CW_TAG 900
+#define MTCORE_PSCW_PS_TAG 901
 
 /*FIXME: It is a workaround for shared window overlapping problem
  * when shared segment size of each helper is 0 */
@@ -143,16 +144,6 @@ typedef enum {
 } MTCORE_Main_lock_stat;
 
 typedef enum {
-    MTCORE_FENCE_UNLOCKED,
-    MTCORE_FENCE_LOCKED,
-} MTCORE_Fence_lock_stat;
-
-typedef enum {
-    MTCORE_PSCW_SELF_UNLOCKED,
-    MTCORE_PSCW_SELF_LOCKED,
-} MTCORE_Pscw_lock_stat;
-
-typedef enum {
     MTCORE_WIN_NO_EPOCH,
     MTCORE_WIN_EPOCH_FENCE,
     MTCORE_WIN_EPOCH_LOCK,
@@ -207,7 +198,6 @@ typedef struct MTCORE_Win_target_seg {
 
     int main_h_off;
     MPI_Win uh_win;
-    MPI_Win pscw_win;
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
     MTCORE_Main_lock_stat main_lock_stat;
@@ -216,7 +206,6 @@ typedef struct MTCORE_Win_target_seg {
 
 typedef struct MTCORE_Win_target {
     MPI_Win uh_win;             /* Do not free the window, it is freed in uh_wins */
-    MPI_Win pscw_win;
     int disp_unit;
     MPI_Aint size;
 
@@ -280,22 +269,13 @@ typedef struct MTCORE_Win {
     int lock_counter;
     int lockall_counter;
 
-    MTCORE_Fence_lock_stat fence_stat;
-    MPI_Win fence_win;
-
-    MTCORE_Pscw_lock_stat pscw_stat;
-    int num_pscw_uh_wins;
-    MPI_Win *pscw_wins;         /* permission windows */
-    MPI_Win pscw_sync_win;      /* pscw sync window */
-    MPI_Win my_pscw_win;        /* refer to the pscw window owned by local rank */
-    int *wait_counter_ptr;      /* counter for complete-wait synchronization. */
-    int *post_flg_ptr;          /* flag for post-start synchronization. */
-    int start_counter;
+    MPI_Win active_win;
 
     MPI_Group start_group;
     MPI_Group post_group;
     int *start_ranks_in_win_group;
     int *post_ranks_in_win_group;
+    int start_counter;
 
     void *base;
     MPI_Win win;
@@ -526,103 +506,13 @@ static inline int MTCORE_Win_grant_local_lock(int target_rank, int lock_type,
     goto fn_exit;
 }
 
-
-static inline int MTCORE_Win_lock_self_pscw_win(MTCORE_Win * uh_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int j;
-    int user_rank;
-
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-
-    MTCORE_Assert(uh_win->pscw_stat == MTCORE_PSCW_SELF_UNLOCKED);
-
-    /* Force lock main helper for each segment.
-     * Need force lock because such lock is ignored since only local load/store
-     * happens before post call. */
-    for (j = 0; j < uh_win->targets[user_rank].num_segs; j++) {
-        int main_h_off = uh_win->targets[user_rank].segs[j].main_h_off;
-        int target_h_rank_in_uh = uh_win->targets[user_rank].h_ranks_in_uh[main_h_off];
-        mpi_errno = PMPI_Win_lock(MPI_LOCK_EXCLUSIVE, target_h_rank_in_uh, 0,
-                                  uh_win->targets[user_rank].segs[j].pscw_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        MTCORE_DBG_PRINT("[%d]lock self(Helper(%d), pscw_win 0x%x) seg %d\n", user_rank,
-                         target_h_rank_in_uh, uh_win->targets[user_rank].segs[j].pscw_win, j);
-
-#ifdef MTCORE_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-        MTCORE_GRANT_LOCK_DATATYPE buf[1];
-        mpi_errno = PMPI_Get(buf, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE, target_h_rank_in_uh,
-                             uh_win->grant_lock_h_offset, 1, MTCORE_GRANT_LOCK_MPI_DATATYPE,
-                             uh_win->targets[user_rank].segs[j].pscw_win);
-#else
-        /* Simply get 1 byte from start, it does not affect the result of other updates */
-        char buf[1];
-        mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_h_rank_in_uh, 0,
-                             1, MPI_CHAR, uh_win->targets[user_rank].segs[j].pscw_win);
-#endif
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh,
-                                   uh_win->targets[user_rank].segs[j].pscw_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        MTCORE_DBG_PRINT("[%d]grant self lock(Helper(%d), pscw_win 0x%x) seg %d\n", user_rank,
-                         target_h_rank_in_uh, uh_win->targets[user_rank].segs[j].pscw_win, j);
-    }
-
-    uh_win->pscw_stat = MTCORE_PSCW_SELF_LOCKED;
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-static inline int MTCORE_Win_unlock_self_pscw_win(MTCORE_Win * uh_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int j;
-    int user_rank;
-
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-
-    MTCORE_Assert(uh_win->pscw_stat == MTCORE_PSCW_SELF_LOCKED);
-
-    /* unlock main helper for each segment */
-    for (j = 0; j < uh_win->targets[user_rank].num_segs; j++) {
-        int main_h_off = uh_win->targets[user_rank].segs[j].main_h_off;
-        int target_h_rank_in_uh = uh_win->targets[user_rank].h_ranks_in_uh[main_h_off];
-        mpi_errno =
-            PMPI_Win_unlock(target_h_rank_in_uh, uh_win->targets[user_rank].segs[j].pscw_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        MTCORE_DBG_PRINT("[%d]unlock self pscw(Helper(%d), pscw_win 0x%x) seg %d\n", user_rank,
-                         target_h_rank_in_uh, uh_win->targets[user_rank].segs[j].pscw_win, j);
-    }
-    uh_win->pscw_stat = MTCORE_PSCW_SELF_UNLOCKED;
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
 extern const char *MTCORE_Win_epoch_stat_name[4];       /* for debug */
 
 #define MTCORE_Get_epoch_local_win(uh_win, win_ptr) { \
     switch (uh_win->epoch_stat) {   \
         case MTCORE_WIN_EPOCH_FENCE:    \
-            win_ptr = &uh_win->fence_win;   \
-            break;  \
         case MTCORE_WIN_EPOCH_PSCW: \
-            win_ptr = &uh_win->my_pscw_win; \
+            win_ptr = &uh_win->active_win;   \
             break;  \
         default:    \
             win_ptr = &uh_win->my_uh_win;   \
@@ -633,10 +523,8 @@ extern const char *MTCORE_Win_epoch_stat_name[4];       /* for debug */
 #define MTCORE_Get_epoch_win(target_rank, seg, uh_win, win_ptr) { \
     switch (uh_win->epoch_stat) {   \
         case MTCORE_WIN_EPOCH_FENCE:    \
-            win_ptr = &uh_win->fence_win;   \
-            break;  \
         case MTCORE_WIN_EPOCH_PSCW: \
-            win_ptr = &uh_win->targets[target_rank].segs[seg].pscw_win; \
+            win_ptr = &uh_win->active_win;   \
             break;  \
         default:    \
             win_ptr = &uh_win->targets[target_rank].segs[seg].uh_win;   \

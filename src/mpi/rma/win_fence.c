@@ -2,26 +2,7 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
-int MTCORE_Fence_win_release_locks(MTCORE_Win * uh_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank;
-
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-
-    MTCORE_DBG_PRINT("[%d]unlock_all(fence_win 0x%x)\n", user_rank, uh_win->fence_win);
-    mpi_errno = PMPI_Win_unlock_all(uh_win->fence_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-static int Fence_Win_unlock_all(MTCORE_Win * uh_win)
+static int MTCORE_Fence_flush_all(MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -32,68 +13,31 @@ static int Fence_Win_unlock_all(MTCORE_Win * uh_win)
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
     PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
 
-    for (i = 0; i < user_nprocs; i++) {
-        uh_win->targets[i].remote_lock_assert = 0;
-    }
+    /* Flush all helpers to finish the sequence of locally issued RMA operations */
+#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
-    /* Unlock all Helpers in corresponding uh-window of each target process.
-     * Since all processes are required to call fence, we do need worry about asynchronous. */
-    MTCORE_DBG_PRINT("[%d]unlock_all(fence_win 0x%x)\n", user_rank, uh_win->fence_win);
-    mpi_errno = PMPI_Win_unlock_all(uh_win->fence_win);
+    /* Optimization for MPI implementations that have optimized lock_all.
+     * However, user should be noted that, if MPI implementation issues lock messages
+     * for every target even if it does not have any operation, this optimization
+     * could lose performance and even lose asynchronous! */
+    MTCORE_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, uh_win->active_win);
+    mpi_errno = PMPI_Win_flush_all(uh_win->active_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+#else
+    /* TODO: track op issuing, only flush the helpers which receive ops. */
+    for (i = 0; i < uh_win->num_h_ranks_in_uh; i++) {
+        mpi_errno = PMPI_Win_flush(uh_win->h_ranks_in_uh[i], uh_win->active_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
 
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    /* During fence epoch, it is allowed to access local target directly */
-    uh_win->is_self_locked = 0;
-#endif
-
-#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
-    for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < uh_win->targets[i].num_segs; j++) {
-            uh_win->targets[i].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_RESET;
-        }
-    }
-#endif
-
-    /* TODO: All the operations which we have not wrapped up will be failed, because they
-     * are issued to user window. We need wrap up all operations.
-     */
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-static int Fence_Win_lock_all(int assert, MTCORE_Win * uh_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs;
-    int i, j, k;
-
-    MTCORE_DBG_PRINT_FCNAME();
-
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-    PMPI_Comm_size(uh_win->user_comm, &user_nprocs);
-
-    for (i = 0; i < user_nprocs; i++) {
-        uh_win->targets[i].remote_lock_assert = assert;
-    }
-
-    MTCORE_DBG_PRINT("[%d]lock_all, MPI_MODE_NOCHECK %d(assert %d)\n", user_rank,
-                     (assert & MPI_MODE_NOCHECK) != 0, assert);
-
-    /* Since all processes are required to call fence, we do need worry about asynchronous. */
-    mpi_errno = PMPI_Win_lock_all(assert, uh_win->fence_win);
+    mpi_errno = PMPI_Win_flush(uh_win->my_rank_in_uh_comm, uh_win->active_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+#endif
 
-    uh_win->is_self_locked = 0;
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    /* During fence epoch, it is allowed to access local target directly */
-    uh_win->is_self_locked = 1;
 #endif
 
 #if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
@@ -103,7 +47,6 @@ static int Fence_Win_lock_all(int assert, MTCORE_Win * uh_win)
              * 1. fence is a global collective call, all targets already "exposed" their epoch.
              * 2. no conflicting lock/lockall on fence window. */
             uh_win->targets[i].segs[j].main_lock_stat = MTCORE_MAIN_LOCK_GRANTED;
-
             MTCORE_Reset_win_target_load_opt(i, uh_win);
         }
     }
@@ -134,8 +77,6 @@ int MPI_Win_fence(int assert, MPI_Win win)
         return PMPI_Win_fence(assert, win);
     }
 
-    /* mtcore window starts */
-
     MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_FENCE));
 
     /* We do not support conflicting lock/fence epoch, because operations
@@ -148,40 +89,36 @@ int MPI_Win_fence(int assert, MPI_Win win)
         goto fn_fail;
     }
 
-    /* Should not consider user assert, unlock must be called if there is a
-     * previous lock even if user gives wrong assert. */
-    if (uh_win->fence_stat == MTCORE_FENCE_LOCKED) {
-        mpi_errno = Fence_Win_unlock_all(uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
-    }
-
-    /* We only eliminate barrier if user explicitly specifies it is the first fence. */
-    if (assert != MPI_MODE_NOPRECEDE) {
-        mpi_errno = PMPI_Barrier(uh_win->user_comm);
+    /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
+    if ((assert & MPI_MODE_NOPRECEDE) == 0) {
+        mpi_errno = MTCORE_Fence_flush_all(uh_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    /* Do not lock if user specifies no_succeed, it is the last fence. */
-    if (assert != MPI_MODE_NOSUCCEED) {
-
-        /* Fence allows following asserts, but all of them are not supported by lock,
-         * thus we just give a empty assert to lock.
-         *   MPI_MODE_NOSTORE
-         *   MPI_MODE_NOPUT
-         *   MPI_MODE_NOPRECEDE
-         *   MPI_MODE_NOSUCCEED */
-        mpi_errno = Fence_Win_lock_all(0, uh_win);
+    /* Eliminate win_sync if user explicitly specifies no preceding store. */
+    if ((assert & MPI_MODE_NOSTORE) == 0) {
+        mpi_errno = PMPI_Win_sync(uh_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        uh_win->fence_stat = MTCORE_FENCE_LOCKED;
-
-        /* later operations will be redirected to fence_win until a lock/lockall
-         * is called .*/
-        uh_win->epoch_stat = MTCORE_WIN_EPOCH_FENCE;
     }
+
+    /* Cannot eliminate barrier for either no_precede or no_succeed.
+     * In no_precede fence, it is used for synchronization between local store
+     * and remote RMA; In no_succeed fence, it is also required to wait for
+     * remote RMA completion. */
+    mpi_errno = PMPI_Barrier(uh_win->user_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    uh_win->is_self_locked = 0;
+#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+    /* During fence epoch, it is allowed to access local target directly */
+    uh_win->is_self_locked = 1;
+#endif
+
+    /* Indicate epoch status, later operations will be redirected to active_win */
+    uh_win->epoch_stat = MTCORE_WIN_EPOCH_FENCE;
 
   fn_exit:
     return mpi_errno;

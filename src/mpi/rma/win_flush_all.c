@@ -48,6 +48,7 @@ static int MTCORE_Win_mixed_flush_all_impl(MPI_Win win, MTCORE_Win * uh_win)
     }
 #else
 
+    /* TODO: track op issuing, only flush the helpers which receive ops. */
     for (i = 0; i < user_nprocs; i++) {
 #if !defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
         /* RMA operations are only issued to the main helper, so we only flush it. */
@@ -130,7 +131,8 @@ int MPI_Win_flush_all(MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
-        /* Flush every helper once in the single window */
+        /* Flush every helper once in the single window.
+         * TODO: track op issuing, only flush the helpers which receive ops. */
         for (i = 0; i < uh_win->num_h_ranks_in_uh; i++) {
             mpi_errno = PMPI_Win_flush(uh_win->h_ranks_in_uh[i], uh_win->uh_wins[0]);
             if (mpi_errno != MPI_SUCCESS)

@@ -185,37 +185,6 @@ static int create_lock_windows(MPI_Aint size, MTCORE_H_win * win)
 }
 
 
-static int create_pscw_windows(MPI_Aint size, MTCORE_H_win * win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int i, j;
-    int user_rank, user_nprocs;
-
-    win->num_pscw_uh_wins = win->max_local_user_nprocs;
-
-    win->pscw_wins = calloc(win->num_pscw_uh_wins, sizeof(MPI_Win));
-    for (i = 0; i < win->num_pscw_uh_wins; i++) {
-        mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL,
-                                    win->uh_comm, &win->pscw_wins[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        MTCORE_H_DBG_PRINT(" Created pscw windows[%d] 0x%x\n", i, win->pscw_wins[i]);
-    }
-
-    mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL,
-                                win->uh_comm, &win->pscw_sync_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    MTCORE_H_DBG_PRINT(" Created pscw sync windows 0x%x\n", win->pscw_sync_win);
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
 int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -317,20 +286,14 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
             goto fn_fail;
     }
 
-    /* - Create fence window */
-    if (win->info_args.epoch_type & MTCORE_EPOCH_FENCE) {
+    /* - Create global active window */
+    if ((win->info_args.epoch_type & MTCORE_EPOCH_FENCE) ||
+        (win->info_args.epoch_type & MTCORE_EPOCH_PSCW)) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, MPI_INFO_NULL, win->uh_comm,
-                                    &win->fence_win);
+                                    &win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        MTCORE_H_DBG_PRINT(" Created fence windows 0x%x\n", win->fence_win);
-    }
-
-    /* - Create PSCW windows */
-    if (win->info_args.epoch_type & MTCORE_EPOCH_PSCW) {
-        mpi_errno = create_pscw_windows(size, win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        MTCORE_H_DBG_PRINT(" Created active windows 0x%x\n", win->active_win);
     }
 
     win->mtcore_h_win_handle = (unsigned long) win->uh_wins;
@@ -361,8 +324,6 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         free(win->user_base_addrs_in_local);
     if (win->uh_wins)
         free(win->uh_wins);
-    if (win->pscw_wins)
-        free(win->pscw_wins);
     if (win)
         free(win);
 

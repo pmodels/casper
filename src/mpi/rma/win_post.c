@@ -9,30 +9,52 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
-static inline int send_pscw_post_msg(int origin_rank, MTCORE_Win * uh_win)
+static int MTCORE_Send_pscw_post_msg(int post_grp_size, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int main_h_off = uh_win->targets[origin_rank].segs[0].main_h_off;
-    int target_h_rank_in_uh = uh_win->targets[origin_rank].h_ranks_in_uh[main_h_off];
-    MPI_Aint post_bit_offset = uh_win->targets[origin_rank].post_flg_offset;
-    int flg = 1;
-    int user_rank;
+    int i, user_rank;
+    char post_flg = 1;
+    MPI_Request *reqs = NULL;
+    MPI_Status *stats = NULL;
+    int remote_cnt = 0;
+
+    reqs = calloc(post_grp_size, sizeof(MPI_Request));
+    stats = calloc(post_grp_size, sizeof(MPI_Status));
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
-    post_bit_offset += user_rank * sizeof(int);
 
-    /* Set post flag to true on the main helper of post origin. */
-    MTCORE_DBG_PRINT("set pscw post(Helper %d, offset 0x%lx(+%d)) for origin %d \n",
-                     target_h_rank_in_uh, post_bit_offset, user_rank, origin_rank);
+    for (i = 0; i < post_grp_size; i++) {
+        int origin_rank = uh_win->post_ranks_in_win_group[i];
 
-    mpi_errno = PMPI_Accumulate(&flg, 1, MPI_INT, target_h_rank_in_uh,
-                                post_bit_offset, 1, MPI_INT, MPI_REPLACE, uh_win->pscw_sync_win);
+        /* Do not send to local target, otherwise it may deadlock.
+         * We do not check the wrong sync case that user calls start(self)
+         * before post(self). */
+        if (user_rank == origin_rank)
+            continue;
+
+        mpi_errno = PMPI_Isend(&post_flg, 1, MPI_CHAR, origin_rank,
+                               MTCORE_PSCW_PS_TAG, uh_win->user_comm, &reqs[remote_cnt++]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* Set post flag to true on the main helper of post origin. */
+        MTCORE_DBG_PRINT("send pscw post msg to origin %d \n", origin_rank);
+    }
+
+    /* Has to blocking wait here to poll progress. */
+    mpi_errno = PMPI_Waitall(remote_cnt, reqs, stats);
     if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
+        goto fn_fail;
 
-    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->pscw_sync_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
+  fn_exit:
+    if (reqs)
+        free(reqs);
+    if (stats)
+        free(stats);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
 }
 
 static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
@@ -79,8 +101,6 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
         return PMPI_Win_post(group, assert, win);
     }
 
-    /* mtcore window starts */
-
     MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW));
 
     if (group == MPI_GROUP_NULL) {
@@ -112,18 +132,20 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
-        for (i = 0; i < post_grp_size; i++) {
-            mpi_errno = send_pscw_post_msg(uh_win->post_ranks_in_win_group[i], uh_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
+        mpi_errno = MTCORE_Send_pscw_post_msg(post_grp_size, uh_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
-    /* Unlock self exclusive lock.
-     * Origins cannot access this target before self lock is released. */
-    mpi_errno = MTCORE_Win_unlock_self_pscw_win(uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    /* Need win_sync for synchronizing local window update.
+     * It is eliminated if user explicitly specifies no preceding store. */
+    if ((assert & MPI_MODE_NOSTORE) == 0) {
+        mpi_errno = PMPI_Win_sync(uh_win->active_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    MTCORE_DBG_PRINT("Post done\n");
 
   fn_exit:
     return mpi_errno;

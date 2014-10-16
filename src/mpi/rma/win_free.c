@@ -28,25 +28,15 @@ int MPI_Win_free(MPI_Win * win)
     PMPI_Comm_rank(uh_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(uh_win->local_user_comm, &user_local_nprocs);
 
-    /* First unlock fence window */
-    if (uh_win->fence_stat == MTCORE_FENCE_LOCKED) {
-        mpi_errno = MTCORE_Fence_win_release_locks(uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+    /* First unlock global active window */
+    if ((uh_win->info_args.epoch_type & MTCORE_EPOCH_FENCE) ||
+        (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW)) {
 
-        uh_win->fence_stat = MTCORE_FENCE_UNLOCKED;
-    }
+        MTCORE_DBG_PRINT("[%d]unlock_all(active_win 0x%x)\n", user_rank, uh_win->active_win);
 
-    /* Release self exclusive lock for pscw */
-    if (uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW) {
-        /* make sure the pairs of complete and wait calls are matched. */
-        MTCORE_Assert((*uh_win->wait_counter_ptr) == 0);
-
-        mpi_errno = MTCORE_Win_unlock_self_pscw_win(uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        mpi_errno = PMPI_Win_unlock_all(uh_win->pscw_sync_win);
+        /* Since all processes must be in win_free, we do not need worry
+         * the possibility losing asynchronous progress. */
+        mpi_errno = PMPI_Win_unlock_all(uh_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -89,19 +79,9 @@ int MPI_Win_free(MPI_Win * win)
         }
     }
 
-    if (uh_win->num_pscw_uh_wins > 0 && uh_win->pscw_wins) {
-        MTCORE_DBG_PRINT("\t free pscw windows\n");
-        for (i = 0; i < uh_win->num_pscw_uh_wins; i++) {
-            if (uh_win->pscw_wins)
-                PMPI_Win_free(&uh_win->pscw_wins[i]);
-        }
-    }
-    if (uh_win->pscw_sync_win)
-        PMPI_Win_free(&uh_win->pscw_sync_win);
-
-    if ((uh_win->info_args.epoch_type & MTCORE_EPOCH_FENCE) && uh_win->fence_win) {
-        MTCORE_DBG_PRINT("\t free fence window\n");
-        mpi_errno = PMPI_Win_free(&uh_win->fence_win);
+    if (uh_win->active_win) {
+        MTCORE_DBG_PRINT("\t free active window\n");
+        mpi_errno = PMPI_Win_free(&uh_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -204,8 +184,6 @@ int MPI_Win_free(MPI_Win * win)
         free(uh_win->h_win_handles);
     if (uh_win->uh_wins)
         free(uh_win->uh_wins);
-    if (uh_win->pscw_wins)
-        free(uh_win->pscw_wins);
 
     free(uh_win);
 

@@ -9,108 +9,101 @@
 #include <stdlib.h>
 #include "mtcore.h"
 
-static inline int MTCORE_Win_unlock_self_impl(MTCORE_Win * uh_win)
+static int MTCORE_Send_pscw_complete_msg(int start_grp_size, MTCORE_Win * uh_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank;
+    int i, user_rank;
+    char comp_flg = 1;
+    MPI_Request *reqs = NULL;
+    MPI_Status *stats = NULL;
+    int remote_cnt = 0;
 
-#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
-    /* unlockall already unlocked window for local target */
-#else
-    MTCORE_DBG_PRINT("[%d]unlock self(%d, local pscw_win 0x%x)\n", user_rank,
-                     uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
-    mpi_errno = PMPI_Win_unlock(uh_win->my_rank_in_uh_comm, uh_win->my_pscw_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-#endif
-
-    uh_win->is_self_locked = 0;
-    return mpi_errno;
-}
-
-static inline int send_pscw_complete_msg(int target_rank, MTCORE_Win * uh_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int main_h_off = uh_win->targets[target_rank].segs[0].main_h_off;
-    int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[main_h_off];
-
-    int cnt = 1;
-
-    /* Increase wait counter on the main helper of target process. */
-    MTCORE_DBG_PRINT("increase pscw counter(Helper %d, offset 0x%lx)\n",
-                     target_h_rank_in_uh, uh_win->targets[target_rank].wait_counter_offset);
-    mpi_errno = PMPI_Accumulate(&cnt, 1, MPI_INT, target_h_rank_in_uh,
-                                uh_win->targets[target_rank].wait_counter_offset, 1,
-                                MPI_INT, MPI_SUM, uh_win->pscw_sync_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-
-    mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->pscw_sync_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-}
-
-static int MTCORE_Win_Pscw_unlock(int target_rank, MTCORE_Win * uh_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank;
-    int k;
+    reqs = calloc(start_grp_size, sizeof(MPI_Request));
+    stats = calloc(start_grp_size, sizeof(MPI_Status));
 
     PMPI_Comm_rank(uh_win->user_comm, &user_rank);
 
+    for (i = 0; i < start_grp_size; i++) {
+        int target_rank = uh_win->start_ranks_in_win_group[i];
+
+        /* Do not send to local target, otherwise it may deadlock.
+         * We do not check the wrong sync case that user calls wait(self)
+         * before complete(self). */
+        if (user_rank == target_rank)
+            continue;
+
+        mpi_errno = PMPI_Isend(&comp_flg, 1, MPI_CHAR, target_rank,
+                               MTCORE_PSCW_CW_TAG, uh_win->user_comm, &reqs[remote_cnt++]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* Set post flag to true on the main helper of post origin. */
+        MTCORE_DBG_PRINT("send pscw complete msg to target %d \n", target_rank);
+    }
+
+    /* Has to blocking wait here to poll progress. */
+    mpi_errno = PMPI_Waitall(remote_cnt, reqs, stats);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    if (reqs)
+        free(reqs);
+    if (stats)
+        free(stats);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static int MTCORE_Complete_flush(int start_grp_size, MTCORE_Win * uh_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank, user_nprocs;
+    int i, j, k;
+
+    MTCORE_DBG_PRINT_FCNAME();
+
+    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+
+    /* Flush helpers to finish the sequence of locally issued RMA operations */
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
-    MTCORE_DBG_PRINT("[%d]flush_all(pscw_win 0x%x), instead of target rank %d\n",
-                     user_rank, uh_win->targets[target_rank].pscw_win, target_rank);
-    mpi_errno = PMPI_Win_flush_all(uh_win->targets[target_rank].pscw_win);
+
+    /* Optimization for MPI implementations that have optimized lock_all.
+     * However, user should be noted that, if MPI implementation issues lock messages
+     * for every target even if it does not have any operation, this optimization
+     * could lose performance and even lose asynchronous! */
+    MTCORE_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, uh_win->active_win);
+    mpi_errno = PMPI_Win_flush_all(uh_win->active_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #else
-    /* Flush every helper on every window. */
-    for (k = 0; k < MTCORE_ENV.num_h; k++) {
-        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
 
-        MTCORE_DBG_PRINT("[%d]flush(Helper(%d), pscw_wins 0x%x), instead of "
-                         "target rank %d\n", user_rank, target_h_rank_in_uh,
-                         uh_win->targets[target_rank].pscw_win, target_rank);
-
-        mpi_errno = PMPI_Win_flush(target_h_rank_in_uh, uh_win->targets[target_rank].pscw_win);
+    /* Flush every helper once in the single window.
+     * TODO: track op issuing, only flush the helpers which receive ops. */
+    for (i = 0; i < uh_win->num_h_ranks_in_uh; i++) {
+        mpi_errno = PMPI_Win_flush(uh_win->h_ranks_in_uh[i], uh_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-#endif
 
-    mpi_errno = send_pscw_complete_msg(target_rank, uh_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-#ifdef MTCORE_ENABLE_SYNC_ALL_OPT
-    MTCORE_DBG_PRINT("[%d]unlock_all(pscw_win 0x%x), instead of target rank %d\n",
-                     user_rank, uh_win->targets[target_rank].pscw_win, target_rank);
-    mpi_errno = PMPI_Win_unlock_all(uh_win->targets[target_rank].pscw_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#else
-    /* Unlock every helper on every window. */
-    for (k = 0; k < MTCORE_ENV.num_h; k++) {
-        int target_h_rank_in_uh = uh_win->targets[target_rank].h_ranks_in_uh[k];
-
-        MTCORE_DBG_PRINT("[%d]unlock(Helper(%d), pscw_wins 0x%x), instead of "
-                         "target rank %d\n", user_rank, target_h_rank_in_uh,
-                         uh_win->targets[target_rank].pscw_win, target_rank);
-
-        mpi_errno = PMPI_Win_unlock(target_h_rank_in_uh, uh_win->targets[target_rank].pscw_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-#endif
-
-    if (user_rank == target_rank) {
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-        mpi_errno = MTCORE_Win_unlock_self_impl(uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-#endif
+    /* Need flush local target */
+    for (i = 0; i < start_grp_size; i++) {
+        if (uh_win->start_ranks_in_win_group[i] == user_rank) {
+            mpi_errno = PMPI_Win_flush(uh_win->my_rank_in_uh_comm, uh_win->active_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
     }
+#endif
+
+#endif
+
+    /* TODO: All the operations which we have not wrapped up will be failed, because they
+     * are issued to user window. We need wrap up all operations.
+     */
 
   fn_exit:
     return mpi_errno;
@@ -135,8 +128,6 @@ int MPI_Win_complete(MPI_Win win)
         return PMPI_Win_complete(win);
     }
 
-    /* mtcore window starts */
-
     MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW));
 
     if (uh_win->start_group == MPI_GROUP_NULL) {
@@ -152,19 +143,20 @@ int MPI_Win_complete(MPI_Win win)
 
     MTCORE_DBG_PRINT("Complete group 0x%x, size %d\n", uh_win->start_group, start_grp_size);
 
-    for (i = 0; i < start_grp_size; i++) {
-        MTCORE_DBG_PRINT("\t\t complete target %d\n", uh_win->start_ranks_in_win_group[i]);
+    mpi_errno = MTCORE_Complete_flush(start_grp_size, uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
-        mpi_errno = MTCORE_Win_Pscw_unlock(uh_win->start_ranks_in_win_group[i], uh_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
+    uh_win->is_self_locked = 0;
 
-    /* Decrease start counter, change epoch status only when counter
-     * become 0. */
+    mpi_errno = MTCORE_Send_pscw_complete_msg(start_grp_size, uh_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Indicate epoch status, later operations should not be redirected to active_win
+     * after the start counter decreases to 0 .*/
     uh_win->start_counter--;
     if (uh_win->start_counter == 0) {
-        MTCORE_DBG_PRINT("all starts are completed ! no epoch now\n");
         uh_win->epoch_stat = MTCORE_WIN_NO_EPOCH;
     }
 
