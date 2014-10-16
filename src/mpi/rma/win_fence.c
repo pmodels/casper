@@ -96,12 +96,12 @@ int MPI_Win_fence(int assert, MPI_Win win)
             goto fn_fail;
     }
 
-    /* Eliminate win_sync if user explicitly specifies no preceding store. */
-    if ((assert & MPI_MODE_NOSTORE) == 0) {
-        mpi_errno = PMPI_Win_sync(uh_win->active_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
+    /* Eliminate win_sync if user explicitly specifies no preceding store.
+     * Still need it to avoid instruction reordering of preceding load even if
+     * user says no preceding store.*/
+    mpi_errno = PMPI_Win_sync(uh_win->active_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     /* Cannot eliminate barrier for either no_precede or no_succeed.
      * In no_precede fence, it is used for synchronization between local store

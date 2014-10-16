@@ -138,12 +138,11 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     }
 
     /* Need win_sync for synchronizing local window update.
-     * It is eliminated if user explicitly specifies no preceding store. */
-    if ((assert & MPI_MODE_NOSTORE) == 0) {
-        mpi_errno = PMPI_Win_sync(uh_win->active_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
+     * Still need it to avoid instruction reordering of preceding load
+     * even if user says no preceding store. */
+    mpi_errno = PMPI_Win_sync(uh_win->active_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     MTCORE_DBG_PRINT("Post done\n");
 
