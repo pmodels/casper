@@ -32,6 +32,8 @@ noinst_PROGRAMS = \
 	mtcore_runtime_load_opsize \
 	runtime_load_nop_acc \
 	mtcore_runtime_load_nop_acc \
+	runtime_load_opsize_acc \
+	mtcore_runtime_load_opsize_acc \
 	async_fence	\
 	async_fence_th	\
 	mtcore_async_fence \
@@ -58,6 +60,11 @@ dmapp_async_fence_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
 dmapp_async_pscw_CFLAGS= -O2
 dmapp_async_pscw_SOURCES = async_pscw.c
 dmapp_async_pscw_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
+
+runtime_load_opsize_acc_CFLAGS= -O2
+mtcore_runtime_load_opsize_acc_SOURCES= runtime_load_opsize_acc.c
+mtcore_runtime_load_opsize_acc_LDFLAGS= -L$(libdir) -lmtcore -lmpich
+mtcore_runtime_load_opsize_acc_CFLAGS= -O2 -DMTCORE
 
 lockall_overhead_CFLAGS= -O2
 mtcore_lockall_overhead_SOURCES= lockall_overhead.c
