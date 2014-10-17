@@ -28,7 +28,7 @@ static void run_test1(const char *info)
     t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
         /* size in byte */
-        MPI_Win_allocate(sizeof(double) * size, sizeof(double), MPI_INFO_NULL,
+        MPI_Win_allocate(sizeof(double) * size, sizeof(double), win_info,
                          MPI_COMM_WORLD, &winbuf[x], &win[x]);
     }
     t1 = MPI_Wtime();
