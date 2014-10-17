@@ -16,10 +16,14 @@ double *winbuf[ITER];
 MPI_Win win[ITER];
 int size = 16;
 
-static void run_test1()
+static void run_test1(const char *info)
 {
     int x;
     double t0, t1, t_alloc, t_free;
+    MPI_Info win_info = MPI_INFO_NULL;
+
+    MPI_Info_create(&win_info);
+    MPI_Info_set(win_info, (char *) "epoch_type", info);
 
     t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
@@ -36,7 +40,11 @@ static void run_test1()
     t_free = (MPI_Wtime() - t1) / ITER;
 
     if (rank == 0)
-        fprintf(stdout, "nproc %d size %d allocate %lf free %lf\n", nprocs, size, t_alloc, t_free);
+        fprintf(stdout, "nproc %d size %d info %s allocate %lf free %lf\n", nprocs, size, info,
+                t_alloc, t_free);
+
+    if (win_info != MPI_INFO_NULL)
+        MPI_Info_free(&win_info);
 }
 
 int main(int argc, char *argv[])
@@ -61,7 +69,19 @@ int main(int argc, char *argv[])
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    run_test1();
+    run_test1("");
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    run_test1("lock");
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    run_test1("lockall");
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    run_test1("fence");
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    run_test1("pscw");
 
   exit:
     MPI_Finalize();
