@@ -57,26 +57,36 @@ static int run_test(int time)
     }
 
     t0 = MPI_Wtime();
-    for (x = 0; x < ITER; x++) {
-        MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
+    if (rank == 0) {
+        for (x = 0; x < ITER; x++) {
+            MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
 
-        usleep_by_count(time);
-
-        for (dst = 0; dst < nprocs; dst++) {
-            for (i = 1; i < NOP; i++) {
-                MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM, win);
+            for (dst = 0; dst < nprocs; dst++) {
+                for (i = 1; i < NOP; i++) {
+                    MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM,
+                            win);
+                }
             }
+
+            MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
         }
-        MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
+    } else {
+        for (x = 0; x < ITER; x++) {
+            MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
+
+            usleep_by_count(time);
+
+            MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
+        }
     }
     t_total = MPI_Wtime() - t0;
     t_total /= ITER;
 
-    MPI_Reduce(&t_total, &avg_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+//    MPI_Reduce(&t_total, &avg_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+//    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        avg_total_time = avg_total_time / nprocs * 1000 * 1000;
+        avg_total_time = t_total / nprocs * 1000 * 1000;
 #ifdef MTCORE
         fprintf(stdout,
                 "mtcore: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
