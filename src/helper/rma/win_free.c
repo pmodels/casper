@@ -22,9 +22,17 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
         goto fn_fail;
     MTCORE_H_DBG_PRINT(" Received window handler 0x%lx\n", mtcore_h_win_handle);
 
-    mpi_errno = mtcore_get_h_win(mtcore_h_win_handle, &win);
-    if (mpi_errno != 0)
+    win = (MTCORE_H_win *) mtcore_h_win_handle;
+    if (!win) {
+        MTCORE_H_ERR_PRINT(" Wrong window handler 0x%lx, not exist\n", mtcore_h_win_handle);
+        mpi_errno = -1;
         goto fn_fail;
+    }
+    if (win->mtcore_h_win_handle != mtcore_h_win_handle) {
+        MTCORE_H_ERR_PRINT(" Wrong window handler 0x%lx, not match\n", mtcore_h_win_handle);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
 
     /* Release MTCORE resources if there is a corresponding MTCORE-window */
     if (win > 0) {
@@ -81,11 +89,6 @@ int MTCORE_H_win_free(int user_local_root, int user_nprocs, int user_local_nproc
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-
-        MTCORE_H_DBG_PRINT(" release key 0x%lx from hash table\n", mtcore_h_win_handle);
-        mpi_errno = mtcore_remove_h_win(mtcore_h_win_handle);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
 
         if (win->user_base_addrs_in_local)
             free(win->user_base_addrs_in_local);

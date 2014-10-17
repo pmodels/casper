@@ -296,10 +296,7 @@ int MTCORE_H_win_allocate(int user_local_root, int user_nprocs, int user_local_n
         MTCORE_H_DBG_PRINT(" Created active windows 0x%x\n", win->active_win);
     }
 
-    win->mtcore_h_win_handle = (unsigned long) win->uh_wins;
-    mpi_errno = mtcore_put_h_win(win->mtcore_h_win_handle, win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    win->mtcore_h_win_handle = (unsigned long) win;
 
     /* Notify user root the handle of helper win. User root is always rank num_h in
      * user root + helpers communicator */
