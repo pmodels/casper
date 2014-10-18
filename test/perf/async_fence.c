@@ -64,17 +64,19 @@ static int run_test(int time)
             for (dst = 0; dst < nprocs; dst++) {
                 for (i = 1; i < NOP; i++) {
                     MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, rank, 1, MPI_DOUBLE, MPI_SUM,
-                            win);
+                                   win);
                 }
             }
 
             MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
         }
-    } else {
+    }
+    else {
         for (x = 0; x < ITER; x++) {
             MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
 
-            usleep_by_count(time);
+            if (time > 0)
+                usleep_by_count(time);
 
             MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
         }
@@ -161,6 +163,9 @@ int main(int argc, char *argv[])
 
         errs = run_test(time);
         if (errs > 0)
+            break;
+
+        if (time == 0)
             break;
     }
 

@@ -88,7 +88,8 @@ static int run_test(int time)
         else {
             MPI_Win_post(post_group, 0, win);
 
-            usleep_by_count(time);
+            if (time > 0)
+                usleep_by_count(time);
 
             MPI_Win_wait(win);
         }
@@ -176,6 +177,9 @@ int main(int argc, char *argv[])
 
         errs = run_test(time);
         if (errs > 0)
+            break;
+
+        if (time == 0)
             break;
     }
 
