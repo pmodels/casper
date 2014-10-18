@@ -60,26 +60,6 @@ static int run_test()
     t_total = (MPI_Wtime() - t0) * 1000 * 1000; /*us */
     t_total /= ITER;
 
-#ifdef CHECK
-    if (rank == dst) {
-        /* need lock on self rank for checking window buffer.
-         * otherwise, the result may be incorrect because flush/unlock
-         * doesn't wait for target completion in exclusive lock */
-        MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
-        sum = 1.0 * (ITER + SKIP) * NOP;
-        if (winbuf[0] != sum) {
-            fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, winbuf[0],
-                    sum);
-            errs += 1;
-        }
-        MPI_Win_unlock(rank, win);
-    }
-
-    errs_total = errs;
-    if (errs_total > 0)
-        goto exit;
-#endif
-
     fprintf(stdout, "mtcore-nocheck: iter %d num_op %d nprocs %d nh %d total_time %.2lf\n",
             ITER, NOP, nprocs, MTCORE_NUM_H, t_total);
 
