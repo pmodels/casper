@@ -106,10 +106,14 @@ int MPI_Win_fence(int assert, MPI_Win win)
     /* Cannot eliminate barrier for either no_precede or no_succeed.
      * In no_precede fence, it is used for synchronization between local store
      * and remote RMA; In no_succeed fence, it is also required to wait for
-     * remote RMA completion. */
-    mpi_errno = PMPI_Barrier(uh_win->user_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+     * remote RMA completion.
+     * The only time it is safe to drop it is when user specifies
+     * noprecede + nostore + noput which means everyone is doing load/get. */
+    if ((assert & MPI_MODE_NOPRECEDE & MPI_MODE_NOSTORE & MPI_MODE_NOPUT) == 0) {
+        mpi_errno = PMPI_Barrier(uh_win->user_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
 
     uh_win->is_self_locked = 0;
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
