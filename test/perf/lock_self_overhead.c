@@ -18,7 +18,7 @@
 
 /* #define DEBUG */
 #define CHECK
-#define ITER 100000
+#define ITER 1000000
 #define SKIP 100
 
 double *winbuf = NULL;
@@ -44,7 +44,7 @@ static int run_test()
     for (x = 0; x < SKIP; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
         for (i = 0; i < NOP; i++)
-            MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
+            MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
         MPI_Win_unlock(dst, win);
     }
 
@@ -53,7 +53,7 @@ static int run_test()
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
         for (i = 0; i < NOP; i++)
-            MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
+            MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
         MPI_Win_unlock(dst, win);
     }
 
