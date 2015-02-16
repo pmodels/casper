@@ -17,6 +17,7 @@ libmtcore_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/rma/put.c \
                     src/mpi/rma/get.c \
                     src/mpi/rma/accumulate.c \
+                    src/mpi/rma/get_accumulate.c \
                     src/mpi/rma/fetch_and_op.c \
                     src/mpi/rma/win_lock_all.c	\
                     src/mpi/rma/win_unlock_all.c	\
