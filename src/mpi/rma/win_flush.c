@@ -27,8 +27,10 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 #ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
     if (user_rank == target_rank && uh_win->is_self_locked) {
 
-        /* If target is itself, only flush the target on local window.
-         * Local window is referred from another internal window in win_allocate
+        /* If target is itself, also flush the target on local window.
+         * Local window is referred from another internal window in win_allocate.
+         * Note that global windows still need to be flushed because atomicity required
+         * operations (i.e., ACC and FOP) are still sent through global window.
          */
         MTCORE_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
                          uh_win->my_rank_in_uh_comm, uh_win->my_uh_win);
@@ -36,8 +38,8 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-    else
 #endif
+
     {
 #ifdef MTCORE_ENABLE_SYNC_ALL_OPT
 
