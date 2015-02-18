@@ -35,10 +35,26 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
     ug_win->info_args.no_local_load_store = 0;
     ug_win->info_args.epoch_type = CSP_EPOCH_LOCK_ALL | CSP_EPOCH_LOCK |
         CSP_EPOCH_PSCW | CSP_EPOCH_FENCE;
+    ug_win->info_args.async_config = CSP_ENV.async_config;      /* default */
 
     if (info != MPI_INFO_NULL) {
         int info_flag = 0;
         char info_value[MPI_MAX_INFO_VAL + 1];
+
+        /* Check if user wants to turn off async */
+        memset(info_value, 0, sizeof(info_value));
+        mpi_errno = PMPI_Info_get(info, "async_config", MPI_MAX_INFO_VAL, info_value, &info_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        if (info_flag == 1) {
+            if (!strncmp(info_value, "off", strlen("off"))) {
+                ug_win->info_args.async_config = CSP_ASYNC_CONFIG_OFF;
+            }
+            else if (!strncmp(info_value, "on", strlen("on"))) {
+                ug_win->info_args.async_config = CSP_ASYNC_CONFIG_ON;
+            }
+        }
 
         /* Check if we are allowed to ignore force-lock for local target,
          * require force-lock by default. */
@@ -98,12 +114,15 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
         if (user_rank == 0) {
             CSP_INFO_PRINT(2, "CASPER Window:  \n"
                            "    no_local_load_store = %s\n"
-                           "    epoch_type = %s%s%s%s\n\n",
+                           "    epoch_type = %s%s%s%s\n"
+                           "    async_config = %s\n\n",
                            (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
                            ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
                            ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "|lock" : ""),
                            ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "|pscw" : ""),
-                           ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "|fence" : ""));
+                           ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "|fence" : ""),
+                           ((ug_win->info_args.async_config ==
+                             CSP_ASYNC_CONFIG_ON) ? "on" : "off"));
         }
     }
 
@@ -580,6 +599,22 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         ug_win->num_nodes = tmp_bcast_buf[1];
     }
 
+    /* Read window configuration */
+    mpi_errno = read_win_info(info, ug_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* If user turns off asynchronous redirection, simply return normal window; */
+    if (ug_win->info_args.async_config == CSP_ASYNC_CONFIG_OFF) {
+        if (user_comm == MPI_COMM_WORLD)
+            user_comm = CSP_COMM_USER_WORLD;
+
+        mpi_errno = PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
+        CSP_DBG_PRINT("User turns off async in win_allocate, return normal win 0x%x\n", *win);
+
+        goto fn_noasync;
+    }
+
     PMPI_Comm_group(user_comm, &ug_win->user_group);
     PMPI_Comm_size(user_comm, &user_nprocs);
     PMPI_Comm_rank(user_comm, &user_rank);
@@ -636,10 +671,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                       ug_win->targets[i].local_user_nprocs);
     }
 #endif
-
-    mpi_errno = read_win_info(info, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
 
     /* Notify Ghosts start and create user root + ghosts communicator for
      * internal information exchange between users and ghosts. */
@@ -786,6 +817,13 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         free(tmp_gather_buf);
 
     return mpi_errno;
+
+  fn_noasync:
+    if (ug_win->local_user_comm && ug_win->local_user_comm != CSP_COMM_USER_LOCAL)
+        PMPI_Comm_free(&ug_win->local_user_comm);
+    if (ug_win->user_root_comm && ug_win->user_root_comm != CSP_COMM_UR_WORLD)
+        free(ug_win);
+    goto fn_exit;
 
   fn_fail:
 

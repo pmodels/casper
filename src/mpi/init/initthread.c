@@ -88,6 +88,21 @@ static int CSP_initialize_env()
         }
     }
 
+    CSP_ENV.async_config = CSP_ASYNC_CONFIG_ON;
+    val = getenv("CSP_ASYNC_CONFIG");
+    if (val && strlen(val)) {
+        if (!strncmp(val, "on", strlen("on"))) {
+            CSP_ENV.async_config = CSP_ASYNC_CONFIG_ON;
+        }
+        else if (!strncmp(val, "off", strlen("off"))) {
+            CSP_ENV.async_config = CSP_ASYNC_CONFIG_OFF;
+        }
+        else {
+            fprintf(stderr, "Unknown CSP_ASYNC_CONFIG %s\n", val);
+            return -1;
+        }
+    }
+
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     CSP_ENV.load_opt = CSP_LOAD_OPT_RANDOM;
 
@@ -136,9 +151,11 @@ static int CSP_initialize_env()
                        "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
                        "    CSP_NG = %d \n"
-                       "    CSP_LOCK_METHOD = %s \n",
+                       "    CSP_LOCK_METHOD = %s \n"
+                       "    CSP_ASYNC_CONFIG = %s\n",
                        CSP_ENV.num_g,
-                       (CSP_ENV.lock_binding == CSP_LOCK_BINDING_RANK) ? "rank" : "segment");
+                       (CSP_ENV.lock_binding == CSP_LOCK_BINDING_RANK) ? "rank" : "segment",
+                       (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
 
         if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT) {
             CSP_INFO_PRINT(1, "    CSP_SEG_SIZE = %d \n", CSP_ENV.seg_size);

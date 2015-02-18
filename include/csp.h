@@ -144,6 +144,11 @@ typedef enum {
     CSP_LOCK_BINDING_SEGMENT
 } CSP_lock_binding;
 
+typedef enum {
+    CSP_ASYNC_CONFIG_ON = 0,
+    CSP_ASYNC_CONFIG_OFF = 1
+} CSP_async_config;
+
 #define CSP_DEFAULT_SEG_SIZE 4096;
 #define CSP_DEFAULT_NG 1
 
@@ -154,6 +159,7 @@ typedef struct CSP_env_param {
     CSP_load_lock load_lock;    /* how to grant locks for runtime load balancing */
     CSP_lock_binding lock_binding;      /* how to handle locks */
     int verbose;                /* verbose level. print configuration information. */
+    CSP_async_config async_config;
 } CSP_env_param;
 
 
@@ -204,6 +210,7 @@ typedef enum {
 struct CSP_win_info_args {
     unsigned short no_local_load_store;
     int epoch_type;
+    CSP_async_config async_config;
 };
 
 typedef struct CSP_op_segment {
