@@ -65,5 +65,4 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([test/perf/Makefile])
 AC_CONFIG_FILES([test/perf/mini/Makefile])
-AC_CONFIG_FILES([test/perf/mini/lu/Makefile])
 AC_OUTPUT
