@@ -93,7 +93,6 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
-    int i;
 
     CSP_DBG_PRINT_FCNAME();
 

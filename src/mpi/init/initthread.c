@@ -15,8 +15,8 @@ MPI_Group CSP_GROUP_USER_WORLD = MPI_GROUP_NULL;
 int CSP_NUM_G = CSP_DEFAULT_NG;
 int *CSP_G_RANKS_IN_WORLD = NULL;
 int *CSP_G_RANKS_IN_LOCAL = NULL;
-int *CSP_ALL_G_RANKS_IN_WORLD = NULL;        /* Ghosts of user process x are stored as
-                                                 * [x*num_g : (x+1)*num_g-1] */
+int *CSP_ALL_G_RANKS_IN_WORLD = NULL;   /* Ghosts of user process x are stored as
+                                         * [x*num_g : (x+1)*num_g-1] */
 int *CSP_ALL_UNIQUE_G_RANKS_IN_WORLD = NULL;
 int *CSP_USER_RANKS_IN_WORLD = NULL;
 
@@ -56,7 +56,7 @@ static int CSP_Initialize_env()
         fprintf(stderr, "Wrong CSP_NG %d\n", CSP_ENV.num_g);
         return -1;
     }
-    CSP_NUM_G = CSP_ENV.num_g;    /* expose to outside programs */
+    CSP_NUM_G = CSP_ENV.num_g;  /* expose to outside programs */
 
     CSP_ENV.lock_binding = CSP_LOCK_BINDING_RANK;
     val = getenv("CSP_LOCK_METHOD");
@@ -113,8 +113,8 @@ static int CSP_Initialize_env()
 #endif
 
     CSP_DBG_PRINT("ENV: seg_size=%d, lock_binding=%d, load_lock=%d, load_opt=%d, "
-                     "num_g=%d\n", CSP_ENV.seg_size, CSP_ENV.lock_binding,
-                     CSP_ENV.load_lock, CSP_ENV.load_opt, CSP_ENV.num_g);
+                  "num_g=%d\n", CSP_ENV.seg_size, CSP_ENV.lock_binding,
+                  CSP_ENV.load_lock, CSP_ENV.load_opt, CSP_ENV.num_g);
 
     return mpi_errno;
 }
@@ -308,9 +308,9 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         }
 #endif
         CSP_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
-                         "%d/%d in user local, node_id %d\n", rank, nprocs, local_rank,
-                         local_nprocs, user_rank, user_nprocs, local_user_rank,
-                         local_user_nprocs, CSP_MY_NODE_ID);
+                      "%d/%d in user local, node_id %d\n", rank, nprocs, local_rank,
+                      local_nprocs, user_rank, user_nprocs, local_user_rank,
+                      local_user_nprocs, CSP_MY_NODE_ID);
 
         CSP_Init_win_cache();
     }
@@ -326,7 +326,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
             free(ranks_in_world);
 
         CSP_DBG_PRINT("I am ghost, %d/%d in world, %d/%d in local, node_id %d\n", rank,
-                         nprocs, local_rank, local_nprocs, CSP_MY_NODE_ID);
+                      nprocs, local_rank, local_nprocs, CSP_MY_NODE_ID);
         run_g_main();
         exit(0);
     }

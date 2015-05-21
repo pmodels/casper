@@ -62,7 +62,6 @@ int MPI_Win_wait(MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
-    int i;
 
     CSP_DBG_PRINT_FCNAME();
 

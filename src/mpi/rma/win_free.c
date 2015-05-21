@@ -4,7 +4,6 @@
 
 int MPI_Win_free(MPI_Win * win)
 {
-    static const char FCNAME[] = "CSP_Win_free";
     int mpi_errno = MPI_SUCCESS;
     CSP_Win *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;

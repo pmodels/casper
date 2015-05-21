@@ -20,12 +20,8 @@ MPI_Win win = MPI_WIN_NULL;
 
 static int run_test(int nop)
 {
-    int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
+    int errs = 0, errs_total = 0;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
     double buf = 0;
 
     /* Check Lock_all */
@@ -113,7 +109,7 @@ static int run_test(int nop)
 int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
-    int i, errs = 0;
+    int errs = 0;
     MPI_Init(&argc, &argv);
     MPI_Info win_info = MPI_INFO_NULL;
 

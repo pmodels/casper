@@ -3,9 +3,9 @@
 #include "csp.h"
 
 static int CSP_Fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
-                                            MPI_Datatype datatype, int target_rank,
-                                            MPI_Aint target_disp, MPI_Op op, MPI_Win win,
-                                            CSP_Win * ug_win)
+                                         MPI_Datatype datatype, int target_rank,
+                                         MPI_Aint target_disp, MPI_Op op, MPI_Win win,
+                                         CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0;
@@ -14,8 +14,8 @@ static int CSP_Fetch_and_op_segment_impl(const void *origin_addr, void *result_a
     /* TODO : Eliminate operation division for some special cases, see pptx */
     /* Fetch_and_op only allows predefined datatype. */
     mpi_errno = CSP_Op_segments_decode_basic_datatype(origin_addr, 1,
-                                                         datatype, target_rank, target_disp, 1,
-                                                         datatype, ug_win, &decoded_ops, &num_segs);
+                                                      datatype, target_rank, target_disp, 1,
+                                                      datatype, ug_win, &decoded_ops, &num_segs);
 
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -23,14 +23,13 @@ static int CSP_Fetch_and_op_segment_impl(const void *origin_addr, void *result_a
     CSP_DBG_PRINT("CASPER Fetch_and_op to target %d, num_segs=%d\n", target_rank, num_segs);
 
     int target_g_rank_in_ug = -1;
-    int data_size = 0;
     MPI_Aint target_g_offset = 0;
     MPI_Aint ug_target_disp = 0;
     int seg_off = decoded_ops[0].target_seg_off;
     MPI_Win seg_ug_win = ug_win->targets[target_rank].segs[seg_off].ug_win;
 
     mpi_errno = CSP_Get_gp_rank(target_rank, seg_off, 1, decoded_ops[0].target_dtsize,
-                                       ug_win, &target_g_rank_in_ug, &target_g_offset);
+                                ug_win, &target_g_rank_in_ug, &target_g_offset);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -46,14 +45,14 @@ static int CSP_Fetch_and_op_segment_impl(const void *origin_addr, void *result_a
         goto fn_fail;
 
     CSP_DBG_PRINT("CASPER Fetch_and_op to (ghost %d, win 0x%x) instead of "
-                     "target %d, seg %d \n"
-                     "(origin.addr %p, count %d, datatype 0x%x, "
-                     "target.disp 0x%lx(0x%lx + %d * %ld), count %d, datatype 0x%x)\n",
-                     target_g_rank_in_ug, seg_ug_win, target_rank, seg_off,
-                     decoded_ops[0].origin_addr, decoded_ops[0].origin_count,
-                     decoded_ops[0].origin_datatype, ug_target_disp, target_g_offset,
-                     ug_win->targets[target_rank].disp_unit, decoded_ops[0].target_disp,
-                     decoded_ops[0].target_count, decoded_ops[0].target_datatype);
+                  "target %d, seg %d \n"
+                  "(origin.addr %p, count %d, datatype 0x%x, "
+                  "target.disp 0x%lx(0x%lx + %d * %ld), count %d, datatype 0x%x)\n",
+                  target_g_rank_in_ug, seg_ug_win, target_rank, seg_off,
+                  decoded_ops[0].origin_addr, decoded_ops[0].origin_count,
+                  decoded_ops[0].origin_datatype, ug_target_disp, target_g_offset,
+                  ug_win->targets[target_rank].disp_unit, decoded_ops[0].target_disp,
+                  decoded_ops[0].target_count, decoded_ops[0].target_datatype);
 
   fn_exit:
     CSP_Op_segments_destroy(&decoded_ops);
@@ -65,13 +64,11 @@ static int CSP_Fetch_and_op_segment_impl(const void *origin_addr, void *result_a
 
 
 static int CSP_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
-                                    MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
-                                    MPI_Op op, MPI_Win win, CSP_Win * ug_win)
+                                 MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
+                                 MPI_Op op, MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
-    int is_shared = 0;
-
     int rank;
 
     PMPI_Comm_rank(ug_win->user_comm, &rank);
@@ -88,8 +85,8 @@ static int CSP_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
     if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
         ug_win->targets[target_rank].num_segs > 1 && ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK) {
         mpi_errno = CSP_Fetch_and_op_segment_impl(origin_addr, result_addr,
-                                                     datatype, target_rank, target_disp, op,
-                                                     win, ug_win);
+                                                  datatype, target_rank, target_disp, op,
+                                                  win, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -115,7 +112,7 @@ static int CSP_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
         }
 #endif
         mpi_errno = CSP_Get_gp_rank(target_rank, 0, 1, data_size, ug_win,
-                                           &target_g_rank_in_ug, &target_g_offset);
+                                    &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -126,19 +123,17 @@ static int CSP_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
                                       ug_target_disp, op, *win_ptr);
 
         CSP_DBG_PRINT("CASPER Fetch_and_op to (ghost %d, win 0x%x [%s]) instead of "
-                         "target %d, 0x%lx(0x%lx + %d * %ld)\n",
-                         target_g_rank_in_ug, *win_ptr,
-                         CSP_Win_epoch_stat_name[ug_win->epoch_stat],
-                         target_rank, ug_target_disp, target_g_offset,
-                         ug_win->targets[target_rank].disp_unit, target_disp);
+                      "target %d, 0x%lx(0x%lx + %d * %ld)\n",
+                      target_g_rank_in_ug, *win_ptr,
+                      CSP_Win_epoch_stat_name[ug_win->epoch_stat],
+                      target_rank, ug_target_disp, target_g_offset,
+                      ug_win->targets[target_rank].disp_unit, target_disp);
     }
 
   fn_exit:
-
     return mpi_errno;
 
   fn_fail:
-
     goto fn_exit;
 }
 
@@ -146,7 +141,6 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
                      MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
                      MPI_Op op, MPI_Win win)
 {
-    static const char FCNAME[] = "MPI_Fetch_and_op";
     int mpi_errno = MPI_SUCCESS;
     CSP_Win *ug_win;
 
@@ -157,18 +151,13 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
     if (ug_win) {
         /* casper window */
         mpi_errno = CSP_Fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
-                                             target_disp, op, win, ug_win);
+                                          target_disp, op, win, ug_win);
     }
     else {
         /* normal window */
         mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_rank,
                                       target_disp, op, win);
     }
-  fn_exit:
 
     return mpi_errno;
-
-  fn_fail:
-
-    goto fn_exit;
 }

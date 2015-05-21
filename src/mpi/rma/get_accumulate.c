@@ -4,16 +4,14 @@
 
 
 static int CSP_Get_accumulate_impl(const void *origin_addr, int origin_count,
-                                      MPI_Datatype origin_datatype, void *result_addr,
-                                      int result_count, MPI_Datatype result_datatype,
-                                      int target_rank, MPI_Aint target_disp, int target_count,
-                                      MPI_Datatype target_datatype, MPI_Op op, MPI_Win win,
-                                      CSP_Win * ug_win)
+                                   MPI_Datatype origin_datatype, void *result_addr,
+                                   int result_count, MPI_Datatype result_datatype,
+                                   int target_rank, MPI_Aint target_disp, int target_count,
+                                   MPI_Datatype target_datatype, MPI_Op op, MPI_Win win,
+                                   CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
-    int is_shared = 0;
-
     int rank;
 
     PMPI_Comm_rank(ug_win->user_comm, &rank);
@@ -45,7 +43,7 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
         }
 #endif
         mpi_errno = CSP_Get_gp_rank(target_rank, 0, 1, data_size, ug_win,
-                                           &target_g_rank_in_ug, &target_g_offset);
+                                    &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -58,19 +56,17 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
                                         target_datatype, op, *win_ptr);
 
         CSP_DBG_PRINT("CASPER Get_accumulate to (ghost %d, win 0x%x [%s]) instead of "
-                         "target %d, 0x%lx(0x%lx + %d * %ld)\n",
-                         target_g_rank_in_ug, *win_ptr,
-                         CSP_Win_epoch_stat_name[ug_win->epoch_stat],
-                         target_rank, ug_target_disp, target_g_offset,
-                         ug_win->targets[target_rank].disp_unit, target_disp);
+                      "target %d, 0x%lx(0x%lx + %d * %ld)\n",
+                      target_g_rank_in_ug, *win_ptr,
+                      CSP_Win_epoch_stat_name[ug_win->epoch_stat],
+                      target_rank, ug_target_disp, target_g_offset,
+                      ug_win->targets[target_rank].disp_unit, target_disp);
     }
 
   fn_exit:
-
     return mpi_errno;
 
   fn_fail:
-
     goto fn_exit;
 }
 
@@ -79,7 +75,6 @@ int MPI_Get_accumulate(const void *origin_addr, int origin_count, MPI_Datatype o
                        int target_rank, MPI_Aint target_disp, int target_count,
                        MPI_Datatype target_datatype, MPI_Op op, MPI_Win win)
 {
-    static const char FCNAME[] = "MPI_Get_accumulate";
     int mpi_errno = MPI_SUCCESS;
     CSP_Win *ug_win;
 
@@ -90,9 +85,9 @@ int MPI_Get_accumulate(const void *origin_addr, int origin_count, MPI_Datatype o
     if (ug_win) {
         /* casper window */
         mpi_errno = CSP_Get_accumulate_impl(origin_addr, origin_count, origin_datatype,
-                                               result_addr, result_count, result_datatype,
-                                               target_rank, target_disp, target_count,
-                                               target_datatype, op, win, ug_win);
+                                            result_addr, result_count, result_datatype,
+                                            target_rank, target_disp, target_count,
+                                            target_datatype, op, win, ug_win);
     }
     else {
         /* normal window */
@@ -101,11 +96,6 @@ int MPI_Get_accumulate(const void *origin_addr, int origin_count, MPI_Datatype o
                                         target_rank, target_disp, target_count,
                                         target_datatype, op, win);
     }
-  fn_exit:
 
     return mpi_errno;
-
-  fn_fail:
-
-    goto fn_exit;
 }

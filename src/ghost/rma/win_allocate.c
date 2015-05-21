@@ -10,11 +10,10 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
                           int *gp_ranks_in_world, CSP_G_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int world_nprocs, user_world_rank, tmp_world_rank;
+    int world_nprocs;
     int *ug_ranks_in_world = NULL;
     MPI_Group ug_group = MPI_GROUP_NULL;
-    MPI_Status status;
-    int dst, num_ug_ranks;
+    int num_ug_ranks;
 
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
 
@@ -74,7 +73,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, CSP_G_wi
     func_params = calloc(func_param_size, sizeof(int));
 
     mpi_errno = CSP_G_func_get_param((char *) func_params, sizeof(int) * func_param_size,
-                                        win->ur_g_comm);
+                                     win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -105,7 +104,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, CSP_G_wi
         memcpy(gp_ranks_in_world, &func_params[pidx], sizeof(int) * num_ghosts);
 
         CSP_G_DBG_PRINT(" Received parameters: is_user_world %d, num_ghosts %d\n",
-                           is_user_world, num_ghosts);
+                        is_user_world, num_ghosts);
 
         /* Create communicators
          *  ug_comm: including all USER and Ghost processes
@@ -155,8 +154,7 @@ static int create_communicators(int user_nprocs, int user_local_nprocs, CSP_G_wi
 static int create_lock_windows(MPI_Aint size, CSP_G_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int i, j;
-    int user_rank, user_nprocs;
+    int i;
 
     /* Need multiple windows for single lock synchronization */
     if (win->info_args.epoch_type & CSP_EPOCH_LOCK) {
@@ -188,14 +186,12 @@ static int create_lock_windows(MPI_Aint size, CSP_G_win * win)
 int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Status status;
     int dst, local_ug_rank, local_ug_nprocs;
     MPI_Aint r_size, size = 0;
-    int r_disp_unit, req_idx;
+    int r_disp_unit;
     int ug_nprocs, ug_rank;
     CSP_G_win *win;
     void **user_bases = NULL;
-    int i;
     int csp_buf_size = CSP_GP_SHARED_SG_SIZE;
 
     win = calloc(1, sizeof(CSP_G_win));
@@ -217,7 +213,7 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_npro
     PMPI_Comm_size(win->ug_comm, &ug_nprocs);
     PMPI_Comm_rank(win->ug_comm, &ug_rank);
     CSP_G_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
-                       ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
+                    ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
 
     /* Allocate a shared window with local USER processes */
 
@@ -248,9 +244,9 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_npro
 
         PMPI_Get_address(user_bases[dst], &win->user_base_addrs_in_local[dst]);
         CSP_G_DBG_PRINT("   shared base[%d]=%p, addr 0x%lx, offset 0x%lx"
-                           ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
-                           win->user_base_addrs_in_local[dst],
-                           (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
+                        ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
+                        win->user_base_addrs_in_local[dst],
+                        (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
 
         size += r_size; /* size in byte */
     }
@@ -275,7 +271,7 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_npro
     win->max_local_user_nprocs = func_params[0];
     win->info_args.epoch_type = func_params[1];
     CSP_G_DBG_PRINT(" Received parameters: max_local_user_nprocs = %d, epoch_type=%d\n",
-                       win->max_local_user_nprocs, win->info_args.epoch_type);
+                    win->max_local_user_nprocs, win->info_args.epoch_type);
 
     /* - Create lock/lockall windows */
     if ((win->info_args.epoch_type & CSP_EPOCH_LOCK) ||

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "csp.h"
 
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
 static inline int CSP_Win_unlock_self_impl(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -16,7 +17,7 @@ static inline int CSP_Win_unlock_self_impl(CSP_Win * ug_win)
         /* We need also release the lock of local rank */
 
         CSP_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
-                         ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
+                      ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
         mpi_errno = PMPI_Win_unlock(ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
@@ -26,12 +27,13 @@ static inline int CSP_Win_unlock_self_impl(CSP_Win * ug_win)
     ug_win->is_self_locked = 0;
     return mpi_errno;
 }
+#endif
 
 static int CSP_Win_mixed_unlock_all_impl(MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i, k;
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -54,8 +56,8 @@ static int CSP_Win_mixed_unlock_all_impl(MPI_Win win, CSP_Win * ug_win)
             int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[k];
 
             CSP_DBG_PRINT("[%d]unlock(Ghost(%d), ug_win 0x%x), instead of "
-                             "target rank %d\n", user_rank, target_g_rank_in_ug,
-                             ug_win->targets[i].ug_win, i);
+                          "target rank %d\n", user_rank, target_g_rank_in_ug,
+                          ug_win->targets[i].ug_win, i);
             mpi_errno = PMPI_Win_unlock(target_g_rank_in_ug, ug_win->targets[i].ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -81,7 +83,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -95,7 +97,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     /* casper window starts */
 
     CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-                  (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -150,6 +152,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+    int j;
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;

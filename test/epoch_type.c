@@ -218,10 +218,8 @@ static int run_test2(int nop)
 
 static int run_test3(int nop)
 {
-    int i, j, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
+    int i, x, errs = 0, errs_total = 0;
     int dst, org;
-    double sum = 0.0;
     MPI_Group post_group = MPI_GROUP_NULL;
     MPI_Group start_group = MPI_GROUP_NULL;
     MPI_Group world_group = MPI_GROUP_NULL;
@@ -376,7 +374,7 @@ static int run_test4(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n");
+        fprintf(stderr, "[%d] locbuf:\n", rank);
         for (i = 0; i < nop * nprocs; i++) {
             fprintf(stderr, "%.1lf ", locbuf[i]);
         }

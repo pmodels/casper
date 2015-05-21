@@ -60,8 +60,8 @@ static int CSP_Send_pscw_complete_msg(int start_grp_size, CSP_Win * ug_win)
 static int CSP_Complete_flush(int start_grp_size, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs;
-    int i, j, k;
+    int user_rank;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -117,7 +117,6 @@ int MPI_Win_complete(MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
-    int i;
 
     CSP_DBG_PRINT_FCNAME();
 

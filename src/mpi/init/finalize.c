@@ -4,7 +4,6 @@
 
 int MPI_Finalize(void)
 {
-    static const char FCNAME[] = "MPI_Finalize";
     int mpi_errno = MPI_SUCCESS;
     int user_local_rank;
 

@@ -229,7 +229,7 @@ static int run_test3(int nop)
 int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
-    int i, errs = 0;
+    int errs = 0;
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);

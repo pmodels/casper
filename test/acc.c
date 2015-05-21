@@ -45,11 +45,7 @@ static int target_computation_exit()
 static int run_test(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
 
     target_computation_init();
     MPI_Win_lock_all(0, win);
@@ -59,7 +55,6 @@ static int run_test(int nop)
     fprintf(stdout, "[%d]-----check lock_all/acc %d & flush_all + sleep + "
             "acc %d & flush_all/unlock_all \n", rank, dst, dst);
 
-    t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
         MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
         MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 1, 1, MPI_DOUBLE, MPI_MAX, win);
@@ -102,7 +97,7 @@ static int run_test(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n");
+        fprintf(stderr, "[%d] locbuf:\n", rank);
         for (i = 0; i < nop * nprocs; i++) {
             fprintf(stderr, "%.1lf ", locbuf[i]);
         }

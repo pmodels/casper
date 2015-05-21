@@ -12,7 +12,6 @@
 int CSP_G_finalize(void)
 {
     int mpi_errno = MPI_SUCCESS;
-    int rank, nprocs, local_rank, local_nprocs;
 
     if (CSP_COMM_LOCAL != MPI_COMM_NULL) {
         CSP_G_DBG_PRINT(" free CSP_COMM_LOCAL\n");
@@ -70,4 +69,5 @@ int CSP_G_finalize(void)
   fn_fail:
     fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
     PMPI_Abort(MPI_COMM_WORLD, 0);
+    goto fn_exit;
 }

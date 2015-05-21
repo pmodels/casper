@@ -2,16 +2,19 @@
 #include <stdlib.h>
 #include "csp.h"
 
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
 static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
 
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
     /* lockall already locked window for local target */
 #else
     CSP_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
-                     ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
+                  ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
     mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->my_rank_in_ug_comm,
                               MPI_MODE_NOCHECK, ug_win->my_ug_win);
     if (mpi_errno != MPI_SUCCESS)
@@ -21,6 +24,7 @@ static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
     ug_win->is_self_locked = 1;
     return mpi_errno;
 }
+#endif
 
 int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
@@ -41,13 +45,13 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     /* casper window starts */
 
     CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-                  (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     ug_win->targets[target_rank].remote_lock_assert = assert;
     CSP_DBG_PRINT("[%d]lock(%d), MPI_MODE_NOCHECK %d(assert %d)\n", user_rank,
-                     target_rank, (assert & MPI_MODE_NOCHECK) != 0, assert);
+                  target_rank, (assert & MPI_MODE_NOCHECK) != 0, assert);
 
     /* Lock Ghost processes in corresponding ug-window of target process. */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
@@ -57,7 +61,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
      * could lose performance and even lose asynchronous! */
 
     CSP_DBG_PRINT("[%d]lock_all(ug_win 0x%x), instead of target rank %d\n",
-                     user_rank, ug_win->targets[target_rank].ug_win, target_rank);
+                  user_rank, ug_win->targets[target_rank].ug_win, target_rank);
     mpi_errno = PMPI_Win_lock_all(assert, ug_win->targets[target_rank].ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -69,8 +73,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         int target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[k];
 
         CSP_DBG_PRINT("[%d]lock(Ghost(%d), ug_wins 0x%x), instead of "
-                         "target rank %d\n", user_rank, target_g_rank_in_ug,
-                         ug_win->targets[target_rank].ug_win, target_rank);
+                      "target rank %d\n", user_rank, target_g_rank_in_ug,
+                      ug_win->targets[target_rank].ug_win, target_rank);
 
         mpi_errno = PMPI_Win_lock(lock_type, target_g_rank_in_ug, assert,
                                   ug_win->targets[target_rank].ug_win);

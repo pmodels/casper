@@ -11,8 +11,8 @@
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
 void CSP_Get_gp_rank_load_opt_counting(int target_rank, int is_order_required,
-                                              CSP_Win * ug_win, int *target_g_rank_in_ug,
-                                              int *target_g_rank_idx, MPI_Aint * target_g_offset)
+                                       CSP_Win * ug_win, int *target_g_rank_in_ug,
+                                       int *target_g_rank_idx, MPI_Aint * target_g_offset)
 {
     int idx, min_count, g_rank, min_idx;
 
@@ -34,7 +34,7 @@ void CSP_Get_gp_rank_load_opt_counting(int target_rank, int is_order_required,
     *target_g_rank_idx = min_idx;
 
     CSP_DBG_PRINT("[load_opt_op] choose lowest counting ghost %d, off 0x%lx for target %d\n",
-                     *target_g_rank_in_ug, *target_g_offset, target_rank);
+                  *target_g_rank_in_ug, *target_g_offset, target_rank);
 
     /* Count the number of operations issued to every ghost */
     CSP_Inc_win_target_load_opt_op_counting(*target_g_rank_in_ug, ug_win);
@@ -43,8 +43,8 @@ void CSP_Get_gp_rank_load_opt_counting(int target_rank, int is_order_required,
 }
 
 void CSP_Get_gp_rank_load_byte_counting(int target_rank, int is_order_required, int size,
-                                               CSP_Win * ug_win, int *target_g_rank_in_ug,
-                                               int *target_g_rank_idx, MPI_Aint * target_g_offset)
+                                        CSP_Win * ug_win, int *target_g_rank_in_ug,
+                                        int *target_g_rank_idx, MPI_Aint * target_g_offset)
 {
     int idx, min_count, g_rank, min_idx;
 
@@ -66,7 +66,7 @@ void CSP_Get_gp_rank_load_byte_counting(int target_rank, int is_order_required, 
     *target_g_rank_idx = min_idx;
 
     CSP_DBG_PRINT("[load_opt_byte] choose lowest counting ghost %d, off 0x%lx for target %d\n",
-                     *target_g_rank_in_ug, *target_g_offset, target_rank);
+                  *target_g_rank_in_ug, *target_g_offset, target_rank);
 
     /* Count the number of operations issued to every ghost */
     CSP_Inc_win_target_load_opt_bytes_counting(*target_g_rank_in_ug, size, ug_win);

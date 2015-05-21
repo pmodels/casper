@@ -7,7 +7,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
-    int j, k;
+    int j;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -21,7 +21,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     /* casper window starts */
 
     CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-                  (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
@@ -33,7 +33,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          * operations (i.e., ACC and FOP) are still sent through global window.
          */
         CSP_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
-                         ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
+                      ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
         mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -48,7 +48,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          * for every target even if it does not have any operation, this optimization
          * could lose performance and even lose asynchronous! */
         CSP_DBG_PRINT("[%d]flush_all(ug_win 0x%x), instead of target rank %d\n",
-                         user_rank, ug_win->targets[target_rank].ug_win, target_rank);
+                      user_rank, ug_win->targets[target_rank].ug_win, target_rank);
         mpi_errno = PMPI_Win_flush_all(ug_win->targets[target_rank].ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -61,8 +61,8 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
             int main_g_off = ug_win->targets[target_rank].segs[j].main_g_off;
             int target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[main_g_off];
             CSP_DBG_PRINT("[%d]flush(Ghost(%d), ug_wins 0x%x), instead of "
-                             "target rank %d seg %d\n", user_rank, target_g_rank_in_ug,
-                             ug_win->targets[target_rank].segs[j].ug_win, target_rank, j);
+                          "target rank %d seg %d\n", user_rank, target_g_rank_in_ug,
+                          ug_win->targets[target_rank].segs[j].ug_win, target_rank, j);
 
             mpi_errno = PMPI_Win_flush(target_g_rank_in_ug,
                                        ug_win->targets[target_rank].segs[j].ug_win);
@@ -82,12 +82,12 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          *
          * Consider flush does nothing if no operations on that target in most
          * MPI implementation, simpler code is better */
-        j = 0;
+        int k;
         for (k = 0; k < CSP_ENV.num_g; k++) {
             int target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[k];
             CSP_DBG_PRINT("[%d]flush(Ghost(%d), ug_wins 0x%x), instead of "
-                             "target rank %d\n", user_rank, target_g_rank_in_ug,
-                             ug_win->targets[target_rank].ug_win, target_rank);
+                          "target rank %d\n", user_rank, target_g_rank_in_ug,
+                          ug_win->targets[target_rank].ug_win, target_rank);
 
             mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[target_rank].ug_win);
             if (mpi_errno != MPI_SUCCESS)
@@ -103,8 +103,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
          * Note that only target which was issued operations to is guaranteed to be granted. */
         if (ug_win->targets[target_rank].segs[j].main_lock_stat == CSP_MAIN_LOCK_OP_ISSUED) {
             ug_win->targets[target_rank].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-            CSP_DBG_PRINT("[%d] main lock (rank %d, seg %d) granted\n", user_rank, target_rank,
-                             j);
+            CSP_DBG_PRINT("[%d] main lock (rank %d, seg %d) granted\n", user_rank, target_rank, j);
         }
 
         CSP_Reset_win_target_load_opt(target_rank, ug_win);

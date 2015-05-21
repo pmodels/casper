@@ -51,7 +51,7 @@ static int run_test1(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n");
+        fprintf(stderr, "[%d] locbuf:\n", rank);
         for (i = 0; i < nop * nprocs; i++) {
             fprintf(stderr, "%.1lf ", locbuf[i]);
         }
@@ -97,7 +97,7 @@ static int run_test2(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n");
+        fprintf(stderr, "[%d] locbuf:\n", rank);
         for (i = 0; i < nop * nprocs; i++) {
             fprintf(stderr, "%.1lf ", locbuf[i]);
         }

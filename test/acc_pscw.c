@@ -25,29 +25,10 @@ int ITER = 2;
 double max_result = 0.0;
 double sum_result = 0.0;
 
-static int target_computation_init()
-{
-    return 0;
-}
-
-static int target_computation()
-{
-    double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
-    return 0;
-}
-
-static int target_computation_exit()
-{
-    return 0;
-}
-
 static int run_test(int nop)
 {
-    int i, j, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
+    int i, x, errs = 0, errs_total = 0;
     int dst, org;
-    double sum = 0.0;
     MPI_Group post_group = MPI_GROUP_NULL;
     MPI_Group start_group = MPI_GROUP_NULL;
     MPI_Group world_group = MPI_GROUP_NULL;

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
+
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
 static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -11,7 +13,7 @@ static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
     int user_rank;
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     CSP_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
-                     ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
+                  ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
 
     mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->my_rank_in_ug_comm,
                               MPI_MODE_NOCHECK, ug_win->my_ug_win);
@@ -22,12 +24,13 @@ static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
     ug_win->is_self_locked = 1;
     return mpi_errno;
 }
+#endif
 
 static int CSP_Win_mixed_lock_all_impl(int assert, MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i, k;
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -50,13 +53,12 @@ static int CSP_Win_mixed_lock_all_impl(int assert, MPI_Win win, CSP_Win * ug_win
      * Note that a ghost may be used on any window of this process for runtime
      * load balancing whether it is binded to that segment or not. */
     for (i = 0; i < user_nprocs; i++) {
-        j = 0;
         for (k = 0; k < CSP_ENV.num_g; k++) {
             int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[k];
 
             CSP_DBG_PRINT("[%d]lock(Ghost(%d), ug_win 0x%x), instead of "
-                             "target rank %d\n", user_rank, target_g_rank_in_ug,
-                             ug_win->targets[i].ug_win, i);
+                          "target rank %d\n", user_rank, target_g_rank_in_ug,
+                          ug_win->targets[i].ug_win, i);
             mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, target_g_rank_in_ug, assert,
                                       ug_win->targets[i].ug_win);
             if (mpi_errno != MPI_SUCCESS)
@@ -109,7 +111,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -123,7 +125,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     /* casper window starts */
 
     CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-                  (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -133,7 +135,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 
     CSP_DBG_PRINT("[%d]lock_all, MPI_MODE_NOCHECK %d(assert %d)\n", user_rank,
-                     (assert & MPI_MODE_NOCHECK) != 0, assert);
+                  (assert & MPI_MODE_NOCHECK) != 0, assert);
 
     if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
 
@@ -185,6 +187,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+    int j;
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;

@@ -24,7 +24,7 @@ int CSP_Func_start(CSP_Func FUNC, int user_nprocs, int user_local_nprocs)
     info.user_local_nprocs = user_local_nprocs;
 
     CSP_DBG_PRINT("[%d] send Func start request to ghost local %d\n",
-                     CSP_MY_RANK_IN_WORLD, CSP_G_RANKS_IN_LOCAL[0]);
+                  CSP_MY_RANK_IN_WORLD, CSP_G_RANKS_IN_LOCAL[0]);
     /* Only send start request to root ghost. */
     mpi_errno = PMPI_Send((char *) &info, sizeof(CSP_Func_info), MPI_CHAR,
                           CSP_G_RANKS_IN_LOCAL[0], CSP_FUNC_TAG, CSP_COMM_LOCAL);
@@ -59,7 +59,7 @@ int CSP_Func_new_ur_g_comm(MPI_Comm * ur_g_comm)
     PMPI_Comm_rank(*ur_g_comm, &ur_g_rank);
     PMPI_Comm_size(*ur_g_comm, &ur_g_nprocs);
     CSP_DBG_PRINT("[%d] created ur_g comm, my rank %d/%d \n", CSP_MY_RANK_IN_WORLD,
-                     ur_g_rank, ur_g_nprocs);
+                  ur_g_rank, ur_g_nprocs);
 #endif
 
   fn_exit:

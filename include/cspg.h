@@ -94,7 +94,7 @@ extern int CSP_G_win_free(int user_local_root, int user_nprocs, int user_local_n
 extern int CSP_G_finalize(void);
 
 extern int CSP_G_func_start(CSP_Func * FUNC, int *user_local_root, int *user_nprocs,
-                               int *user_local_nprocs);
+                            int *user_local_nprocs);
 extern int CSP_G_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm);
 extern int CSP_G_func_get_param(char *func_params, int size, MPI_Comm ur_g_comm);
 

@@ -92,7 +92,6 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
-    int i;
 
     CSP_Fetch_ug_win_from_cache(win, ug_win);
 
@@ -155,5 +154,5 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     ug_win->post_group = MPI_GROUP_NULL;
     ug_win->post_ranks_in_win_group = NULL;
 
-    return mpi_errno;
+    goto fn_exit;
 }

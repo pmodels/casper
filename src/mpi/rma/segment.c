@@ -18,16 +18,18 @@ void CSP_Op_segments_destroy(CSP_OP_Segment ** decoded_ops_ptr)
 }
 
 int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
-                                             MPI_Datatype origin_datatype,
-                                             int target_rank, MPI_Aint target_disp,
-                                             int target_count, MPI_Datatype target_datatype,
-                                             CSP_Win * ug_win,
-                                             CSP_OP_Segment ** decoded_ops_ptr, int *num_segs)
+                                          MPI_Datatype origin_datatype,
+                                          int target_rank, MPI_Aint target_disp,
+                                          int target_count, MPI_Datatype target_datatype,
+                                          CSP_Win * ug_win,
+                                          CSP_OP_Segment ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
     int o_type_size, t_type_size;
     MPI_Aint target_base_off, target_data_size;
     CSP_OP_Segment *decoded_ops = NULL;
+    MPI_Aint dt_size = 0, op_sg_size = 0, op_sg_base = 0, sg_base = 0, sg_size = 0;
+    int sg_off = 0, op_sg_off = 0;
 
     PMPI_Type_size(origin_datatype, &o_type_size);
     PMPI_Type_size(target_datatype, &t_type_size);
@@ -46,9 +48,8 @@ int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_co
     }
 
     decoded_ops = calloc(ug_win->targets[target_rank].num_segs, sizeof(CSP_OP_Segment));
-
-    MPI_Aint dt_size = 0, op_sg_size = 0, op_sg_base = 0, sg_base = 0, sg_size = 0;
-    int sg_off = 0, op_sg_off = 0;
+    if (decoded_ops == NULL)
+        goto fn_fail;
 
     op_sg_base = target_base_off;
     while (dt_size < target_data_size) {
@@ -93,11 +94,10 @@ int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_co
 }
 
 int CSP_Op_segments_decode(const void *origin_addr, int origin_count,
-                              MPI_Datatype origin_datatype,
-                              int target_rank, MPI_Aint target_disp,
-                              int target_count, MPI_Datatype target_datatype,
-                              CSP_Win * ug_win, CSP_OP_Segment ** decoded_ops_ptr,
-                              int *num_segs)
+                           MPI_Datatype origin_datatype,
+                           int target_rank, MPI_Aint target_disp,
+                           int target_count, MPI_Datatype target_datatype,
+                           CSP_Win * ug_win, CSP_OP_Segment ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
     int o_combiner = 0, o_num_integers = 0, o_num_datatypes = 0, o_num_addresses = 0;
@@ -116,9 +116,9 @@ int CSP_Op_segments_decode(const void *origin_addr, int origin_count,
     /* Both sides are basic datatype */
     if (o_combiner == MPI_COMBINER_NAMED && t_combiner == MPI_COMBINER_NAMED) {
         return CSP_Op_segments_decode_basic_datatype(origin_addr, origin_count,
-                                                        origin_datatype, target_rank, target_disp,
-                                                        target_count, target_datatype, ug_win,
-                                                        decoded_ops_ptr, num_segs);
+                                                     origin_datatype, target_rank, target_disp,
+                                                     target_count, target_datatype, ug_win,
+                                                     decoded_ops_ptr, num_segs);
     }
     /* Derived origin datatype and basic target datatype */
     else if (t_combiner == MPI_COMBINER_NAMED) {
@@ -136,9 +136,5 @@ int CSP_Op_segments_decode(const void *origin_addr, int origin_count,
         mpi_errno = -1;
     }
 
-  fn_exit:
     return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
 }

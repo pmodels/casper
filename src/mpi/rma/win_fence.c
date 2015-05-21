@@ -6,7 +6,7 @@ static int CSP_Fence_flush_all(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -41,6 +41,7 @@ static int CSP_Fence_flush_all(CSP_Win * ug_win)
 #endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+    int j;
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             /* Runtime load balancing is allowed in fence epoch because

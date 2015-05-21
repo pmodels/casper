@@ -205,7 +205,7 @@ static int run_test2(int nop)
 int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
-    int i, errs = 0;
+    int errs = 0;
 
     MPI_Init(&argc, &argv);
 

@@ -72,11 +72,11 @@ static int read_win_info(MPI_Info info, CSP_Win * ug_win)
     }
 
     CSP_DBG_PRINT("no_local_load_store %d, epoch_type=%s|%s|%s|%s\n",
-                     ug_win->info_args.no_local_load_store,
-                     ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
-                     ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "lock" : ""),
-                     ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "pscw" : ""),
-                     ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "fence" : "")
+                  ug_win->info_args.no_local_load_store,
+                  ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                  ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "lock" : ""),
+                  ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "pscw" : ""),
+                  ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "fence" : "")
 );
 
   fn_exit:
@@ -136,8 +136,7 @@ static int gather_ranks(CSP_Win * win, int *num_ghosts, int *gp_ranks_in_world,
     goto fn_exit;
 }
 
-static void specify_main_gp_binding_by_segments(int n_targets, int *local_targets,
-                                                    CSP_Win * ug_win)
+static void specify_main_gp_binding_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
 {
     MPI_Aint seg_size, t_size, sum_size, size_per_ghost, assigned_size, max_t_size;
     int t_num_segs, t_last_g_off, max_t_num_seg;
@@ -239,8 +238,7 @@ static void specify_main_gp_binding_by_segments(int n_targets, int *local_target
         free(t_seg_sizes);
 }
 
-static void specify_main_gp_binding_by_ranks(int n_targets, int *local_targets,
-                                                 CSP_Win * ug_win)
+static void specify_main_gp_binding_by_ranks(int n_targets, int *local_targets, CSP_Win * ug_win)
 {
     int i, g_off, t_rank, user_nprocs;
     int np_per_ghost;
@@ -258,8 +256,7 @@ static void specify_main_gp_binding_by_ranks(int n_targets, int *local_targets,
         if (np == 0) {
             /* next ghost */
             g_off++;
-            np = np_per_ghost +
-                ((g_off == CSP_ENV.num_g - 1) ? (n_targets % CSP_ENV.num_g) : 0);
+            np = np_per_ghost + ((g_off == CSP_ENV.num_g - 1) ? (n_targets % CSP_ENV.num_g) : 0);
         }
         CSP_Assert(g_off <= CSP_ENV.num_g);
 
@@ -278,7 +275,7 @@ static void specify_main_gp_binding_by_ranks(int n_targets, int *local_targets,
 
 static void specify_main_gp_binding(CSP_Win * ug_win)
 {
-    int i, j, g_off, user_nprocs;
+    int i, user_nprocs;
     int *local_targets = NULL;
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -312,18 +309,18 @@ static void specify_main_gp_binding(CSP_Win * ug_win)
     }
 
 #ifdef DEBUG
+    int j;
     for (i = 0; i < user_nprocs; i++) {
         CSP_DBG_PRINT("\t target[%d] .num_segs %d\n", i, ug_win->targets[i].num_segs);
         for (j = 0; j < CSP_ENV.num_g; j++) {
             CSP_DBG_PRINT("\t\t .g_rank[%d] %d, offset[%d] 0x%lx \n",
-                             j, ug_win->targets[i].g_ranks_in_ug[j],
-                             j, ug_win->targets[i].base_g_offsets[j]);
+                          j, ug_win->targets[i].g_ranks_in_ug[j],
+                          j, ug_win->targets[i].base_g_offsets[j]);
         }
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             CSP_DBG_PRINT("\t\t .seg[%d].main_g_off=%d, base_offset=0x%lx, size=0x%x\n",
-                             j, ug_win->targets[i].segs[j].main_g_off,
-                             ug_win->targets[i].segs[j].base_offset,
-                             ug_win->targets[i].segs[j].size);
+                          j, ug_win->targets[i].segs[j].main_g_off,
+                          ug_win->targets[i].segs[j].base_offset, ug_win->targets[i].segs[j].size);
         }
     }
 #endif
@@ -335,9 +332,9 @@ static void specify_main_gp_binding(CSP_Win * ug_win)
 static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_nprocs, user_rank, world_nprocs, tmp_world_rank;
-    int *ug_ranks_in_world = NULL, *g_info = NULL;
-    int i, j, num_ug_ranks, g_rank;
+    int user_nprocs, user_rank, world_nprocs;
+    int *ug_ranks_in_world = NULL;
+    int i, num_ug_ranks;
 
     PMPI_Comm_size(win->user_comm, &user_nprocs);
     PMPI_Comm_rank(win->user_comm, &user_rank);
@@ -413,7 +410,7 @@ static int create_communicators(CSP_Win * ug_win)
             func_params[0] = 1;
 
             mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
-                                              ug_win->ur_g_comm);
+                                           ug_win->ur_g_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -432,8 +429,7 @@ static int create_communicators(CSP_Win * ug_win)
                ug_win->num_g_ranks_in_ug * sizeof(int));
         for (i = 0; i < user_nprocs; i++)
             memcpy(ug_win->targets[i].g_ranks_in_ug,
-                   &CSP_ALL_G_RANKS_IN_WORLD[i * CSP_ENV.num_g],
-                   sizeof(int) * CSP_ENV.num_g);
+                   &CSP_ALL_G_RANKS_IN_WORLD[i * CSP_ENV.num_g], sizeof(int) * CSP_ENV.num_g);
     }
     else {
         /* ghost ranks for every user process, used for ghost fetching in epoch */
@@ -441,8 +437,7 @@ static int create_communicators(CSP_Win * ug_win)
         gp_ranks_in_ug = calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
 
         /* Gather user rank information */
-        mpi_errno = gather_ranks(ug_win, &num_ghosts, gp_ranks_in_world,
-                                 ug_win->g_ranks_in_ug);
+        mpi_errno = gather_ranks(ug_win, &num_ghosts, gp_ranks_in_world, ug_win->g_ranks_in_ug);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -469,7 +464,7 @@ static int create_communicators(CSP_Win * ug_win)
             pidx += user_nprocs;
             memcpy(&func_params[pidx], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
             mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
-                                              ug_win->ur_g_comm);
+                                           ug_win->ur_g_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -507,8 +502,7 @@ static int create_communicators(CSP_Win * ug_win)
 
         /* Get all Ghost rank in ug communicator */
         mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, user_nprocs * CSP_ENV.num_g,
-                                               gp_ranks_in_world, ug_win->ug_group,
-                                               gp_ranks_in_ug);
+                                               gp_ranks_in_world, ug_win->ug_group, gp_ranks_in_ug);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -550,7 +544,6 @@ static int gather_base_offsets(MPI_Aint size, CSP_Win * ug_win)
     int i, j;
     int user_local_rank, user_local_nprocs, user_rank, user_nprocs;
     MPI_Aint *base_g_offsets;
-    void *base_ptr = NULL;
 
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs);
@@ -603,8 +596,8 @@ static int gather_base_offsets(MPI_Aint size, CSP_Win * ug_win)
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < CSP_ENV.num_g; j++) {
             ug_win->targets[i].base_g_offsets[j] = base_g_offsets[i * CSP_ENV.num_g + j];
-            CSP_DBG_PRINT("\t.base_g_offsets[%d] = 0x%lx/0x%lx\n",
-                             j, ug_win->targets[i].base_g_offsets[j]);
+            CSP_DBG_PRINT("\t.base_g_offsets[%d] = 0x%lx\n",
+                          j, ug_win->targets[i].base_g_offsets[j]);
         }
     }
 
@@ -658,7 +651,7 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
             ug_win->targets[i].segs[j].ug_win = ug_win->ug_wins[win_off];
 
             CSP_DBG_PRINT("\t\t .seg[%d].ug_win=0x%x (win_off %d)\n",
-                             j, ug_win->targets[i].segs[j].ug_win, win_off);
+                          j, ug_win->targets[i].segs[j].ug_win, win_off);
         }
     }
 
@@ -675,17 +668,13 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
 int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                      MPI_Comm user_comm, void *baseptr, MPI_Win * win)
 {
-    static const char FCNAME[] = "MPI_Win_allocate";
     int mpi_errno = MPI_SUCCESS;
-    MPI_Group ug_group;
     int ug_rank, ug_nprocs, user_nprocs, user_rank, user_world_rank, world_rank,
         user_local_rank, user_local_nprocs, ug_local_rank, ug_local_nprocs;
     CSP_Win *ug_win;
-    int i, j;
+    int i;
     void **base_pp = (void **) baseptr;
-    MPI_Status stat;
     MPI_Aint *tmp_gather_buf = NULL;
-    ;
     int tmp_bcast_buf[2];
 
     CSP_DBG_PRINT_FCNAME();
@@ -778,15 +767,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
 #ifdef DEBUG
     CSP_DBG_PRINT("my user local rank %d/%d, max_local_user_nprocs=%d, num_nodes=%d\n",
-                     user_local_rank, user_local_nprocs, ug_win->max_local_user_nprocs,
-                     ug_win->num_nodes);
+                  user_local_rank, user_local_nprocs, ug_win->max_local_user_nprocs,
+                  ug_win->num_nodes);
     for (i = 0; i < user_nprocs; i++) {
         CSP_DBG_PRINT("\t targets[%d].disp_unit=%d, size=%ld, local_user_rank=%d, "
-                         "world_rank=%d, user_world_rank=%d, node_id=%d, local_user_nprocs=%d\n",
-                         i, ug_win->targets[i].disp_unit, ug_win->targets[i].size,
-                         ug_win->targets[i].local_user_rank, ug_win->targets[i].world_rank,
-                         ug_win->targets[i].user_world_rank, ug_win->targets[i].node_id,
-                         ug_win->targets[i].local_user_nprocs);
+                      "world_rank=%d, user_world_rank=%d, node_id=%d, local_user_nprocs=%d\n",
+                      i, ug_win->targets[i].disp_unit, ug_win->targets[i].size,
+                      ug_win->targets[i].local_user_rank, ug_win->targets[i].world_rank,
+                      ug_win->targets[i].user_world_rank, ug_win->targets[i].node_id,
+                      ug_win->targets[i].local_user_nprocs);
     }
 #endif
 
@@ -820,7 +809,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(ug_win->ug_comm, &ug_rank);
     PMPI_Comm_rank(ug_win->ug_comm, &ug_win->my_rank_in_ug_comm);
     CSP_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
-                     ug_rank, ug_nprocs, ug_local_rank, ug_local_nprocs);
+                  ug_rank, ug_nprocs, ug_local_rank, ug_local_nprocs);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     ug_win->g_ops_counts = calloc(ug_nprocs, sizeof(int));
@@ -849,11 +838,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         func_params[0] = ug_win->max_local_user_nprocs;
         func_params[1] = ug_win->info_args.epoch_type;
         mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(func_params),
-                                          ug_win->ur_g_comm);
+                                       ug_win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSP_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d \n",
-                         ug_win->max_local_user_nprocs, ug_win->info_args.epoch_type);
+                      ug_win->max_local_user_nprocs, ug_win->info_args.epoch_type);
     }
 
     if ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||

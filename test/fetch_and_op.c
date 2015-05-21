@@ -41,7 +41,7 @@ static void change_data(int nop, int x)
 static void print_buffers(int nop)
 {
     int i;
-    fprintf(stderr, "[%d] locbuf:\n");
+    fprintf(stderr, "[%d] locbuf:\n", rank);
     for (i = 0; i < nop; i++) {
         fprintf(stderr, "%.1lf ", locbuf[i]);
     }
@@ -55,7 +55,6 @@ static void print_buffers(int nop)
 static int run_test1(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
     double sum = 0.0;
 
@@ -101,7 +100,6 @@ static int run_test1(int nop)
 static int run_test2(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
     double sum = 0.0;
 
@@ -147,7 +145,6 @@ static int run_test2(int nop)
 static int run_test3(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
     double sum = 0.0;
 
@@ -195,7 +192,6 @@ static int run_test3(int nop)
 static int run_test4(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
     double sum = 0.0, max = 0.0;
 

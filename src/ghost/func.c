@@ -13,7 +13,7 @@
  * Ghosts receive a new function from user root process
  */
 int CSP_G_func_start(CSP_Func * FUNC, int *user_local_root, int *user_nprocs,
-                        int *user_local_nprocs)
+                     int *user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Status status;
@@ -49,14 +49,10 @@ int CSP_G_func_start(CSP_Func * FUNC, int *user_local_root, int *user_nprocs,
     *user_local_root = g_info.user_root_in_local;
 
     CSP_G_DBG_PRINT(" all ghosts started for Func %d, user nprocs %d, local_nprocs %d,"
-                       "user_local_root %d\n", *FUNC, *user_nprocs, *user_local_nprocs,
-                       *user_local_root);
+                    "user_local_root %d\n", *FUNC, *user_nprocs, *user_local_nprocs,
+                    *user_local_root);
 
-  fn_exit:
     return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
 }
 
 int CSP_G_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
@@ -99,10 +95,6 @@ int CSP_G_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
 
 int CSP_G_func_get_param(char *func_params, int size, MPI_Comm ur_g_comm)
 {
-    int local_user_rank, i;
-    MPI_Status status;
-    int mpi_errno = MPI_SUCCESS;
-
     /* User root is always the last rank in user root + ghosts communicator */
     CSP_G_DBG_PRINT("get param from user root: size %d\n", size);
     return PMPI_Bcast(func_params, size, MPI_CHAR, CSP_ENV.num_g, ur_g_comm);

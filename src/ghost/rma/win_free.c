@@ -8,8 +8,6 @@
 int CSP_G_win_free(int user_local_root, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
-    int dst;
-    int ug_nprocs, ug_rank;
     CSP_G_win *win;
     unsigned long csp_g_win_handle = 0UL;
     MPI_Status stat;
@@ -104,10 +102,10 @@ int CSP_G_win_free(int user_local_root, int user_nprocs, int user_local_nprocs)
     }
 
   fn_exit:
-
     return mpi_errno;
 
   fn_fail:
     fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
     PMPI_Abort(MPI_COMM_WORLD, 0);
+    goto fn_exit;
 }

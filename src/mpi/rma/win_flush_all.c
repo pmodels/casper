@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "csp.h"
 
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
 static inline int CSP_Win_flush_self_impl(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -15,7 +16,7 @@ static inline int CSP_Win_flush_self_impl(CSP_Win * ug_win)
     if (ug_win->is_self_locked) {
         /* Flush local window for local communication (self-target). */
         CSP_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
-                         ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
+                      ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
         mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
@@ -23,12 +24,13 @@ static inline int CSP_Win_flush_self_impl(CSP_Win * ug_win)
 #endif
     return mpi_errno;
 }
+#endif
 
 static int CSP_Win_mixed_flush_all_impl(MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i, j;
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -56,21 +58,23 @@ static int CSP_Win_mixed_flush_all_impl(MPI_Win win, CSP_Win * ug_win)
             int main_g_off = ug_win->targets[i].segs[j].main_g_off;
             int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[main_g_off];
             CSP_DBG_PRINT("[%d]flush(Ghost(%d), ug_wins 0x%x), instead of "
-                             "target rank %d seg %d\n", user_rank, target_g_rank_in_ug,
-                             ug_win->targets[i].segs[j].ug_win, i, j);
+                          "target rank %d seg %d\n", user_rank, target_g_rank_in_ug,
+                          ug_win->targets[i].segs[j].ug_win, i, j);
 
             mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[i].segs[j].ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 #else
+        int k;
+
         /* RMA operations may be distributed to all ghosts, so we should
          * flush all ghosts on all windows. See discussion in win_flush. */
         for (k = 0; k < CSP_ENV.num_g; k++) {
             int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[k];
             CSP_DBG_PRINT("[%d]flush(Ghost(%d), ug_win 0x%x), instead of "
-                             "target rank %d\n", user_rank, target_g_rank_in_ug,
-                             ug_win->targets[i].ug_win, i);
+                          "target rank %d\n", user_rank, target_g_rank_in_ug,
+                          ug_win->targets[i].ug_win, i);
 
             mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[i].ug_win);
             if (mpi_errno != MPI_SUCCESS)
@@ -98,7 +102,7 @@ int MPI_Win_flush_all(MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j, k;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -112,7 +116,7 @@ int MPI_Win_flush_all(MPI_Win win)
     /* casper window starts */
 
     CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-                  (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -156,6 +160,7 @@ int MPI_Win_flush_all(MPI_Win win)
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+    int j;
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             /* Lock of main ghost is granted, we can start load balancing from the next flush/unlock.

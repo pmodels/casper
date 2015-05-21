@@ -14,7 +14,6 @@ int MPI_Win_sync(MPI_Win win)
     CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank = 0;
-    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -37,7 +36,7 @@ int MPI_Win_sync(MPI_Win win)
         goto fn_fail;
 
     CSP_DBG_PRINT("[%d] win sync on %s local win 0x%x\n", user_rank,
-                     CSP_Win_epoch_stat_name[ug_win->epoch_stat], *win_ptr);
+                  CSP_Win_epoch_stat_name[ug_win->epoch_stat], *win_ptr);
 
   fn_exit:
     return mpi_errno;

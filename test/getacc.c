@@ -56,11 +56,7 @@ static int target_computation_exit()
 static int run_test(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
     double local_sum[NUM_OPS], local_max[NUM_OPS];
 
     memset(local_sum, 0, sizeof(local_sum));
@@ -72,7 +68,6 @@ static int run_test(int nop)
     /* It is shared lock, a target is only updated by one process */
     dst = (rank + 1) % nprocs;
 
-    t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {
         MPI_Get_accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, &local_sum[0], 1, MPI_DOUBLE, dst, 0,
                            1, MPI_DOUBLE, MPI_SUM, win);
@@ -124,7 +119,7 @@ static int run_test(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n");
+        fprintf(stderr, "[%d] locbuf:\n", rank);
         for (i = 0; i < nop * nprocs; i++) {
             fprintf(stderr, "%.1lf ", locbuf[i]);
         }

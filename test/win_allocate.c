@@ -20,7 +20,7 @@ static void run_test1()
 {
     int x;
 
-    fprintf(stdout, "[%d]-----check %d * [win_allocate(0x%x) + win_free] \n", rank, ITER,
+    fprintf(stdout, "[%d]-----check %d * [win_allocate(0x%lx) + win_free] \n", rank, ITER,
             sizeof(double) * size);
 
     for (x = 0; x < ITER; x++) {
@@ -38,7 +38,7 @@ static void run_test2()
 {
     int x;
 
-    fprintf(stdout, "[%d]-----check %d * [win_allocate(0x%x)] + %d * [win_free] \n",
+    fprintf(stdout, "[%d]-----check %d * [win_allocate(0x%lx)] + %d * [win_free] \n",
             rank, ITER, sizeof(double) * size, ITER);
 
     for (x = 0; x < ITER; x++) {
