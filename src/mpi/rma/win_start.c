@@ -7,15 +7,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "mtcore.h"
+#include "csp.h"
 
-static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
+static int fill_ranks_in_win_grp(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *ranks_in_start_grp = NULL;
     int i, start_grp_size;
 
-    mpi_errno = PMPI_Group_size(uh_win->start_group, &start_grp_size);
+    mpi_errno = PMPI_Group_size(ug_win->start_group, &start_grp_size);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -24,9 +24,9 @@ static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
         ranks_in_start_grp[i] = i;
     }
 
-    mpi_errno = PMPI_Group_translate_ranks(uh_win->start_group, start_grp_size,
-                                           ranks_in_start_grp, uh_win->user_group,
-                                           uh_win->start_ranks_in_win_group);
+    mpi_errno = PMPI_Group_translate_ranks(ug_win->start_group, start_grp_size,
+                                           ranks_in_start_grp, ug_win->user_group,
+                                           ug_win->start_ranks_in_win_group);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -39,7 +39,7 @@ static int fill_ranks_in_win_grp(MTCORE_Win * uh_win)
     goto fn_exit;
 }
 
-static int MTCORE_Wait_pscw_post_msg(int start_grp_size, MTCORE_Win * uh_win)
+static int CSP_Wait_pscw_post_msg(int start_grp_size, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -52,10 +52,10 @@ static int MTCORE_Wait_pscw_post_msg(int start_grp_size, MTCORE_Win * uh_win)
     reqs = calloc(start_grp_size, sizeof(MPI_Request));
     stats = calloc(start_grp_size, sizeof(MPI_Status));
 
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     for (i = 0; i < start_grp_size; i++) {
-        int target_rank = uh_win->start_ranks_in_win_group[i];
+        int target_rank = ug_win->start_ranks_in_win_group[i];
 
         /* Do not receive from local target, otherwise it may deadlock.
          * We do not check the wrong sync case that user calls start(self)
@@ -64,12 +64,12 @@ static int MTCORE_Wait_pscw_post_msg(int start_grp_size, MTCORE_Win * uh_win)
             continue;
 
         mpi_errno = PMPI_Irecv(&post_flg, 1, MPI_CHAR, target_rank,
-                               MTCORE_PSCW_PS_TAG, uh_win->user_comm, &reqs[remote_cnt++]);
+                               CSP_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        /* Set post flag to true on the main helper of post origin. */
-        MTCORE_DBG_PRINT("receive pscw post msg from target %d \n", target_rank);
+        /* Set post flag to true on the main ghost of post origin. */
+        CSP_DBG_PRINT("receive pscw post msg from target %d \n", target_rank);
     }
 
     /* It is blocking. */
@@ -90,25 +90,25 @@ static int MTCORE_Wait_pscw_post_msg(int start_grp_size, MTCORE_Win * uh_win)
 
 int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 {
-    MTCORE_Win *uh_win;
+    CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
     int i;
 
-    MTCORE_DBG_PRINT_FCNAME();
+    CSP_DBG_PRINT_FCNAME();
 
-    MTCORE_Fetch_uh_win_from_cache(win, uh_win);
+    CSP_Fetch_ug_win_from_cache(win, ug_win);
 
-    if (uh_win == NULL) {
+    if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_start(group, assert, win);
     }
 
-    MTCORE_Assert((uh_win->info_args.epoch_type & MTCORE_EPOCH_PSCW));
+    CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
 
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
-        MTCORE_DBG_PRINT("Start empty group\n");
+        CSP_DBG_PRINT("Start empty group\n");
         return mpi_errno;
     }
 
@@ -118,51 +118,51 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     if (start_grp_size <= 0) {
         /* standard says do nothing for empty group */
-        MTCORE_DBG_PRINT("Start empty group\n");
+        CSP_DBG_PRINT("Start empty group\n");
         return mpi_errno;
     }
 
-    uh_win->start_group = group;
-    uh_win->start_ranks_in_win_group = calloc(start_grp_size, sizeof(int));
-    MTCORE_DBG_PRINT("start group 0x%x, size %d\n", uh_win->start_group, start_grp_size);
+    ug_win->start_group = group;
+    ug_win->start_ranks_in_win_group = calloc(start_grp_size, sizeof(int));
+    CSP_DBG_PRINT("start group 0x%x, size %d\n", ug_win->start_group, start_grp_size);
 
     /* Both lock and start only allow no_check assert. */
     assert = (assert == MPI_MODE_NOCHECK) ? MPI_MODE_NOCHECK : 0;
 
-    mpi_errno = fill_ranks_in_win_grp(uh_win);
+    mpi_errno = fill_ranks_in_win_grp(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
-        mpi_errno = MTCORE_Wait_pscw_post_msg(start_grp_size, uh_win);
+        mpi_errno = CSP_Wait_pscw_post_msg(start_grp_size, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    uh_win->is_self_locked = 0;
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
+    ug_win->is_self_locked = 0;
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
     /* During pscw epoch, it is allowed to access local target directly.
      * Note that user may do wrong RMA call such as access the local target
      * without start-post on local window. But we do not check it. */
-    uh_win->is_self_locked = 1;
+    ug_win->is_self_locked = 1;
 #endif
 
     /* Indicate epoch status, later operations will be redirected to active_win
      * until start counter decreases to 0 .*/
-    uh_win->epoch_stat = MTCORE_WIN_EPOCH_PSCW;
-    uh_win->start_counter++;
+    ug_win->epoch_stat = CSP_WIN_EPOCH_PSCW;
+    ug_win->start_counter++;
 
-    MTCORE_DBG_PRINT("Start done\n");
+    CSP_DBG_PRINT("Start done\n");
 
   fn_exit:
     return mpi_errno;
 
   fn_fail:
-    if (uh_win->start_ranks_in_win_group)
-        free(uh_win->start_ranks_in_win_group);
-    uh_win->start_group = MPI_GROUP_NULL;
-    uh_win->start_ranks_in_win_group = NULL;
+    if (ug_win->start_ranks_in_win_group)
+        free(ug_win->start_ranks_in_win_group);
+    ug_win->start_group = MPI_GROUP_NULL;
+    ug_win->start_ranks_in_win_group = NULL;
 
     goto fn_exit;
 }

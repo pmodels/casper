@@ -16,8 +16,8 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 #define RAND_RANGE  (32767)
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 {
     int i;
     /* get user-defined parameters */
-#ifdef MTCORE
+#ifdef ENABLE_CSP
     if (argc > 2) {
         /* skip first parameter in manticore */
         for (i = 2; i < argc; i++) {
@@ -123,9 +123,9 @@ int main(int argc, char *argv[])
             MPI_Reduce(&elapse_t, &sum_elapse_t, 1, MPI_DOUBLE, MPI_SUM, 0 /*root */ , lu_comm);
             if (myrank_lu == 0) {
 
-#ifdef MTCORE
-                printf("mtcore: matrix %d block %d nprocs %d nh %d %.4f\n",
-                       matrix_size, block_size, work_nprocs, MTCORE_NUM_H,
+#ifdef ENABLE_CSP
+                printf("casper: matrix %d block %d nprocs %d nh %d %.4f\n",
+                       matrix_size, block_size, work_nprocs, CSP_NUM_G,
                        ((sum_elapse_t / work_nprocs) * 1000000) / (iter_cnt - omit_cnt));
 #else
                 printf("orig: matrix %d block %d nprocs %d %.4f\n",

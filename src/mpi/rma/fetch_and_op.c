@@ -1,62 +1,62 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mtcore.h"
+#include "csp.h"
 
-static int MTCORE_Fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
+static int CSP_Fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
                                             MPI_Datatype datatype, int target_rank,
                                             MPI_Aint target_disp, MPI_Op op, MPI_Win win,
-                                            MTCORE_Win * uh_win)
+                                            CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0;
-    MTCORE_OP_Segment *decoded_ops = NULL;
+    CSP_OP_Segment *decoded_ops = NULL;
 
     /* TODO : Eliminate operation division for some special cases, see pptx */
     /* Fetch_and_op only allows predefined datatype. */
-    mpi_errno = MTCORE_Op_segments_decode_basic_datatype(origin_addr, 1,
+    mpi_errno = CSP_Op_segments_decode_basic_datatype(origin_addr, 1,
                                                          datatype, target_rank, target_disp, 1,
-                                                         datatype, uh_win, &decoded_ops, &num_segs);
+                                                         datatype, ug_win, &decoded_ops, &num_segs);
 
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MTCORE_DBG_PRINT("MTCORE Fetch_and_op to target %d, num_segs=%d\n", target_rank, num_segs);
+    CSP_DBG_PRINT("CASPER Fetch_and_op to target %d, num_segs=%d\n", target_rank, num_segs);
 
-    int target_h_rank_in_uh = -1;
+    int target_g_rank_in_ug = -1;
     int data_size = 0;
-    MPI_Aint target_h_offset = 0;
-    MPI_Aint uh_target_disp = 0;
+    MPI_Aint target_g_offset = 0;
+    MPI_Aint ug_target_disp = 0;
     int seg_off = decoded_ops[0].target_seg_off;
-    MPI_Win seg_uh_win = uh_win->targets[target_rank].segs[seg_off].uh_win;
+    MPI_Win seg_ug_win = ug_win->targets[target_rank].segs[seg_off].ug_win;
 
-    mpi_errno = MTCORE_Get_helper_rank(target_rank, seg_off, 1, decoded_ops[0].target_dtsize,
-                                       uh_win, &target_h_rank_in_uh, &target_h_offset);
+    mpi_errno = CSP_Get_gp_rank(target_rank, seg_off, 1, decoded_ops[0].target_dtsize,
+                                       ug_win, &target_g_rank_in_ug, &target_g_offset);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Fetch_and_op only allows one predefined element which must be contained by
      * a single segmetn, thus we only need translate target displacement according to
      * its segment id. */
-    uh_target_disp = target_h_offset
-        + uh_win->targets[target_rank].disp_unit * decoded_ops[0].target_disp;
+    ug_target_disp = target_g_offset
+        + ug_win->targets[target_rank].disp_unit * decoded_ops[0].target_disp;
 
     mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype,
-                                  target_h_rank_in_uh, uh_target_disp, op, seg_uh_win);
+                                  target_g_rank_in_ug, ug_target_disp, op, seg_ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MTCORE_DBG_PRINT("MTCORE Fetch_and_op to (helper %d, win 0x%x) instead of "
+    CSP_DBG_PRINT("CASPER Fetch_and_op to (ghost %d, win 0x%x) instead of "
                      "target %d, seg %d \n"
                      "(origin.addr %p, count %d, datatype 0x%x, "
                      "target.disp 0x%lx(0x%lx + %d * %ld), count %d, datatype 0x%x)\n",
-                     target_h_rank_in_uh, seg_uh_win, target_rank, seg_off,
+                     target_g_rank_in_ug, seg_ug_win, target_rank, seg_off,
                      decoded_ops[0].origin_addr, decoded_ops[0].origin_count,
-                     decoded_ops[0].origin_datatype, uh_target_disp, target_h_offset,
-                     uh_win->targets[target_rank].disp_unit, decoded_ops[0].target_disp,
+                     decoded_ops[0].origin_datatype, ug_target_disp, target_g_offset,
+                     ug_win->targets[target_rank].disp_unit, decoded_ops[0].target_disp,
                      decoded_ops[0].target_count, decoded_ops[0].target_datatype);
 
   fn_exit:
-    MTCORE_Op_segments_destroy(&decoded_ops);
+    CSP_Op_segments_destroy(&decoded_ops);
     return mpi_errno;
 
   fn_fail:
@@ -64,17 +64,17 @@ static int MTCORE_Fetch_and_op_segment_impl(const void *origin_addr, void *resul
 }
 
 
-static int MTCORE_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
+static int CSP_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
                                     MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
-                                    MPI_Op op, MPI_Win win, MTCORE_Win * uh_win)
+                                    MPI_Op op, MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Aint uh_target_disp = 0;
+    MPI_Aint ug_target_disp = 0;
     int is_shared = 0;
 
     int rank;
 
-    PMPI_Comm_rank(uh_win->user_comm, &rank);
+    PMPI_Comm_rank(ug_win->user_comm, &rank);
 
     /* Should not do local RMA in accumulate because of atomicity issue */
 
@@ -85,11 +85,11 @@ static int MTCORE_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
     /* Although only one predefined datatype element is transferred in such
      * operation, we still need call segmentation routine to get its the segment
      * number if target is divided to multiple segments. */
-    if (MTCORE_ENV.lock_binding == MTCORE_LOCK_BINDING_SEGMENT &&
-        uh_win->targets[target_rank].num_segs > 1 && uh_win->epoch_stat == MTCORE_WIN_EPOCH_LOCK) {
-        mpi_errno = MTCORE_Fetch_and_op_segment_impl(origin_addr, result_addr,
+    if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
+        ug_win->targets[target_rank].num_segs > 1 && ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK) {
+        mpi_errno = CSP_Fetch_and_op_segment_impl(origin_addr, result_addr,
                                                      datatype, target_rank, target_disp, op,
-                                                     win, uh_win);
+                                                     win, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -102,35 +102,35 @@ static int MTCORE_Fetch_and_op_impl(const void *origin_addr, void *result_addr,
          * require it. Some implementation may use network even for shared targets for
          * shorter CPU occupancy.
          */
-        int target_h_rank_in_uh = -1;
+        int target_g_rank_in_ug = -1;
         int data_size = 0;
-        MPI_Aint target_h_offset = 0;
+        MPI_Aint target_g_offset = 0;
         MPI_Win *win_ptr = NULL;
 
-        MTCORE_Get_epoch_win(target_rank, 0, uh_win, win_ptr);
+        CSP_Get_epoch_win(target_rank, 0, ug_win, win_ptr);
 
-#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
-        if (MTCORE_ENV.load_opt == MTCORE_LOAD_BYTE_COUNTING) {
+#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+        if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
             PMPI_Type_size(datatype, &data_size);
         }
 #endif
-        mpi_errno = MTCORE_Get_helper_rank(target_rank, 0, 1, data_size, uh_win,
-                                           &target_h_rank_in_uh, &target_h_offset);
+        mpi_errno = CSP_Get_gp_rank(target_rank, 0, 1, data_size, ug_win,
+                                           &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        uh_target_disp = target_h_offset + uh_win->targets[target_rank].disp_unit * target_disp;
+        ug_target_disp = target_g_offset + ug_win->targets[target_rank].disp_unit * target_disp;
 
-        /* Issue operation to the helper process in corresponding uh-window of target process. */
-        mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_h_rank_in_uh,
-                                      uh_target_disp, op, *win_ptr);
+        /* Issue operation to the ghost process in corresponding ug-window of target process. */
+        mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_g_rank_in_ug,
+                                      ug_target_disp, op, *win_ptr);
 
-        MTCORE_DBG_PRINT("MTCORE Fetch_and_op to (helper %d, win 0x%x [%s]) instead of "
+        CSP_DBG_PRINT("CASPER Fetch_and_op to (ghost %d, win 0x%x [%s]) instead of "
                          "target %d, 0x%lx(0x%lx + %d * %ld)\n",
-                         target_h_rank_in_uh, *win_ptr,
-                         MTCORE_Win_epoch_stat_name[uh_win->epoch_stat],
-                         target_rank, uh_target_disp, target_h_offset,
-                         uh_win->targets[target_rank].disp_unit, target_disp);
+                         target_g_rank_in_ug, *win_ptr,
+                         CSP_Win_epoch_stat_name[ug_win->epoch_stat],
+                         target_rank, ug_target_disp, target_g_offset,
+                         ug_win->targets[target_rank].disp_unit, target_disp);
     }
 
   fn_exit:
@@ -148,16 +148,16 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
 {
     static const char FCNAME[] = "MPI_Fetch_and_op";
     int mpi_errno = MPI_SUCCESS;
-    MTCORE_Win *uh_win;
+    CSP_Win *ug_win;
 
-    MTCORE_DBG_PRINT_FCNAME();
+    CSP_DBG_PRINT_FCNAME();
 
-    MTCORE_Fetch_uh_win_from_cache(win, uh_win);
+    CSP_Fetch_ug_win_from_cache(win, ug_win);
 
-    if (uh_win) {
-        /* mtcore window */
-        mpi_errno = MTCORE_Fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
-                                             target_disp, op, win, uh_win);
+    if (ug_win) {
+        /* casper window */
+        mpi_errno = CSP_Fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
+                                             target_disp, op, win, ug_win);
     }
     else {
         /* normal window */

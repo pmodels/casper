@@ -23,8 +23,8 @@
 #define debug_printf(str...) {}
 #endif
 
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 MPI_Win win;
@@ -98,9 +98,9 @@ static int run_test(int time)
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0) {
-#ifdef MTCORE
+#ifdef ENABLE_CSP
         fprintf(stdout,
-                "mtcore: comp_size %d num_op %d nprocs %d total_time %.2lf\n",
+                "casper: comp_size %d num_op %d nprocs %d total_time %.2lf\n",
                 time, NOP, nprocs, t_total * 1000 * 1000);
 #else
         fprintf(stdout,
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     debug_printf("[%d]init done\n", rank);
 
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
     /* first argv is nh */
     if (argc >= 5) {
         min_time = atoi(argv[2]);

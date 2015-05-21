@@ -8,26 +8,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
-#include "mtcore.h"
+#include "csp.h"
 
-void MTCORE_Op_segments_destroy(MTCORE_OP_Segment ** decoded_ops_ptr)
+void CSP_Op_segments_destroy(CSP_OP_Segment ** decoded_ops_ptr)
 {
     if (*decoded_ops_ptr) {
         free(*decoded_ops_ptr);
     }
 }
 
-int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
+int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
                                              MPI_Datatype origin_datatype,
                                              int target_rank, MPI_Aint target_disp,
                                              int target_count, MPI_Datatype target_datatype,
-                                             MTCORE_Win * uh_win,
-                                             MTCORE_OP_Segment ** decoded_ops_ptr, int *num_segs)
+                                             CSP_Win * ug_win,
+                                             CSP_OP_Segment ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
     int o_type_size, t_type_size;
     MPI_Aint target_base_off, target_data_size;
-    MTCORE_OP_Segment *decoded_ops = NULL;
+    CSP_OP_Segment *decoded_ops = NULL;
 
     PMPI_Type_size(origin_datatype, &o_type_size);
     PMPI_Type_size(target_datatype, &t_type_size);
@@ -37,26 +37,26 @@ int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int origin
     target_base_off = target_disp * t_type_size;
     target_data_size = target_count * t_type_size;
 
-    if (target_base_off + target_data_size > uh_win->targets[target_rank].size) {
+    if (target_base_off + target_data_size > ug_win->targets[target_rank].size) {
         fprintf(stderr, "Wrong operation target_disp 0x%lx, target_count %d "
                 "(base 0x%lx + size 0x%lx > 0x%lx)\n",
                 target_disp, target_count, target_base_off, target_data_size,
-                uh_win->targets[target_rank].size);
+                ug_win->targets[target_rank].size);
         return -1;
     }
 
-    decoded_ops = calloc(uh_win->targets[target_rank].num_segs, sizeof(MTCORE_OP_Segment));
+    decoded_ops = calloc(ug_win->targets[target_rank].num_segs, sizeof(CSP_OP_Segment));
 
     MPI_Aint dt_size = 0, op_sg_size = 0, op_sg_base = 0, sg_base = 0, sg_size = 0;
     int sg_off = 0, op_sg_off = 0;
 
     op_sg_base = target_base_off;
     while (dt_size < target_data_size) {
-        MTCORE_Assert(op_sg_off < uh_win->targets[target_rank].num_segs);
-        MTCORE_Assert(sg_off < uh_win->targets[target_rank].num_segs);
+        CSP_Assert(op_sg_off < ug_win->targets[target_rank].num_segs);
+        CSP_Assert(sg_off < ug_win->targets[target_rank].num_segs);
 
-        sg_base = uh_win->targets[target_rank].segs[sg_off].base_offset;
-        sg_size = uh_win->targets[target_rank].segs[sg_off].size;
+        sg_base = ug_win->targets[target_rank].segs[sg_off].base_offset;
+        sg_size = ug_win->targets[target_rank].segs[sg_off].size;
 
         if (sg_base <= op_sg_base && sg_base + sg_size > op_sg_base) {
             op_sg_size = min(sg_size - op_sg_base + sg_base, target_data_size - dt_size);
@@ -92,11 +92,11 @@ int MTCORE_Op_segments_decode_basic_datatype(const void *origin_addr, int origin
     goto fn_exit;
 }
 
-int MTCORE_Op_segments_decode(const void *origin_addr, int origin_count,
+int CSP_Op_segments_decode(const void *origin_addr, int origin_count,
                               MPI_Datatype origin_datatype,
                               int target_rank, MPI_Aint target_disp,
                               int target_count, MPI_Datatype target_datatype,
-                              MTCORE_Win * uh_win, MTCORE_OP_Segment ** decoded_ops_ptr,
+                              CSP_Win * ug_win, CSP_OP_Segment ** decoded_ops_ptr,
                               int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -115,9 +115,9 @@ int MTCORE_Op_segments_decode(const void *origin_addr, int origin_count,
 
     /* Both sides are basic datatype */
     if (o_combiner == MPI_COMBINER_NAMED && t_combiner == MPI_COMBINER_NAMED) {
-        return MTCORE_Op_segments_decode_basic_datatype(origin_addr, origin_count,
+        return CSP_Op_segments_decode_basic_datatype(origin_addr, origin_count,
                                                         origin_datatype, target_rank, target_disp,
-                                                        target_count, target_datatype, uh_win,
+                                                        target_count, target_datatype, ug_win,
                                                         decoded_ops_ptr, num_segs);
     }
     /* Derived origin datatype and basic target datatype */

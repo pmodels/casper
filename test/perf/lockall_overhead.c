@@ -26,8 +26,8 @@ double locbuf[1];
 int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 static int run_test()
@@ -93,9 +93,9 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-#ifdef MTCORE
-        fprintf(stdout, "mtcore: iter %d nprocs %d nh %d total_time %lf\n", ITER, nprocs,
-                MTCORE_NUM_H, t_total);
+#ifdef ENABLE_CSP
+        fprintf(stdout, "casper: iter %d nprocs %d nh %d total_time %lf\n", ITER, nprocs,
+                CSP_NUM_G, t_total);
 #else
         fprintf(stdout, "orig: iter %d nprocs %d total_time %.2lf\n", ITER, nprocs, t_total);
 #endif

@@ -4,80 +4,80 @@
 
 noinst_PROGRAMS = \
 	get	\
-	mtcore_get \
+	csp_get \
 	put	\
-	mtcore_put	\
+	csp_put	\
 	put_l_seg	\
-	mtcore_put_l_seg	\
+	csp_put_l_seg	\
 	acc	\
-	mtcore_acc \
+	csp_acc \
 	acc_flush_local	\
-	mtcore_acc_flush_local \
+	csp_acc_flush_local \
 	acclock	\
-	mtcore_acclock \
+	csp_acclock \
 	getacc	\
-	mtcore_getacc	\
+	csp_getacc	\
 	self_acclock	\
-	mtcore_self_acclock	\
+	csp_self_acclock	\
 	no_loadstore	\
-	mtcore_no_loadstore	\
-	mtcore_no_check	\
-	mtcore_no_accumulate_ordering	\
+	csp_no_loadstore	\
+	csp_no_check	\
+	csp_no_accumulate_ordering	\
 	acc_pscw	\
-	mtcore_acc_pscw \
+	csp_acc_pscw \
 	put_fence	\
-	mtcore_put_fence	\
+	csp_put_fence	\
 	acc_get_fence	\
-	mtcore_acc_get_fence	\
+	csp_acc_get_fence	\
 	fetch_and_op	\
-	mtcore_fetch_and_op	\
+	csp_fetch_and_op	\
 	win_allocate	\
 	win_create_acc	\
 	init_thread_acc	\
 	epoch_type	\
 	epoch_type_assert
 	
-mtcore_get_SOURCES= get.c
-mtcore_get_LDFLAGS= -L$(libdir) -lmtcore
+csp_get_SOURCES= get.c
+csp_get_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_put_SOURCES= put.c
-mtcore_put_LDFLAGS= -L$(libdir) -lmtcore
+csp_put_SOURCES= put.c
+csp_put_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_put_l_seg_SOURCES= put_l_seg.c
-mtcore_put_l_seg_LDFLAGS= -L$(libdir) -lmtcore
+csp_put_l_seg_SOURCES= put_l_seg.c
+csp_put_l_seg_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_acc_SOURCES= acc.c
-mtcore_acc_LDFLAGS= -L$(libdir) -lmtcore
+csp_acc_SOURCES= acc.c
+csp_acc_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_acc_flush_local_SOURCES= acc_flush_local.c
-mtcore_acc_flush_local_LDFLAGS= -L$(libdir) -lmtcore
+csp_acc_flush_local_SOURCES= acc_flush_local.c
+csp_acc_flush_local_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_acclock_SOURCES= acclock.c
-mtcore_acclock_LDFLAGS= -L$(libdir) -lmtcore
+csp_acclock_SOURCES= acclock.c
+csp_acclock_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_getacc_SOURCES= getacc.c
-mtcore_getacc_LDFLAGS= -L$(libdir) -lmtcore
+csp_getacc_SOURCES= getacc.c
+csp_getacc_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_self_acclock_SOURCES= self_acclock.c
-mtcore_self_acclock_LDFLAGS= -L$(libdir) -lmtcore
+csp_self_acclock_SOURCES= self_acclock.c
+csp_self_acclock_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_no_loadstore_SOURCES= no_loadstore.c
-mtcore_no_loadstore_LDFLAGS= -L$(libdir) -lmtcore
+csp_no_loadstore_SOURCES= no_loadstore.c
+csp_no_loadstore_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_no_check_SOURCES= no_check.c
-mtcore_no_check_LDFLAGS= -L$(libdir) -lmtcore
+csp_no_check_SOURCES= no_check.c
+csp_no_check_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_no_accumulate_ordering_SOURCES= no_accumulate_ordering.c
-mtcore_no_accumulate_ordering_LDFLAGS= -L$(libdir) -lmtcore
+csp_no_accumulate_ordering_SOURCES= no_accumulate_ordering.c
+csp_no_accumulate_ordering_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_acc_pscw_SOURCES= acc_pscw.c
-mtcore_acc_pscw_LDFLAGS= -L$(libdir) -lmtcore
+csp_acc_pscw_SOURCES= acc_pscw.c
+csp_acc_pscw_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_put_fence_SOURCES= put_fence.c
-mtcore_put_fence_LDFLAGS= -L$(libdir) -lmtcore
+csp_put_fence_SOURCES= put_fence.c
+csp_put_fence_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_acc_get_fence_SOURCES= acc_get_fence.c
-mtcore_acc_get_fence_LDFLAGS= -L$(libdir) -lmtcore
+csp_acc_get_fence_SOURCES= acc_get_fence.c
+csp_acc_get_fence_LDFLAGS= -L$(libdir) -lcasper
 
-mtcore_fetch_and_op_SOURCES= fetch_and_op.c
-mtcore_fetch_and_op_LDFLAGS= -L$(libdir) -lmtcore
+csp_fetch_and_op_SOURCES= fetch_and_op.c
+csp_fetch_and_op_LDFLAGS= -L$(libdir) -lcasper

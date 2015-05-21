@@ -10,25 +10,25 @@ Getting Started
 ====================================
 1. Installation
 	 ./configure --prefix=<your installation dir> CC=<your mpicc> CFLAGS="-O2 -g
-	 -DMTCORE_DISABLE_LOCAL_LOCK_OPT -fPIC"
+	 -DCSP_DISABLE_LOCAL_LOCK_OPT -fPIC"
    make
    make install
 
 2. Link with MPI Program
 	 [Example]
-	 mpicc -o test test.c -lmtcore -lmpich
+	 mpicc -o test test.c -lcasper -lmpich
 
 3. Execution
 	 You can set the number of ghost processes per node through the environment
-	 variable MTCORE_NUM_HELPER, it is set to 1 by default.
+	 variable CSP_NG, it is set to 1 by default.
 
 	 [Example 1]
 	 Running on 2 node, 2 ghost processes and 6 user processes on eacn node.
-	 export MTCORE_NUM_HELPER=2
+	 export CSP_NG=2
 	 mpiexec -np 16 -ppn 8 ./test
 
 	 [Example 2]
 	 Running on 4 node, 4 ghost processes and 20 user processes on eacn node.
-	 export MTCORE_NUM_HELPER=4
+	 export CSP_NG=4
 	 mpiexec -np 96 -ppn 24 ./test
 

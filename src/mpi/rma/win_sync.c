@@ -7,37 +7,37 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "mtcore.h"
+#include "csp.h"
 
 int MPI_Win_sync(MPI_Win win)
 {
-    MTCORE_Win *uh_win;
+    CSP_Win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank = 0;
     int i;
 
-    MTCORE_DBG_PRINT_FCNAME();
+    CSP_DBG_PRINT_FCNAME();
 
-    MTCORE_Fetch_uh_win_from_cache(win, uh_win);
+    CSP_Fetch_ug_win_from_cache(win, ug_win);
 
-    if (uh_win == NULL) {
+    if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_sync(win);
     }
 
-    /* mtcore window starts */
+    /* casper window starts */
 
-    PMPI_Comm_rank(uh_win->user_comm, &user_rank);
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     MPI_Win *win_ptr = NULL;
-    MTCORE_Get_epoch_local_win(uh_win, win_ptr);
+    CSP_Get_epoch_local_win(ug_win, win_ptr);
 
     mpi_errno = PMPI_Win_sync(*win_ptr);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MTCORE_DBG_PRINT("[%d] win sync on %s local win 0x%x\n", user_rank,
-                     MTCORE_Win_epoch_stat_name[uh_win->epoch_stat], *win_ptr);
+    CSP_DBG_PRINT("[%d] win sync on %s local win 0x%x\n", user_rank,
+                     CSP_Win_epoch_stat_name[ug_win->epoch_stat], *win_ptr);
 
   fn_exit:
     return mpi_errno;

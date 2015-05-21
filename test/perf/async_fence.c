@@ -19,8 +19,8 @@
 #define debug_printf(str...) {}
 #endif
 
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 double *winbuf = NULL;
@@ -89,10 +89,10 @@ static int run_test(int time)
 
     if (rank == 0) {
         avg_total_time = t_total / nprocs * 1000 * 1000;
-#ifdef MTCORE
+#ifdef ENABLE_CSP
         fprintf(stdout,
-                "mtcore: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, time, NOP, nprocs, MTCORE_NUM_H, avg_total_time);
+                "casper: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+                ITER, time, NOP, nprocs, CSP_NUM_G, avg_total_time);
 #else
         fprintf(stdout,
                 "orig: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
     /* first argv is nh */
     if (argc >= 5) {
         min_time = atoi(argv[2]);

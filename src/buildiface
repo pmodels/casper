@@ -60,7 +60,7 @@ print CFILE <<EOT;
  */
 
 #include "mpi.h"
-#include "mtcore.h"
+#include "csp.h"
 EOT
 
 
@@ -195,7 +195,7 @@ while (<INFILE>) {
 	    print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n${tab}${tab}return P$routine(";
 	    for ($x = 0; $x <= $#arglist; $x++) {
 		if ($x == $comm_arg) {
-		    print CFILE "MTCORE_COMM_USER_WORLD";
+		    print CFILE "CSP_COMM_USER_WORLD";
 		}
 		else {
 		    print CFILE "x$x";

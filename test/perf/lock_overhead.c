@@ -1,7 +1,7 @@
 /*
  * lock-overhead.c
  *
- *  This benchmark evaluates the overhead of Manticore wrapped MPI_Win_lock using 2 processes.
+ *  This benchmark evaluates the overhead of CASPER wrapped MPI_Win_lock using 2 processes.
  *  Rank 0 locks rank 1 and issues an accumulate operation to grant that lock
  *
  *  Author: Min Si
@@ -21,8 +21,8 @@ double *winbuf = NULL;
 double locbuf[1];
 int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 static int run_test()
 {
@@ -81,9 +81,9 @@ static int run_test()
 #endif
 
     if (rank == 0) {
-#ifdef MTCORE
-        fprintf(stdout, "mtcore: iter %d nprocs %d nh %d avg_time %.2lf\n", ITER, nprocs,
-                MTCORE_NUM_H, t_total);
+#ifdef ENABLE_CSP
+        fprintf(stdout, "casper: iter %d nprocs %d nh %d avg_time %.2lf\n", ITER, nprocs,
+                CSP_NUM_G, t_total);
 #else
         fprintf(stdout, "orig: iter %d nprocs %d avg_time %.2lf\n", ITER, nprocs, t_total);
 #endif

@@ -5,9 +5,9 @@
 ACLOCAL_AMFLAGS = -I confdb
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include 
 
-lib_LTLIBRARIES = libmtcore.la
+lib_LTLIBRARIES = libcasper.la
 
-libmtcore_la_SOURCES = src/mpi_wrap.c	\
+libcasper_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/func.c \
                     src/mpi/rma/win_allocate.c \
                     src/mpi/rma/win_create.c \
@@ -33,14 +33,14 @@ libmtcore_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/rma/win_start.c	\
                     src/mpi/rma/win_wait.c	\
                     src/mpi/rma/win_complete.c	\
-                    src/mpi/rma/get_helper.c	\
+                    src/mpi/rma/get_ghost.c	\
                     src/mpi/rma/segment.c	\
                     src/mpi/init/init.c \
                     src/mpi/init/initthread.c \
                     src/mpi/init/finalize.c \
-                    src/helper/func.c \
-                    src/helper/main.c \
-                    src/helper/mpi/finalize.c \
-                    src/helper/rma/win_allocate.c \
-                    src/helper/rma/win_free.c	\
+                    src/ghost/func.c \
+                    src/ghost/main.c \
+                    src/ghost/mpi/finalize.c \
+                    src/ghost/rma/win_allocate.c \
+                    src/ghost/rma/win_free.c	\
                     src/util/hash.c

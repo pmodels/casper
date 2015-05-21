@@ -156,9 +156,9 @@ static int run_test(int nop)
 
     if (rank == 0) {
         avg_total_time /= nprocs;
-#ifdef MTCORE
+#ifdef ENABLE_CSP
         fprintf(stdout,
-                "mtcore: comp_size %d num_op %d nprocs %d total_time %lf\n",
+                "casper: comp_size %d num_op %d nprocs %d total_time %lf\n",
                 DGEMM_SIZE, nop, nprocs, avg_total_time);
 #else
         fprintf(stdout,

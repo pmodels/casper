@@ -1,7 +1,7 @@
 /*
  * lock_self_overhead.c
  *
- *  This benchmark evaluates the overhead of Manticore wrapped MPI_Win_lock
+ *  This benchmark evaluates the overhead of CASPER wrapped MPI_Win_lock
  *  when lock a self target using 2 processes (only rank 0 is used, but window requires at least 2 processes).
  *
  *  Rank 0 locks itself and unlock. It does not need RMA operations because
@@ -36,8 +36,8 @@ enum {
 };
 int OP_TYPE = OP_ACC;
 
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 void DO_OP_LOOP(int dst, int iter)
@@ -99,9 +99,9 @@ static int run_test()
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0) {
-#ifdef MTCORE
-        fprintf(stdout, "mtcore: iter %d %s num_op %d opsize %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, OP_TYPE_NM[OP_TYPE], NOP, OP_SIZE, nprocs, MTCORE_NUM_H, t_total);
+#ifdef ENABLE_CSP
+        fprintf(stdout, "casper: iter %d %s num_op %d opsize %d nprocs %d nh %d total_time %.2lf\n",
+                ITER, OP_TYPE_NM[OP_TYPE], NOP, OP_SIZE, nprocs, CSP_NUM_G, t_total);
 #else
         fprintf(stdout, "orig: iter %d %s num_op %d opsize %d nprocs %d total_time %.2lf\n",
                 ITER, OP_TYPE_NM[OP_TYPE], NOP, OP_SIZE, nprocs, t_total);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
     /* first argv is nh */
     if (argc >= 5) {
         OP_SIZE_MIN = atoi(argv[2]);

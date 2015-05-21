@@ -1,26 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mtcore.h"
+#include "csp.h"
 
-static int MTCORE_Put_shared_impl(const void *origin_addr, int origin_count,
+static int CSP_Put_shared_impl(const void *origin_addr, int origin_count,
                                   MPI_Datatype origin_datatype,
                                   int target_rank, MPI_Aint target_disp,
                                   int target_count,
-                                  MPI_Datatype target_datatype, MPI_Win win, MTCORE_Win * uh_win)
+                                  MPI_Datatype target_datatype, MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Win *win_ptr = &uh_win->my_uh_win;
+    MPI_Win *win_ptr = &ug_win->my_ug_win;
 
-    MTCORE_Get_epoch_local_win(uh_win, win_ptr);
+    CSP_Get_epoch_local_win(ug_win, win_ptr);
 
     /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
      */
     mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
-                         uh_win->my_rank_in_uh_comm, target_disp,
+                         ug_win->my_rank_in_ug_comm, target_disp,
                          target_count, target_datatype, *win_ptr);
-    MTCORE_DBG_PRINT("MTCORE PUT to self(%d, in local win 0x%x)\n",
-                     uh_win->my_rank_in_uh_comm, *win_ptr);
+    CSP_DBG_PRINT("CASPER PUT to self(%d, in local win 0x%x)\n",
+                     ug_win->my_rank_in_ug_comm, *win_ptr);
 
     goto fn_exit;
 
@@ -32,91 +32,91 @@ static int MTCORE_Put_shared_impl(const void *origin_addr, int origin_count,
 }
 
 
-static int MTCORE_Put_segment_impl(const void *origin_addr, int origin_count,
+static int CSP_Put_segment_impl(const void *origin_addr, int origin_count,
                                    MPI_Datatype origin_datatype,
                                    int target_rank, MPI_Aint target_disp,
                                    int target_count, MPI_Datatype target_datatype,
-                                   MPI_Win win, MTCORE_Win * uh_win)
+                                   MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0, i;
-    MTCORE_OP_Segment *decoded_ops = NULL;
+    CSP_OP_Segment *decoded_ops = NULL;
 
     /* TODO : Eliminate operation division for some special cases, see pptx */
-    mpi_errno = MTCORE_Op_segments_decode(origin_addr, origin_count,
+    mpi_errno = CSP_Op_segments_decode(origin_addr, origin_count,
                                           origin_datatype, target_rank, target_disp, target_count,
-                                          target_datatype, uh_win, &decoded_ops, &num_segs);
+                                          target_datatype, ug_win, &decoded_ops, &num_segs);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    MTCORE_DBG_PRINT("MTCORE Put to target %d, target_disp=0x%lx, target_count=%d, num_segs=%d\n",
+    CSP_DBG_PRINT("CASPER Put to target %d, target_disp=0x%lx, target_count=%d, num_segs=%d\n",
                      target_rank, target_disp, target_count, num_segs);
 
     for (i = 0; i < num_segs; i++) {
-        int target_h_rank_in_uh = -1;
+        int target_g_rank_in_ug = -1;
         int data_size = 0;
-        MPI_Aint target_h_offset = 0;
-        MPI_Aint uh_target_disp = 0;
+        MPI_Aint target_g_offset = 0;
+        MPI_Aint ug_target_disp = 0;
         int seg_off = decoded_ops[i].target_seg_off;
-        MPI_Win seg_uh_win = uh_win->targets[target_rank].segs[seg_off].uh_win;
+        MPI_Win seg_ug_win = ug_win->targets[target_rank].segs[seg_off].ug_win;
 
-        mpi_errno = MTCORE_Get_helper_rank(target_rank, seg_off, 0, decoded_ops[i].target_dtsize,
-                                           uh_win, &target_h_rank_in_uh, &target_h_offset);
+        mpi_errno = CSP_Get_gp_rank(target_rank, seg_off, 0, decoded_ops[i].target_dtsize,
+                                           ug_win, &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        uh_target_disp = target_h_offset
-            + uh_win->targets[target_rank].disp_unit * decoded_ops[i].target_disp;
+        ug_target_disp = target_g_offset
+            + ug_win->targets[target_rank].disp_unit * decoded_ops[i].target_disp;
 
-        /* Issue operation to the helper process in corresponding uh-window of target process. */
+        /* Issue operation to the ghost process in corresponding ug-window of target process. */
         mpi_errno = PMPI_Put(decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
-                             decoded_ops[i].origin_datatype, target_h_rank_in_uh, uh_target_disp,
+                             decoded_ops[i].origin_datatype, target_g_rank_in_ug, ug_target_disp,
                              decoded_ops[i].target_count, decoded_ops[i].target_datatype,
-                             seg_uh_win);
+                             seg_ug_win);
 
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win 0x%x) instead of "
+        CSP_DBG_PRINT("CASPER Put to (ghost %d, win 0x%x) instead of "
                          "target %d, seg %d \n"
                          "(origin.addr %p, count %d, datatype 0x%x, "
                          "target.disp 0x%lx(0x%lx + %d * %ld), count %d, datatype 0x%x)\n",
-                         target_h_rank_in_uh, seg_uh_win, target_rank, seg_off,
+                         target_g_rank_in_ug, seg_ug_win, target_rank, seg_off,
                          decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
-                         decoded_ops[i].origin_datatype, uh_target_disp, target_h_offset,
-                         uh_win->targets[target_rank].disp_unit, decoded_ops[i].target_disp,
+                         decoded_ops[i].origin_datatype, ug_target_disp, target_g_offset,
+                         ug_win->targets[target_rank].disp_unit, decoded_ops[i].target_disp,
                          decoded_ops[i].target_count, decoded_ops[i].target_datatype);
     }
 
   fn_exit:
-    MTCORE_Op_segments_destroy(&decoded_ops);
+    CSP_Op_segments_destroy(&decoded_ops);
     return mpi_errno;
 
   fn_fail:
     goto fn_exit;
 }
 
-static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
+static int CSP_Put_impl(const void *origin_addr, int origin_count,
                            MPI_Datatype origin_datatype,
                            int target_rank, MPI_Aint target_disp,
                            int target_count,
-                           MPI_Datatype target_datatype, MPI_Win win, MTCORE_Win * uh_win)
+                           MPI_Datatype target_datatype, MPI_Win win, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Aint uh_target_disp = 0;
+    MPI_Aint ug_target_disp = 0;
     int target_node_id = -1;
     int rank;
 
-    PMPI_Comm_rank(uh_win->user_comm, &rank);
-#ifdef MTCORE_ENABLE_LOCAL_LOCK_OPT
-    if (target_rank == rank && uh_win->is_self_locked) {
-        /* If target is itself, we do not need translate it to any Helpers because
-         * win_lock(self) will force lock(helper) to be granted so that it is safe
+    PMPI_Comm_rank(ug_win->user_comm, &rank);
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
+    if (target_rank == rank && ug_win->is_self_locked) {
+        /* If target is itself, we do not need translate it to any Ghosts because
+         * win_lock(self) will force lock(ghost) to be granted so that it is safe
          * to send operations to the real target.
          */
-        mpi_errno = MTCORE_Put_shared_impl(origin_addr, origin_count,
+        mpi_errno = CSP_Put_shared_impl(origin_addr, origin_count,
                                            origin_datatype, target_rank, target_disp, target_count,
-                                           target_datatype, win, uh_win);
+                                           target_datatype, win, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -126,12 +126,12 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
         /* TODO: Do we need segment load balancing in fence ?
          * 1. No lock issue.
          * 2. overhead of data range checking and division */
-        if (MTCORE_ENV.lock_binding == MTCORE_LOCK_BINDING_SEGMENT &&
-            uh_win->targets[target_rank].num_segs > 1 &&
-            uh_win->epoch_stat == MTCORE_WIN_EPOCH_LOCK) {
-            mpi_errno = MTCORE_Put_segment_impl(origin_addr, origin_count,
+        if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
+            ug_win->targets[target_rank].num_segs > 1 &&
+            ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK) {
+            mpi_errno = CSP_Put_segment_impl(origin_addr, origin_count,
                                                 origin_datatype, target_rank, target_disp,
-                                                target_count, target_datatype, win, uh_win);
+                                                target_count, target_datatype, win, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 return mpi_errno;
         }
@@ -144,39 +144,39 @@ static int MTCORE_Put_impl(const void *origin_addr, int origin_count,
              * require it. Some implementation may use network even for shared targets for
              * shorter CPU occupancy.
              */
-            int target_h_rank_in_uh = -1;
+            int target_g_rank_in_ug = -1;
             int data_size = 0;
-            MPI_Aint target_h_offset = 0;
+            MPI_Aint target_g_offset = 0;
             MPI_Win *win_ptr = NULL;
 
-            MTCORE_Get_epoch_win(target_rank, 0, uh_win, win_ptr);
+            CSP_Get_epoch_win(target_rank, 0, ug_win, win_ptr);
 
-#if defined(MTCORE_ENABLE_RUNTIME_LOAD_OPT)
-            if (MTCORE_ENV.load_opt == MTCORE_LOAD_BYTE_COUNTING) {
+#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+            if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
                 PMPI_Type_size(origin_datatype, &data_size);
                 data_size *= origin_count;
             }
 #endif
-            mpi_errno = MTCORE_Get_helper_rank(target_rank, 0, 0, data_size, uh_win,
-                                               &target_h_rank_in_uh, &target_h_offset);
+            mpi_errno = CSP_Get_gp_rank(target_rank, 0, 0, data_size, ug_win,
+                                               &target_g_rank_in_ug, &target_g_offset);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
-            uh_target_disp = target_h_offset + uh_win->targets[target_rank].disp_unit * target_disp;
+            ug_target_disp = target_g_offset + ug_win->targets[target_rank].disp_unit * target_disp;
 
-            /* Issue operation to the helper process in corresponding uh-window of target process. */
+            /* Issue operation to the ghost process in corresponding ug-window of target process. */
             mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
-                                 target_h_rank_in_uh, uh_target_disp,
+                                 target_g_rank_in_ug, ug_target_disp,
                                  target_count, target_datatype, *win_ptr);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
-            MTCORE_DBG_PRINT("MTCORE Put to (helper %d, win 0x%x [%s]) instead of "
+            CSP_DBG_PRINT("CASPER Put to (ghost %d, win 0x%x [%s]) instead of "
                              "target %d, 0x%lx(0x%lx + %d * %ld)\n",
-                             target_h_rank_in_uh, *win_ptr,
-                             MTCORE_Win_epoch_stat_name[uh_win->epoch_stat],
-                             target_rank, uh_target_disp, target_h_offset,
-                             uh_win->targets[target_rank].disp_unit, target_disp);
+                             target_g_rank_in_ug, *win_ptr,
+                             CSP_Win_epoch_stat_name[ug_win->epoch_stat],
+                             target_rank, ug_target_disp, target_g_offset,
+                             ug_win->targets[target_rank].disp_unit, target_disp);
         }
     }
   fn_exit:
@@ -193,17 +193,17 @@ int MPI_Put(const void *origin_addr, int origin_count,
 {
     static const char FCNAME[] = "MPI_Put";
     int mpi_errno = MPI_SUCCESS;
-    MTCORE_Win *uh_win;
+    CSP_Win *ug_win;
 
-    MTCORE_DBG_PRINT_FCNAME();
+    CSP_DBG_PRINT_FCNAME();
 
-    MTCORE_Fetch_uh_win_from_cache(win, uh_win);
+    CSP_Fetch_ug_win_from_cache(win, ug_win);
 
-    if (uh_win) {
-        /* mtcore window */
-        mpi_errno = MTCORE_Put_impl(origin_addr, origin_count,
+    if (ug_win) {
+        /* casper window */
+        mpi_errno = CSP_Put_impl(origin_addr, origin_count,
                                     origin_datatype, target_rank, target_disp, target_count,
-                                    target_datatype, win, uh_win);
+                                    target_datatype, win, ug_win);
     }
     else {
         /* normal window */

@@ -31,8 +31,8 @@ int rank, nprocs;
 int shm_rank = 0;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 int OPSIZE_MAX = 1, OPSIZE_MIN = 1, OPSIZE = 1, OPSIZE_ITER = 2;        /* us */
@@ -109,12 +109,12 @@ static int run_test()
 
     if (rank == 0) {
         avg_total_time = avg_total_time / nprocs;       /* us */
-        const char *load_opt = getenv("MTCORE_RUMTIME_LOAD_OPT");
+        const char *load_opt = getenv("CSP_RUMTIME_LOAD_OPT");
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
         fprintf(stdout,
-                "mtcore-%s: iter %d comp_size %d op_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                load_opt, ITER, SLEEP_TIME, OPSIZE_MIN, OPSIZE, NOP, nprocs, MTCORE_NUM_H,
+                "casper-%s: iter %d comp_size %d op_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+                load_opt, ITER, SLEEP_TIME, OPSIZE_MIN, OPSIZE, NOP, nprocs, CSP_NUM_G,
                 avg_total_time);
 #else
         fprintf(stdout,
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
     /* first argv is nh */
     if (argc >= 5) {
         OPSIZE_MIN = atoi(argv[2]);

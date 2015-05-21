@@ -7,7 +7,7 @@ Makefile.in
 aclocal.m4
 autom4te.cache/
 configure
-include/mtcoreconf.h.in
+include/casperconf.h.in
 
 ## confdb files
 confdb/ar-lib

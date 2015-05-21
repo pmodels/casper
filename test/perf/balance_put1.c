@@ -20,8 +20,8 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 1000;
 
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 static int run_test(int nop)
@@ -68,9 +68,9 @@ static int run_test(int nop)
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank == 0) {
-#ifdef MTCORE
-        fprintf(stdout, "mtcore: num_op %d nprocs %d np %d total_time %lf\n", nop, nprocs,
-                MTCORE_NUM_H, t_total);
+#ifdef ENABLE_CSP
+        fprintf(stdout, "casper: num_op %d nprocs %d np %d total_time %lf\n", nop, nprocs,
+                CSP_NUM_G, t_total);
 #else
         fprintf(stdout, "orig: num_op %d nprocs %d total_time %lf\n", nop, nprocs, t_total);
 #endif

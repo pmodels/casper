@@ -1,44 +1,37 @@
+/*
+ * finalize.c
+ *  <FILE_DESC>
+ * 	
+ *  Author: Min Si
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspg.h"
 
-int MPI_Finalize(void)
+int CSP_G_finalize(void)
 {
-    static const char FCNAME[] = "MPI_Finalize";
     int mpi_errno = MPI_SUCCESS;
-    int user_local_rank;
-
-    PMPI_Comm_rank(CSP_COMM_USER_LOCAL, &user_local_rank);
-
-    CSP_DBG_PRINT_FCNAME();
-
-    /* Ghosts do not need user process information because it is a global call. */
-    if (user_local_rank == 0) {
-        CSP_Func_start(CSP_FUNC_FINALIZE, 0, 0);
-    }
-
-    if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
-        PMPI_Comm_free(&CSP_COMM_USER_WORLD);
-    }
+    int rank, nprocs, local_rank, local_nprocs;
 
     if (CSP_COMM_LOCAL != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_LOCAL\n");
+        CSP_G_DBG_PRINT(" free CSP_COMM_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_LOCAL);
     }
-
+    if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
+        CSP_G_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
+        PMPI_Comm_free(&CSP_COMM_USER_WORLD);
+    }
     if (CSP_COMM_USER_LOCAL != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_USER_LOCAL\n");
+        CSP_G_DBG_PRINT(" free CSP_COMM_USER_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_USER_LOCAL);
     }
-
     if (CSP_COMM_UR_WORLD != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_UR_WORLD\n");
+        CSP_G_DBG_PRINT(" free CSP_COMM_UR_WORLD\n");
         PMPI_Comm_free(&CSP_COMM_UR_WORLD);
     }
-
     if (CSP_COMM_GHOST_LOCAL != MPI_COMM_NULL) {
-        CSP_DBG_PRINT("free CSP_COMM_GHOST_LOCAL\n");
+        CSP_G_DBG_PRINT("free CSP_COMM_GHOST_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_GHOST_LOCAL);
     }
 
@@ -48,8 +41,6 @@ int MPI_Finalize(void)
         PMPI_Group_free(&CSP_GROUP_LOCAL);
     if (CSP_GROUP_USER_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_USER_WORLD);
-
-    CSP_Destroy_win_cache();
 
     if (CSP_G_RANKS_IN_WORLD)
         free(CSP_G_RANKS_IN_WORLD);
@@ -66,16 +57,17 @@ int MPI_Finalize(void)
     if (CSP_ALL_NODE_IDS)
         free(CSP_ALL_NODE_IDS);
 
-    if (CSP_USER_RANKS_IN_WORLD)
-        free(CSP_USER_RANKS_IN_WORLD);
-
+    CSP_G_DBG_PRINT(" PMPI_Finalize\n");
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+
+    destroy_csp_g_win_table();
 
   fn_exit:
     return mpi_errno;
 
   fn_fail:
-    goto fn_exit;
+    fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
+    PMPI_Abort(MPI_COMM_WORLD, 0);
 }

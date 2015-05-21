@@ -31,8 +31,8 @@ int rank, nprocs;
 int shm_rank = 0;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
-#ifdef MTCORE
-extern int MTCORE_NUM_H;
+#ifdef ENABLE_CSP
+extern int CSP_NUM_G;
 #endif
 
 int NOP_MAX = 1, NOP_MIN = 1, NOP = 1, NOP_ITER = 2;    /* us */
@@ -93,7 +93,7 @@ static int run_test()
                 MPI_Accumulate(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
             }
             for (i = 0; i < target_nops[dst]; i++) {
-                /* Put will always send to the other helpers if op counting enabled */
+                /* Put will always send to the other ghosts if op counting enabled */
                 MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
             }
         }
@@ -108,12 +108,12 @@ static int run_test()
 
     if (rank == 0) {
         avg_total_time = avg_total_time / nprocs;       /* us */
-        const char *load_opt = getenv("MTCORE_RUMTIME_LOAD_OPT");
+        const char *load_opt = getenv("CSP_RUMTIME_LOAD_OPT");
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
         fprintf(stdout,
-                "mtcore-%s: iter %d comp_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                load_opt, ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, MTCORE_NUM_H, avg_total_time);
+                "casper-%s: iter %d comp_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+                load_opt, ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, CSP_NUM_G, avg_total_time);
 #else
         fprintf(stdout, "orig: iter %d comp_size %d %d num_op %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, avg_total_time);
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef MTCORE
+#ifdef ENABLE_CSP
     /* first argv is nh */
     if (argc >= 5) {
         NOP_MIN = atoi(argv[2]);

@@ -2,7 +2,7 @@
  * getacc.c
  *
  * Expect reporting following error if MPI_Get_accumulate has not been
- * implemented in Manticore, Otherwise no error.
+ * implemented in CASPER, Otherwise no error.
  *  Fatal error in MPI_Get_accumulate: Wrong synchronization of RMA calls
  *
  *  Author: Min Si

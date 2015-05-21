@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([mtcore], [1.0])
+AC_INIT([casper], [1.0])
 
 AC_CONFIG_AUX_DIR(confdb)
 AC_CONFIG_MACRO_DIR(confdb)
@@ -20,7 +20,7 @@ PAC_PUSH_FLAG([CFLAGS])
 LT_INIT()
 PAC_POP_FLAG([CFLAGS])
 
-AC_CONFIG_HEADER([include/mtcoreconf.h])
+AC_CONFIG_HEADER([include/casperconf.h])
 
 # Checks for libraries.
 
@@ -47,7 +47,7 @@ fi
 
 # Check for support for weak symbols.
 AC_ARG_ENABLE(weak-symbols, AC_HELP_STRING([--enable-weak-symbols],
-                 [Use weak symbols to implement PMTCORE routines (default)]),,
+                 [Use weak symbols to implement PMPI routines (default)]),,
                  enable_weak_symbols=yes)
 if test $enable_weak_symbols = yes ; then
     # Turn off weak symbols if they aren't available
