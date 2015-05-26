@@ -31,6 +31,7 @@ static int CSP_Win_mixed_lock_all_impl(int assert, MPI_Win win, CSP_Win * ug_win
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
     int i, k;
+    int is_local_lock_granted ATTRIBUTE((unused));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -67,7 +68,7 @@ static int CSP_Win_mixed_lock_all_impl(int assert, MPI_Win win, CSP_Win * ug_win
     }
 #endif
 
-    int is_local_lock_granted = 0;
+    is_local_lock_granted = 0;
     if (!ug_win->info_args.no_local_load_store &&
         !(ug_win->targets[user_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
         /* We need grant the local lock (self-target) before return.

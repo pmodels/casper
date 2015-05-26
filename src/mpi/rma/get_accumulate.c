@@ -31,7 +31,7 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
          * shorter CPU occupancy.
          */
         int target_g_rank_in_ug = -1;
-        int data_size = 0;
+        int data_size ATTRIBUTE((unused)) = 0;
         MPI_Aint target_g_offset = 0;
         MPI_Win *win_ptr = NULL;
 

@@ -32,6 +32,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
     int k;
+    int is_local_lock_granted ATTRIBUTE((unused));
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -86,7 +87,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     ug_win->is_self_locked = 0;
 
     if (user_rank == target_rank) {
-        int is_local_lock_granted = 0;
+        is_local_lock_granted = 0;
 
         /* If target is itself, we need grant this lock before return.
          * However, the actual locked processes are the Ghosts whose locks may be delayed by

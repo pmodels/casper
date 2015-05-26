@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
+#include <casperconf.h>
 
 #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 
@@ -693,5 +694,13 @@ extern int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int or
                                                  CSP_OP_Segment ** decoded_ops_ptr, int *num_segs);
 extern void CSP_Op_segments_destroy(CSP_OP_Segment ** decoded_ops_ptr);
 extern int CSP_Fence_win_release_locks(CSP_Win * ug_win);
+
+#if !defined ATTRIBUTE
+#if defined HAVE_GCC_ATTRIBUTE
+#define ATTRIBUTE(a_) __attribute__(a_)
+#else
+#define ATTRIBUTE(a_)
+#endif
+#endif /* ATTRIBUTE */
 
 #endif /* CSP_H_ */

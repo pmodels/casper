@@ -17,11 +17,11 @@ void CSP_Op_segments_destroy(CSP_OP_Segment ** decoded_ops_ptr)
     }
 }
 
-int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
-                                          MPI_Datatype origin_datatype,
-                                          int target_rank, MPI_Aint target_disp,
-                                          int target_count, MPI_Datatype target_datatype,
-                                          CSP_Win * ug_win,
+int CSP_Op_segments_decode_basic_datatype(const void *origin_addr,
+                                          int origin_count ATTRIBUTE((unused)),
+                                          MPI_Datatype origin_datatype, int target_rank,
+                                          MPI_Aint target_disp, int target_count,
+                                          MPI_Datatype target_datatype, CSP_Win * ug_win,
                                           CSP_OP_Segment ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;

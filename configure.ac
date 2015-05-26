@@ -61,6 +61,28 @@ if test $enable_weak_symbols = "yes" ; then
     fi
 fi
 
+# Check for __attribute__ support.  This was originally taken from
+# the PAC_C_GNU_ATTRIBUTE macro in mpich.
+#
+# We start by requiring Gcc.  Some other compilers accept __attribute__
+# but generate warning messages, or have different interpretations
+# (which seems to make __attribute__ just as bad as #pragma)
+# For example, the Intel icc compiler accepts __attribute__ and
+# __attribute__((pure)) but generates warnings for __attribute__((format...))
+if test "$GCC" = "yes" ; then
+    AC_CACHE_CHECK([whether __attribute__ allowed],
+pac_cv_gnu_attr_pure,[
+AC_TRY_COMPILE([int foo(int) __attribute__ ((pure));],[int a;],
+pac_cv_gnu_attr_pure=yes,pac_cv_gnu_attr_pure=no)])
+AC_CACHE_CHECK([whether __attribute__((format)) allowed],
+pac_cv_gnu_attr_format,[
+AC_TRY_COMPILE([int foo(char *,...) __attribute__ ((format(printf,1,2)));],[int a;],
+pac_cv_gnu_attr_format=yes,pac_cv_gnu_attr_format=no)])
+    if test "$pac_cv_gnu_attr_pure" = "yes" -a "$pac_cv_gnu_attr_format" = "yes" ; then
+        AC_DEFINE(HAVE_GCC_ATTRIBUTE,1,[Define if GNU __attribute__ is supported])
+    fi
+fi
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([test/perf/Makefile])
