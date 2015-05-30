@@ -9,12 +9,10 @@
 
 #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 
-/* Enable local lock opt by default, unless disable it explicitly */
-#ifndef CSP_DISABLE_LOCAL_LOCK_OPT
-#define CSP_ENABLE_LOCAL_LOCK_OPT       /* Optimization for local target.
-                                         * Lock/RMA/Flush/Unlock local target instead of ghosts.
-                                         * Only available when local lock is granted. */
-#endif
+/* #define CSP_ENABLE_LOCAL_LOCK_OPT */
+/* Optimization for local target.
+ * Lock/RMA/Flush/Unlock local target instead of ghosts.
+ * Only available when local lock is granted. */
 
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 #define CSP_GRANT_LOCK_DATATYPE char
