@@ -5,7 +5,7 @@
 #undef FUNCNAME
 #define FUNCNAME CSP_G_win_free
 
-int CSP_G_win_free(int user_local_root, int user_nprocs, int user_local_nprocs)
+int CSP_G_win_free(int user_local_root)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_G_win *win;

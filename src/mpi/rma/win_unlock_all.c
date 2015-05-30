@@ -29,7 +29,7 @@ static inline int CSP_Win_unlock_self_impl(CSP_Win * ug_win)
 }
 #endif
 
-static int CSP_Win_mixed_unlock_all_impl(MPI_Win win, CSP_Win * ug_win)
+static int CSP_Win_mixed_unlock_all_impl(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -146,7 +146,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     else {
 
         /* In lock_all/lock mixed epoch, separate windows are bound with each target. */
-        mpi_errno = CSP_Win_mixed_unlock_all_impl(win, ug_win);
+        mpi_errno = CSP_Win_mixed_unlock_all_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

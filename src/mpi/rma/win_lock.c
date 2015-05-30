@@ -99,7 +99,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          */
         if (!ug_win->info_args.no_local_load_store &&
             !(ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
-            mpi_errno = CSP_Win_grant_local_lock(user_rank, lock_type, assert, ug_win);
+            mpi_errno = CSP_Win_grant_local_lock(user_rank, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
             is_local_lock_granted = 1;

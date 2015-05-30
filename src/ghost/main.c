@@ -22,11 +22,11 @@ int run_g_main(void)
 
         switch (FUNC) {
         case CSP_FUNC_WIN_ALLOCATE:
-            mpi_errno = CSP_G_win_allocate(user_local_root, user_nprocs, user_local_nprocs);
+            mpi_errno = CSP_G_win_allocate(user_local_root, user_nprocs);
             break;
 
         case CSP_FUNC_WIN_FREE:
-            mpi_errno = CSP_G_win_free(user_local_root, user_nprocs, user_local_nprocs);
+            mpi_errno = CSP_G_win_free(user_local_root);
             break;
 
             /* other commands */

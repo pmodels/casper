@@ -58,7 +58,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     goto fn_exit;
 }
 
-static int create_communicators(int user_nprocs, int user_local_nprocs, CSP_G_win * win)
+static int create_communicators(int user_nprocs, CSP_G_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *func_params = NULL, func_param_size = 0;
@@ -183,7 +183,7 @@ static int create_lock_windows(MPI_Aint size, CSP_G_win * win)
 }
 
 
-int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs)
+int CSP_G_win_allocate(int user_local_root, int user_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
     int dst, local_ug_rank, local_ug_nprocs;
@@ -206,7 +206,7 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_npro
      *  ug_comm: including all USER and Ghost processes
      *  local_ug_comm: including local USER and Ghost processes
      */
-    create_communicators(user_nprocs, user_local_nprocs, win);
+    create_communicators(user_nprocs, win);
 
     PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank);
     PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);

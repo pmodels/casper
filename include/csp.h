@@ -110,17 +110,17 @@ typedef enum {
     CSP_LOAD_OPT_STATIC,
     CSP_LOAD_OPT_RANDOM,
     CSP_LOAD_OPT_COUNTING,
-    CSP_LOAD_BYTE_COUNTING,
+    CSP_LOAD_BYTE_COUNTING
 } CSP_Load_opt;
 
 typedef enum {
     CSP_LOAD_LOCK_NATURE,
-    CSP_LOAD_LOCK_FORCE,
+    CSP_LOAD_LOCK_FORCE
 } CSP_Load_lock;
 
 typedef enum {
     CSP_LOCK_BINDING_RANK,
-    CSP_LOCK_BINDING_SEGMENT,
+    CSP_LOCK_BINDING_SEGMENT
 } CSP_Lock_binding;
 
 #define CSP_DEFAULT_SEG_SIZE 4096;
@@ -146,7 +146,7 @@ typedef enum {
     CSP_WIN_NO_EPOCH,
     CSP_WIN_EPOCH_FENCE,
     CSP_WIN_EPOCH_LOCK,
-    CSP_WIN_EPOCH_PSCW,
+    CSP_WIN_EPOCH_PSCW
 } CSP_Win_epoch_stat;
 
 typedef enum {
@@ -157,14 +157,14 @@ typedef enum {
     CSP_FUNC_UNLOCK_ALL,
     CSP_FUNC_ABORT,
     CSP_FUNC_FINALIZE,
-    CSP_FUNC_MAX,
+    CSP_FUNC_MAX
 } CSP_Func;
 
 typedef enum {
     CSP_EPOCH_LOCK_ALL = 1,
     CSP_EPOCH_LOCK = 2,
     CSP_EPOCH_PSCW = 4,
-    CSP_EPOCH_FENCE = 8,
+    CSP_EPOCH_FENCE = 8
 } CSP_Epoch_type;
 
 typedef struct CSP_G_win_params {
@@ -457,8 +457,7 @@ static inline int CSP_Is_in_shrd_mem(int target_rank, MPI_Group group, int *node
     return mpi_errno;
 }
 
-static inline int CSP_Win_grant_local_lock(int target_rank, int lock_type,
-                                           int assert, CSP_Win * ug_win)
+static inline int CSP_Win_grant_local_lock(int target_rank, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, j;

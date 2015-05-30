@@ -7,8 +7,7 @@ static int CSP_Get_accumulate_impl(const void *origin_addr, int origin_count,
                                    MPI_Datatype origin_datatype, void *result_addr,
                                    int result_count, MPI_Datatype result_datatype,
                                    int target_rank, MPI_Aint target_disp, int target_count,
-                                   MPI_Datatype target_datatype, MPI_Op op, MPI_Win win,
-                                   CSP_Win * ug_win)
+                                   MPI_Datatype target_datatype, MPI_Op op, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
@@ -87,7 +86,7 @@ int MPI_Get_accumulate(const void *origin_addr, int origin_count, MPI_Datatype o
         mpi_errno = CSP_Get_accumulate_impl(origin_addr, origin_count, origin_datatype,
                                             result_addr, result_count, result_datatype,
                                             target_rank, target_disp, target_count,
-                                            target_datatype, op, win, ug_win);
+                                            target_datatype, op, ug_win);
     }
     else {
         /* normal window */

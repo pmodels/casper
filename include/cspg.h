@@ -88,8 +88,8 @@ static inline void destroy_csp_g_win_table()
     return ht_destroy(csp_g_win_ht);
 }
 
-extern int CSP_G_win_allocate(int user_local_root, int user_nprocs, int user_local_nprocs);
-extern int CSP_G_win_free(int user_local_root, int user_nprocs, int user_local_nprocs);
+extern int CSP_G_win_allocate(int user_local_root, int user_nprocs);
+extern int CSP_G_win_free(int user_local_root);
 
 extern int CSP_G_finalize(void);
 

@@ -537,7 +537,7 @@ static int create_communicators(CSP_Win * ug_win)
     goto fn_exit;
 }
 
-static int gather_base_offsets(MPI_Aint size, CSP_Win * ug_win)
+static int gather_base_offsets(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint tmp_u_offsets;
@@ -824,7 +824,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     CSP_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, ug_win->base);
 
     /* Gather user offsets on corresponding ghost processes */
-    mpi_errno = gather_base_offsets(size, ug_win);
+    mpi_errno = gather_base_offsets(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

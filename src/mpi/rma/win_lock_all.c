@@ -26,7 +26,7 @@ static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
 }
 #endif
 
-static int CSP_Win_mixed_lock_all_impl(int assert, MPI_Win win, CSP_Win * ug_win)
+static int CSP_Win_mixed_lock_all_impl(int assert, CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -80,7 +80,7 @@ static int CSP_Win_mixed_lock_all_impl(int assert, MPI_Win win, CSP_Win * ug_win
          * 1. if user passed information that this process will not do local load/store on this window.
          * 2. if user passed information that there is no concurrent epochs.
          */
-        mpi_errno = CSP_Win_grant_local_lock(user_rank, MPI_LOCK_SHARED, 0, ug_win);
+        mpi_errno = CSP_Win_grant_local_lock(user_rank, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -182,7 +182,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     else {
 
         /* In lock_all/lock mixed epoch, separate windows are bound with each target. */
-        mpi_errno = CSP_Win_mixed_lock_all_impl(assert, win, ug_win);
+        mpi_errno = CSP_Win_mixed_lock_all_impl(assert, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
