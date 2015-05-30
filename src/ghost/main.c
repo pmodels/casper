@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-hashtable_t *csp_g_win_ht;
-
 int run_g_main(void)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -11,7 +9,6 @@ int run_g_main(void)
     int user_local_root, user_nprocs, user_local_nprocs;
 
     CSP_G_DBG_PRINT(" main start\n");
-    csp_init_g_win_table();
 
     /*TODO: init in user app or here ? */
     /*    MPI_Init(&argc, &argv); */

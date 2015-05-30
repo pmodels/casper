@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include "csp.h"
-#include "hash_table.h"
 
 /* #define CSP_G_DEBUG */
 #ifdef CSP_G_DEBUG
@@ -49,44 +48,10 @@ typedef struct CSP_G_win {
     unsigned long csp_g_win_handle;
 } CSP_G_win;
 
-extern hashtable_t *csp_g_win_ht;
-#define CSP_G_WIN_HT_SIZE 256
-
 typedef struct CSP_G_func_info {
     CSP_Func_info info;
     int user_root_in_local;
 } CSP_G_func_info;
-
-static inline int csp_get_g_win(unsigned long key, CSP_G_win ** win)
-{
-    *win = (CSP_G_win *) ht_get(csp_g_win_ht, (ht_key_t) key);
-    return 0;
-}
-
-static inline int csp_put_g_win(unsigned long key, CSP_G_win * win)
-{
-    return ht_set(csp_g_win_ht, (ht_key_t) key, win);
-}
-
-static inline int csp_remove_g_win(unsigned long key)
-{
-    return ht_remove(csp_g_win_ht, (ht_key_t) key);
-}
-
-static inline int csp_init_g_win_table()
-{
-    csp_g_win_ht = ht_create(CSP_G_WIN_HT_SIZE);
-
-    if (csp_g_win_ht == NULL)
-        return -1;
-
-    return 0;
-}
-
-static inline void destroy_csp_g_win_table()
-{
-    return ht_destroy(csp_g_win_ht);
-}
 
 extern int CSP_G_win_allocate(int user_local_root, int user_nprocs);
 extern int CSP_G_win_free(int user_local_root);

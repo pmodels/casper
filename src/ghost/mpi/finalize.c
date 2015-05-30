@@ -61,8 +61,6 @@ int CSP_G_finalize(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    destroy_csp_g_win_table();
-
   fn_exit:
     return mpi_errno;
 
