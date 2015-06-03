@@ -1,3 +1,9 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #ifndef CSP_H_
 #define CSP_H_
 

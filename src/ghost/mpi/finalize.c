@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * finalize.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
