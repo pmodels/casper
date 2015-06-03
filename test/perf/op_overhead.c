@@ -1,20 +1,16 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * lock_self_overhead.c
- *
- *  This benchmark evaluates the overhead of CASPER wrapped MPI_Win_lock
- *  when lock a self target using 2 processes (only rank 0 is used, but window requires at least 2 processes).
- *
- *  Rank 0 locks itself and unlock. It does not need RMA operations because
- *  local lock will be granted immediately. However, we still issue a accumulate
- *  in order to comparing with lock_self_overhead_no_loadstore.c
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark measures the overhead of RMA operations using 2 processes.
+ * Rank 0 issues lock and specified operation to rank 1. */
 
 /* #define DEBUG */
 #define CHECK
@@ -72,12 +68,9 @@ void DO_OP_LOOP(int dst, int iter)
 
 static int run_test()
 {
-    int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
+    int errs_total = 0;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
+    double t0, t_total = 0.0;
 
     dst = 1;
     if (rank == 0) {
@@ -108,34 +101,17 @@ static int run_test()
 #endif
     }
 
-  exit:
-
     return errs_total;
 }
 
 int main(int argc, char *argv[])
 {
-    int errs;
     int i, OP_SIZE_MIN = 1, OP_SIZE_MAX = 1, OP_SIZE_ITER = 2;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        OP_SIZE_MIN = atoi(argv[2]);
-        OP_SIZE_MAX = atoi(argv[3]);
-        OP_SIZE_ITER = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        NOP = atoi(argv[5]);
-    }
-    if (argc >= 7) {
-        OP_TYPE = atoi(argv[6]);
-    }
-#else
     if (argc >= 4) {
         OP_SIZE_MIN = atoi(argv[1]);
         OP_SIZE_MAX = atoi(argv[2]);
@@ -147,7 +123,6 @@ int main(int argc, char *argv[])
     if (argc >= 6) {
         OP_TYPE = atoi(argv[5]);
     }
-#endif
 
     if ((OP_TYPE != OP_ACC) && (OP_TYPE != OP_PUT) && (OP_TYPE != OP_GET)) {
         if (rank == 0)
@@ -166,14 +141,12 @@ int main(int argc, char *argv[])
 
     MPI_Barrier(MPI_COMM_WORLD);
     for (OP_SIZE = OP_SIZE_MIN; OP_SIZE <= OP_SIZE_MAX; OP_SIZE *= OP_SIZE_ITER) {
-        errs = run_test();
+        run_test();
         MPI_Barrier(MPI_COMM_WORLD);
 
         if (OP_SIZE == OP_SIZE_MAX || OP_SIZE_ITER == 1)
             break;
     }
-
-  exit:
 
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);

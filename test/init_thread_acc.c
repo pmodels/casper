@@ -1,10 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win_create_acc.c
- *  <FILE_DESC>
- * 	
- * 	Check whether normal window can work correctly with manticore.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -12,6 +9,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks lock with MPI_THREAD_MULTIPLE safety.
+ */
 
 #define NUM_OPS 5
 #define CHECK
@@ -84,9 +85,7 @@ static int run_test1(int nop)
     if (rank == 0) {
         dst = (rank + 1) % nprocs;
 
-        fprintf(stdout, "[%d]-----check init_thread lock/acc(%d) & flush + "
-                "%d*acc(%d) & flush/unlock \n", rank, dst, nop, dst);
-
+        /* check lock/acc & flush + (NOP * acc) & flush/unlock. */
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);
 
@@ -122,7 +121,7 @@ static int run_test1(int nop)
 int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
-    int i, errs = 0;
+    int errs = 0;
     int provided = 0;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);

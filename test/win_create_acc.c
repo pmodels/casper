@@ -1,10 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win_create_acc.c
- *  <FILE_DESC>
- * 	
- * 	Check whether normal window can work correctly with manticore.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -12,6 +9,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ *  This test checks whether win-create window works correctly with CASPER.
+ */
 
 #define NUM_OPS 5
 #define CHECK
@@ -115,15 +116,13 @@ static int check_data(int nop, int x, int dst)
     return errs;
 }
 
+/* check lock_all/acc(all) & flush_local_all + (NOP * acc(all)) & flush_all/unlock_all. */
 static int run_test1(int nop)
 {
     int i, x, errs = 0;
     int dst;
 
     if (rank == 0) {
-        fprintf(stdout, "[%d]-----check win_create lock_all/acc(all) & flush_local_all + "
-                "%d*acc(all) & flush_all/unlock_all \n", rank, nop);
-
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);
 
@@ -159,6 +158,7 @@ static int run_test1(int nop)
     return errs;
 }
 
+/* check lock/acc & flush + (NOP *acc) & flush/unlock. */
 static int run_test2(int nop)
 {
     int i, x, errs = 0;
@@ -166,9 +166,6 @@ static int run_test2(int nop)
 
     if (rank == 0) {
         dst = (rank + 1) % nprocs;
-
-        fprintf(stdout, "[%d]-----check win_create lock/acc(%d) & flush + "
-                "%d*acc(%d) & flush/unlock \n", rank, dst, nop, dst);
 
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);

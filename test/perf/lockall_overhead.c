@@ -1,18 +1,18 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win-lockall-overhead.c
- *
- *  This benchmark evaluates the overhead of Win_lock_all with
- *  user-specified number of processes (>= 2). Rank 0 locks
- *  all the processes and issues accumulate operations to all
- *  of them.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark measures the overhead of Win_lock_all with
+ * user-specified number of processes (>= 2). Rank 0 locks
+ * all the processes and issues accumulate operations to all
+ * of them; the other processes wait at barrier. */
 
 /* #define DEBUG */
 #define CHECK
@@ -33,10 +33,8 @@ extern int CSP_NUM_G;
 static int run_test()
 {
     int i, x, errs = 0;
-    MPI_Status stat;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
+    double t0, t_total = 0.0;
     double sum = 0.0;
 
     if (nprocs <= NPROCS_M) {
@@ -106,8 +104,6 @@ static int run_test()
 
 int main(int argc, char *argv[])
 {
-    int errs;
-
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -120,7 +116,7 @@ int main(int argc, char *argv[])
     locbuf[0] = (rank + 1) * 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
 
-    errs = run_test();
+    run_test();
 
   exit:
 

@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * all_acclock.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,7 +9,10 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define SLEEP_TIME 100  /* 100us */
+/*
+ * This test checks a lock(self)-acc(self, sum)-acc(self, max)-unlock(self) mode.
+ */
+
 #define NUM_OPS 2
 #define TOTAL_NUM_OPS (NUM_OPS * 2)
 #define CHECK
@@ -19,55 +21,26 @@
 double *winbuf = NULL;
 double *locbuf = NULL;
 int rank, nprocs;
-int comp_size = 1;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 double max_result = 0.0;
 double sum_result = 0.0;
-
-static int target_computation_init()
-{
-    return 0;
-}
-
-static int target_computation()
-{
-    double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
-    return 0;
-}
-
-static int target_computation_exit()
-{
-    return 0;
-}
 
 static int run_test(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
 
-    target_computation_init();
     dst = rank;
-
-    fprintf(stdout, "[%d]-----check lock/acc&flush %d + sleep + acc %d/unlock\n", rank, dst, dst);
 
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
 
-        MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
-        MPI_Accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, dst, 1, 1, MPI_DOUBLE, MPI_MAX, win);
-        MPI_Win_flush(dst, win);
-
-        target_computation();
-
-        for (i = 1; i < nop; i++) {
+        for (i = 0; i < nop; i++) {
             MPI_Accumulate(&locbuf[i + dst * nop], 1, MPI_DOUBLE, dst, 0, 1,
                            MPI_DOUBLE, MPI_SUM, win);
             MPI_Accumulate(&locbuf[i + dst * nop], 1, MPI_DOUBLE, dst, 1, 1,
                            MPI_DOUBLE, MPI_MAX, win);
-            fprintf(stdout, "dst %d += locbuf[%d] %.1lf\n", dst, i + dst * nop,
-                    locbuf[i + dst * nop]);
 #ifdef MVA
             MPI_Win_flush(dst, win);    /* use it to poke progress in order to finish local CQEs */
 #endif
@@ -78,8 +51,6 @@ static int run_test(int nop)
 
     /* need barrier before checking local window buffer */
     MPI_Barrier(MPI_COMM_WORLD);
-
-    target_computation_exit();
 
     /* need lock on self rank for checking window buffer.
      * otherwise, the result may be incorrect because flush/unlock
@@ -129,7 +100,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    comp_size = SLEEP_TIME;
     locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
     for (i = 0; i < NUM_OPS * nprocs; i++) {
         locbuf[i] = 1.0 * i;

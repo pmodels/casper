@@ -1,16 +1,16 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * lock-overhead.c
- *
- *  This benchmark evaluates the overhead of CASPER wrapped MPI_Win_lock using 2 processes.
- *  Rank 0 locks rank 1 and issues an accumulate operation to grant that lock
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark evaluates the overhead of CASPER wrapped MPI_Win_lock using 2 processes.
+ * Rank 0 locks rank 1 and issues an accumulate operation to grant that lock. */
 
 /* #define DEBUG */
 #define CHECK
@@ -26,11 +26,9 @@ extern int CSP_NUM_G;
 #endif
 static int run_test()
 {
-    int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
+    int x, errs = 0, errs_total = 0;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
+    double t0, t_total = 0.0;
     double sum = 0.0;
 
     dst = 1;
@@ -96,8 +94,6 @@ static int run_test()
 
 int main(int argc, char *argv[])
 {
-    int errs;
-
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -110,7 +106,7 @@ int main(int argc, char *argv[])
     locbuf[0] = 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
 
-    errs = run_test();
+    run_test();
 
   exit:
 

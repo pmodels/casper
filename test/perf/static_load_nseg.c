@@ -1,18 +1,16 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win-lockall-overhead.c
- *
- *  This benchmark evaluates the overhead of Win_lock_all with
- *  user-specified number of processes (>= 2). Rank 0 locks
- *  all the processes and issues accumulate operations to all
- *  of them.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark measures the load balancing in static segment-binding mode
+ * with uneven window size.*/
 
 /* #define DEBUG */
 #define CHECK
@@ -49,11 +47,8 @@ static int target_computation()
 static int run_test()
 {
     int i, x, errs = 0;
-    int dst, flag = 0;
+    int dst;
     double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
-    MPI_Status stat;
-    MPI_Request req;
 
     if (nprocs <= NPROCS_M) {
         ITER = ITER_S;
@@ -107,14 +102,14 @@ static int run_test()
 
     if (rank == 0) {
         avg_total_time = avg_total_time / nprocs;       /* us */
-        const char *lock_mtd = getenv("CSP_LOCK_METHOD");
 
 #ifdef ENABLE_CSP
+        const char *lock_mtd = getenv("CSP_LOCK_METHOD");
         fprintf(stdout,
-                "casper-%s: iter %d comp_size %d num_op %d %d nprocs %d nh %d total_time %.2lf\n",
+                "casper-%s: iter %d comp_size %ld num_op %d %d nprocs %d nh %d total_time %.2lf\n",
                 lock_mtd, ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, CSP_NUM_G, avg_total_time);
 #else
-        fprintf(stdout, "orig: iter %d comp_size %d num_op %d %d nprocs %d total_time %.2lf\n",
+        fprintf(stdout, "orig: iter %d comp_size %ld num_op %d %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, avg_total_time);
 #endif
     }
@@ -124,7 +119,6 @@ static int run_test()
 
 int main(int argc, char *argv[])
 {
-    int errs = 0;
     int win_size = 0;
     MPI_Comm shm_comm = MPI_COMM_NULL;
     MPI_Info win_info = MPI_INFO_NULL;
@@ -141,17 +135,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        NOP_MIN = atoi(argv[2]);
-        NOP_MAX = atoi(argv[3]);
-        NOP_ITER = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        SLEEP_TIME = atoi(argv[5]);
-    }
-#else
     if (argc >= 4) {
         NOP_MIN = atoi(argv[1]);
         NOP_MAX = atoi(argv[2]);
@@ -160,7 +143,6 @@ int main(int argc, char *argv[])
     if (argc >= 5) {
         SLEEP_TIME = atoi(argv[4]);
     }
-#endif
 
     target_shm_ranks = calloc(nprocs, sizeof(int));
 
@@ -183,7 +165,7 @@ int main(int argc, char *argv[])
                      &winbuf, &win);
 
     for (NOP = NOP_MIN; NOP <= NOP_MAX; NOP *= NOP_ITER) {
-        errs = run_test();
+        run_test();
     }
 
   exit:

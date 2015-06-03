@@ -1,18 +1,19 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win-lockall-overhead.c
- *
- *  This benchmark evaluates the overhead of Win_lock_all with
- *  user-specified number of processes (>= 2). Rank 0 locks
- *  all the processes and issues accumulate operations to all
- *  of them.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark evaluates the overhead of Win_lock_all with
+ * user-specified number of processes (>= 2). Rank 0 locks
+ * all the processes and issues accumulate operations to all
+ * of them; the other processes keep computation (busy wait) until
+ * receive completion flag from rank 0. */
 
 /* #define DEBUG */
 #define CHECK
@@ -49,7 +50,7 @@ static int run_test()
 {
     int i, x, errs = 0;
     int dst, flag = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
+    double t0, t_total = 0.0;
     double sum = 0.0;
     MPI_Status stat;
     MPI_Request req;
@@ -125,10 +126,11 @@ static int run_test()
 
     if (rank == 0) {
 #ifdef ENABLE_CSP
-        fprintf(stdout, "casper: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, SLEEP_TIME, NOP, nprocs, CSP_NUM_G, t_total);
+        fprintf(stdout,
+                "casper: iter %d comp_size %ld num_op %d nprocs %d nh %d total_time %.2lf\n", ITER,
+                SLEEP_TIME, NOP, nprocs, CSP_NUM_G, t_total);
 #else
-        fprintf(stdout, "orig: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
+        fprintf(stdout, "orig: iter %d comp_size %ld num_op %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, NOP, nprocs, t_total);
 #endif
     }
@@ -138,7 +140,6 @@ static int run_test()
 
 int main(int argc, char *argv[])
 {
-    int errs = 0;
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -148,17 +149,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        SLEEP_MIN = atoi(argv[2]);
-        SLEEP_MAX = atoi(argv[3]);
-        SLEEP_ITER = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        NOP = atoi(argv[5]);
-    }
-#else
     if (argc >= 4) {
         SLEEP_MIN = atoi(argv[1]);
         SLEEP_MAX = atoi(argv[2]);
@@ -167,7 +157,6 @@ int main(int argc, char *argv[])
     if (argc >= 5) {
         NOP = atoi(argv[4]);
     }
-#endif
 
     locbuf[0] = (rank + 1) * 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
@@ -179,7 +168,7 @@ int main(int argc, char *argv[])
         MPI_Win_unlock(rank, win);
         MPI_Barrier(MPI_COMM_WORLD);
 
-        errs = run_test();
+        run_test();
 
         /* only run once if user disabled async */
         if (SLEEP_TIME == 0)

@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * no_accumulate_ordering.c
- *  <FILE_DESC>
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,6 +9,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks lock and lockall with disabled accumulate_ordering info.
+ */
 
 #define NUM_OPS 5
 #define CHECK
@@ -119,9 +122,8 @@ static int run_test1(int nop)
     int dst;
 
     if (rank == 0) {
-        fprintf(stdout, "[%d]-----check lock_all/acc(all) & flush_all + "
-                "%d*acc(all) & flush_all/unlock_all \n", rank, nop);
 
+        /* check lock_all/acc[all] & flush_all + (NOP * acc[all]) & flush_all/unlock_all. */
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);
 
@@ -162,9 +164,7 @@ static int run_test2(int nop)
     if (rank == 0) {
         dst = (rank + 1) % nprocs;
 
-        fprintf(stdout, "[%d]-----check lock/acc(%d) & flush + "
-                "%d*acc(%d) & flush/unlock \n", rank, dst, nop, dst);
-
+        /* check lock/acc & flush + (NOP * acc) & flush/unlock. */
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);
 
@@ -201,8 +201,7 @@ static int run_test3(int nop)
     if (rank == 0) {
         dst = (rank + 1) % nprocs;
 
-        fprintf(stdout, "[%d]-----check lock/%d*acc(%d) & flush/unlock \n", rank, nop, dst);
-
+        /* check lock/(NOP*acc) & flush/unlock. */
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);
 

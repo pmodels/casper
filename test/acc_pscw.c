@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * acclock.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,7 +9,10 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define SLEEP_TIME 100  /* 100us */
+/*
+ * This test checks acc with pscw.
+ */
+
 #define NUM_OPS 2
 #define TOTAL_NUM_OPS (NUM_OPS * 2)
 #define CHECK
@@ -19,7 +21,6 @@
 double *winbuf = NULL;
 double *locbuf = NULL;
 int rank, nprocs;
-int comp_size = 1;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 double max_result = 0.0;
@@ -36,19 +37,16 @@ static int run_test(int nop)
 
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
+    /* check post/wait on even rank, start/NOP * acc/complete on odd rank. */
     if (rank % 2) {
         source = 1;
         dst = (rank + 1) % nprocs;
         MPI_Group_incl(world_group, 1, &dst, &start_group);
-
-        fprintf(stdout, "[%d]-----check start(%d)/ acc /complete(%d)\n", rank, dst, dst);
     }
     else {
         source = 0;
         org = (rank + nprocs - 1) % nprocs;
         MPI_Group_incl(world_group, 1, &org, &post_group);
-
-        fprintf(stdout, "[%d]-----check post(%d)/wait(%d)\n", rank, org, org);
     }
 
     for (x = 0; x < ITER; x++) {
@@ -136,7 +134,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    comp_size = SLEEP_TIME;
     locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
 
     /* size in byte */

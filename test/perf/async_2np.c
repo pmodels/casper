@@ -1,14 +1,17 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * benchmark-asp-win-test-2pe.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark evaluates asynchronous progress in lockall epoch using 2 processes.
+ * Rank 0 performs lockall-accumulate-flush-unlockall, and rank 1 performs
+ * compute(busy wait)-test(poll MPI progress).*/
 
 #define SIZE 4
 #define SLEEP_TIME 100  //us
@@ -42,11 +45,8 @@ static void usleep_by_count(unsigned long us)
 static int run_test(int time)
 {
     int i, x, errs = 0;
-    MPI_Status stat;
     int dst, src;
-    int winbuf_offset = 0;
-    double local_param, sum = 0.0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
+    double t0, t_total = 0.0;
     MPI_Request request;
     MPI_Status status;
     int buf[1];
@@ -114,7 +114,6 @@ static int run_test(int time)
 
 int main(int argc, char *argv[])
 {
-    int size;
     int i;
     int min_time = SLEEP_TIME, max_time = SLEEP_TIME, iter_time = 2, time;
     MPI_Info win_info = MPI_INFO_NULL;
@@ -122,18 +121,6 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     debug_printf("[%d]init done\n", rank);
 
-
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        min_time = atoi(argv[2]);
-        max_time = atoi(argv[3]);
-        iter_time = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        NOP = atoi(argv[5]);
-    }
-#else
     if (argc >= 4) {
         min_time = atoi(argv[1]);
         max_time = atoi(argv[2]);
@@ -143,7 +130,6 @@ int main(int argc, char *argv[])
     if (argc >= 5) {
         NOP = atoi(argv[4]);
     }
-#endif
 
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

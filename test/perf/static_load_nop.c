@@ -1,18 +1,16 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win-lockall-overhead.c
- *
- *  This benchmark evaluates the overhead of Win_lock_all with
- *  user-specified number of processes (>= 2). Rank 0 locks
- *  all the processes and issues accumulate operations to all
- *  of them.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark measures the load balancing in static rank-binding mode
+ * with increasing operations. */
 
 /* #define DEBUG */
 #define CHECK
@@ -48,12 +46,8 @@ static int target_computation()
 static int run_test()
 {
     int i, x, errs = 0;
-    int dst, flag = 0;
+    int dst;
     double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
-    MPI_Status stat;
-    MPI_Request req;
-    int buf[1] = { 1 };
 
     if (nprocs <= NPROCS_M) {
         ITER = ITER_S;
@@ -104,10 +98,11 @@ static int run_test()
         avg_total_time = avg_total_time / nprocs;       /* us */
 
 #ifdef ENABLE_CSP
-        fprintf(stdout, "casper: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, SLEEP_TIME, NOP, nprocs, CSP_NUM_G, avg_total_time);
+        fprintf(stdout,
+                "casper: iter %d comp_size %ld num_op %d nprocs %d nh %d total_time %.2lf\n", ITER,
+                SLEEP_TIME, NOP, nprocs, CSP_NUM_G, avg_total_time);
 #else
-        fprintf(stdout, "orig: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
+        fprintf(stdout, "orig: iter %d comp_size %ld num_op %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, NOP, nprocs, avg_total_time);
 #endif
     }
@@ -117,7 +112,6 @@ static int run_test()
 
 int main(int argc, char *argv[])
 {
-    int errs = 0;
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
@@ -129,17 +123,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        NOP_MIN = atoi(argv[2]);
-        NOP_MAX = atoi(argv[3]);
-        NOP_ITER = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        SLEEP_TIME = atoi(argv[5]);
-    }
-#else
     if (argc >= 4) {
         NOP_MIN = atoi(argv[1]);
         NOP_MAX = atoi(argv[2]);
@@ -148,7 +131,6 @@ int main(int argc, char *argv[])
     if (argc >= 5) {
         SLEEP_TIME = atoi(argv[4]);
     }
-#endif
 
     locbuf[0] = (rank + 1) * 1.0;
 
@@ -164,7 +146,7 @@ int main(int argc, char *argv[])
         MPI_Win_unlock_all(win);
         MPI_Barrier(MPI_COMM_WORLD);
 
-        errs = run_test();
+        run_test();
     }
 
   exit:

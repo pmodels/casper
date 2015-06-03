@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * no_conflict_epoch.c
- *  <FILE_DESC>
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,6 +9,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <mpi.h>
+
+/*
+ * This test checks lock with "lockall|fence" epoch_type info.
+ * It expects to report assert error.
+ */
 
 #define NUM_OPS 5
 #define CHECK
@@ -24,12 +28,9 @@ int ITER = 2;
 
 static int run_test1(int nop)
 {
-    int i, x, errs = 0;
+    int errs = 0;
     int dst;
     MPI_Info win_info = MPI_INFO_NULL;
-
-    if (rank == 0)
-        fprintf(stdout, "[%d]-----check win_allocate(lockall|fence) + lock\n", rank);
 
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall|fence");

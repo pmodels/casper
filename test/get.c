@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * get.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,7 +9,10 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define SLEEP_TIME 100  /* 100us */
+/*
+ * This test checks get with lockall.
+ */
+
 #define NUM_OPS 5
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
@@ -18,19 +20,16 @@
 double *winbuf = NULL;
 double *locbuf = NULL;
 int rank, nprocs;
-int comp_size = 1;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 
+/* check lock_all/get[all] & flush_all + (NOP * get[all]) & flush_all/unlock_all.*/
 static int run_test1(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
 
     MPI_Win_lock_all(0, win);
-
-    fprintf(stdout, "[%d]-----check lock_all/get[0 - %d] & flush_all + "
-            "get[0 - %d] & flush_all/unlock_all \n", rank, nprocs - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
         for (dst = 0; dst < nprocs; dst++) {
@@ -78,15 +77,13 @@ static int run_test1(int nop)
     return errs_total;
 }
 
+/* check lock_all/(NOP * get[all]) & flush_all/unlock_all.*/
 static int run_test2(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
 
     MPI_Win_lock_all(0, win);
-
-    fprintf(stdout, "[%d]-----check lock_all/%d * get[0 - %d] & flush_all/unlock_all \n",
-            rank, nop, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
 
@@ -145,7 +142,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    comp_size = SLEEP_TIME;
     locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
 
     /* size in byte */

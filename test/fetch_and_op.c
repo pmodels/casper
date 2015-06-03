@@ -1,14 +1,17 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * acc.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks fetch_and_op with lock and lockall.
+ */
 
 #define NUM_OPS 5
 #define TOTAL_NUM_OPS (NUM_OPS * 2)
@@ -51,7 +54,9 @@ static void print_buffers(int nop)
     }
 }
 
-/* Test self communication */
+/* Test self communication.
+ * check lock(self)/ NOP * [fetch_and_op(SUM) + flush]/unlock.
+ */
 static int run_test1(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
@@ -59,9 +64,6 @@ static int run_test1(int nop)
     double sum = 0.0;
 
     dst = 0;
-    fprintf(stdout, "[%d]-----check self: lock(%d)/ %d * [fetch_and_op(sum) + flush]/unlock \n",
-            rank, dst, nop);
-
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
         change_data(nop, x);
@@ -96,7 +98,9 @@ static int run_test1(int nop)
     return errs_total;
 }
 
-/* Test neighbor communication */
+/* Test neighbor communication.
+ * check lock(neighbor)/NOP * [fetch_and_op(SUM) + flush]/unlock.
+ */
 static int run_test2(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
@@ -104,9 +108,6 @@ static int run_test2(int nop)
     double sum = 0.0;
 
     dst = (rank + 1) % nprocs;
-    fprintf(stdout, "[%d]-----check neighbor: lock(%d)/%d * [fetch_and_op(sum) + flush]/unlock \n",
-            rank, dst, nop);
-
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
         change_data(nop, x);
@@ -141,15 +142,14 @@ static int run_test2(int nop)
     return errs_total;
 }
 
-/* Test all-to-all communication */
+/* Test all-to-all communication.
+ * check lockall/NOP * [fetch_and_op(SUM) + flushall]/unlockall.
+ */
 static int run_test3(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
     double sum = 0.0;
-
-    fprintf(stdout, "[%d]-----check all2all: lockall/%d * [fetch_and_op(sum) + "
-            "flushall]/unlockall \n", rank, nop);
 
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock_all(0, win);
@@ -188,15 +188,14 @@ static int run_test3(int nop)
     return errs_total;
 }
 
-/* Test all-to-all communication with multiple operations per flush */
+/* Test all-to-all communication with multiple operations per flush.
+ * check lockall/[NOP * acc(MAX) + fetch_and_op(SUM) + flushall]/unlockall.
+ */
 static int run_test4(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
     double sum = 0.0, max = 0.0;
-
-    fprintf(stdout, "[%d]-----check all2all: lockall/%d * acc(max) + "
-            "fetch_and_op(sum) + flushall + get/unlockall \n", rank, nop);
 
     for (x = 0; x < ITER; x++) {
         MPI_Win_lock_all(0, win);

@@ -1,11 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * getacc.c
- *
- * Expect reporting following error if MPI_Get_accumulate has not been
- * implemented in CASPER, Otherwise no error.
- *  Fatal error in MPI_Get_accumulate: Wrong synchronization of RMA calls
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -14,7 +10,12 @@
 #include <string.h>
 #include <mpi.h>
 
-#define SLEEP_TIME 100  /* 100us */
+/*
+ * This test expects to report following error if MPI_Get_accumulate has not
+ * been implemented in CASPER, Otherwise no error.
+ *      Fatal error in MPI_Get_accumulate: Wrong synchronization of RMA calls.
+ */
+
 #define NUM_OPS 32
 #define TOTAL_NUM_OPS (NUM_OPS * 2)
 #define CHECK
@@ -23,7 +24,6 @@
 double *winbuf = NULL;
 double *locbuf = NULL;
 int rank, nprocs;
-int comp_size = 1;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 10;
 double max_result = 0.0;
@@ -36,23 +36,6 @@ double sum_result = 0.0;
 #define debug_printf(str...) {}
 #endif
 
-static int target_computation_init()
-{
-    return 0;
-}
-
-static int target_computation()
-{
-    double start = MPI_Wtime() * 1000 * 1000;
-    while (MPI_Wtime() * 1000 * 1000 - start < SLEEP_TIME);
-    return 0;
-}
-
-static int target_computation_exit()
-{
-    return 0;
-}
-
 static int run_test(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
@@ -62,7 +45,6 @@ static int run_test(int nop)
     memset(local_sum, 0, sizeof(local_sum));
     memset(local_max, 0, sizeof(local_max));
 
-    target_computation_init();
     MPI_Win_lock_all(0, win);
 
     /* It is shared lock, a target is only updated by one process */
@@ -74,34 +56,23 @@ static int run_test(int nop)
         MPI_Get_accumulate(&locbuf[dst * nop], 1, MPI_DOUBLE, &local_max[0], 1, MPI_DOUBLE, dst, 1,
                            1, MPI_DOUBLE, MPI_MAX, win);
         MPI_Win_flush_all(win);
-        debug_printf("[%d] iter %d: dst %d += locbuf[%d] %.1lf, local sum %.1lf, max %.1lf\n",
-                     rank, x, dst, dst * nop, locbuf[dst * nop], local_sum[0], local_max[0]);
-
-        target_computation();
 
         for (i = 1; i < nop; i++) {
             MPI_Get_accumulate(&locbuf[i + dst * nop], 1, MPI_DOUBLE, &local_sum[i], 1, MPI_DOUBLE,
                                dst, 0, 1, MPI_DOUBLE, MPI_SUM, win);
             MPI_Get_accumulate(&locbuf[i + dst * nop], 1, MPI_DOUBLE, &local_max[i], 1, MPI_DOUBLE,
                                dst, 1, 1, MPI_DOUBLE, MPI_MAX, win);
-            debug_printf("[%d] iter %d: dst %d += locbuf[%d] %.1lf\n", rank, x, dst, i + dst * nop,
-                         locbuf[i + dst * nop]);
 #ifdef MVA
             MPI_Win_flush(dst, win);    /* use it to poke progress in order to finish local CQEs */
 #endif
         }
         MPI_Win_flush_all(win);
-        for (i = 1; i < nop; i++)
-            debug_printf("[%d] iter %d: local sum[%d] %.1lf, max[%d] %.1lf\n", rank, x, i,
-                         local_sum[i], i, local_max[i]);
     }
 
     MPI_Win_unlock_all(win);
 
     /* need barrier before checking local window buffer */
     MPI_Barrier(MPI_COMM_WORLD);
-
-    target_computation_exit();
 
     /* need lock on local rank for accessing local window buffer. */
     MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
@@ -147,11 +118,9 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    comp_size = SLEEP_TIME;
     locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
     for (i = 0; i < NUM_OPS * nprocs; i++) {
         locbuf[i] = 1.0 * i;
-        debug_printf("[%d] locbuf[%d] = %.1lf\n", rank, i, locbuf[i]);
     }
 
     /* size in byte */

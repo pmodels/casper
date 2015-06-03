@@ -39,27 +39,28 @@ noinst_PROGRAMS = \
 	csp_async_fence \
 	async_pscw	\
 	csp_async_pscw	\
-	win_alloc_overhead	\
-	dmapp_async_2np \
-	dmapp_async_all2all \
-	dmapp_async_fence	\
-	dmapp_async_pscw
+	win_alloc_overhead
+#	dmapp_async_2np \
+#	dmapp_async_all2all \
+#	dmapp_async_fence	\
+#	dmapp_async_pscw
 
-dmapp_async_2np_CFLAGS= -O2
-dmapp_async_2np_SOURCES = async_2np.c
-dmapp_async_2np_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
 
-dmapp_async_all2all_CFLAGS= -O2
-dmapp_async_all2all_SOURCES = async_all2all.c
-dmapp_async_all2all_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
+#dmapp_async_2np_CFLAGS= -O2
+#dmapp_async_2np_SOURCES = async_2np.c
+#dmapp_async_2np_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
 
-dmapp_async_fence_CFLAGS= -O2
-dmapp_async_fence_SOURCES = async_fence.c
-dmapp_async_fence_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
+#dmapp_async_all2all_CFLAGS= -O2
+#dmapp_async_all2all_SOURCES = async_all2all.c
+#dmapp_async_all2all_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
 
-dmapp_async_pscw_CFLAGS= -O2
-dmapp_async_pscw_SOURCES = async_pscw.c
-dmapp_async_pscw_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
+#dmapp_async_fence_CFLAGS= -O2
+#dmapp_async_fence_SOURCES = async_fence.c
+#dmapp_async_fence_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
+
+#dmapp_async_pscw_CFLAGS= -O2
+#dmapp_async_pscw_SOURCES = async_pscw.c
+#dmapp_async_pscw_LDFLAGS = $(CRAY_DMAPP_POST_LINK_OPTS) -ldmapp
 
 runtime_load_opsize_acc_CFLAGS= -O2
 csp_runtime_load_opsize_acc_SOURCES= runtime_load_opsize_acc.c

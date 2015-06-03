@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * put_l_seg.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,6 +9,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks lockall with put for segment-binding mode.
+ */
 
 #define NUM_OPS 3
 #define OP_SIZE 32      /*count of double, window will be divided if odd np and even nh */
@@ -26,9 +29,6 @@ static int run_test1(int nop)
 {
     int i, j, x, errs = 0, errs_total = 0;
     int dst, dst_disp = 0, orig_disp = 0;
-
-    fprintf(stdout, "[%d]-----check lock_all/put[0 - %d] & flush_all + "
-            "%d * put[0 - %d] & flush_all/unlock_all\n", rank, nprocs - 1, nop - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
 
@@ -91,8 +91,6 @@ static int run_test2(int nop)
 {
     int i, j, x, errs = 0, errs_total = 0;
     int dst, dst_disp = 0, orig_disp = 0;
-
-    fprintf(stdout, "[%d]-----check lock_all/%d * put[0 - %d]/unlock_all\n", rank, nop, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
 

@@ -1,11 +1,19 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
 int ITER = 100000;
 
+/* This benchmark measures the bandwidth of lock-put-unlock on
+ * win_allocate_shared window. */
+
 int main(int argc, char *argv[])
 {
-
     int rank, nprocs, shm_nprocs;
     MPI_Win win;
     int dst;

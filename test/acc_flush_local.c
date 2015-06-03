@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * acc_flush_local.c
- *  <FILE_DESC>
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -113,15 +112,13 @@ static int check_data(int nop, int x, int dst)
     return errs;
 }
 
+/* check lock_all/acc(all) & flush_local_all + (NOP * acc(all)) & flush_all/unlock_all */
 static int run_test1(int nop)
 {
     int i, x, errs = 0;
     int dst;
 
     if (rank == 0) {
-        fprintf(stdout, "[%d]-----check lock_all/acc(all) & flush_local_all + "
-                "%d*acc(all) & flush_all/unlock_all \n", rank, nop);
-
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);
 
@@ -157,6 +154,7 @@ static int run_test1(int nop)
     return errs;
 }
 
+/* check lock/acc & flush_local + (NOP * acc) & flush/unlock */
 static int run_test2(int nop)
 {
     int i, x, errs = 0;
@@ -164,9 +162,6 @@ static int run_test2(int nop)
 
     if (rank == 0) {
         dst = (rank + 1) % nprocs;
-
-        fprintf(stdout, "[%d]-----check lock/acc(%d) & flush + "
-                "%d*acc(%d) & flush/unlock \n", rank, dst, nop, dst);
 
         for (x = 0; x < ITER; x++) {
             change_data(nop, x);

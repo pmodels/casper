@@ -1,14 +1,17 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * no_loadstore.c
- *  <FILE_DESC>
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks window with no_local_load_store info.
+ */
 
 #define NUM_OPS 2
 #define CHECK
@@ -26,9 +29,6 @@ static int run_test(int nop)
 
     /* Check Lock_all */
     if (rank == 0) {
-        fprintf(stderr, "[%d] -----check lock_all/put [0 - %d] & flush_all/unlock_all\n",
-                rank, nprocs);
-
         locbuf[0] = 1.0;
         MPI_Win_lock_all(0, win);
         for (dst = 0; dst < nprocs; dst++) {
@@ -53,7 +53,6 @@ static int run_test(int nop)
     if (rank == 0) {
         locbuf[0] = 2.0;
         dst = 1;
-        fprintf(stderr, "[%d] -----check lock/put&flush %d/unlock\n", rank, dst);
 
         MPI_Win_lock(MPI_LOCK_SHARED, dst, 0, win);
         MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);
@@ -78,7 +77,6 @@ static int run_test(int nop)
     if (rank == 0) {
         locbuf[0] = 3.0;
         dst = 0;
-        fprintf(stderr, "[%d] -----check lock/put&flush %d/unlock\n", rank, dst);
 
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
         MPI_Put(&locbuf[0], 1, MPI_DOUBLE, dst, 0, 1, MPI_DOUBLE, win);

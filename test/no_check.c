@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * no_conflict_epoch.c
- *  <FILE_DESC>
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -11,6 +10,9 @@
 #include <string.h>
 #include <mpi.h>
 
+/*
+ * This test checks lockall and lock with MPI_MODE_NOCHECK.
+ */
 #define NUM_OPS 5
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
@@ -116,13 +118,12 @@ static int run_test1(int nop)
     int dst;
 
     if (rank == 0) {
-        fprintf(stdout, "[%d]-----check lock_all/put[0 - %d] & flush_all + "
-                "%d * put[0 - %d] & flush_all/unlock_all\n", rank, nprocs, nop - 1, nprocs);
 
+        /* check lock_all/put[all] & flush_all + NOP * put[all] & flush_all/unlock_all */
         for (x = 0; x < ITER; x++) {
             MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
-            /* change date in every interation */
+            /* change date in every iteration */
             change_data(nop, x);
 
             for (dst = 0; dst < nprocs; dst++) {
@@ -158,9 +159,8 @@ static int run_test2(int nop)
     int dst;
 
     if (rank == 0) {
-        fprintf(stdout, "[%d]-----check lock_all/%d * put[0 - %d] & flush_all/unlock_all\n",
-                rank, nop, nprocs);
 
+        /* check lock_all/NOP * put[all] & flush_all/unlock_all */
         for (x = 0; x < ITER; x++) {
             MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
@@ -201,9 +201,8 @@ static int run_test3(int nop)
     }
 
     if (rank == 0 || rank == dst_nprocs) {
-        fprintf(stdout, "[%d]-----check lock(%d)/%d * put(%d) & flush/unlock(%d)\n",
-                rank, dst, nop, dst, dst);
 
+        /* check lock/put & flush/unlock */
         for (x = 0; x < ITER; x++) {
             MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, MPI_MODE_NOCHECK, win);
 
@@ -239,10 +238,8 @@ static int run_test4(int nop)
     }
 
     if (rank == 0 || rank == dst_nprocs) {
-        fprintf(stdout,
-                "[%d]-----check lock(%d)/put(%d) & flush + %d * put(%d) & flush/unlock(%d)\n", rank,
-                dst, dst, nop - 1, dst, dst);
 
+        /* check lock/put & flush + NOP * put & flush/unlock */
         for (x = 0; x < ITER; x++) {
             MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, MPI_MODE_NOCHECK, win);
 

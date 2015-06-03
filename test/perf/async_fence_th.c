@@ -1,3 +1,9 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -9,10 +15,15 @@
 #include <sched.h>
 #include <pthread.h>
 #include <sched.h>
+#include <sys/sysinfo.h>
+
+/* This benchmark evaluates manual thread-based asynchronous progress in fence
+ * epoch. Every process performs fence-compute-accumulate-fence, and each of
+ * them creates an asynchronous thread to poll MPI progress .*/
 
 #define D_SLEEP_TIME 100        // 100us
 
-#define DEBUG
+//#define DEBUG
 //#define CHECK
 #define ITER_S 10000
 #define ITER_M 5000
@@ -53,11 +64,8 @@ static int usleep_by_count(unsigned long us)
 static int run_test(int time)
 {
     int i, x, errs = 0, errs_total = 0;
-    MPI_Status stat;
     int dst;
-    int winbuf_offset = 0;
     double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
 
     if (nprocs < NPROCS_M) {
         ITER = ITER_S;
@@ -273,17 +281,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        min_time = atoi(argv[2]);
-        max_time = atoi(argv[3]);
-        iter_time = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        NOP = atoi(argv[5]);
-    }
-#else
     if (argc >= 4) {
         min_time = atoi(argv[1]);
         max_time = atoi(argv[2]);
@@ -292,7 +289,6 @@ int main(int argc, char *argv[])
     if (argc >= 5) {
         NOP = atoi(argv[4]);
     }
-#endif
 
     locbuf = malloc(sizeof(double) * NOP);
     for (i = 0; i < NOP; i++) {

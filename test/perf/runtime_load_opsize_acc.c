@@ -1,18 +1,16 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win-lockall-overhead.c
- *
- *  This benchmark evaluates the overhead of Win_lock_all with
- *  user-specified number of processes (>= 2). Rank 0 locks
- *  all the processes and issues accumulate operations to all
- *  of them.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark measures runtime load balancing with uneven size
+ * of put and accumulate operations. */
 
 /* #define DEBUG */
 #define CHECK
@@ -50,11 +48,8 @@ static int target_computation()
 static int run_test()
 {
     int i, x, errs = 0;
-    int dst, flag = 0;
+    int dst;
     double t0, avg_total_time = 0.0, t_total = 0.0;
-    double sum = 0.0;
-    MPI_Status stat;
-    MPI_Request req;
 
     if (nprocs <= NPROCS_M) {
         ITER = ITER_S;
@@ -109,16 +104,16 @@ static int run_test()
 
     if (rank == 0) {
         avg_total_time = avg_total_time / nprocs;       /* us */
-        const char *load_opt = getenv("CSP_RUMTIME_LOAD_OPT");
 
 #ifdef ENABLE_CSP
+        const char *load_opt = getenv("CSP_RUMTIME_LOAD_OPT");
         fprintf(stdout,
-                "casper-%s: iter %d comp_size %d op_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+                "casper-%s: iter %d comp_size %ld op_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
                 load_opt, ITER, SLEEP_TIME, OPSIZE_MIN, OPSIZE, NOP, nprocs, CSP_NUM_G,
                 avg_total_time);
 #else
         fprintf(stdout,
-                "orig: iter %d comp_size %d op_size %d %d num_op %d nprocs %d total_time %.2lf\n",
+                "orig: iter %d comp_size %ld op_size %d %d num_op %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, OPSIZE_MIN, OPSIZE, NOP, nprocs, avg_total_time);
 #endif
     }
@@ -143,7 +138,6 @@ int set_opsize_unbalanced()
 
 int main(int argc, char *argv[])
 {
-    int errs = 0;
     MPI_Comm shm_comm = MPI_COMM_NULL;
     MPI_Info win_info = MPI_INFO_NULL;
 
@@ -159,20 +153,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-#ifdef ENABLE_CSP
-    /* first argv is nh */
-    if (argc >= 5) {
-        OPSIZE_MIN = atoi(argv[2]);
-        OPSIZE_MAX = atoi(argv[3]);
-        OPSIZE_ITER = atoi(argv[4]);
-    }
-    if (argc >= 6) {
-        SLEEP_TIME = atoi(argv[5]);
-    }
-    if (argc >= 7) {
-        NOP = atoi(argv[6]);
-    }
-#else
     if (argc >= 4) {
         OPSIZE_MIN = atoi(argv[1]);
         OPSIZE_MAX = atoi(argv[2]);
@@ -184,7 +164,6 @@ int main(int argc, char *argv[])
     if (argc >= 6) {
         NOP = atoi(argv[5]);
     }
-#endif
 
     target_opsizes = calloc(nprocs, sizeof(int));
     locbuf = calloc(OPSIZE_MAX, sizeof(double));
@@ -201,7 +180,7 @@ int main(int argc, char *argv[])
         /* increase nop for heavy target */
         set_opsize_unbalanced();
 
-        errs = run_test();
+        run_test();
     }
 
   exit:

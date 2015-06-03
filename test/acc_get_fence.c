@@ -1,14 +1,17 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * acc_get_fence.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks acc-get with fence.
+ */
 
 #define NUM_OPS 5
 #define CHECK
@@ -20,13 +23,11 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 
+/* check fence/NOP * acc[all]/fence/get[all]/fence. */
 static int run_test1(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
-
-    fprintf(stdout, "[%d]-----check fence/%d * acc[0 - %d] + fence + "
-            "get[0 - %d]/fence\n", rank, nop, nprocs - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
         /* change data */
@@ -75,13 +76,11 @@ static int run_test1(int nop)
     return errs_total;
 }
 
+/* check fence(no_precede)/NOP * acc[all]/fence/get[all]/fence(no_succeed). */
 static int run_test2(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
-
-    fprintf(stdout, "[%d]-----check fence(no_precede)/%d * acc[0 - %d] + fence + "
-            "get[0 - %d]/fence(no_succeed)\n", rank, nop, nprocs - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
         /* change data */

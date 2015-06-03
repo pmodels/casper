@@ -1,18 +1,18 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * lockall_overhead_no_loadstore.c
- *
- *  This benchmark evaluates the overhead of Win_lock_all using
- *  user-specified number of processes (>= 2) with no_local_load_store option.
- *  Rank 0 locks all the processes and issues accumulate operations to all
- *  of them.
- *
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark evaluates the overhead of Win_lock_all using
+ * user-specified number of processes (>= 2) with no_local_load_store option.
+ * Rank 0 locks all the processes and issues accumulate operations to all
+ * of them; the other processes wait at barrier. */
 
 /* #define DEBUG */
 #define CHECK
@@ -29,15 +29,15 @@ int ITER = ITER_S;
 
 #ifdef ENABLE_CSP
 extern int CSP_NUM_G;
+#else
+int CSP_NUM_G = 0;
 #endif
 
 static int run_test()
 {
-    int i, x, errs = 0;
-    MPI_Status stat;
+    int x, errs = 0;
     int dst;
-    int winbuf_offset = 0;
-    double t0, avg_total_time = 0.0, t_total = 0.0;
+    double t0, t_total = 0.0;
     double sum = 0.0;
 
     if (nprocs <= NPROCS_M) {
@@ -92,7 +92,7 @@ static int run_test()
     MPI_Win_unlock(rank, win);
 
     if (result != sum) {
-        fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, i, result, sum);
+        fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, result, sum);
         errs += 1;
     }
 #endif
@@ -107,7 +107,6 @@ static int run_test()
 
 int main(int argc, char *argv[])
 {
-    int errs;
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
@@ -125,7 +124,7 @@ int main(int argc, char *argv[])
     locbuf[0] = (rank + 1) * 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
 
-    errs = run_test();
+    run_test();
 
   exit:
 

@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win_allocate.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,18 +9,20 @@
 #include <unistd.h>
 #include <mpi.h>
 
+/*
+ *  This test checks multiple win_allocate and win_free.
+ */
+
 #define ITER 50
 int rank, nprocs;
 double *winbuf[ITER];
 MPI_Win win[ITER];
 int size = 16;
 
+/* check N * win_allocate + N * win_free.*/
 static void run_test1()
 {
     int x;
-
-    fprintf(stdout, "[%d]-----check %d * [win_allocate(0x%lx) + win_free] \n", rank, ITER,
-            sizeof(double) * size);
 
     for (x = 0; x < ITER; x++) {
         /* size in byte */
@@ -34,12 +35,10 @@ static void run_test1()
     }
 }
 
+/* check N * [win_allocate + win_free].*/
 static void run_test2()
 {
     int x;
-
-    fprintf(stdout, "[%d]-----check %d * [win_allocate(0x%lx)] + %d * [win_free] \n",
-            rank, ITER, sizeof(double) * size, ITER);
 
     for (x = 0; x < ITER; x++) {
         /* size in byte */

@@ -1,14 +1,17 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * put.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/*
+ * This test checks fence with put.
+ */
 
 #define NUM_OPS 5
 #define CHECK
@@ -24,8 +27,6 @@ static int run_test1(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
-
-    fprintf(stdout, "[%d]-----check fence/%d * put[0 - %d]/fence\n", rank, nop - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
         MPI_Win_fence(0, win);
@@ -69,9 +70,6 @@ static int run_test2(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
-
-    fprintf(stdout, "[%d]-----check fence(no_precede)/%d * put[0 - %d]/fence(no_succeed)\n",
-            rank, nop - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
         MPI_Win_fence(MPI_MODE_NOPRECEDE, win);

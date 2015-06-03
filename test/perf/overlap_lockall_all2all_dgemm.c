@@ -1,7 +1,17 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+
+/* This benchmark evaluates the asynchronous progress in a comm-dgemm-comm test.
+ * Every process issues accumulate to all the other processes in every communication
+ * stage, and then performs dgemm computation, then performs the communication again. */
 
 #define USE_DGEMM
 #include <f2c.h>

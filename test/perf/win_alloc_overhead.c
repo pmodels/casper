@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * win_allocate.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,13 +9,16 @@
 #include <unistd.h>
 #include <mpi.h>
 
+/* This benchmark measures the overhead of win_allocate with different
+ * epoch_types info.*/
+
 #define ITER 100
 int rank, nprocs;
 double *winbuf[ITER];
 MPI_Win win[ITER];
 int size = 16;
 
-static void run_test1(const char *info)
+static void run_test(const char *info)
 {
     int x;
     double t0, t1, t_alloc, t_free;
@@ -69,19 +71,19 @@ int main(int argc, char *argv[])
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    run_test1("");
+    run_test("");
 
     MPI_Barrier(MPI_COMM_WORLD);
-    run_test1("lock");
+    run_test("lock");
 
     MPI_Barrier(MPI_COMM_WORLD);
-    run_test1("lockall");
+    run_test("lockall");
 
     MPI_Barrier(MPI_COMM_WORLD);
-    run_test1("fence");
+    run_test("fence");
 
     MPI_Barrier(MPI_COMM_WORLD);
-    run_test1("pscw");
+    run_test("pscw");
 
   exit:
     MPI_Finalize();

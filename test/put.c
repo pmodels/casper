@@ -1,8 +1,7 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * put.c
- *  <FILE_DESC>
- * 	
- *  Author: Min Si
+ * (C) 2014 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
  */
 
 #include <stdio.h>
@@ -10,7 +9,10 @@
 #include <unistd.h>
 #include <mpi.h>
 
-#define SLEEP_TIME 100  /* 100us */
+/*
+ * This test checks lockall with put.
+ */
+
 #define NUM_OPS 5
 #define CHECK
 #define OUTPUT_FAIL_DETAIL
@@ -18,7 +20,6 @@
 double *winbuf = NULL;
 double *locbuf = NULL;
 int rank, nprocs;
-int comp_size = 1;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 
@@ -28,9 +29,6 @@ static int run_test1(int nop)
     int dst;
 
     MPI_Win_lock_all(0, win);
-
-    fprintf(stdout, "[%d]-----check lock_all/put[0 - %d] & flush_all + "
-            "put[0 - %d] & flush_all/unlock_all\n", rank, nprocs - 1, nprocs - 1);
 
     for (x = 0; x < ITER; x++) {
         for (dst = 0; dst < nprocs; dst++) {
@@ -84,9 +82,6 @@ static int run_test2(int nop)
 
     MPI_Win_lock_all(0, win);
 
-    fprintf(stdout, "[%d]-----check lock_all/ %d * put[0 - %d] & flush_all/unlock_all\n",
-            rank, nop, nprocs - 1);
-
     for (x = 0; x < ITER; x++) {
         /* only do load balancing when force lock enabled */
         for (dst = 0; dst < nprocs; dst++) {
@@ -138,7 +133,6 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    comp_size = SLEEP_TIME;
     locbuf = calloc(NUM_OPS * nprocs, sizeof(double));
     for (i = 0; i < NUM_OPS * nprocs; i++) {
         locbuf[i] = 1.0 * i;
