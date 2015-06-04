@@ -71,7 +71,7 @@
 #define CSP_DBG_PRINT(str,...) {}
 #endif
 
-#define WARN
+/* #define WARN */
 #ifdef WARN
 #define CSP_WARN_PRINT(str,...) do { \
     fprintf(stdout, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
