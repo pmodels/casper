@@ -86,4 +86,8 @@ fi
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([test/perf/Makefile])
+AC_CONFIG_FILES([test/testlist])
+AC_CONFIG_FILES([test/runtest])
+AC_OUTPUT_COMMANDS([chmod a+x test/runtest])
+
 AC_OUTPUT

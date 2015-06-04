@@ -32,11 +32,16 @@ noinst_PROGRAMS = \
 	fetch_and_op	\
 	csp_fetch_and_op	\
 	win_allocate	\
+	csp_win_allocate	\
 	win_create_acc	\
+	csp_win_create_acc	\
 	init_thread_acc	\
+	csp_init_thread_acc	\
 	epoch_type	\
-	epoch_type_assert
-	
+	csp_epoch_type	\
+	epoch_type_assert	\
+	csp_epoch_type_assert 
+
 csp_get_SOURCES= get.c
 csp_get_LDFLAGS= -L$(libdir) -lcasper
 
@@ -81,3 +86,24 @@ csp_acc_get_fence_LDFLAGS= -L$(libdir) -lcasper
 
 csp_fetch_and_op_SOURCES= fetch_and_op.c
 csp_fetch_and_op_LDFLAGS= -L$(libdir) -lcasper
+
+csp_win_allocate_SOURCES= win_allocate.c
+csp_win_allocate_LDFLAGS= -L$(libdir) -lcasper
+
+csp_win_create_acc_SOURCES= win_create_acc.c
+csp_win_create_acc_LDFLAGS= -L$(libdir) -lcasper
+
+csp_init_thread_acc_SOURCES= init_thread_acc.c
+csp_init_thread_acc_LDFLAGS= -L$(libdir) -lcasper
+
+csp_epoch_type_SOURCES= epoch_type.c
+csp_epoch_type_LDFLAGS= -L$(libdir) -lcasper
+
+csp_epoch_type_assert_SOURCES= epoch_type_assert.c
+csp_epoch_type_assert_LDFLAGS= -L$(libdir) -lcasper
+
+MPIEXEC=mpiexec
+
+testing:
+	./runtest 
+	
