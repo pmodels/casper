@@ -33,7 +33,7 @@ static int run_test(int nop)
     MPI_Group post_group = MPI_GROUP_NULL;
     MPI_Group start_group = MPI_GROUP_NULL;
     MPI_Group world_group = MPI_GROUP_NULL;
-    int source = 0;
+    int source = 0, skip = 0;
 
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
@@ -49,6 +49,10 @@ static int run_test(int nop)
         MPI_Group_incl(world_group, 1, &org, &post_group);
     }
 
+    /* if the number of processes is odd, no matching origin process for rank 0. */
+    if (nprocs % 2 && rank == 0)
+        skip = 1;
+
     for (x = 0; x < ITER; x++) {
         /* change date */
         for (i = 0; i < NUM_OPS * nprocs; i++) {
@@ -61,7 +65,10 @@ static int run_test(int nop)
         }
         max_result = locbuf[nop * rank + nop - 1];
 
-        if (source) {
+        if (skip) {
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+        else if (source) {
             MPI_Win_start(start_group, 0, win);
 
             for (i = 0; i < nop; i++) {
