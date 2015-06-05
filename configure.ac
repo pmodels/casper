@@ -83,6 +83,9 @@ pac_cv_gnu_attr_format=yes,pac_cv_gnu_attr_format=no)])
     fi
 fi
 
+if test "$enable_shared" = "yes"; then
+   CFLAGS="$CFLAGS -fPIC"
+fi
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([test/perf/Makefile])
