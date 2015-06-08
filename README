@@ -1,34 +1,91 @@
+                                 Casper Notes
+                                    Min Si
+
+====================================
+Introduction
+====================================
+
+This project provides a portable and flexible process-based asynchronous progress 
+model for MPI remote memory access (RMA) communication.
+
+
+====================================
 Important Notice
 ====================================
-1. The Casper library is not ready for a public release. Please do not
-	 distribute it.
-2. There are some RMA functions not implemented yet, please contact Min Si
-   (msi@il.is.s.u-tokyo.ac.jp) if you need them.
+Following functions are not supported in Casper for now, and we plan to include 
+them in the next release. Please contact Min Si (msi@anl.gov) if you need any
+assistance.
+    MPI_Compare_and_swap
+    MPI_Rput
+    MPI_Rget
+    MPI_Raccumulate
+    MPI_Rget_accumulate
+    MPI_Win_test
 
-
+====================================
 Getting Started
 ====================================
 1. Installation
-	 ./configure --prefix=<your installation dir> CC=<your mpicc> CFLAGS="-O2 -g
-	 -DCSP_DISABLE_LOCAL_LOCK_OPT -fPIC"
-   make
-   make install
+    ./configure --prefix=<your installation dir> CC=<your mpicc>
+    make
+    make install
 
 2. Link with MPI Program
-	 [Example]
-	 mpicc -o test test.c -lcasper -lmpich
+    [Example]
+    mpicc -o test test.c -lcasper -lmpich
 
 3. Execution
-	 You can set the number of ghost processes per node through the environment
-	 variable CSP_NG, it is set to 1 by default.
+    You can set the number of ghost processes per node through the environment
+    variable CSP_NG, it is set to 1 by default.
 
-	 [Example 1]
-	 Running on 2 node, 2 ghost processes and 6 user processes on eacn node.
-	 export CSP_NG=2
-	 mpiexec -np 16 -ppn 8 ./test
+    [Example 1]
+    Running on 2 node, 2 ghost processes and 6 user processes on eacn node.
+    export CSP_NG=2
+    mpiexec -np 16 -ppn 8 ./test
 
-	 [Example 2]
-	 Running on 4 node, 4 ghost processes and 20 user processes on eacn node.
-	 export CSP_NG=4
-	 mpiexec -np 96 -ppn 24 ./test
+    [Example 2]
+    Running on 4 node, 4 ghost processes and 20 user processes on eacn node.
+    export CSP_NG=4
+    mpiexec -np 96 -ppn 24 ./test
 
+
+====================================
+Casper Test Suite
+====================================
+Capser includes a set of testing programs located under test/. These programs 
+can be compiled and run via:
+cd <your installation dir>/test
+make
+make testing MPIEXEC=mpiexec
+
+
+====================================
+Environment Variables
+====================================
+1. Basic Variables
+    CSP_NG (integer)
+    Specify the number of ghost processes per node, 1 by default.
+    
+2. Advanced Variables (Only specify them if you know what they mean)
+    CSP_LOCK_METHOD (rank|segment, default rank)
+    Specify the lock binding mode, rank-binding by default.
+
+    CSP_SEG_SIZE (integer)
+    Specify the segment size in segment-binding mode, 4Kbytes by default.
+
+    CSP_RUMTIME_LOAD_OPT (random|op|byte, default random)
+    Specify how to distribute operations when runtime load balancing enabled, 
+    random by default.
+
+    CSP_RUNTIME_LOAD_LOCK (nature|force, default nature)
+    Specify how to grant lock when runtime load balancing enabled, nature
+    by default.
+
+
+====================================
+Debugging Options
+====================================
+Enable debugging messages by compiling with "-DDEBUG -DCSP_G_DEBUG".
+    ./configure --prefix=<your installation dir> CC=<your mpicc> \
+                CFLAGS="-DDEBUG -DCSP_G_DEBUG"
+    make && make install
