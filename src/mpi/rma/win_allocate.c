@@ -9,6 +9,7 @@
 #include <string.h>
 #include <memory.h>
 #include "csp.h"
+#include "info.h"
 
 #include <ctype.h>
 
@@ -335,6 +336,51 @@ static void specify_main_gp_binding(CSP_Win * ug_win)
         free(local_targets);
 }
 
+static int send_win_general_parameters(MPI_Info info, CSP_Win * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int is_u_world = 0;
+    CSP_Info_keyval_t *info_keyvals = NULL;
+    int npairs = 0;
+    int func_params[4];
+
+    is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
+
+    mpi_errno = CSP_Info_deserialize(info, &info_keyvals, &npairs);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Send first part of parameters */
+    func_params[0] = ug_win->max_local_user_nprocs;
+    func_params[1] = ug_win->info_args.epoch_type;
+    func_params[2] = is_u_world;
+    func_params[3] = npairs;
+
+    mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(func_params), ug_win->ur_g_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    CSP_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d, "
+                  "is_u_world=%d, info npairs=%d\n", ug_win->max_local_user_nprocs,
+                  ug_win->info_args.epoch_type, is_u_world, npairs);
+
+    /* Send user info */
+    if (npairs > 0 && info_keyvals) {
+        mpi_errno = CSP_Func_set_param((char *) info_keyvals,
+                                       sizeof(CSP_Info_keyval_t) * npairs, ug_win->ur_g_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        CSP_DBG_PRINT(" Send parameters: info\n");
+    }
+
+  fn_exit:
+    if (info_keyvals)
+        free(info_keyvals);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -390,7 +436,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
 static int create_communicators(CSP_Win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int *func_params = NULL, func_param_size = 0;
+    int *func_params = NULL;
     int *user_ranks_in_world = NULL;
     int *gp_ranks_in_world = NULL;
     int num_ghosts = 0, max_num_ghosts;
@@ -400,26 +446,12 @@ static int create_communicators(CSP_Win * ug_win)
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
     max_num_ghosts = CSP_ENV.num_g * CSP_NUM_NODES;
-    func_param_size = user_nprocs + max_num_ghosts + 2;
 
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
     ug_win->num_g_ranks_in_ug = CSP_ENV.num_g * ug_win->num_nodes;
 
     /* Optimization for user world communicator */
     if (ug_win->user_comm == CSP_COMM_USER_WORLD) {
-        if (user_local_rank == 0) {
-            func_params = calloc(func_param_size, sizeof(int));
-
-            /* Set parameters to local Ghosts
-             *  [0]: is_comm_user_world
-             */
-            func_params[0] = 1;
-
-            mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
-                                           ug_win->ur_g_comm);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
 
         /* Create communicators
          *  local_ug_comm: including local USER and Ghost processes
@@ -448,27 +480,23 @@ static int create_communicators(CSP_Win * ug_win)
             goto fn_fail;
 
         if (user_local_rank == 0) {
-
-            user_ranks_in_world = calloc(user_nprocs, sizeof(int));
-            for (i = 0; i < user_nprocs; i++) {
-                user_ranks_in_world[i] = ug_win->targets[i].world_rank;
-            }
-
             /* Set parameters to local Ghosts
-             *  [0]: is_comm_user_world
-             *  [1]: num_ghosts
-             *  [2:N+1]: user ranks in comm_world
-             *  [N+2:]: ghost ranks in comm_world
+             *  [0]: num_ghosts
+             *  [1:N]: user ranks in comm_world
+             *  [N+1:]: ghost ranks in comm_world
              */
-            int pidx;
+            int func_param_size = user_nprocs + max_num_ghosts + 1;
             func_params = calloc(func_param_size, sizeof(int));
 
-            func_params[0] = 0;
-            func_params[1] = num_ghosts;
-            pidx = 2;
-            memcpy(&func_params[pidx], user_ranks_in_world, user_nprocs * sizeof(int));
-            pidx += user_nprocs;
-            memcpy(&func_params[pidx], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
+            func_params[0] = num_ghosts;
+
+            /* user ranks in comm_world */
+            user_ranks_in_world = &func_params[1];
+            for (i = 0; i < user_nprocs; i++)
+                user_ranks_in_world[i] = ug_win->targets[i].world_rank;
+
+            /* ghost ranks in comm_world */
+            memcpy(&func_params[user_nprocs + 1], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
             mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
                                            ug_win->ur_g_comm);
             if (mpi_errno != MPI_SUCCESS)
@@ -531,8 +559,6 @@ static int create_communicators(CSP_Win * ug_win)
   fn_exit:
     if (func_params)
         free(func_params);
-    if (user_ranks_in_world)
-        free(user_ranks_in_world);
     if (gp_ranks_in_world)
         free(gp_ranks_in_world);
     if (gp_ranks_in_ug)
@@ -682,6 +708,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
     int tmp_bcast_buf[2];
+    MPI_Info shared_info = MPI_INFO_NULL;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -801,6 +828,13 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
             goto fn_fail;
     }
 
+    /* Send parameter to ghosts */
+    if (user_local_rank == 0) {
+        mpi_errno = send_win_general_parameters(info, ug_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
     /* Create communicators
      *  ug_comm: including all USER and Ghost processes
      *  local_ug_comm: including local USER and Ghost processes
@@ -822,8 +856,25 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     ug_win->g_bytes_counts = calloc(ug_nprocs, sizeof(unsigned long));
 #endif
 
-    /* Allocate a shared window with local Ghosts */
-    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, info, ug_win->local_ug_comm,
+    /* Allocate a shared window with local ghosts.
+     * Always set alloc_shm to true, same_size to false for the shared internal window.
+     *
+     * We only pass user specified alloc_shm to win_create windows.
+     * - If alloc_shm is true, MPI implementation can still provide shm optimization;
+     * - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI. */
+    if (info != MPI_INFO_NULL) {
+        mpi_errno = PMPI_Info_dup(info, &shared_info);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Info_set(shared_info, "alloc_shm", "true");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, shared_info, ug_win->local_ug_comm,
                                          &ug_win->base, &ug_win->local_ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -837,20 +888,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     specify_main_gp_binding(ug_win);
 
     /* Create windows using shared buffers. */
-
-    /* Send information to ghosts */
-    if (user_local_rank == 0) {
-        int func_params[2];
-        func_params[0] = ug_win->max_local_user_nprocs;
-        func_params[1] = ug_win->info_args.epoch_type;
-        mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(func_params),
-                                       ug_win->ur_g_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        CSP_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d \n",
-                      ug_win->max_local_user_nprocs, ug_win->info_args.epoch_type);
-    }
-
     if ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
         (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL)) {
 
@@ -910,7 +947,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     CSP_Cache_ug_win(ug_win->win, ug_win);
 
   fn_exit:
-
+    if (shared_info && shared_info != MPI_INFO_NULL)
+        PMPI_Info_free(&shared_info);
     if (tmp_gather_buf)
         free(tmp_gather_buf);
 

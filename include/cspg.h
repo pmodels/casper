@@ -41,6 +41,9 @@ typedef struct CSP_G_win {
     MPI_Win local_ug_win;
     int max_local_user_nprocs;
 
+    /* whether user communicator is equal to USER WORLD. */
+    int is_u_world;
+
     /* communicator including all the user processes and ghosts */
     MPI_Comm ug_comm;
 
