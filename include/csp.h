@@ -698,6 +698,8 @@ extern int CSP_Op_segments_decode_basic_datatype(const void *origin_addr, int or
 extern void CSP_Op_segments_destroy(CSP_OP_Segment ** decoded_ops_ptr);
 extern int CSP_Fence_win_release_locks(CSP_Win * ug_win);
 
+extern int CSP_Win_bind_ghosts(CSP_Win * ug_win);
+
 #if !defined ATTRIBUTE
 #if defined HAVE_GCC_ATTRIBUTE
 #define ATTRIBUTE(a_) __attribute__(a_)
