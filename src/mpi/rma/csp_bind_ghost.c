@@ -33,7 +33,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
     /* Never divide less than segment unit */
     size_per_ghost = align(sum_size / CSP_ENV.num_g, CSP_SEGMENT_UNIT);
     max_t_num_seg = sum_size / size_per_ghost + 3;
-    t_seg_sizes = calloc(max_t_num_seg, sizeof(MPI_Aint));
+    t_seg_sizes = CSP_Calloc(max_t_num_seg, sizeof(MPI_Aint));
 
     /* Divide segments based on sizes */
     i = 0;
@@ -47,7 +47,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
     while (assigned_size < sum_size && i < n_targets) {
         if (t_size == 0) {
             ug_win->targets[t_rank].num_segs = t_num_segs;
-            ug_win->targets[t_rank].segs = calloc(t_num_segs, sizeof(CSP_Win_target_seg));
+            ug_win->targets[t_rank].segs = CSP_Calloc(t_num_segs, sizeof(CSP_Win_target_seg));
 
             MPI_Aint prev_seg_base = 0, prev_seg_size = 0;
             for (j = 0; j < t_num_segs; j++) {
@@ -140,7 +140,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_Win * ug_win)
 
         t_rank = local_targets[i];
         ug_win->targets[t_rank].num_segs = 1;
-        ug_win->targets[t_rank].segs = calloc(1, sizeof(CSP_Win_target_seg));
+        ug_win->targets[t_rank].segs = CSP_Calloc(1, sizeof(CSP_Win_target_seg));
         ug_win->targets[t_rank].segs[0].base_offset = 0;
         ug_win->targets[t_rank].segs[0].size = ug_win->targets[i].size;
         ug_win->targets[t_rank].segs[0].main_g_off = g_off;
@@ -164,7 +164,7 @@ int CSP_Win_bind_ghosts(CSP_Win * ug_win)
     int *local_targets = NULL;
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
-    local_targets = calloc(ug_win->num_nodes * ug_win->max_local_user_nprocs, sizeof(int));
+    local_targets = CSP_Calloc(ug_win->num_nodes * ug_win->max_local_user_nprocs, sizeof(int));
 
     /* Sort targets by node_ids */
     for (i = 0; i < user_nprocs; i++) {

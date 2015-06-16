@@ -62,7 +62,7 @@ int CSP_G_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
     int i;
 
     /* Create a user root + all ghosts communicator for later information exchanges. */
-    ur_g_ranks_in_local = calloc(sizeof(int), CSP_ENV.num_g + 1);
+    ur_g_ranks_in_local = CSP_Calloc(sizeof(int), CSP_ENV.num_g + 1);
     /* Ghosts' rank are always start from 0 */
     for (i = 0; i < CSP_ENV.num_g; i++)
         ur_g_ranks_in_local[i] = i;

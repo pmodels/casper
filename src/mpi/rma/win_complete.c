@@ -17,8 +17,8 @@ static int CSP_Send_pscw_complete_msg(int start_grp_size, CSP_Win * ug_win)
     MPI_Status *stats = NULL;
     int remote_cnt = 0;
 
-    reqs = calloc(start_grp_size, sizeof(MPI_Request));
-    stats = calloc(start_grp_size, sizeof(MPI_Status));
+    reqs = CSP_Calloc(start_grp_size, sizeof(MPI_Request));
+    stats = CSP_Calloc(start_grp_size, sizeof(MPI_Status));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 

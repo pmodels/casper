@@ -54,8 +54,8 @@ int MPI_Win_free(MPI_Win * win)
      * fetch the corresponding window without handlers so that only global communicator
      * can be used here.*/
     if (user_local_rank == 0) {
-        reqs = calloc(CSP_ENV.num_g, sizeof(MPI_Request));
-        stats = calloc(CSP_ENV.num_g, sizeof(MPI_Status));
+        reqs = CSP_Calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+        stats = CSP_Calloc(CSP_ENV.num_g, sizeof(MPI_Status));
 
         for (j = 0; j < CSP_ENV.num_g; j++) {
             mpi_errno = PMPI_Isend(&ug_win->g_win_handles[j], 1, MPI_UNSIGNED_LONG,

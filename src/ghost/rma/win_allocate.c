@@ -34,7 +34,7 @@ static int recv_win_general_parameters(CSP_G_win * win, MPI_Info * user_info)
 
     /* Receive window info */
     if (info_npairs > 0) {
-        info_keyvals = malloc(sizeof(CSP_Info_keyval_t) * info_npairs);
+        info_keyvals = CSP_Calloc(info_npairs, sizeof(CSP_Info_keyval_t));
         mpi_errno = CSP_G_func_get_param((char *) info_keyvals,
                                          sizeof(CSP_Info_keyval_t) * info_npairs, win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
@@ -67,7 +67,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
 
     /* maximum amount equals to world size */
-    ug_ranks_in_world = calloc(world_nprocs, sizeof(int));
+    ug_ranks_in_world = CSP_Calloc(world_nprocs, sizeof(int));
     if (ug_ranks_in_world == NULL)
         goto fn_fail;
 
@@ -130,7 +130,7 @@ static int create_communicators(int user_nprocs, CSP_G_win * win)
         int num_ghosts = 0;
         int func_param_size = user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
 
-        func_params = calloc(func_param_size, sizeof(int));
+        func_params = CSP_Calloc(func_param_size, sizeof(int));
         mpi_errno = CSP_G_func_get_param((char *) func_params, sizeof(int) * func_param_size,
                                          win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
@@ -196,7 +196,7 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSP_G_win * wi
         win->num_ug_wins = 1;
     }
 
-    win->ug_wins = calloc(win->num_ug_wins, sizeof(MPI_Win));
+    win->ug_wins = CSP_Calloc(win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < win->num_ug_wins; i++) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->ug_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
@@ -226,7 +226,7 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
     MPI_Info user_info = MPI_INFO_NULL;
     MPI_Info shared_info = MPI_INFO_NULL;
 
-    win = calloc(1, sizeof(CSP_G_win));
+    win = CSP_Calloc(1, sizeof(CSP_G_win));
 
     /* Create user root + ghosts communicator for
      * internal information exchange between users and ghosts. */
@@ -287,8 +287,8 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
     CSP_G_DBG_PRINT(" Created local_ug_win, base=%p, size=%d\n", win->base, csp_buf_size);
 
     /* -Query address of user buffers and send to USER processes */
-    user_bases = calloc(local_ug_nprocs, sizeof(void *));
-    win->user_base_addrs_in_local = calloc(local_ug_nprocs, sizeof(MPI_Aint));
+    user_bases = CSP_Calloc(local_ug_nprocs, sizeof(void *));
+    win->user_base_addrs_in_local = CSP_Calloc(local_ug_nprocs, sizeof(MPI_Aint));
 
     for (dst = 0; dst < local_ug_nprocs; dst++) {
         mpi_errno = PMPI_Win_shared_query(win->local_ug_win, dst, &r_size,

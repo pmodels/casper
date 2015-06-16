@@ -46,7 +46,7 @@ int CSP_Op_segments_decode_basic_datatype(const void *origin_addr,
         return -1;
     }
 
-    decoded_ops = calloc(ug_win->targets[target_rank].num_segs, sizeof(CSP_OP_Segment));
+    decoded_ops = CSP_Calloc(ug_win->targets[target_rank].num_segs, sizeof(CSP_OP_Segment));
     if (decoded_ops == NULL)
         goto fn_fail;
 

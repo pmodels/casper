@@ -33,7 +33,7 @@ int CSP_Info_deserialize(MPI_Info info, CSP_Info_keyval_t ** keyvals, int *npair
     if (nkeys == 0)
         goto fn_exit;
 
-    _keyvals = malloc(nkeys * sizeof(CSP_Info_keyval_t));
+    _keyvals = CSP_Calloc(nkeys, sizeof(CSP_Info_keyval_t));
     memset(_keyvals, 0, nkeys * sizeof(CSP_Info_keyval_t));
 
     for (i = 0; i < nkeys; i++) {

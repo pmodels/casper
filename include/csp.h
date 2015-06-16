@@ -376,6 +376,17 @@ extern int CSP_MY_RANK_IN_WORLD;
 
 extern CSP_Env_param CSP_ENV;
 
+static inline void *CSP_Calloc(int n, size_t size)
+{
+    void *buf = NULL;
+    buf = malloc(n * size);
+    if (buf == NULL)
+        return buf;
+
+    memset(buf, 0, n * size);
+    return buf;
+}
+
 static inline int CSP_Get_node_ids(MPI_Group group, int n, const int ranks[], int node_ids[])
 {
     int mpi_errno = MPI_SUCCESS;
@@ -385,7 +396,7 @@ static inline int CSP_Get_node_ids(MPI_Group group, int n, const int ranks[], in
     if (n == 0)
         return mpi_errno;
 
-    ranks_in_world = calloc(n, sizeof(int));
+    ranks_in_world = CSP_Calloc(n, sizeof(int));
 
     mpi_errno = PMPI_Group_translate_ranks(group, n, ranks, CSP_GROUP_WORLD, ranks_in_world);
     if (mpi_errno != MPI_SUCCESS)

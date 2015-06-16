@@ -17,8 +17,8 @@ static int CSP_Send_pscw_post_msg(int post_grp_size, CSP_Win * ug_win)
     MPI_Status *stats = NULL;
     int remote_cnt = 0;
 
-    reqs = calloc(post_grp_size, sizeof(MPI_Request));
-    stats = calloc(post_grp_size, sizeof(MPI_Status));
+    reqs = CSP_Calloc(post_grp_size, sizeof(MPI_Request));
+    stats = CSP_Calloc(post_grp_size, sizeof(MPI_Status));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
@@ -66,7 +66,7 @@ static int fill_ranks_in_win_grp(CSP_Win * ug_win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    ranks_in_post_grp = calloc(post_grp_size, sizeof(int));
+    ranks_in_post_grp = CSP_Calloc(post_grp_size, sizeof(int));
     for (i = 0; i < post_grp_size; i++) {
         ranks_in_post_grp[i] = i;
     }
@@ -118,7 +118,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     }
 
     ug_win->post_group = group;
-    ug_win->post_ranks_in_win_group = calloc(post_grp_size, sizeof(int));
+    ug_win->post_ranks_in_win_group = CSP_Calloc(post_grp_size, sizeof(int));
     CSP_DBG_PRINT("post group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 
     /* Both lock and start only allow no_check assert. */
