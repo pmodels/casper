@@ -112,7 +112,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
             CSP_DBG_PRINT("[%d] main lock (rank %d, seg %d) granted\n", user_rank, target_rank, j);
         }
 
-        CSP_Reset_win_target_load_opt(target_rank, ug_win);
+        CSP_Reset_target_opload(target_rank, ug_win);
     }
 #endif
 

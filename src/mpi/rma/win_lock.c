@@ -129,7 +129,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     int j;
     for (j = 0; j < ug_win->targets[target_rank].num_segs; j++) {
         ug_win->targets[target_rank].segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
-        CSP_Reset_win_target_load_opt(target_rank, ug_win);
+        CSP_Reset_target_opload(target_rank, ug_win);
     }
 #endif
 

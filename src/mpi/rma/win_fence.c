@@ -54,7 +54,7 @@ static int CSP_Fence_flush_all(CSP_Win * ug_win)
              * 1. fence is a global collective call, all targets already "exposed" their epoch.
              * 2. no conflicting lock/lockall on fence window. */
             ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-            CSP_Reset_win_target_load_opt(i, ug_win);
+            CSP_Reset_target_opload(i, ug_win);
         }
     }
 #endif

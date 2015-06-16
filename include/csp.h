@@ -112,6 +112,14 @@
 #define align(val, align) (((val) + (align) - 1) & ~((align) - 1))
 #endif
 
+#if !defined ATTRIBUTE
+#if defined HAVE_GCC_ATTRIBUTE
+#define ATTRIBUTE(a_) __attribute__(a_)
+#else
+#define ATTRIBUTE(a_)
+#endif
+#endif /* ATTRIBUTE */
+
 typedef enum {
     CSP_LOAD_OPT_STATIC,
     CSP_LOAD_OPT_RANDOM,
@@ -416,7 +424,7 @@ static inline int CSP_Get_node_ids(MPI_Group group, int n, const int ranks[], in
 }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-#define CSP_Reset_win_target_load_opt_op_counting(target_rank, ug_win) {  \
+#define CSP_Reset_target_opload_op_counting(target_rank, ug_win) {  \
         int g_off, g_rank;  \
         for (g_off = 0; g_off < CSP_ENV.num_g; g_off++) {    \
             g_rank = ug_win->targets[target_rank].g_ranks_in_ug[g_off]; \
@@ -425,7 +433,7 @@ static inline int CSP_Get_node_ids(MPI_Group group, int n, const int ranks[], in
         CSP_DBG_PRINT("[load_opt_op] reset target %d op counting \n", target_rank); \
     }
 
-#define CSP_Reset_win_target_load_opt_bytes_counting(target_rank, ug_win) {  \
+#define CSP_Reset_target_opload_bytes_counting(target_rank, ug_win) {  \
         int g_off, g_rank;  \
         for (g_off = 0; g_off < CSP_ENV.num_g; g_off++) {    \
             g_rank = ug_win->targets[target_rank].g_ranks_in_ug[g_off]; \
@@ -434,21 +442,21 @@ static inline int CSP_Get_node_ids(MPI_Group group, int n, const int ranks[], in
         CSP_DBG_PRINT("[load_opt_byte] reset target %d byte counting \n", target_rank); \
     }
 
-#define CSP_Reset_win_target_load_opt(target_rank, ug_win) { \
+#define CSP_Reset_target_opload(target_rank, ug_win) { \
         if (CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING){ \
-            CSP_Reset_win_target_load_opt_op_counting(target_rank, ug_win) ; \
+            CSP_Reset_target_opload_op_counting(target_rank, ug_win) ; \
         } else if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING){  \
-            CSP_Reset_win_target_load_opt_bytes_counting(target_rank, ug_win) ; \
+            CSP_Reset_target_opload_bytes_counting(target_rank, ug_win) ; \
         }   \
     }
 
 
-#define CSP_Inc_win_target_load_opt_op_counting(g_rank_in_ug, ug_win) {  \
+#define CSP_Inc_target_opload_op_counting(g_rank_in_ug, ug_win) {  \
         ug_win->g_ops_counts[g_rank_in_ug]++;   \
         CSP_DBG_PRINT("[load_opt_op] increment ghost %d\n", g_rank_in_ug); \
     }
 
-#define CSP_Inc_win_target_load_opt_bytes_counting(g_rank_in_ug, size, ug_win) {  \
+#define CSP_Inc_target_opload_bytes_counting(g_rank_in_ug, size, ug_win) {  \
         ug_win->g_bytes_counts[g_rank_in_ug] += size;   \
         CSP_DBG_PRINT("[load_opt_byte] increment ghost %d\n", g_rank_in_ug); \
     }
@@ -574,11 +582,11 @@ static inline int CSP_Win_grant_lock(int target_rank, int target_seg_off, CSP_Wi
     return mpi_errno;
 }
 
-static inline void CSP_Get_gp_rank_load_opt_random(int target_rank, int is_order_required,
-                                                   CSP_Win * ug_win,
-                                                   int *target_g_rank_in_ug,
-                                                   int *target_g_rank_idx,
-                                                   MPI_Aint * target_g_offset)
+static inline void CSP_Target_get_ghost_opload_by_random(int target_rank, int is_order_required,
+                                                         CSP_Win * ug_win,
+                                                         int *target_g_rank_in_ug,
+                                                         int *target_g_rank_idx,
+                                                         MPI_Aint * target_g_offset)
 {
     /* Randomly change ghost offset every time using a window-level global recorder */
     int idx = (ug_win->prev_g_off + 1) % CSP_ENV.num_g; /* jump to next ghost offset */
@@ -593,18 +601,21 @@ static inline void CSP_Get_gp_rank_load_opt_random(int target_rank, int is_order
 
 }
 
-extern void CSP_Get_gp_rank_load_opt_counting(int target_rank, int is_order_required,
+extern void CSP_Target_get_ghost_opload_by_op(int target_rank, int is_order_required,
                                               CSP_Win * ug_win, int *target_g_rank_in_ug,
                                               int *target_g_rank_idx, MPI_Aint * target_g_offset);
-extern void CSP_Get_gp_rank_load_byte_counting(int target_rank, int is_order_required,
-                                               int size, CSP_Win * ug_win,
-                                               int *target_g_rank_in_ug,
-                                               int *target_g_rank_idx, MPI_Aint * target_g_offset);
+extern void CSP_Target_get_ghost_opload_by_byte(int target_rank, int is_order_required,
+                                                int size, CSP_Win * ug_win,
+                                                int *target_g_rank_in_ug,
+                                                int *target_g_rank_idx, MPI_Aint * target_g_offset);
 
-static inline int CSP_Get_gp_rank_load_opt(int target_rank, int target_seg_off,
-                                           int is_order_required,
-                                           int size, CSP_Win * ug_win,
-                                           int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
+/**
+ * Get ghost with dynamic load balancing.
+ */
+static inline int CSP_Target_get_ghost(int target_rank, int target_seg_off,
+                                       int is_order_required,
+                                       int size, CSP_Win * ug_win,
+                                       int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;
     int main_g_off = ug_win->targets[target_rank].segs[target_seg_off].main_g_off;
@@ -643,10 +654,10 @@ static inline int CSP_Get_gp_rank_load_opt(int target_rank, int target_seg_off,
 
         /* Need increase counters */
         if (CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) {
-            CSP_Inc_win_target_load_opt_op_counting(*target_g_rank_in_ug, ug_win);
+            CSP_Inc_target_opload_op_counting(*target_g_rank_in_ug, ug_win);
         }
         else if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
-            CSP_Inc_win_target_load_opt_bytes_counting(*target_g_rank_in_ug, size, ug_win);
+            CSP_Inc_target_opload_bytes_counting(*target_g_rank_in_ug, size, ug_win);
         }
 
         return mpi_errno;
@@ -654,29 +665,27 @@ static inline int CSP_Get_gp_rank_load_opt(int target_rank, int target_seg_off,
 
     /* Runtime load balancing */
     if (CSP_ENV.load_opt == CSP_LOAD_OPT_RANDOM) {
-        CSP_Get_gp_rank_load_opt_random(target_rank, is_order_required, ug_win,
-                                        target_g_rank_in_ug, &g_idx, target_g_offset);
+        CSP_Target_get_ghost_opload_by_random(target_rank, is_order_required, ug_win,
+                                              target_g_rank_in_ug, &g_idx, target_g_offset);
     }
     else if (CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) {
-        CSP_Get_gp_rank_load_opt_counting(target_rank, is_order_required, ug_win,
+        CSP_Target_get_ghost_opload_by_op(target_rank, is_order_required, ug_win,
                                           target_g_rank_in_ug, &g_idx, target_g_offset);
     }
     else if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
-        CSP_Get_gp_rank_load_byte_counting(target_rank, is_order_required, size,
-                                           ug_win, target_g_rank_in_ug, &g_idx, target_g_offset);
+        CSP_Target_get_ghost_opload_by_byte(target_rank, is_order_required, size,
+                                            ug_win, target_g_rank_in_ug, &g_idx, target_g_offset);
     }
 
     return mpi_errno;
 }
-
-#define CSP_Get_gp_rank(target_rank, target_seg_off, is_order_required, size, ug_win, \
-        target_g_rank_in_ug, target_g_offset) \
-        CSP_Get_gp_rank_load_opt(target_rank, target_seg_off, is_order_required, size, ug_win, \
-                target_g_rank_in_ug, target_g_offset)
 #else
-static inline int CSP_Get_gp_rank_load_opt_non(int target_rank, int target_seg_off,
-                                               CSP_Win * ug_win,
-                                               int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
+/**
+ * Get ghost that is statically bound with the target.
+ */
+static inline int CSP_Target_get_ghost(int target_rank, int target_seg_off, int is_order_required ATTRIBUTE((unused)),  /* arguments used only in dynamic load */
+                                       int size ATTRIBUTE((unused)), CSP_Win * ug_win,
+                                       int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;
     int main_g_off = ug_win->targets[target_rank].segs[target_seg_off].main_g_off;
@@ -687,11 +696,6 @@ static inline int CSP_Get_gp_rank_load_opt_non(int target_rank, int target_seg_o
                   *target_g_rank_in_ug, *target_g_offset, target_rank, target_seg_off);
     return mpi_errno;
 }
-
-#define CSP_Get_gp_rank(target_rank, target_seg_off, is_order_required, size, ug_win, \
-        target_g_rank_in_ug, target_g_offset) \
-        CSP_Get_gp_rank_load_opt_non(target_rank, target_seg_off, ug_win, target_g_rank_in_ug,   \
-            target_g_offset)
 #endif
 
 extern int CSP_Op_segments_decode(const void *origin_addr, int origin_count,
@@ -710,13 +714,5 @@ extern void CSP_Op_segments_destroy(CSP_OP_Segment ** decoded_ops_ptr);
 extern int CSP_Fence_win_release_locks(CSP_Win * ug_win);
 
 extern int CSP_Win_bind_ghosts(CSP_Win * ug_win);
-
-#if !defined ATTRIBUTE
-#if defined HAVE_GCC_ATTRIBUTE
-#define ATTRIBUTE(a_) __attribute__(a_)
-#else
-#define ATTRIBUTE(a_)
-#endif
-#endif /* ATTRIBUTE */
 
 #endif /* CSP_H_ */

@@ -58,8 +58,8 @@ static int CSP_Put_segment_impl(const void *origin_addr, int origin_count,
         int seg_off = decoded_ops[i].target_seg_off;
         MPI_Win seg_ug_win = ug_win->targets[target_rank].segs[seg_off].ug_win;
 
-        mpi_errno = CSP_Get_gp_rank(target_rank, seg_off, 0, decoded_ops[i].target_dtsize,
-                                    ug_win, &target_g_rank_in_ug, &target_g_offset);
+        mpi_errno = CSP_Target_get_ghost(target_rank, seg_off, 0, decoded_ops[i].target_dtsize,
+                                         ug_win, &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -152,8 +152,8 @@ static int CSP_Put_impl(const void *origin_addr, int origin_count,
                 data_size *= origin_count;
             }
 #endif
-            mpi_errno = CSP_Get_gp_rank(target_rank, 0, 0, data_size, ug_win,
-                                        &target_g_rank_in_ug, &target_g_offset);
+            mpi_errno = CSP_Target_get_ghost(target_rank, 0, 0, data_size, ug_win,
+                                             &target_g_rank_in_ug, &target_g_offset);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 

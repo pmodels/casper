@@ -47,8 +47,8 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
             PMPI_Type_size(datatype, &data_size);
         }
 #endif
-        mpi_errno = CSP_Get_gp_rank(target_rank, 0, 1, data_size, ug_win,
-                                    &target_g_rank_in_ug, &target_g_offset);
+        mpi_errno = CSP_Target_get_ghost(target_rank, 0, 1, data_size, ug_win,
+                                         &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
