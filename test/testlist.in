@@ -17,3 +17,4 @@ csp_win_allocate
 csp_win_create_acc
 csp_init_thread_acc
 csp_epoch_type
+csp_win_allocate_info

@@ -40,7 +40,9 @@ noinst_PROGRAMS = \
 	epoch_type	\
 	csp_epoch_type	\
 	epoch_type_assert	\
-	csp_epoch_type_assert 
+	csp_epoch_type_assert \
+	win_allocate_info	\
+	csp_win_allocate_info 
 
 csp_get_SOURCES= get.c
 csp_get_LDFLAGS= -L$(libdir) -lcasper
@@ -101,6 +103,9 @@ csp_epoch_type_LDFLAGS= -L$(libdir) -lcasper
 
 csp_epoch_type_assert_SOURCES= epoch_type_assert.c
 csp_epoch_type_assert_LDFLAGS= -L$(libdir) -lcasper
+
+csp_win_allocate_info_SOURCES= win_allocate_info.c
+csp_win_allocate_info_LDFLAGS= -L$(libdir) -lcasper
 
 MPIEXEC=mpiexec
 
