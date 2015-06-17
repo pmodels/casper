@@ -13,7 +13,7 @@
 
 #include <ctype.h>
 
-const char *CSP_Win_epoch_stat_name[4] = {
+const char *CSP_win_epoch_stat_name[4] = {
     "NO_EPOCH",
     "FENCE",
     "LOCK",
@@ -21,7 +21,7 @@ const char *CSP_Win_epoch_stat_name[4] = {
 };
 
 
-static int read_win_info(MPI_Info info, CSP_Win * ug_win)
+static int read_win_info(MPI_Info info, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -93,7 +93,7 @@ static int read_win_info(MPI_Info info, CSP_Win * ug_win)
     goto fn_exit;
 }
 
-static int gather_ranks(CSP_Win * win, int *num_ghosts, int *gp_ranks_in_world,
+static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
                         int *unique_gp_ranks_in_world)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -106,7 +106,7 @@ static int gather_ranks(CSP_Win * win, int *num_ghosts, int *gp_ranks_in_world,
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
     PMPI_Comm_size(win->user_comm, &user_nprocs);
 
-    gp_bitmap = CSP_Calloc(world_nprocs, sizeof(int));
+    gp_bitmap = CSP_calloc(world_nprocs, sizeof(int));
     if (gp_bitmap == NULL)
         goto fn_fail;
 
@@ -128,7 +128,7 @@ static int gather_ranks(CSP_Win * win, int *num_ghosts, int *gp_ranks_in_world,
                 unique_gp_ranks_in_world[tmp_num_ghosts++] = gp_rank;
                 gp_bitmap[gp_rank] = 1;
 
-                CSP_Assert(tmp_num_ghosts <= CSP_NUM_NODES * CSP_ENV.num_g);
+                CSP_assert(tmp_num_ghosts <= CSP_NUM_NODES * CSP_ENV.num_g);
             }
         }
     }
@@ -143,17 +143,17 @@ static int gather_ranks(CSP_Win * win, int *num_ghosts, int *gp_ranks_in_world,
     goto fn_exit;
 }
 
-static int send_win_general_parameters(MPI_Info info, CSP_Win * ug_win)
+static int send_win_general_parameters(MPI_Info info, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int is_u_world = 0;
-    CSP_Info_keyval_t *info_keyvals = NULL;
+    CSP_info_keyval_t *info_keyvals = NULL;
     int npairs = 0;
     int func_params[4];
 
     is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
 
-    mpi_errno = CSP_Info_deserialize(info, &info_keyvals, &npairs);
+    mpi_errno = CSP_info_deserialize(info, &info_keyvals, &npairs);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -163,7 +163,7 @@ static int send_win_general_parameters(MPI_Info info, CSP_Win * ug_win)
     func_params[2] = is_u_world;
     func_params[3] = npairs;
 
-    mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(func_params), ug_win->ur_g_comm);
+    mpi_errno = CSP_func_set_param((char *) func_params, sizeof(func_params), ug_win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     CSP_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d, "
@@ -172,8 +172,8 @@ static int send_win_general_parameters(MPI_Info info, CSP_Win * ug_win)
 
     /* Send user info */
     if (npairs > 0 && info_keyvals) {
-        mpi_errno = CSP_Func_set_param((char *) info_keyvals,
-                                       sizeof(CSP_Info_keyval_t) * npairs, ug_win->ur_g_comm);
+        mpi_errno = CSP_func_set_param((char *) info_keyvals,
+                                       sizeof(CSP_info_keyval_t) * npairs, ug_win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSP_DBG_PRINT(" Send parameters: info\n");
@@ -188,7 +188,7 @@ static int send_win_general_parameters(MPI_Info info, CSP_Win * ug_win)
     goto fn_exit;
 }
 
-static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
+static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs, user_rank, world_nprocs;
@@ -200,7 +200,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
 
     /* maximum amount equals to world size */
-    ug_ranks_in_world = CSP_Calloc(world_nprocs, sizeof(int));
+    ug_ranks_in_world = CSP_calloc(world_nprocs, sizeof(int));
     if (ug_ranks_in_world == NULL)
         goto fn_fail;
 
@@ -214,7 +214,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
         fprintf(stderr, "num_ug_ranks %d > world_nprocs %d, num_ghosts=%d, user_nprocs=%d\n",
                 num_ug_ranks, world_nprocs, num_ghosts, user_nprocs);
     }
-    CSP_Assert(num_ug_ranks <= world_nprocs);
+    CSP_assert(num_ug_ranks <= world_nprocs);
 
     PMPI_Group_incl(CSP_GROUP_WORLD, num_ug_ranks, ug_ranks_in_world, &win->ug_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, win->ug_group, 0, &win->ug_comm);
@@ -240,7 +240,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_Win * win)
     goto fn_exit;
 }
 
-static int create_communicators(CSP_Win * ug_win)
+static int create_communicators(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *func_params = NULL;
@@ -278,8 +278,8 @@ static int create_communicators(CSP_Win * ug_win)
     }
     else {
         /* ghost ranks for every user process, used for ghost fetching in epoch */
-        gp_ranks_in_world = CSP_Calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
-        gp_ranks_in_ug = CSP_Calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
+        gp_ranks_in_world = CSP_calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
+        gp_ranks_in_ug = CSP_calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
 
         /* Gather user rank information */
         mpi_errno = gather_ranks(ug_win, &num_ghosts, gp_ranks_in_world, ug_win->g_ranks_in_ug);
@@ -293,7 +293,7 @@ static int create_communicators(CSP_Win * ug_win)
              *  [N+1:]: ghost ranks in comm_world
              */
             int func_param_size = user_nprocs + max_num_ghosts + 1;
-            func_params = CSP_Calloc(func_param_size, sizeof(int));
+            func_params = CSP_calloc(func_param_size, sizeof(int));
 
             func_params[0] = num_ghosts;
 
@@ -304,7 +304,7 @@ static int create_communicators(CSP_Win * ug_win)
 
             /* ghost ranks in comm_world */
             memcpy(&func_params[user_nprocs + 1], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
-            mpi_errno = CSP_Func_set_param((char *) func_params, sizeof(int) * func_param_size,
+            mpi_errno = CSP_func_set_param((char *) func_params, sizeof(int) * func_param_size,
                                            ug_win->ur_g_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -376,7 +376,7 @@ static int create_communicators(CSP_Win * ug_win)
     goto fn_exit;
 }
 
-static int gather_base_offsets(CSP_Win * ug_win)
+static int gather_base_offsets(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint tmp_u_offsets;
@@ -389,7 +389,7 @@ static int gather_base_offsets(CSP_Win * ug_win)
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
-    base_g_offsets = CSP_Calloc(user_nprocs * CSP_ENV.num_g, sizeof(MPI_Aint));
+    base_g_offsets = CSP_calloc(user_nprocs * CSP_ENV.num_g, sizeof(MPI_Aint));
 
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
     /* All the ghosts use the byte located on ghost 0. */
@@ -449,7 +449,7 @@ static int gather_base_offsets(CSP_Win * ug_win)
     goto fn_exit;
 }
 
-static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_Win * ug_win)
+static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, j;
@@ -467,7 +467,7 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
         ug_win->num_ug_wins = 1;
     }
 
-    ug_win->ug_wins = CSP_Calloc(ug_win->num_ug_wins, sizeof(MPI_Win));
+    ug_win->ug_wins = CSP_calloc(ug_win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < ug_win->num_ug_wins; i++) {
         mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
                                     ug_win->ug_comm, &ug_win->ug_wins[i]);
@@ -510,7 +510,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int mpi_errno = MPI_SUCCESS;
     int ug_rank, ug_nprocs, user_nprocs, user_rank, user_world_rank, world_rank,
         user_local_rank, user_local_nprocs, ug_local_rank, ug_local_nprocs;
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int i;
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
@@ -519,7 +519,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     CSP_DBG_PRINT_FCNAME();
 
-    ug_win = CSP_Calloc(1, sizeof(CSP_Win));
+    ug_win = CSP_calloc(1, sizeof(CSP_win));
 
     /* If user specifies comm_world directly, use user comm_world instead;
      * else this communicator directly, because it should be created from user comm_world */
@@ -570,15 +570,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_world_rank);
 
-    ug_win->g_ranks_in_ug = CSP_Calloc(CSP_ENV.num_g * ug_win->num_nodes, sizeof(MPI_Aint));
-    ug_win->targets = CSP_Calloc(user_nprocs, sizeof(CSP_Win_target));
+    ug_win->g_ranks_in_ug = CSP_calloc(CSP_ENV.num_g * ug_win->num_nodes, sizeof(MPI_Aint));
+    ug_win->targets = CSP_calloc(user_nprocs, sizeof(CSP_win_target));
     for (i = 0; i < user_nprocs; i++) {
-        ug_win->targets[i].base_g_offsets = CSP_Calloc(CSP_ENV.num_g, sizeof(MPI_Aint));
-        ug_win->targets[i].g_ranks_in_ug = CSP_Calloc(CSP_ENV.num_g, sizeof(MPI_Aint));
+        ug_win->targets[i].base_g_offsets = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Aint));
+        ug_win->targets[i].g_ranks_in_ug = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Aint));
     }
 
     /* Gather users' disp_unit, size, ranks and node_id */
-    tmp_gather_buf = CSP_Calloc(user_nprocs * 7, sizeof(MPI_Aint));
+    tmp_gather_buf = CSP_calloc(user_nprocs * 7, sizeof(MPI_Aint));
     tmp_gather_buf[7 * user_rank] = (MPI_Aint) disp_unit;
     tmp_gather_buf[7 * user_rank + 1] = size;   /* MPI_Aint, size in bytes */
     tmp_gather_buf[7 * user_rank + 2] = (MPI_Aint) user_local_rank;
@@ -626,11 +626,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     /* Notify Ghosts start and create user root + ghosts communicator for
      * internal information exchange between users and ghosts. */
     if (user_local_rank == 0) {
-        mpi_errno = CSP_Func_start(CSP_FUNC_WIN_ALLOCATE, user_nprocs, user_local_nprocs);
+        mpi_errno = CSP_func_start(CSP_FUNC_WIN_ALLOCATE, user_nprocs, user_local_nprocs);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        mpi_errno = CSP_Func_new_ur_g_comm(&ug_win->ur_g_comm);
+        mpi_errno = CSP_func_new_ur_g_comm(&ug_win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -659,8 +659,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                   ug_rank, ug_nprocs, ug_local_rank, ug_local_nprocs);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    ug_win->g_ops_counts = CSP_Calloc(ug_nprocs, sizeof(int));
-    ug_win->g_bytes_counts = CSP_Calloc(ug_nprocs, sizeof(unsigned long));
+    ug_win->g_ops_counts = CSP_calloc(ug_nprocs, sizeof(int));
+    ug_win->g_bytes_counts = CSP_calloc(ug_nprocs, sizeof(unsigned long));
 #endif
 
     /* Allocate a shared window with local ghosts.
@@ -693,7 +693,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         goto fn_fail;
 
     /* Bind window to main ghost process */
-    mpi_errno = CSP_Win_bind_ghosts(ug_win);
+    mpi_errno = CSP_win_bind_ghosts(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -747,14 +747,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
      * How to solve the case that different processes may have the same handler ? */
     if (user_local_rank == 0) {
         unsigned long tmp_send_buf;
-        ug_win->g_win_handles = CSP_Calloc(CSP_ENV.num_g + 1, sizeof(unsigned long));
+        ug_win->g_win_handles = CSP_calloc(CSP_ENV.num_g + 1, sizeof(unsigned long));
         mpi_errno = PMPI_Gather(&tmp_send_buf, 1, MPI_UNSIGNED_LONG, ug_win->g_win_handles,
                                 1, MPI_UNSIGNED_LONG, CSP_ENV.num_g, ug_win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    CSP_Cache_ug_win(ug_win->win, ug_win);
+    CSP_cache_ug_win(ug_win->win, ug_win);
 
   fn_exit:
     if (shared_info && shared_info != MPI_INFO_NULL)

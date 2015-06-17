@@ -10,7 +10,7 @@
 #include <memory.h>
 #include "csp.h"
 
-static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
+static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint seg_size, t_size, sum_size, size_per_ghost, assigned_size, max_t_size;
@@ -25,7 +25,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
     sum_size = 0;
     for (i = 0; i < n_targets; i++) {
         t_rank = local_targets[i];
-        CSP_Assert(t_rank < user_nprocs);
+        CSP_assert(t_rank < user_nprocs);
 
         sum_size += ug_win->targets[t_rank].size;
         max_t_size = max(max_t_size, ug_win->targets[t_rank].size);
@@ -33,7 +33,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
     /* Never divide less than segment unit */
     size_per_ghost = align(sum_size / CSP_ENV.num_g, CSP_SEGMENT_UNIT);
     max_t_num_seg = sum_size / size_per_ghost + 3;
-    t_seg_sizes = CSP_Calloc(max_t_num_seg, sizeof(MPI_Aint));
+    t_seg_sizes = CSP_calloc(max_t_num_seg, sizeof(MPI_Aint));
 
     /* Divide segments based on sizes */
     i = 0;
@@ -47,7 +47,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
     while (assigned_size < sum_size && i < n_targets) {
         if (t_size == 0) {
             ug_win->targets[t_rank].num_segs = t_num_segs;
-            ug_win->targets[t_rank].segs = CSP_Calloc(t_num_segs, sizeof(CSP_Win_target_seg));
+            ug_win->targets[t_rank].segs = CSP_calloc(t_num_segs, sizeof(CSP_win_target_seg));
 
             MPI_Aint prev_seg_base = 0, prev_seg_size = 0;
             for (j = 0; j < t_num_segs; j++) {
@@ -55,7 +55,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
                 ug_win->targets[t_rank].segs[j].size = t_seg_sizes[j];
                 ug_win->targets[t_rank].segs[j].main_g_off = t_last_g_off + 1 - t_num_segs + j;
 
-                CSP_Assert(ug_win->targets[t_rank].segs[j].main_g_off < CSP_ENV.num_g);
+                CSP_assert(ug_win->targets[t_rank].segs[j].main_g_off < CSP_ENV.num_g);
 
                 prev_seg_base = ug_win->targets[t_rank].segs[j].base_offset;
                 prev_seg_size = ug_win->targets[t_rank].segs[j].size;
@@ -74,7 +74,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
         /* finish this target if remaining size is small than seg_size or
          * it is already at the last ghost. */
         else if (t_size < seg_size || g_off == CSP_ENV.num_g - 1) {
-            CSP_Assert(t_num_segs < max_t_num_seg);
+            CSP_assert(t_num_segs < max_t_num_seg);
 
             t_seg_sizes[t_num_segs++] = t_size;
             seg_size -= t_size;
@@ -86,7 +86,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
             t_last_g_off = g_off;
         }
         else if (t_size >= seg_size) {
-            CSP_Assert(t_num_segs < max_t_num_seg);
+            CSP_assert(t_num_segs < max_t_num_seg);
 
             /* divide large target */
             t_seg_sizes[t_num_segs++] = seg_size;
@@ -99,7 +99,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
         /* next ghost */
         if (seg_size == 0) {
             g_off++;
-            CSP_Assert(g_off <= CSP_ENV.num_g);
+            CSP_assert(g_off <= CSP_ENV.num_g);
             seg_size = size_per_ghost
                 + (g_off == CSP_ENV.num_g - 1 ? (sum_size % CSP_ENV.num_g) : 0);
             /* make sure new segment size is aligned */
@@ -107,7 +107,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
         }
     }
 
-    CSP_Assert(assigned_size == sum_size);
+    CSP_assert(assigned_size == sum_size);
 
     if (t_seg_sizes)
         free(t_seg_sizes);
@@ -115,7 +115,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_Win * ug_win)
     return mpi_errno;
 }
 
-static int bind_by_ranks(int n_targets, int *local_targets, CSP_Win * ug_win)
+static int bind_by_ranks(int n_targets, int *local_targets, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, g_off, t_rank, user_nprocs;
@@ -136,11 +136,11 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_Win * ug_win)
             g_off++;
             np = np_per_ghost + ((g_off == CSP_ENV.num_g - 1) ? (n_targets % CSP_ENV.num_g) : 0);
         }
-        CSP_Assert(g_off <= CSP_ENV.num_g);
+        CSP_assert(g_off <= CSP_ENV.num_g);
 
         t_rank = local_targets[i];
         ug_win->targets[t_rank].num_segs = 1;
-        ug_win->targets[t_rank].segs = CSP_Calloc(1, sizeof(CSP_Win_target_seg));
+        ug_win->targets[t_rank].segs = CSP_calloc(1, sizeof(CSP_win_target_seg));
         ug_win->targets[t_rank].segs[0].base_offset = 0;
         ug_win->targets[t_rank].segs[0].size = ug_win->targets[i].size;
         ug_win->targets[t_rank].segs[0].main_g_off = g_off;
@@ -157,14 +157,14 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_Win * ug_win)
  * Bind every target in the window with single ghost process to
  * guarantee lock permission, accumulate ordering and atomicity.
  */
-int CSP_Win_bind_ghosts(CSP_Win * ug_win)
+int CSP_win_bind_ghosts(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_nprocs;
     int *local_targets = NULL;
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
-    local_targets = CSP_Calloc(ug_win->num_nodes * ug_win->max_local_user_nprocs, sizeof(int));
+    local_targets = CSP_calloc(ug_win->num_nodes * ug_win->max_local_user_nprocs, sizeof(int));
 
     /* Sort targets by node_ids */
     for (i = 0; i < user_nprocs; i++) {

@@ -31,12 +31,12 @@ int CSP_NUM_NODES = 0;
 int *CSP_ALL_NODE_IDS = NULL;
 int CSP_MY_RANK_IN_WORLD = -1;
 
-CSP_Define_win_cache;
+CSP_define_win_cache;
 
 /* TODO: Move load balancing option into env setting */
-CSP_Env_param CSP_ENV;
+CSP_env_param CSP_ENV;
 
-static int CSP_Initialize_env()
+static int CSP_initialize_env()
 {
     char *val;
     int mpi_errno = MPI_SUCCESS;
@@ -154,7 +154,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
     CSP_MY_RANK_IN_WORLD = rank;
 
-    mpi_errno = CSP_Initialize_env();
+    mpi_errno = CSP_initialize_env();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -181,8 +181,8 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     }
 
     /* Specify the first N local processes to be Ghost processes */
-    CSP_G_RANKS_IN_LOCAL = CSP_Calloc(CSP_ENV.num_g, sizeof(int));
-    CSP_G_RANKS_IN_WORLD = CSP_Calloc(CSP_ENV.num_g, sizeof(int));
+    CSP_G_RANKS_IN_LOCAL = CSP_calloc(CSP_ENV.num_g, sizeof(int));
+    CSP_G_RANKS_IN_WORLD = CSP_calloc(CSP_ENV.num_g, sizeof(int));
     for (i = 0; i < CSP_ENV.num_g; i++) {
         CSP_G_RANKS_IN_LOCAL[i] = i;
     }
@@ -244,8 +244,8 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     CSP_NUM_NODES = tmp_bcast_buf[1];
 
     /* Exchange node id and Ghost ranks among world processes */
-    ranks_in_world = CSP_Calloc(nprocs, sizeof(int));
-    ranks_in_user_world = CSP_Calloc(nprocs, sizeof(int));
+    ranks_in_world = CSP_calloc(nprocs, sizeof(int));
+    ranks_in_user_world = CSP_calloc(nprocs, sizeof(int));
     for (i = 0; i < nprocs; i++) {
         ranks_in_world[i] = i;
     }
@@ -255,10 +255,10 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    CSP_ALL_NODE_IDS = CSP_Calloc(nprocs, sizeof(int));
-    CSP_ALL_G_RANKS_IN_WORLD = CSP_Calloc(user_nprocs * CSP_ENV.num_g, sizeof(int));
-    CSP_ALL_UNIQUE_G_RANKS_IN_WORLD = CSP_Calloc(CSP_NUM_NODES * CSP_ENV.num_g, sizeof(int));
-    tmp_gather_buf = CSP_Calloc(nprocs * (1 + CSP_ENV.num_g), sizeof(int));
+    CSP_ALL_NODE_IDS = CSP_calloc(nprocs, sizeof(int));
+    CSP_ALL_G_RANKS_IN_WORLD = CSP_calloc(user_nprocs * CSP_ENV.num_g, sizeof(int));
+    CSP_ALL_UNIQUE_G_RANKS_IN_WORLD = CSP_calloc(CSP_NUM_NODES * CSP_ENV.num_g, sizeof(int));
+    tmp_gather_buf = CSP_calloc(nprocs * (1 + CSP_ENV.num_g), sizeof(int));
 
     tmp_gather_buf[rank * (1 + CSP_ENV.num_g)] = CSP_MY_NODE_ID;
     for (i = 0; i < CSP_ENV.num_g; i++) {
@@ -298,7 +298,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         /* Get user ranks in world */
         for (i = 0; i < user_nprocs; i++)
             ranks_in_user_world[i] = i;
-        CSP_USER_RANKS_IN_WORLD = CSP_Calloc(user_nprocs, sizeof(int));
+        CSP_USER_RANKS_IN_WORLD = CSP_calloc(user_nprocs, sizeof(int));
         mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_USER_WORLD, user_nprocs,
                                                ranks_in_user_world, CSP_GROUP_WORLD,
                                                CSP_USER_RANKS_IN_WORLD);
@@ -318,7 +318,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
                       local_nprocs, user_rank, user_nprocs, local_user_rank,
                       local_user_nprocs, CSP_MY_NODE_ID);
 
-        CSP_Init_win_cache();
+        CSP_init_win_cache();
     }
     /* Ghost processes */
     /* TODO: Ghost process should not run user program */
@@ -390,7 +390,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     if (CSP_USER_RANKS_IN_WORLD)
         free(CSP_USER_RANKS_IN_WORLD);
 
-    CSP_Destroy_win_cache();
+    CSP_destroy_win_cache();
 
     /* Reset global variables */
     CSP_COMM_USER_WORLD = MPI_COMM_NULL;

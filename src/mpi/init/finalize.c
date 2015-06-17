@@ -19,7 +19,7 @@ int MPI_Finalize(void)
 
     /* Ghosts do not need user process information because it is a global call. */
     if (user_local_rank == 0) {
-        CSP_Func_start(CSP_FUNC_FINALIZE, 0, 0);
+        CSP_func_start(CSP_FUNC_FINALIZE, 0, 0);
     }
 
     if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
@@ -54,7 +54,7 @@ int MPI_Finalize(void)
     if (CSP_GROUP_USER_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_USER_WORLD);
 
-    CSP_Destroy_win_cache();
+    CSP_destroy_win_cache();
 
     if (CSP_G_RANKS_IN_WORLD)
         free(CSP_G_RANKS_IN_WORLD);

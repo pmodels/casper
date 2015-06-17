@@ -9,12 +9,12 @@
 #include "cspg.h"
 
 #undef FUNCNAME
-#define FUNCNAME CSP_G_win_free
+#define FUNCNAME CSPG_win_free
 
-int CSP_G_win_free(int user_local_root)
+int CSPG_win_free(int user_local_root)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_G_win *win;
+    CSPG_win *win;
     unsigned long csp_g_win_handle = 0UL;
     MPI_Status stat;
     int i;
@@ -24,16 +24,16 @@ int CSP_G_win_free(int user_local_root)
                           user_local_root, 0, CSP_COMM_LOCAL, &stat);
     if (mpi_errno != 0)
         goto fn_fail;
-    CSP_G_DBG_PRINT(" Received window handler 0x%lx\n", csp_g_win_handle);
+    CSPG_DBG_PRINT(" Received window handler 0x%lx\n", csp_g_win_handle);
 
-    win = (CSP_G_win *) csp_g_win_handle;
+    win = (CSPG_win *) csp_g_win_handle;
     if (!win) {
-        CSP_G_ERR_PRINT(" Wrong window handler 0x%lx, not exist\n", csp_g_win_handle);
+        CSPG_ERR_PRINT(" Wrong window handler 0x%lx, not exist\n", csp_g_win_handle);
         mpi_errno = -1;
         goto fn_fail;
     }
     if (win->csp_g_win_handle != csp_g_win_handle) {
-        CSP_G_ERR_PRINT(" Wrong window handler 0x%lx, not match\n", csp_g_win_handle);
+        CSPG_ERR_PRINT(" Wrong window handler 0x%lx, not match\n", csp_g_win_handle);
         mpi_errno = -1;
         goto fn_fail;
     }
@@ -49,7 +49,7 @@ int CSP_G_win_free(int user_local_root)
          * for waiting operations on that window complete.
          */
         if (win->num_ug_wins > 0 && win->ug_wins) {
-            CSP_G_DBG_PRINT(" free ug windows\n");
+            CSPG_DBG_PRINT(" free ug windows\n");
             for (i = 0; i < win->num_ug_wins; i++) {
                 if (win->ug_wins[i]) {
                     mpi_errno = PMPI_Win_free(&win->ug_wins[i]);
@@ -60,35 +60,35 @@ int CSP_G_win_free(int user_local_root)
         }
 
         if (win->active_win) {
-            CSP_G_DBG_PRINT(" free active window\n");
+            CSPG_DBG_PRINT(" free active window\n");
             mpi_errno = PMPI_Win_free(&win->active_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
         if (win->local_ug_win) {
-            CSP_G_DBG_PRINT(" free shared window\n");
+            CSPG_DBG_PRINT(" free shared window\n");
             mpi_errno = PMPI_Win_free(&win->local_ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
         if (win->ur_g_comm && win->ur_g_comm != MPI_COMM_NULL) {
-            CSP_G_DBG_PRINT(" free user root + ghosts communicator\n");
+            CSPG_DBG_PRINT(" free user root + ghosts communicator\n");
             mpi_errno = PMPI_Comm_free(&win->ur_g_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
         if (win->local_ug_comm && win->local_ug_comm != CSP_COMM_LOCAL) {
-            CSP_G_DBG_PRINT(" free shared communicator\n");
+            CSPG_DBG_PRINT(" free shared communicator\n");
             mpi_errno = PMPI_Comm_free(&win->local_ug_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
         if (win->ug_comm && win->ug_comm != MPI_COMM_WORLD) {
-            CSP_G_DBG_PRINT(" free ug communicator\n");
+            CSPG_DBG_PRINT(" free ug communicator\n");
             mpi_errno = PMPI_Comm_free(&win->ug_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -101,10 +101,10 @@ int CSP_G_win_free(int user_local_root)
 
         free(win);
 
-        CSP_G_DBG_PRINT(" Freed CASPER window\n");
+        CSPG_DBG_PRINT(" Freed CASPER window\n");
     }
     else {
-        CSP_G_DBG_PRINT(" no corresponding CASPER window\n");
+        CSPG_DBG_PRINT(" no corresponding CASPER window\n");
     }
 
   fn_exit:

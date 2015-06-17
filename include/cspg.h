@@ -12,24 +12,24 @@
 #include <mpi.h>
 #include "csp.h"
 
-/* #define CSP_G_DEBUG */
-#ifdef CSP_G_DEBUG
-#define CSP_G_DBG_PRINT(str, ...) do { \
+/* #define CSPG_DEBUG */
+#ifdef CSPG_DEBUG
+#define CSPG_DBG_PRINT(str, ...) do { \
     fprintf(stdout, "[CSP-H][N-%d]"str, CSP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
     } while (0)
 #else
-#define CSP_G_DBG_PRINT(str, ...) {}
+#define CSPG_DBG_PRINT(str, ...) {}
 #endif
 
-#define CSP_G_ERR_PRINT(str...) do {fprintf(stderr, str);fflush(stdout);} while (0)
+#define CSPG_ERR_PRINT(str...) do {fprintf(stderr, str);fflush(stdout);} while (0)
 
-#define CSP_G_assert(EXPR) do { if (unlikely(!(EXPR))){ \
-            CSP_G_ERR_PRINT("[CSP-H][N-%d, %d]  assert fail in [%s:%d]: \"%s\"\n", \
+#define CSPG_assert(EXPR) do { if (unlikely(!(EXPR))){ \
+            CSPG_ERR_PRINT("[CSP-H][N-%d, %d]  assert fail in [%s:%d]: \"%s\"\n", \
                     CSP_MY_NODE_ID, CSP_MY_RANK_IN_WORLD, __FILE__, __LINE__, #EXPR); \
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
 
-typedef struct CSP_G_win {
+typedef struct CSPG_win {
     MPI_Aint *user_base_addrs_in_local;
 
     /* communicator including root user processes and all ghosts,
@@ -53,23 +53,23 @@ typedef struct CSP_G_win {
 
     MPI_Win active_win;
 
-    struct CSP_Win_info_args info_args;
+    struct CSP_win_info_args info_args;
     unsigned long csp_g_win_handle;
-} CSP_G_win;
+} CSPG_win;
 
-typedef struct CSP_G_func_info {
-    CSP_Func_info info;
+typedef struct CSPG_func_info {
+    CSP_func_info info;
     int user_root_in_local;
-} CSP_G_func_info;
+} CSPG_func_info;
 
-extern int CSP_G_win_allocate(int user_local_root, int user_nprocs);
-extern int CSP_G_win_free(int user_local_root);
+extern int CSPG_win_allocate(int user_local_root, int user_nprocs);
+extern int CSPG_win_free(int user_local_root);
 
-extern int CSP_G_finalize(void);
+extern int CSPG_finalize(void);
 
-extern int CSP_G_func_start(CSP_Func * FUNC, int *user_local_root, int *user_nprocs,
-                            int *user_local_nprocs);
-extern int CSP_G_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm);
-extern int CSP_G_func_get_param(char *func_params, int size, MPI_Comm ur_g_comm);
+extern int CSPG_func_start(CSP_func * FUNC, int *user_local_root, int *user_nprocs,
+                           int *user_local_nprocs);
+extern int CSPG_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm);
+extern int CSPG_func_get_param(char *func_params, int size, MPI_Comm ur_g_comm);
 
 #endif /* CSPG_H_ */

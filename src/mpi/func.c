@@ -13,10 +13,10 @@
  * function. A user root + ghosts communicator will be created for later information
  * exchanges.
  */
-int CSP_Func_start(CSP_Func FUNC, int user_nprocs, int user_local_nprocs)
+int CSP_func_start(CSP_func FUNC, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_Func_info info;
+    CSP_func_info info;
 
     info.FUNC = FUNC;
     info.user_nprocs = user_nprocs;
@@ -25,13 +25,13 @@ int CSP_Func_start(CSP_Func FUNC, int user_nprocs, int user_local_nprocs)
     CSP_DBG_PRINT("[%d] send Func start request to ghost local %d\n",
                   CSP_MY_RANK_IN_WORLD, CSP_G_RANKS_IN_LOCAL[0]);
     /* Only send start request to root ghost. */
-    mpi_errno = PMPI_Send((char *) &info, sizeof(CSP_Func_info), MPI_CHAR,
+    mpi_errno = PMPI_Send((char *) &info, sizeof(CSP_func_info), MPI_CHAR,
                           CSP_G_RANKS_IN_LOCAL[0], CSP_FUNC_TAG, CSP_COMM_LOCAL);
     return mpi_errno;
 }
 
 
-int CSP_Func_new_ur_g_comm(MPI_Comm * ur_g_comm)
+int CSP_func_new_ur_g_comm(MPI_Comm * ur_g_comm)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_rank;
@@ -42,7 +42,7 @@ int CSP_Func_new_ur_g_comm(MPI_Comm * ur_g_comm)
     PMPI_Comm_rank(CSP_COMM_LOCAL, &local_rank);
 
     /* Create a user root + all ghosts communicator for later information exchanges. */
-    ur_g_ranks_in_local = CSP_Calloc(sizeof(int), CSP_ENV.num_g + 1);
+    ur_g_ranks_in_local = CSP_calloc(sizeof(int), CSP_ENV.num_g + 1);
     /* Ghosts' rank are always start from 0 */
     for (i = 0; i < CSP_ENV.num_g; i++)
         ur_g_ranks_in_local[i] = i;
@@ -72,7 +72,7 @@ int CSP_Func_new_ur_g_comm(MPI_Comm * ur_g_comm)
     goto fn_exit;
 }
 
-int CSP_Func_set_param(char *func_params, int size, MPI_Comm ur_g_comm)
+int CSP_func_set_param(char *func_params, int size, MPI_Comm ur_g_comm)
 {
     /* Simply broadcast parameters to all the ghosts, because all of them are
      * guaranteed to be in current function.

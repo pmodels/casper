@@ -9,7 +9,7 @@
 #include "csp.h"
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
+static inline int CSP_win_lock_self_impl(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -34,7 +34,7 @@ static inline int CSP_Win_lock_self_impl(CSP_Win * ug_win)
 
 int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
     int k;
@@ -42,7 +42,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_Fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -51,7 +51,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
     /* casper window starts */
 
-    CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
+    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
@@ -105,7 +105,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          */
         if (!ug_win->info_args.no_local_load_store &&
             !(ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
-            mpi_errno = CSP_Win_grant_local_lock(user_rank, ug_win);
+            mpi_errno = CSP_win_grant_local_lock(user_rank, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
             is_local_lock_granted = 1;
@@ -118,7 +118,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          * 2. there is no concurrent epochs, hence it is safe to get local lock.*/
         if (is_local_lock_granted ||
             (ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
-            mpi_errno = CSP_Win_lock_self_impl(ug_win);
+            mpi_errno = CSP_win_lock_self_impl(ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -129,7 +129,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     int j;
     for (j = 0; j < ug_win->targets[target_rank].num_segs; j++) {
         ug_win->targets[target_rank].segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
-        CSP_Reset_target_opload(target_rank, ug_win);
+        CSP_reset_target_opload(target_rank, ug_win);
     }
 #endif
 

@@ -99,7 +99,7 @@ Environment Variables
 ====================================
 Debugging Options
 ====================================
-Enable debugging messages by compiling with "-DDEBUG -DCSP_G_DEBUG".
+Enable debugging messages by compiling with "-DDEBUG -DCSPG_DEBUG".
     ./configure --prefix=<your installation dir> CC=<your mpicc> \
-                CFLAGS="-DDEBUG -DCSP_G_DEBUG"
+                CFLAGS="-DDEBUG -DCSPG_DEBUG"
     make && make install

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "csp.h"
 
-static int CSP_Wait_pscw_complete_msg(int post_grp_size, CSP_Win * ug_win)
+static int CSP_wait_pscw_complete_msg(int post_grp_size, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -18,8 +18,8 @@ static int CSP_Wait_pscw_complete_msg(int post_grp_size, CSP_Win * ug_win)
     MPI_Status *stats = NULL;
     int remote_cnt = 0;
 
-    reqs = CSP_Calloc(post_grp_size, sizeof(MPI_Request));
-    stats = CSP_Calloc(post_grp_size, sizeof(MPI_Status));
+    reqs = CSP_calloc(post_grp_size, sizeof(MPI_Request));
+    stats = CSP_calloc(post_grp_size, sizeof(MPI_Status));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
@@ -58,20 +58,20 @@ static int CSP_Wait_pscw_complete_msg(int post_grp_size, CSP_Win * ug_win)
 
 int MPI_Win_wait(MPI_Win win)
 {
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_Fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_wait(win);
     }
 
-    CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
+    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
 
     if (ug_win->post_group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
@@ -82,12 +82,12 @@ int MPI_Win_wait(MPI_Win win)
     mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSP_Assert(post_grp_size > 0);
+    CSP_assert(post_grp_size > 0);
 
     CSP_DBG_PRINT("Wait group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 
     /* Wait for the completion on all origin processes */
-    mpi_errno = CSP_Wait_pscw_complete_msg(post_grp_size, ug_win);
+    mpi_errno = CSP_wait_pscw_complete_msg(post_grp_size, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

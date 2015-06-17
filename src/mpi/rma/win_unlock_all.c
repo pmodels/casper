@@ -9,7 +9,7 @@
 #include "csp.h"
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-static inline int CSP_Win_unlock_self_impl(CSP_Win * ug_win)
+static inline int CSP_win_unlock_self_impl(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -35,7 +35,7 @@ static inline int CSP_Win_unlock_self_impl(CSP_Win * ug_win)
 }
 #endif
 
-static int CSP_Win_mixed_unlock_all_impl(CSP_Win * ug_win)
+static int CSP_win_mixed_unlock_all_impl(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -72,7 +72,7 @@ static int CSP_Win_mixed_unlock_all_impl(CSP_Win * ug_win)
 #endif
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    mpi_errno = CSP_Win_unlock_self_impl(ug_win);
+    mpi_errno = CSP_win_unlock_self_impl(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #endif
@@ -86,14 +86,14 @@ static int CSP_Win_mixed_unlock_all_impl(CSP_Win * ug_win)
 
 int MPI_Win_unlock_all(MPI_Win win)
 {
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
     int i;
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_Fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -102,7 +102,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 
     /* casper window starts */
 
-    CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
+    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
@@ -141,7 +141,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
 #if 0   /* segmentation fault */
-        mpi_errno = CSP_Win_unlock_self_impl(ug_win);
+        mpi_errno = CSP_win_unlock_self_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
@@ -152,7 +152,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     else {
 
         /* In lock_all/lock mixed epoch, separate windows are bound with each target. */
-        mpi_errno = CSP_Win_mixed_unlock_all_impl(ug_win);
+        mpi_errno = CSP_win_mixed_unlock_all_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

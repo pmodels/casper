@@ -11,7 +11,7 @@
 int MPI_Win_free(MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
     int i, j;
     MPI_Request *reqs = NULL;
@@ -19,7 +19,7 @@ int MPI_Win_free(MPI_Win * win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_Fetch_ug_win_from_cache(*win, ug_win);
+    CSP_fetch_ug_win_from_cache(*win, ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -47,15 +47,15 @@ int MPI_Win_free(MPI_Win * win)
     }
 
     if (user_local_rank == 0) {
-        CSP_Func_start(CSP_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
+        CSP_func_start(CSP_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
     }
 
     /* Notify the handle of target Ghost win. It is noted that ghosts cannot
      * fetch the corresponding window without handlers so that only global communicator
      * can be used here.*/
     if (user_local_rank == 0) {
-        reqs = CSP_Calloc(CSP_ENV.num_g, sizeof(MPI_Request));
-        stats = CSP_Calloc(CSP_ENV.num_g, sizeof(MPI_Status));
+        reqs = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+        stats = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
 
         for (j = 0; j < CSP_ENV.num_g; j++) {
             mpi_errno = PMPI_Isend(&ug_win->g_win_handles[j], 1, MPI_UNSIGNED_LONG,
@@ -150,7 +150,7 @@ int MPI_Win_free(MPI_Win * win)
     }
 
     CSP_DBG_PRINT("\t free window cache\n");
-    CSP_Remove_ug_win_from_cache(*win);
+    CSP_remove_ug_win_from_cache(*win);
 
     CSP_DBG_PRINT("\t free user window\n");
     mpi_errno = PMPI_Win_free(win);

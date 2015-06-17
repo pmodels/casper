@@ -11,13 +11,13 @@
 #include <string.h>
 #include <mpi.h>
 
-typedef struct CSP_Info_keyval {
+typedef struct CSP_info_keyval {
     char key[MPI_MAX_INFO_KEY];
     char value[MPI_MAX_INFO_VAL];
-} CSP_Info_keyval_t;
+} CSP_info_keyval_t;
 
 
-int CSP_Info_deserialize(MPI_Info info, CSP_Info_keyval_t ** keyvals, int *npairs);
-int CSP_Info_serialize(CSP_Info_keyval_t * keyvals, int npairs, MPI_Info * info);
+int CSP_info_deserialize(MPI_Info info, CSP_info_keyval_t ** keyvals, int *npairs);
+int CSP_info_serialize(CSP_info_keyval_t * keyvals, int npairs, MPI_Info * info);
 
 #endif /* INFO_H_ */

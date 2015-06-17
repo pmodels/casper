@@ -11,16 +11,16 @@
 #include "info.h"
 
 #undef FUNCNAME
-#define FUNCNAME CSP_G_win_allocate
+#define FUNCNAME CSPG_win_allocate
 
-static int recv_win_general_parameters(CSP_G_win * win, MPI_Info * user_info)
+static int recv_win_general_parameters(CSPG_win * win, MPI_Info * user_info)
 {
     int mpi_errno = MPI_SUCCESS;
     int info_npairs = 0;
-    CSP_Info_keyval_t *info_keyvals = NULL;
+    CSP_info_keyval_t *info_keyvals = NULL;
     int func_params[4];
 
-    mpi_errno = CSP_G_func_get_param((char *) func_params, sizeof(func_params), win->ur_g_comm);
+    mpi_errno = CSPG_func_get_param((char *) func_params, sizeof(func_params), win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -28,20 +28,20 @@ static int recv_win_general_parameters(CSP_G_win * win, MPI_Info * user_info)
     win->info_args.epoch_type = func_params[1];
     win->is_u_world = func_params[2];
     info_npairs = func_params[3];
-    CSP_G_DBG_PRINT(" Received parameters: max_local_user_nprocs = %d, epoch_type=%d, "
-                    "is_u_world=%d, info npairs=%d\n", win->max_local_user_nprocs,
-                    win->info_args.epoch_type, win->is_u_world, info_npairs);
+    CSPG_DBG_PRINT(" Received parameters: max_local_user_nprocs = %d, epoch_type=%d, "
+                   "is_u_world=%d, info npairs=%d\n", win->max_local_user_nprocs,
+                   win->info_args.epoch_type, win->is_u_world, info_npairs);
 
     /* Receive window info */
     if (info_npairs > 0) {
-        info_keyvals = CSP_Calloc(info_npairs, sizeof(CSP_Info_keyval_t));
-        mpi_errno = CSP_G_func_get_param((char *) info_keyvals,
-                                         sizeof(CSP_Info_keyval_t) * info_npairs, win->ur_g_comm);
+        info_keyvals = CSP_calloc(info_npairs, sizeof(CSP_info_keyval_t));
+        mpi_errno = CSPG_func_get_param((char *) info_keyvals,
+                                        sizeof(CSP_info_keyval_t) * info_npairs, win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        CSP_G_DBG_PRINT(" Received parameters: info\n");
+        CSPG_DBG_PRINT(" Received parameters: info\n");
 
-        mpi_errno = CSP_Info_serialize(info_keyvals, info_npairs, user_info);
+        mpi_errno = CSP_info_serialize(info_keyvals, info_npairs, user_info);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -56,7 +56,7 @@ static int recv_win_general_parameters(CSP_G_win * win, MPI_Info * user_info)
 }
 
 static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_ghosts,
-                          int *gp_ranks_in_world, CSP_G_win * win)
+                          int *gp_ranks_in_world, CSPG_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int world_nprocs;
@@ -67,21 +67,21 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
 
     /* maximum amount equals to world size */
-    ug_ranks_in_world = CSP_Calloc(world_nprocs, sizeof(int));
+    ug_ranks_in_world = CSP_calloc(world_nprocs, sizeof(int));
     if (ug_ranks_in_world == NULL)
         goto fn_fail;
 
     /* -Create ug communicator including all USER processes and Ghost processes. */
     num_ug_ranks = user_nprocs + num_ghosts;
-    CSP_G_assert(num_ug_ranks <= world_nprocs);
+    CSPG_assert(num_ug_ranks <= world_nprocs);
     memcpy(ug_ranks_in_world, gp_ranks_in_world, num_ghosts * sizeof(int));
     memcpy(&ug_ranks_in_world[num_ghosts], user_ranks_in_world, user_nprocs * sizeof(int));
 
-#ifdef CSP_G_DEBUG
+#ifdef CSPG_DEBUG
     int i;
-    CSP_G_DBG_PRINT("ug_ranks_in_world: (nh %d, nu %d)\n", num_ghosts, user_nprocs);
+    CSPG_DBG_PRINT("ug_ranks_in_world: (nh %d, nu %d)\n", num_ghosts, user_nprocs);
     for (i = 0; i < num_ug_ranks; i++) {
-        CSP_G_DBG_PRINT("[%d] %d \n", i, ug_ranks_in_world[i]);
+        CSPG_DBG_PRINT("[%d] %d \n", i, ug_ranks_in_world[i]);
     }
 #endif
 
@@ -107,7 +107,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     goto fn_exit;
 }
 
-static int create_communicators(int user_nprocs, CSP_G_win * win)
+static int create_communicators(int user_nprocs, CSPG_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *func_params = NULL;
@@ -130,16 +130,16 @@ static int create_communicators(int user_nprocs, CSP_G_win * win)
         int num_ghosts = 0;
         int func_param_size = user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
 
-        func_params = CSP_Calloc(func_param_size, sizeof(int));
-        mpi_errno = CSP_G_func_get_param((char *) func_params, sizeof(int) * func_param_size,
-                                         win->ur_g_comm);
+        func_params = CSP_calloc(func_param_size, sizeof(int));
+        mpi_errno = CSPG_func_get_param((char *) func_params, sizeof(int) * func_param_size,
+                                        win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         num_ghosts = func_params[0];
         user_ranks_in_world = &func_params[1];
         gp_ranks_in_world = &func_params[user_nprocs + 1];
-        CSP_G_DBG_PRINT(" Received parameters: num_ghosts %d\n", num_ghosts);
+        CSPG_DBG_PRINT(" Received parameters: num_ghosts %d\n", num_ghosts);
 
         /* General communicator creation.
          *  local_ug_comm: including local USER and Ghost processes
@@ -155,7 +155,7 @@ static int create_communicators(int user_nprocs, CSP_G_win * win)
             int ug_rank, ug_nprocs;
             PMPI_Comm_rank(win->ug_comm, &ug_rank);
             PMPI_Comm_size(win->ug_comm, &ug_nprocs);
-            CSP_G_DBG_PRINT("created ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
+            CSPG_DBG_PRINT("created ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
         }
 #endif
         mpi_errno = PMPI_Comm_split_type(win->ug_comm, MPI_COMM_TYPE_SHARED, 0,
@@ -168,7 +168,7 @@ static int create_communicators(int user_nprocs, CSP_G_win * win)
             int ug_rank, ug_nprocs;
             PMPI_Comm_rank(win->local_ug_comm, &ug_rank);
             PMPI_Comm_size(win->local_ug_comm, &ug_nprocs);
-            CSP_G_DBG_PRINT("created local_ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
+            CSPG_DBG_PRINT("created local_ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
         }
 #endif
     }
@@ -182,7 +182,7 @@ static int create_communicators(int user_nprocs, CSP_G_win * win)
     goto fn_exit;
 }
 
-static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSP_G_win * win)
+static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i;
@@ -196,13 +196,13 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSP_G_win * wi
         win->num_ug_wins = 1;
     }
 
-    win->ug_wins = CSP_Calloc(win->num_ug_wins, sizeof(MPI_Win));
+    win->ug_wins = CSP_calloc(win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < win->num_ug_wins; i++) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->ug_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSP_G_DBG_PRINT(" Created ug windows[%d] 0x%x\n", i, win->ug_wins[i]);
+        CSPG_DBG_PRINT(" Created ug windows[%d] 0x%x\n", i, win->ug_wins[i]);
     }
 
   fn_exit:
@@ -213,24 +213,24 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSP_G_win * wi
 }
 
 
-int CSP_G_win_allocate(int user_local_root, int user_nprocs)
+int CSPG_win_allocate(int user_local_root, int user_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
     int dst, local_ug_rank, local_ug_nprocs;
     MPI_Aint r_size, size = 0;
     int r_disp_unit;
     int ug_nprocs, ug_rank;
-    CSP_G_win *win;
+    CSPG_win *win;
     void **user_bases = NULL;
     int csp_buf_size = CSP_GP_SHARED_SG_SIZE;
     MPI_Info user_info = MPI_INFO_NULL;
     MPI_Info shared_info = MPI_INFO_NULL;
 
-    win = CSP_Calloc(1, sizeof(CSP_G_win));
+    win = CSP_calloc(1, sizeof(CSPG_win));
 
     /* Create user root + ghosts communicator for
      * internal information exchange between users and ghosts. */
-    mpi_errno = CSP_G_func_new_ur_g_comm(user_local_root, &win->ur_g_comm);
+    mpi_errno = CSPG_func_new_ur_g_comm(user_local_root, &win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -249,8 +249,8 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
     PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);
     PMPI_Comm_size(win->ug_comm, &ug_nprocs);
     PMPI_Comm_rank(win->ug_comm, &ug_rank);
-    CSP_G_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
-                    ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
+    CSPG_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
+                   ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
 
     /* Allocate a shared window with local USER processes */
 
@@ -284,11 +284,11 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
                                          win->local_ug_comm, &win->base, &win->local_ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSP_G_DBG_PRINT(" Created local_ug_win, base=%p, size=%d\n", win->base, csp_buf_size);
+    CSPG_DBG_PRINT(" Created local_ug_win, base=%p, size=%d\n", win->base, csp_buf_size);
 
     /* -Query address of user buffers and send to USER processes */
-    user_bases = CSP_Calloc(local_ug_nprocs, sizeof(void *));
-    win->user_base_addrs_in_local = CSP_Calloc(local_ug_nprocs, sizeof(MPI_Aint));
+    user_bases = CSP_calloc(local_ug_nprocs, sizeof(void *));
+    win->user_base_addrs_in_local = CSP_calloc(local_ug_nprocs, sizeof(MPI_Aint));
 
     for (dst = 0; dst < local_ug_nprocs; dst++) {
         mpi_errno = PMPI_Win_shared_query(win->local_ug_win, dst, &r_size,
@@ -297,10 +297,10 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
             goto fn_fail;
 
         PMPI_Get_address(user_bases[dst], &win->user_base_addrs_in_local[dst]);
-        CSP_G_DBG_PRINT("   shared base[%d]=%p, addr 0x%lx, offset 0x%lx"
-                        ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
-                        win->user_base_addrs_in_local[dst],
-                        (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
+        CSPG_DBG_PRINT("   shared base[%d]=%p, addr 0x%lx, offset 0x%lx"
+                       ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
+                       win->user_base_addrs_in_local[dst],
+                       (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
 
         size += r_size; /* size in byte */
     }
@@ -334,7 +334,7 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
         mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        CSP_G_DBG_PRINT(" Created active windows 0x%x\n", win->active_win);
+        CSPG_DBG_PRINT(" Created active windows 0x%x\n", win->active_win);
     }
 
     win->csp_g_win_handle = (unsigned long) win;
@@ -345,7 +345,7 @@ int CSP_G_win_allocate(int user_local_root, int user_nprocs)
                             0, MPI_UNSIGNED_LONG, CSP_ENV.num_g, win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSP_G_DBG_PRINT(" Define csp_g_win_handle=0x%lx\n", win->csp_g_win_handle);
+    CSPG_DBG_PRINT(" Define csp_g_win_handle=0x%lx\n", win->csp_g_win_handle);
 
   fn_exit:
     if (user_info && user_info != MPI_INFO_NULL)

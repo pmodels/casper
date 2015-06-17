@@ -8,28 +8,28 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-int CSP_G_finalize(void)
+int CSPG_finalize(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
     if (CSP_COMM_LOCAL != MPI_COMM_NULL) {
-        CSP_G_DBG_PRINT(" free CSP_COMM_LOCAL\n");
+        CSPG_DBG_PRINT(" free CSP_COMM_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_LOCAL);
     }
     if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
-        CSP_G_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
+        CSPG_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
         PMPI_Comm_free(&CSP_COMM_USER_WORLD);
     }
     if (CSP_COMM_USER_LOCAL != MPI_COMM_NULL) {
-        CSP_G_DBG_PRINT(" free CSP_COMM_USER_LOCAL\n");
+        CSPG_DBG_PRINT(" free CSP_COMM_USER_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_USER_LOCAL);
     }
     if (CSP_COMM_UR_WORLD != MPI_COMM_NULL) {
-        CSP_G_DBG_PRINT(" free CSP_COMM_UR_WORLD\n");
+        CSPG_DBG_PRINT(" free CSP_COMM_UR_WORLD\n");
         PMPI_Comm_free(&CSP_COMM_UR_WORLD);
     }
     if (CSP_COMM_GHOST_LOCAL != MPI_COMM_NULL) {
-        CSP_G_DBG_PRINT("free CSP_COMM_GHOST_LOCAL\n");
+        CSPG_DBG_PRINT("free CSP_COMM_GHOST_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_GHOST_LOCAL);
     }
 
@@ -55,7 +55,7 @@ int CSP_G_finalize(void)
     if (CSP_ALL_NODE_IDS)
         free(CSP_ALL_NODE_IDS);
 
-    CSP_G_DBG_PRINT(" PMPI_Finalize\n");
+    CSPG_DBG_PRINT(" PMPI_Finalize\n");
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;

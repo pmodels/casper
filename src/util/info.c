@@ -15,10 +15,10 @@
  * The array is allocated in this function, but must be released by calling
  * routine.
  */
-int CSP_Info_deserialize(MPI_Info info, CSP_Info_keyval_t ** keyvals, int *npairs)
+int CSP_info_deserialize(MPI_Info info, CSP_info_keyval_t ** keyvals, int *npairs)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_Info_keyval_t *_keyvals = NULL;
+    CSP_info_keyval_t *_keyvals = NULL;
     int i = 0;
     int info_flag = 0;
     int nkeys = 0;
@@ -33,8 +33,8 @@ int CSP_Info_deserialize(MPI_Info info, CSP_Info_keyval_t ** keyvals, int *npair
     if (nkeys == 0)
         goto fn_exit;
 
-    _keyvals = CSP_Calloc(nkeys, sizeof(CSP_Info_keyval_t));
-    memset(_keyvals, 0, nkeys * sizeof(CSP_Info_keyval_t));
+    _keyvals = CSP_calloc(nkeys, sizeof(CSP_info_keyval_t));
+    memset(_keyvals, 0, nkeys * sizeof(CSP_info_keyval_t));
 
     for (i = 0; i < nkeys; i++) {
         mpi_errno = PMPI_Info_get_nthkey(info, i, _keyvals[i].key);
@@ -67,7 +67,7 @@ int CSP_Info_deserialize(MPI_Info info, CSP_Info_keyval_t ** keyvals, int *npair
  * The MPI_Info object is created in this function, but must be released by
  * calling routine.
  */
-int CSP_Info_serialize(CSP_Info_keyval_t * keyvals, int npairs, MPI_Info * info)
+int CSP_info_serialize(CSP_info_keyval_t * keyvals, int npairs, MPI_Info * info)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Info _info = MPI_INFO_NULL;

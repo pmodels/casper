@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "csp.h"
 
-static int CSP_Fence_flush_all(CSP_Win * ug_win)
+static int CSP_fence_flush_all(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -54,7 +54,7 @@ static int CSP_Fence_flush_all(CSP_Win * ug_win)
              * 1. fence is a global collective call, all targets already "exposed" their epoch.
              * 2. no conflicting lock/lockall on fence window. */
             ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-            CSP_Reset_target_opload(i, ug_win);
+            CSP_reset_target_opload(i, ug_win);
         }
     }
 #endif
@@ -72,19 +72,19 @@ static int CSP_Fence_flush_all(CSP_Win * ug_win)
 
 int MPI_Win_fence(int assert, MPI_Win win)
 {
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_Fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_fence(assert, win);
     }
 
-    CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE));
+    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE));
 
     /* We do not support conflicting lock/fence epoch, because operations
      * must choose different window. Because user may not specify assert for the
@@ -98,7 +98,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
     if ((assert & MPI_MODE_NOPRECEDE) == 0) {
-        mpi_errno = CSP_Fence_flush_all(ug_win);
+        mpi_errno = CSP_fence_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

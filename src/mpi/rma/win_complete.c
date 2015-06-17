@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "csp.h"
 
-static int CSP_Send_pscw_complete_msg(int start_grp_size, CSP_Win * ug_win)
+static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_rank;
@@ -17,8 +17,8 @@ static int CSP_Send_pscw_complete_msg(int start_grp_size, CSP_Win * ug_win)
     MPI_Status *stats = NULL;
     int remote_cnt = 0;
 
-    reqs = CSP_Calloc(start_grp_size, sizeof(MPI_Request));
-    stats = CSP_Calloc(start_grp_size, sizeof(MPI_Status));
+    reqs = CSP_calloc(start_grp_size, sizeof(MPI_Request));
+    stats = CSP_calloc(start_grp_size, sizeof(MPI_Status));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
@@ -56,7 +56,7 @@ static int CSP_Send_pscw_complete_msg(int start_grp_size, CSP_Win * ug_win)
     goto fn_exit;
 }
 
-static int CSP_Complete_flush(int start_grp_size ATTRIBUTE((unused)), CSP_Win * ug_win)
+static int CSP_complete_flush(int start_grp_size ATTRIBUTE((unused)), CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -113,20 +113,20 @@ static int CSP_Complete_flush(int start_grp_size ATTRIBUTE((unused)), CSP_Win * 
 
 int MPI_Win_complete(MPI_Win win)
 {
-    CSP_Win *ug_win;
+    CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_Fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_complete(win);
     }
 
-    CSP_Assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
+    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
 
     if (ug_win->start_group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
@@ -137,17 +137,17 @@ int MPI_Win_complete(MPI_Win win)
     mpi_errno = PMPI_Group_size(ug_win->start_group, &start_grp_size);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSP_Assert(start_grp_size > 0);
+    CSP_assert(start_grp_size > 0);
 
     CSP_DBG_PRINT("Complete group 0x%x, size %d\n", ug_win->start_group, start_grp_size);
 
-    mpi_errno = CSP_Complete_flush(start_grp_size, ug_win);
+    mpi_errno = CSP_complete_flush(start_grp_size, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     ug_win->is_self_locked = 0;
 
-    mpi_errno = CSP_Send_pscw_complete_msg(start_grp_size, ug_win);
+    mpi_errno = CSP_send_pscw_complete_msg(start_grp_size, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

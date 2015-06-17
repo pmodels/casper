@@ -11,25 +11,25 @@
 int run_g_main(void)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_Func FUNC;
+    CSP_func FUNC;
     int user_local_root, user_nprocs, user_local_nprocs;
 
-    CSP_G_DBG_PRINT(" main start\n");
+    CSPG_DBG_PRINT(" main start\n");
 
     /*TODO: init in user app or here ? */
     /*    MPI_Init(&argc, &argv); */
     while (1) {
-        mpi_errno = CSP_G_func_start(&FUNC, &user_local_root, &user_nprocs, &user_local_nprocs);
+        mpi_errno = CSPG_func_start(&FUNC, &user_local_root, &user_nprocs, &user_local_nprocs);
         if (mpi_errno != MPI_SUCCESS)
             break;
 
         switch (FUNC) {
         case CSP_FUNC_WIN_ALLOCATE:
-            mpi_errno = CSP_G_win_allocate(user_local_root, user_nprocs);
+            mpi_errno = CSPG_win_allocate(user_local_root, user_nprocs);
             break;
 
         case CSP_FUNC_WIN_FREE:
-            mpi_errno = CSP_G_win_free(user_local_root);
+            mpi_errno = CSPG_win_free(user_local_root);
             break;
 
             /* other commands */
@@ -40,19 +40,19 @@ int run_g_main(void)
             break;
 
         case CSP_FUNC_FINALIZE:
-            CSP_G_finalize();
+            CSPG_finalize();
             goto exit;
 
             break;
 
         default:
-            CSP_G_DBG_PRINT(" FUNC %d not supported\n", FUNC);
+            CSPG_DBG_PRINT(" FUNC %d not supported\n", FUNC);
             break;
         }
     }
 
   exit:
-    CSP_G_DBG_PRINT(" main done\n");
+    CSPG_DBG_PRINT(" main done\n");
 
     return mpi_errno;
 }
