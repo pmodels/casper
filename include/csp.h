@@ -181,11 +181,6 @@ typedef enum {
     CSP_EPOCH_FENCE = 8
 } CSP_epoch_type;
 
-typedef struct CSP_G_win_params {
-    MPI_Aint size;
-    int disp_unit;
-} CSP_G_win_params;
-
 struct CSP_win_info_args {
     unsigned short no_local_load_store;
     int epoch_type;
@@ -462,25 +457,6 @@ static inline int CSP_get_node_ids(MPI_Group group, int n, const int ranks[], in
     }
 #endif
 
-static inline int CSP_is_in_shrd_mem(int target_rank, MPI_Group group, int *node_id, int *is_shared)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int target_node_id = -1;
-    *is_shared = 0;
-
-    /* If target is in the same node, use shared window instead */
-    mpi_errno = CSP_get_node_ids(group, 1, &target_rank, &target_node_id);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-
-    if (target_node_id == CSP_ALL_NODE_IDS[CSP_MY_RANK_IN_WORLD]) {
-        *is_shared = 1;
-    }
-
-    *node_id = target_node_id;
-
-    return mpi_errno;
-}
 
 static inline int CSP_win_grant_local_lock(int target_rank, CSP_win * ug_win)
 {
