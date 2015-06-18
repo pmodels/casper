@@ -152,9 +152,13 @@ int main(int argc, char *argv[])
      * P1: SUM{NOPS:2NOPS-1}, MAX{NOPS:2NOPS-1}
      * ...
      */
+
+    /* reset window */
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
     for (i = 0; i < 2; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test(size);

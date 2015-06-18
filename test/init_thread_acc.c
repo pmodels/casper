@@ -27,9 +27,12 @@ int ITER = 10;
 static void reset_win()
 {
     int i;
+
+    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 }
 
 static void change_data(int nop, int x)

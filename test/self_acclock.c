@@ -114,9 +114,13 @@ int main(int argc, char *argv[])
      * P1: SUM{NOPS:2NOPS-1}, MAX{NOPS:2NOPS-1}
      * ...
      */
+
+    /* reset window */
+    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
     for (i = 0; i < 2; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 
     max_result = locbuf[NUM_OPS * rank + NUM_OPS - 1];
     for (i = 0; i < NUM_OPS; i++) {

@@ -217,9 +217,13 @@ int main(int argc, char *argv[])
     debug_printf("[%d]win_allocate done\n", rank);
 
     for (time = min_time; time <= max_time; time *= iter_time) {
+        /* reset window */
+        MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
         for (i = 0; i < nprocs; i++) {
             winbuf[i] = 0.0;
         }
+        MPI_Win_unlock(rank, win);
+
         MPI_Barrier(MPI_COMM_WORLD);
 
         errs = run_test(time);

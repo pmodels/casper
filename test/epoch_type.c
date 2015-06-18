@@ -126,9 +126,14 @@ static int run_test1(int nop)
     /* size in byte */
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,
                      MPI_COMM_WORLD, &winbuf, &win);
+
+    /* reset window */
+    MPI_Win_lock_all(0, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock_all(win);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Win_lock_all(0, win);
     if (rank == 0) {
@@ -181,9 +186,13 @@ static int run_test2(int nop)
     MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lock|lockall");
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,
                      MPI_COMM_WORLD, &winbuf, &win);
+
+    /* reset window */
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 
     /* odd ranks send to even ranks */
     if (rank % 2 == 0) {
@@ -239,9 +248,14 @@ static int run_test3(int nop)
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall|pscw");
     MPI_Win_allocate(sizeof(double) * 2, sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
+
+    /* reset window */
+    MPI_Win_lock_all(0, win);
     for (i = 0; i < 2; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock_all(win);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
@@ -355,9 +369,13 @@ static int run_test4(int nop)
     MPI_Info_set(win_info, (char *) "epoch_type", (char *) "fence");
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info, MPI_COMM_WORLD, &winbuf,
                      &win);
+
+    /* reset window */
+    MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
 
     for (x = 0; x < ITER; x++) {
         change_data(nop, x);

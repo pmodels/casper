@@ -147,9 +147,13 @@ int main(int argc, char *argv[])
      * P1: 1 + [0:NOPS-1] * nprocs
      * ...
      */
+
+    /* reset window */
+    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test1(size);

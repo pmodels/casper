@@ -150,10 +150,13 @@ int main(int argc, char *argv[])
     MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), MPI_INFO_NULL,
                      MPI_COMM_WORLD, &winbuf, &win);
 
+    /* reset */
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
     for (i = 0; i < nprocs; i++) {
         winbuf[i] = 0.0;
         checkbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test1(size);
@@ -161,10 +164,14 @@ int main(int argc, char *argv[])
         goto exit;
 
     MPI_Barrier(MPI_COMM_WORLD);
+
+    /* reset */
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
     for (i = 0; i < nprocs; i++) {
         winbuf[i] = 0.0;
         checkbuf[i] = 0.0;
     }
+    MPI_Win_unlock(rank, win);
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test2(size);

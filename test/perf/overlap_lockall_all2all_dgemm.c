@@ -217,9 +217,13 @@ int main(int argc, char *argv[])
     debug_printf("[%d]win_allocate done\n", rank);
 
     for (size = min_dg_size; size <= max_dg_size; size *= iter_dg_size) {
+        /* reset window */
+        MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
         for (i = 0; i < nprocs; i++) {
             winbuf[i] = 0.0;
         }
+        MPI_Win_unlock(rank, win);
+
         MPI_Barrier(MPI_COMM_WORLD);
         DGEMM_SIZE = size;
 
