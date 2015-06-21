@@ -41,7 +41,7 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
         goto fn_fail;
 
     /* Fetch_and_op only allows one predefined element which must be contained by
-     * a single segmetn, thus we only need translate target displacement according to
+     * a single segment, thus we only need translate target displacement according to
      * its segment id. */
     ug_target_disp = target_g_offset
         + ug_win->targets[target_rank].disp_unit * decoded_ops[0].target_disp;
@@ -77,6 +77,10 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
+
+    /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
+    if (target_rank == MPI_PROC_NULL)
+        goto fn_exit;
 
     PMPI_Comm_rank(ug_win->user_comm, &rank);
 

@@ -26,6 +26,9 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     /* casper window starts */
 
+    if (target_rank == MPI_PROC_NULL)
+        goto fn_exit;
+
     CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 

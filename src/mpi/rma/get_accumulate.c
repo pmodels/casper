@@ -19,6 +19,10 @@ static int CSP_get_accumulate_impl(const void *origin_addr, int origin_count,
     MPI_Aint ug_target_disp = 0;
     int rank;
 
+    /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
+    if (target_rank == MPI_PROC_NULL)
+        goto fn_exit;
+
     PMPI_Comm_rank(ug_win->user_comm, &rank);
 
 #warning MPI_Get_accumulate is not implemented in segment-lock mode for now. \
