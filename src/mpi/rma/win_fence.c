@@ -86,15 +86,21 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE));
 
-    /* We do not support conflicting lock/fence epoch, because operations
-     * must choose different window. Because user may not specify assert for the
-     * last fence, we do not check the epoch status in lock/lockall. */
-    if (ug_win->epoch_stat != CSP_WIN_NO_EPOCH && ug_win->epoch_stat != CSP_WIN_EPOCH_FENCE) {
-        fprintf(stderr, "Wrong synchronization call! %d lock epoch and %d "
-                "lockall epoch is still open\n", ug_win->lock_counter, ug_win->lockall_counter);
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * We do not require closed FENCE epoch, because we don't know whether
+     * the previous FENCE is closed or not.*/
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL
+        || ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous %s epoch is still open in %s\n",
+                      (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
+                      __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;
     }
+    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
+#endif
 
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
     if ((assert & MPI_MODE_NOPRECEDE) == 0) {
@@ -128,7 +134,8 @@ int MPI_Win_fence(int assert, MPI_Win win)
     ug_win->is_self_locked = 1;
 #endif
 
-    /* Indicate epoch status, later operations will be redirected to active_win */
+    /* Indicate epoch status.
+     * Later operations will be redirected to active_win */
     ug_win->epoch_stat = CSP_WIN_EPOCH_FENCE;
 
   fn_exit:

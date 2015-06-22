@@ -116,6 +116,7 @@ int MPI_Win_complete(MPI_Win win)
     CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -141,6 +142,29 @@ int MPI_Win_complete(MPI_Win win)
 
     CSP_DBG_PRINT("Complete group 0x%x, size %d\n", ug_win->start_group, start_grp_size);
 
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * The current epoch must be pscw on all involved targets.*/
+    if (ug_win->epoch_stat != CSP_WIN_EPOCH_PER_TARGET) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "No opening per-target epoch in %s\n", __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+    else {
+        for (i = 0; i < start_grp_size; i++) {
+            int target_rank = ug_win->start_ranks_in_win_group[i];
+            if (ug_win->targets[target_rank].epoch_stat != CSP_TARGET_EPOCH_PSCW) {
+                CSP_ERR_PRINT("Wrong synchronization call! "
+                              "No opening PSCW epoch on target %d in %s\n", target_rank,
+                              __FUNCTION__);
+                mpi_errno = -1;
+                goto fn_fail;
+            }
+        }
+    }
+#endif
+
     mpi_errno = CSP_complete_flush(start_grp_size, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -151,10 +175,17 @@ int MPI_Win_complete(MPI_Win win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Indicate epoch status, later operations should not be redirected to active_win
-     * after the start counter decreases to 0 .*/
+    /* Reset per-target epoch status. */
+    for (i = 0; i < start_grp_size; i++) {
+        int target_rank = ug_win->start_ranks_in_win_group[i];
+        ug_win->targets[target_rank].epoch_stat = CSP_TARGET_NO_EPOCH;
+    }
+
+    /* Reset global epoch status. */
     ug_win->start_counter--;
-    if (ug_win->start_counter == 0) {
+    CSP_assert(ug_win->start_counter >= 0);
+    if (ug_win->start_counter == 0 && ug_win->lock_counter == 0) {
+        CSP_DBG_PRINT("all per-target epoch are cleared !\n");
         ug_win->epoch_stat = CSP_WIN_NO_EPOCH;
     }
 

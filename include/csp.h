@@ -14,6 +14,7 @@
 #include <casperconf.h>
 
 #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+#define CSP_ENABLE_EPOCH_STAT_CHECK
 
 /* #define CSP_ENABLE_LOCAL_LOCK_OPT */
 /* Optimization for local target.
@@ -157,10 +158,16 @@ typedef enum {
 } CSP_main_lock_stat;
 
 typedef enum {
+    CSP_TARGET_NO_EPOCH,
+    CSP_TARGET_EPOCH_LOCK,
+    CSP_TARGET_EPOCH_PSCW
+} CSP_target_epoch_stat;
+
+typedef enum {
     CSP_WIN_NO_EPOCH,
     CSP_WIN_EPOCH_FENCE,
-    CSP_WIN_EPOCH_LOCK,
-    CSP_WIN_EPOCH_PSCW
+    CSP_WIN_EPOCH_LOCK_ALL,
+    CSP_WIN_EPOCH_PER_TARGET,
 } CSP_win_epoch_stat;
 
 typedef enum {
@@ -234,6 +241,8 @@ typedef struct CSP_win_target {
     CSP_win_target_seg *segs;
     int num_segs;
 
+    CSP_target_epoch_stat epoch_stat;   /* indicate which access epoch is opened for the target. */
+
 } CSP_win_target;
 
 typedef struct CSP_win {
@@ -269,13 +278,13 @@ typedef struct CSP_win {
     int num_nodes;
     int node_id;
 
-    CSP_win_epoch_stat epoch_stat;      /* indicate which epoch is opened. thus operations
+    CSP_win_epoch_stat epoch_stat;      /* indicate which access epoch is opened. Thus operations
                                          * can send to the correct window. Note that only
-                                         * change from lock to NO_EPOCH when lock counter is
-                                         * equal to 0, otherwise the whole window is still in
-                                         * LOCK epoch */
+                                         * change from PER_TARGET to NO_EPOCH when both lock counter
+                                         * and start counter are equal to 0, otherwise should check
+                                         * per-target epoch status. */
     int lock_counter;
-    int lockall_counter;
+    int start_counter;
 
     MPI_Win active_win;
 
@@ -283,7 +292,6 @@ typedef struct CSP_win {
     MPI_Group post_group;
     int *start_ranks_in_win_group;
     int *post_ranks_in_win_group;
-    int start_counter;
 
     void *base;
     MPI_Win win;
@@ -504,30 +512,59 @@ static inline int CSP_win_grant_local_lock(int target_rank, CSP_win * ug_win)
     goto fn_exit;
 }
 
-extern const char *CSP_win_epoch_stat_name[4];  /* for debug */
+extern const char *CSP_target_epoch_stat_name[4];       /* for debug */
+extern const char *CSP_win_epoch_stat_name[4];
 
-#define CSP_get_epoch_local_win(ug_win, win_ptr) { \
-    switch (ug_win->epoch_stat) {   \
-        case CSP_WIN_EPOCH_FENCE:    \
-        case CSP_WIN_EPOCH_PSCW: \
-            win_ptr = &ug_win->active_win;   \
-            break;  \
-        default:    \
-            win_ptr = &ug_win->my_ug_win;   \
-            break;  \
+/* Get appropriate window for the target on the current epoch.
+ * The epoch status can be per-target (pscw, lock), or global (fence, lockall). */
+#define CSP_target_get_epoch_win(seg, target, ug_win, win_ptr) { \
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {    \
+        switch (target->epoch_stat) {   \
+            case CSP_TARGET_EPOCH_PSCW:    \
+                win_ptr = &ug_win->active_win;   \
+                break;  \
+            case CSP_TARGET_EPOCH_LOCK:    \
+                win_ptr = &target->segs[seg].ug_win;   \
+                break;  \
+            case CSP_TARGET_NO_EPOCH:   \
+                win_ptr = NULL; \
+                break;  \
+        }   \
+    } else {    \
+        switch (ug_win->epoch_stat) {   \
+            case CSP_WIN_EPOCH_FENCE:    \
+                win_ptr = &ug_win->active_win;   \
+                break;  \
+            case CSP_WIN_EPOCH_LOCK_ALL:    \
+                win_ptr = &target->segs[seg].ug_win;   \
+                break;  \
+            case CSP_WIN_NO_EPOCH:   \
+            case CSP_WIN_EPOCH_PER_TARGET: /* never go here */  \
+                win_ptr = NULL; \
+                break;  \
+        }   \
     }   \
 }
 
-#define CSP_get_epoch_win(target_rank, seg, ug_win, win_ptr) { \
-    switch (ug_win->epoch_stat) {   \
-        case CSP_WIN_EPOCH_FENCE:    \
-        case CSP_WIN_EPOCH_PSCW: \
-            win_ptr = &ug_win->active_win;   \
-            break;  \
-        default:    \
-            win_ptr = &ug_win->targets[target_rank].segs[seg].ug_win;   \
-            break;  \
+/* Check access epoch status per operation.*/
+#define CSP_target_check_epoch_per_op(target, ug_win) {   \
+    if (ug_win->epoch_stat == CSP_WIN_NO_EPOCH && target->epoch_stat == CSP_TARGET_NO_EPOCH) {  \
+        CSP_ERR_PRINT("Wrong synchronization call! "    \
+                "No opening epoch in %s\n", __FUNCTION__);  \
+        mpi_errno = -1; \
+        goto fn_fail;   \
     }   \
+}
+
+/* Return name of current epoch status (for debug).*/
+static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target * target, CSP_win * ug_win)
+{
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
+        return CSP_win_epoch_stat_name[ug_win->epoch_stat];
+    }
+    else {
+        return CSP_target_epoch_stat_name[target->epoch_stat];
+    }
 }
 
 extern int run_g_main(void);

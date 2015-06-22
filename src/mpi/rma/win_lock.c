@@ -35,6 +35,7 @@ static inline int CSP_win_lock_self_impl(CSP_win * ug_win)
 int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
     CSP_win *ug_win;
+    CSP_win_target *target;
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
     int k;
@@ -57,9 +58,32 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    target = &(ug_win->targets[target_rank]);
 
-    ug_win->targets[target_rank].remote_lock_assert = assert;
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * We do not require closed FENCE epoch, because we don't know whether
+     * the previous FENCE is closed or not.*/
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous LOCK_ALL epoch is still open in %s\n", __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+
+    /* Check per-target access epoch status. */
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET && target->epoch_stat != CSP_TARGET_NO_EPOCH) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous %s epoch on target %d is still open in %s\n",
+                      target->epoch_stat == CSP_TARGET_EPOCH_LOCK ? "LOCK" : "PSCW",
+                      target_rank, __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+#endif
+
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    target->remote_lock_assert = assert;
     CSP_DBG_PRINT("[%d]lock(%d), MPI_MODE_NOCHECK %d(assert %d)\n", user_rank,
                   target_rank, (assert & MPI_MODE_NOCHECK) != 0, assert);
 
@@ -71,8 +95,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
      * could lose performance and even lose asynchronous! */
 
     CSP_DBG_PRINT("[%d]lock_all(ug_win 0x%x), instead of target rank %d\n",
-                  user_rank, ug_win->targets[target_rank].ug_win, target_rank);
-    mpi_errno = PMPI_Win_lock_all(assert, ug_win->targets[target_rank].ug_win);
+                  user_rank, target->ug_win, target_rank);
+    mpi_errno = PMPI_Win_lock_all(assert, target->ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #else
@@ -80,14 +104,13 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
      * Note that a ghost may be used on any window of this process for runtime
      * load balancing whether it is binded to that segment or not. */
     for (k = 0; k < CSP_ENV.num_g; k++) {
-        int target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[k];
+        int target_g_rank_in_ug = target->g_ranks_in_ug[k];
 
         CSP_DBG_PRINT("[%d]lock(Ghost(%d), ug_wins 0x%x), instead of "
                       "target rank %d\n", user_rank, target_g_rank_in_ug,
-                      ug_win->targets[target_rank].ug_win, target_rank);
+                      target->ug_win, target_rank);
 
-        mpi_errno = PMPI_Win_lock(lock_type, target_g_rank_in_ug, assert,
-                                  ug_win->targets[target_rank].ug_win);
+        mpi_errno = PMPI_Win_lock(lock_type, target_g_rank_in_ug, assert, target->ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -107,7 +130,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          * 2. if user passed information that there is no concurrent epochs.
          */
         if (!ug_win->info_args.no_local_load_store &&
-            !(ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
+            !(target->remote_lock_assert & MPI_MODE_NOCHECK)) {
             mpi_errno = CSP_win_grant_local_lock(user_rank, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -119,8 +142,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
          * 1. Need grant lock on ghost in advance due to permission check,
          * OR
          * 2. there is no concurrent epochs, hence it is safe to get local lock.*/
-        if (is_local_lock_granted ||
-            (ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
+        if (is_local_lock_granted || (target->remote_lock_assert & MPI_MODE_NOCHECK)) {
             mpi_errno = CSP_win_lock_self_impl(ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -130,16 +152,17 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     int j;
-    for (j = 0; j < ug_win->targets[target_rank].num_segs; j++) {
-        ug_win->targets[target_rank].segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
+    for (j = 0; j < target->num_segs; j++) {
+        target->segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
         CSP_reset_target_opload(target_rank, ug_win);
     }
 #endif
 
 
-    /* Indicate epoch status, later operations will be redirected to ug_wins
-     * until lock/lockall counters decrease to 0 .*/
-    ug_win->epoch_stat = CSP_WIN_EPOCH_LOCK;
+    /* Indicate epoch status.
+     * later operations issued to the target will be redirected to ug_wins.*/
+    target->epoch_stat = CSP_TARGET_EPOCH_LOCK;
+    ug_win->epoch_stat = CSP_WIN_EPOCH_PER_TARGET;
     ug_win->lock_counter++;
 
     /* TODO: All the operations which we have not wrapped up will be failed, because they

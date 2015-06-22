@@ -124,6 +124,18 @@ int MPI_Win_flush_all(MPI_Win win)
     CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * The current epoch must be lock_all.*/
+    if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
+#endif
+
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 

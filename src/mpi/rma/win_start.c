@@ -92,6 +92,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -131,6 +132,38 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * We do not require closed FENCE epoch, because we don't know whether
+     * the previous FENCE is closed or not.*/
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous LOCK_ALL epoch is still open in %s\n", __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+
+    /* Check per-target access epoch status. */
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
+        int err = 0;
+        for (i = 0; i < start_grp_size; i++) {
+            int target_rank = ug_win->start_ranks_in_win_group[i];
+            if (ug_win->targets[target_rank].epoch_stat != CSP_TARGET_NO_EPOCH) {
+                CSP_ERR_PRINT("Wrong synchronization call! "
+                              "Previous %s epoch on target %d is still open in %s\n",
+                              ug_win->targets[target_rank].epoch_stat ==
+                              CSP_TARGET_EPOCH_LOCK ? "LOCK" : "PSCW", target_rank, __FUNCTION__);
+                err = 1;
+                break;
+            }
+        }
+        if (err) {
+            mpi_errno = -1;
+            goto fn_fail;
+        }
+    }
+#endif
+
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
         mpi_errno = CSP_wait_pscw_post_msg(start_grp_size, ug_win);
@@ -146,9 +179,13 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     ug_win->is_self_locked = 1;
 #endif
 
-    /* Indicate epoch status, later operations will be redirected to active_win
-     * until start counter decreases to 0 .*/
-    ug_win->epoch_stat = CSP_WIN_EPOCH_PSCW;
+    /* Indicate epoch status.
+     * Later operations will be redirected to active_win for these targets.*/
+    for (i = 0; i < start_grp_size; i++) {
+        int target_rank = ug_win->start_ranks_in_win_group[i];
+        ug_win->targets[target_rank].epoch_stat = CSP_TARGET_EPOCH_PSCW;
+    }
+    ug_win->epoch_stat = CSP_WIN_EPOCH_PER_TARGET;
     ug_win->start_counter++;
 
     CSP_DBG_PRINT("Start done\n");

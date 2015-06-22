@@ -13,13 +13,20 @@
 
 #include <ctype.h>
 
-const char *CSP_win_epoch_stat_name[4] = {
+/* String of CSP_target_epoch_stat enum (for debug). */
+const char *CSP_target_epoch_stat_name[4] = {
     "NO_EPOCH",
-    "FENCE",
     "LOCK",
     "PSCW"
 };
 
+/* String of CSP_win_epoch_stat enum (for debug). */
+const char *CSP_win_epoch_stat_name[4] = {
+    "NO_EPOCH",
+    "FENCE",
+    "LOCK_ALL",
+    "PER_TARGET"
+};
 
 static int read_win_info(MPI_Info info, CSP_win * ug_win)
 {
@@ -723,11 +730,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         mpi_errno = PMPI_Win_lock_all(MPI_MODE_NOCHECK, ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        ug_win->start_counter = 0;
     }
 
     /* Track epoch status for redirecting RMA to different window. */
     ug_win->epoch_stat = CSP_WIN_NO_EPOCH;
+    for (i = 0; i < user_nprocs; i++)
+        ug_win->targets->epoch_stat = CSP_TARGET_NO_EPOCH;
+
+    ug_win->start_counter = 0;
+    ug_win->lock_counter = 0;
 
     /* - Only expose user window in order to hide ghosts in all non-wrapped window functions */
     mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,

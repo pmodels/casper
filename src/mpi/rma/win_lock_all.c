@@ -134,6 +134,22 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
 
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * We do not require closed FENCE epoch, because we don't know whether
+     * the previous FENCE is closed or not.*/
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL
+        || ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous %s epoch is still open in %s\n",
+                      (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
+                      __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
+#endif
+
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
@@ -204,14 +220,9 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 #endif
 
-    /* Indicate epoch status, later operations will be redirected to ug_wins
-     * until lock/lockall counters decrease to 0 .*/
-    ug_win->epoch_stat = CSP_WIN_EPOCH_LOCK;
-    ug_win->lockall_counter++;
-
-    /* TODO: All the operations which we have not wrapped up will be failed, because they
-     * are issued to user window. We need wrap up all operations.
-     */
+    /* Indicate epoch status.
+     * Later operations will be redirected to single window.*/
+    ug_win->epoch_stat = CSP_WIN_EPOCH_LOCK_ALL;
 
   fn_exit:
     return mpi_errno;

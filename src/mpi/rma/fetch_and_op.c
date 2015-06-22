@@ -20,6 +20,9 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
     MPI_Aint ug_target_disp = 0;
     int seg_off = 0;
     MPI_Win seg_ug_win;
+    CSP_win_target *target = NULL;
+
+    target = &(ug_win->targets[target_rank]);
 
     /* TODO : Eliminate operation division for some special cases, see pptx */
     /* Fetch_and_op only allows predefined datatype. */
@@ -33,7 +36,7 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
     CSP_DBG_PRINT("CASPER Fetch_and_op to target %d, num_segs=%d\n", target_rank, num_segs);
 
     seg_off = decoded_ops[0].target_seg_off;
-    seg_ug_win = ug_win->targets[target_rank].segs[seg_off].ug_win;
+    seg_ug_win = target->segs[seg_off].ug_win;
 
     mpi_errno = CSP_target_get_ghost(target_rank, seg_off, 1, decoded_ops[0].target_dtsize,
                                      ug_win, &target_g_rank_in_ug, &target_g_offset);
@@ -43,8 +46,7 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
     /* Fetch_and_op only allows one predefined element which must be contained by
      * a single segment, thus we only need translate target displacement according to
      * its segment id. */
-    ug_target_disp = target_g_offset
-        + ug_win->targets[target_rank].disp_unit * decoded_ops[0].target_disp;
+    ug_target_disp = target_g_offset + target->disp_unit * decoded_ops[0].target_disp;
 
     mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype,
                                   target_g_rank_in_ug, ug_target_disp, op, seg_ug_win);
@@ -58,7 +60,7 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
                   target_g_rank_in_ug, seg_ug_win, target_rank, seg_off,
                   decoded_ops[0].origin_addr, decoded_ops[0].origin_count,
                   decoded_ops[0].origin_datatype, ug_target_disp, target_g_offset,
-                  ug_win->targets[target_rank].disp_unit, decoded_ops[0].target_disp,
+                  target->disp_unit, decoded_ops[0].target_disp,
                   decoded_ops[0].target_count, decoded_ops[0].target_datatype);
 
   fn_exit:
@@ -77,12 +79,18 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
+    CSP_win_target *target = NULL;
 
     /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
     PMPI_Comm_rank(ug_win->user_comm, &rank);
+    target = &(ug_win->targets[target_rank]);
+
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    CSP_target_check_epoch_per_op(target, ug_win);
+#endif
 
     /* Should not do local RMA in accumulate because of atomicity issue */
 
@@ -94,7 +102,8 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
      * operation, we still need call segmentation routine to get its the segment
      * number if target is divided to multiple segments. */
     if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
-        ug_win->targets[target_rank].num_segs > 1 && ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK) {
+        target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
+                                 target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
         mpi_errno = CSP_fetch_and_op_segment_impl(origin_addr, result_addr,
                                                   datatype, target_rank, target_disp, op, ug_win);
         if (mpi_errno != MPI_SUCCESS)
@@ -114,7 +123,7 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
         MPI_Aint target_g_offset = 0;
         MPI_Win *win_ptr = NULL;
 
-        CSP_get_epoch_win(target_rank, 0, ug_win, win_ptr);
+        CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
@@ -126,7 +135,7 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        ug_target_disp = target_g_offset + ug_win->targets[target_rank].disp_unit * target_disp;
+        ug_target_disp = target_g_offset + target->disp_unit * target_disp;
 
         /* Issue operation to the ghost process in corresponding ug-window of target process. */
         mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_g_rank_in_ug,
@@ -135,9 +144,8 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
         CSP_DBG_PRINT("CASPER Fetch_and_op to (ghost %d, win 0x%x [%s]) instead of "
                       "target %d, 0x%lx(0x%lx + %d * %ld)\n",
                       target_g_rank_in_ug, *win_ptr,
-                      CSP_win_epoch_stat_name[ug_win->epoch_stat],
-                      target_rank, ug_target_disp, target_g_offset,
-                      ug_win->targets[target_rank].disp_unit, target_disp);
+                      CSP_target_get_epoch_stat_name(target, ug_win),
+                      target_rank, ug_target_disp, target_g_offset, target->disp_unit, target_disp);
     }
 
   fn_exit:

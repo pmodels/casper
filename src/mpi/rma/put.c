@@ -15,9 +15,11 @@ static int CSP_put_shared_impl(const void *origin_addr, int origin_count,
                                int target_count, MPI_Datatype target_datatype, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Win *win_ptr = &ug_win->my_ug_win;
+    MPI_Win *win_ptr = NULL;
+    CSP_win_target *target = NULL;
 
-    CSP_get_epoch_local_win(ug_win, win_ptr);
+    target = &(ug_win->targets[target_rank]);
+    CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
 
     /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
@@ -40,6 +42,9 @@ static int CSP_put_segment_impl(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0, i;
     CSP_op_segment *decoded_ops = NULL;
+    CSP_win_target *target = NULL;
+
+    target = &(ug_win->targets[target_rank]);
 
     /* TODO : Eliminate operation division for some special cases, see pptx */
     mpi_errno = CSP_op_segments_decode(origin_addr, origin_count,
@@ -56,15 +61,14 @@ static int CSP_put_segment_impl(const void *origin_addr, int origin_count,
         MPI_Aint target_g_offset = 0;
         MPI_Aint ug_target_disp = 0;
         int seg_off = decoded_ops[i].target_seg_off;
-        MPI_Win seg_ug_win = ug_win->targets[target_rank].segs[seg_off].ug_win;
+        MPI_Win seg_ug_win = target->segs[seg_off].ug_win;
 
         mpi_errno = CSP_target_get_ghost(target_rank, seg_off, 0, decoded_ops[i].target_dtsize,
                                          ug_win, &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        ug_target_disp = target_g_offset
-            + ug_win->targets[target_rank].disp_unit * decoded_ops[i].target_disp;
+        ug_target_disp = target_g_offset + target->disp_unit * decoded_ops[i].target_disp;
 
         /* Issue operation to the ghost process in corresponding ug-window of target process. */
         mpi_errno = PMPI_Put(decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
@@ -82,7 +86,7 @@ static int CSP_put_segment_impl(const void *origin_addr, int origin_count,
                       target_g_rank_in_ug, seg_ug_win, target_rank, seg_off,
                       decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
                       decoded_ops[i].origin_datatype, ug_target_disp, target_g_offset,
-                      ug_win->targets[target_rank].disp_unit, decoded_ops[i].target_disp,
+                      target->disp_unit, decoded_ops[i].target_disp,
                       decoded_ops[i].target_count, decoded_ops[i].target_datatype);
     }
 
@@ -102,12 +106,19 @@ static int CSP_put_impl(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
+    CSP_win_target *target = NULL;
 
     /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
     PMPI_Comm_rank(ug_win->user_comm, &rank);
+    target = &(ug_win->targets[target_rank]);
+
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    CSP_target_check_epoch_per_op(target, ug_win);
+#endif
+
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
     if (target_rank == rank && ug_win->is_self_locked) {
         /* If target is itself, we do not need translate it to any Ghosts because
@@ -127,7 +138,8 @@ static int CSP_put_impl(const void *origin_addr, int origin_count,
          * 1. No lock issue.
          * 2. overhead of data range checking and division */
         if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
-            ug_win->targets[target_rank].num_segs > 1 && ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK) {
+            target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
+                                     target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
             mpi_errno = CSP_put_segment_impl(origin_addr, origin_count,
                                              origin_datatype, target_rank, target_disp,
                                              target_count, target_datatype, ug_win);
@@ -148,7 +160,7 @@ static int CSP_put_impl(const void *origin_addr, int origin_count,
             MPI_Aint target_g_offset = 0;
             MPI_Win *win_ptr = NULL;
 
-            CSP_get_epoch_win(target_rank, 0, ug_win, win_ptr);
+            CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
             if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
@@ -161,7 +173,7 @@ static int CSP_put_impl(const void *origin_addr, int origin_count,
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
-            ug_target_disp = target_g_offset + ug_win->targets[target_rank].disp_unit * target_disp;
+            ug_target_disp = target_g_offset + target->disp_unit * target_disp;
 
             /* Issue operation to the ghost process in corresponding ug-window of target process. */
             mpi_errno = PMPI_Put(origin_addr, origin_count, origin_datatype,
@@ -173,9 +185,9 @@ static int CSP_put_impl(const void *origin_addr, int origin_count,
             CSP_DBG_PRINT("CASPER Put to (ghost %d, win 0x%x [%s]) instead of "
                           "target %d, 0x%lx(0x%lx + %d * %ld)\n",
                           target_g_rank_in_ug, *win_ptr,
-                          CSP_win_epoch_stat_name[ug_win->epoch_stat],
+                          CSP_target_get_epoch_stat_name(target, ug_win),
                           target_rank, ug_target_disp, target_g_offset,
-                          ug_win->targets[target_rank].disp_unit, target_disp);
+                          target->disp_unit, target_disp);
         }
     }
   fn_exit:

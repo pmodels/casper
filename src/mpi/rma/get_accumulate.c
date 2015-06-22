@@ -18,12 +18,18 @@ static int CSP_get_accumulate_impl(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
+    CSP_win_target *target = NULL;
 
     /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
     PMPI_Comm_rank(ug_win->user_comm, &rank);
+    target = &(ug_win->targets[target_rank]);
+
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    CSP_target_check_epoch_per_op(target, ug_win);
+#endif
 
 #warning MPI_Get_accumulate is not implemented in segment-lock mode for now. \
 Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
@@ -44,7 +50,7 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
         MPI_Aint target_g_offset = 0;
         MPI_Win *win_ptr = NULL;
 
-        CSP_get_epoch_win(target_rank, 0, ug_win, win_ptr);
+        CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
@@ -56,7 +62,7 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        ug_target_disp = target_g_offset + ug_win->targets[target_rank].disp_unit * target_disp;
+        ug_target_disp = target_g_offset + target->disp_unit * target_disp;
 
         /* Issue operation to the ghost process in corresponding ug-window of target process. */
         mpi_errno = PMPI_Get_accumulate(origin_addr, origin_count, origin_datatype,
@@ -67,9 +73,8 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Get_accumulate.
         CSP_DBG_PRINT("CASPER Get_accumulate to (ghost %d, win 0x%x [%s]) instead of "
                       "target %d, 0x%lx(0x%lx + %d * %ld)\n",
                       target_g_rank_in_ug, *win_ptr,
-                      CSP_win_epoch_stat_name[ug_win->epoch_stat],
-                      target_rank, ug_target_disp, target_g_offset,
-                      ug_win->targets[target_rank].disp_unit, target_disp);
+                      CSP_target_get_epoch_stat_name(target, ug_win),
+                      target_rank, ug_target_disp, target_g_offset, target->disp_unit, target_disp);
     }
 
   fn_exit:
