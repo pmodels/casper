@@ -14,7 +14,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    /* Simply translate to manticore flush */
+    /* TODO: implement real flush_local_all */
     mpi_errno = MPI_Win_flush_all(win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;

@@ -19,6 +19,11 @@ libcasper_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/rma/accumulate.c \
                     src/mpi/rma/get_accumulate.c \
                     src/mpi/rma/fetch_and_op.c \
+                    src/mpi/rma/compare_and_swap.c \
+                    src/mpi/rma/rput.c \
+                    src/mpi/rma/rget.c \
+                    src/mpi/rma/raccumulate.c \
+                    src/mpi/rma/rget_accumulate.c \
                     src/mpi/rma/win_lock_all.c	\
                     src/mpi/rma/win_unlock_all.c	\
                     src/mpi/rma/win_lock.c	\

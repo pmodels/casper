@@ -165,10 +165,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     ug_win->epoch_stat = CSP_WIN_EPOCH_PER_TARGET;
     ug_win->lock_counter++;
 
-    /* TODO: All the operations which we have not wrapped up will be failed, because they
-     * are issued to user window. We need wrap up all operations.
-     */
-
   fn_exit:
     return mpi_errno;
 

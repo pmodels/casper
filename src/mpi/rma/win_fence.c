@@ -59,10 +59,6 @@ static int CSP_fence_flush_all(CSP_win * ug_win)
     }
 #endif
 
-    /* TODO: All the operations which we have not wrapped up will be failed, because they
-     * are issued to user window. We need wrap up all operations.
-     */
-
   fn_exit:
     return mpi_errno;
 
