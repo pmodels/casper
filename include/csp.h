@@ -14,7 +14,6 @@
 #include <casperconf.h>
 
 #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-#define CSP_ENABLE_EPOCH_STAT_CHECK
 
 /* #define CSP_ENABLE_LOCAL_LOCK_OPT */
 /* Optimization for local target.
@@ -82,6 +81,13 @@
 #define CSP_WARN_PRINT(str,...) {}
 #endif
 
+#define CSP_INFO_PRINT(level, str, ...) do { \
+    if (CSP_ENV.verbose > 0 && CSP_ENV.verbose >= level) { \
+        fprintf(stdout, str, ## __VA_ARGS__); \
+        fflush(stdout); \
+    }   \
+    } while (0)
+
 #define CSP_DBG_PRINT_FCNAME() CSP_DBG_PRINT("in %s\n", __FUNCTION__)
 #define CSP_ERR_PRINT(str,...) do { \
     fprintf(stderr, "[%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
@@ -147,6 +153,7 @@ typedef struct CSP_env_param {
     CSP_load_opt load_opt;      /* runtime load balancing options */
     CSP_load_lock load_lock;    /* how to grant locks for runtime load balancing */
     CSP_lock_binding lock_binding;      /* how to handle locks */
+    int verbose;                /* verbose level. print configuration information. */
 } CSP_env_param;
 
 

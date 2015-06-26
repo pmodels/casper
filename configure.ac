@@ -45,6 +45,26 @@ if test "$debug" = "yes"; then
    CFLAGS="$CFLAGS -g -O0"
 fi
 
+# Runtime load balancing optimization
+AC_ARG_ENABLE(runtime-load, AC_HELP_STRING([--enable-runtime-load],[Enable Runtime Load Balancing]),
+                 [ enable_runtime_load=$enableval ],
+                 [ enable_runtime_load=no ])
+AC_MSG_CHECKING(runtime Load balancing support)
+AC_MSG_RESULT($enable_runtime_load)
+if test "$enable_runtime_load" = "yes"; then
+   AC_DEFINE(CSP_ENABLE_RUNTIME_LOAD_OPT,1,[Define if enable runtime load balancing])
+fi
+
+# Epoch statuc check
+AC_ARG_ENABLE(epochstat-check, AC_HELP_STRING([--disable-epochstat-check],[Disable epoch status check for better performance]),
+                 [ enable_epochstat_check=$enableval ],
+                 [ enable_epochstat_check=yes ])
+AC_MSG_CHECKING(epoch status checking support)
+AC_MSG_RESULT($enable_epochstat_check)
+if test "$enable_epochstat_check" = "yes"; then
+   AC_DEFINE(CSP_ENABLE_EPOCH_STAT_CHECK,1,[Define if disable epoch status check])
+fi
+
 # Check for support for weak symbols.
 AC_ARG_ENABLE(weak-symbols, AC_HELP_STRING([--enable-weak-symbols],
                  [Use weak symbols to implement PMPI routines (default)]),,

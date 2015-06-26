@@ -36,7 +36,7 @@ static int CSP_win_mixed_flush_all_impl(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i, j;
+    int i;
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -59,6 +59,7 @@ static int CSP_win_mixed_flush_all_impl(CSP_win * ug_win)
     /* TODO: track op issuing, only flush the ghosts which receive ops. */
     for (i = 0; i < user_nprocs; i++) {
 #if !defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+        int j;
         /* RMA operations are only issued to the main ghost, so we only flush it. */
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             int main_g_off = ug_win->targets[i].segs[j].main_g_off;

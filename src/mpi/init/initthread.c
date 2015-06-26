@@ -64,6 +64,15 @@ static int CSP_initialize_env()
     }
     CSP_NUM_G = CSP_ENV.num_g;  /* expose to outside programs */
 
+    CSP_ENV.verbose = 0;
+    val = getenv("CSP_VERBOSE");
+    if (val && strlen(val)) {
+        /* VERBOSE level */
+        CSP_ENV.verbose = atoi(val);
+        if (CSP_ENV.verbose < 0)
+            CSP_ENV.verbose = 0;
+    }
+
     CSP_ENV.lock_binding = CSP_LOCK_BINDING_RANK;
     val = getenv("CSP_LOCK_METHOD");
     if (val && strlen(val)) {
@@ -118,10 +127,34 @@ static int CSP_initialize_env()
     CSP_ENV.load_lock = CSP_LOAD_LOCK_NATURE;
 #endif
 
-    CSP_DBG_PRINT("ENV: seg_size=%d, lock_binding=%d, load_lock=%d, load_opt=%d, "
-                  "num_g=%d\n", CSP_ENV.seg_size, CSP_ENV.lock_binding,
-                  CSP_ENV.load_lock, CSP_ENV.load_opt, CSP_ENV.num_g);
+    if (CSP_ENV.verbose && CSP_MY_RANK_IN_WORLD == 0) {
+        CSP_INFO_PRINT(1, "CASPER Configuration:  \n"
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+                       "    EPOCH_STAT_CHECK (enabled) \n"
+#endif
+#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+                       "    RUMTIME_LOAD_OPT (enabled) \n"
+#endif
+                       "    CSP_NG = %d \n"
+                       "    CSP_LOCK_METHOD = %s \n",
+                       CSP_ENV.num_g,
+                       (CSP_ENV.lock_binding == CSP_LOCK_BINDING_RANK) ? "rank" : "segment");
 
+        if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT) {
+            CSP_INFO_PRINT(1, "    CSP_SEG_SIZE = %d \n", CSP_ENV.seg_size);
+        }
+
+#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+        CSP_INFO_PRINT(1, "Runtime Load Balancing Options:  \n"
+                       "    CSP_RUMTIME_LOAD_OPT = %s \n"
+                       "    CSP_RUNTIME_LOAD_LOCK = %s \n",
+                       (CSP_ENV.load_opt == CSP_LOAD_OPT_RANDOM) ? "random" :
+                       ((CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) ? "op" : "byte"),
+                       (CSP_ENV.load_lock == CSP_LOAD_LOCK_NATURE) ? "nature" : "force");
+#endif
+        CSP_INFO_PRINT(1, "\n");
+        fflush(stdout);
+    }
     return mpi_errno;
 }
 
