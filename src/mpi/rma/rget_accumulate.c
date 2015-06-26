@@ -79,7 +79,8 @@ Please do not set CSP_LOCK_METHOD=segment when using MPI_Rget_accumulate.
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
-            PMPI_Type_size(datatype, &data_size);
+            PMPI_Type_size(origin_datatype, &data_size);
+            data_size *= origin_count;
         }
 #endif
         mpi_errno = CSP_target_get_ghost(target_rank, 0, 1, data_size, ug_win,
