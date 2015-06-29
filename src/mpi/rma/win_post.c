@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include "csp.h"
 
+/* Receive buffer for receiving complete-wait sync message.
+ * We don't need its value, so just use a global char variable to ensure
+ * receive buffer is always allocated.*/
+extern char wait_flg;
+
 static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -17,10 +22,14 @@ static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
     MPI_Status *stats = NULL;
     int remote_cnt = 0;
 
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     reqs = CSP_calloc(post_grp_size, sizeof(MPI_Request));
     stats = CSP_calloc(post_grp_size, sizeof(MPI_Status));
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+#ifdef CSP_ENABLE_EAGER_PSCW_SYNC
+    /* requests for cw-sync messages */
+    ug_win->wait_reqs = CSP_calloc(post_grp_size, sizeof(MPI_Request));
+#endif
 
     for (i = 0; i < post_grp_size; i++) {
         int origin_rank = ug_win->post_ranks_in_win_group[i];
@@ -38,6 +47,15 @@ static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
 
         /* Set post flag to true on the main ghost of post origin. */
         CSP_DBG_PRINT("send pscw post msg to origin %d \n", origin_rank);
+
+#ifdef CSP_ENABLE_EAGER_PSCW_SYNC
+        /* Eager receive for complete sync. Later wait/test on these requests. */
+        mpi_errno = PMPI_Irecv(&wait_flg, 1, MPI_CHAR, origin_rank,
+                               CSP_PSCW_CW_TAG, ug_win->user_comm,
+                               &(ug_win->wait_reqs[remote_cnt]));
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+#endif
     }
 
     /* Has to blocking wait here to poll progress. */
@@ -53,6 +71,11 @@ static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
     return mpi_errno;
 
   fn_fail:
+#ifdef CSP_ENABLE_EAGER_PSCW_SYNC
+    if (ug_win->wait_reqs)
+        free(ug_win->wait_reqs);
+    ug_win->wait_reqs = NULL;
+#endif
     goto fn_exit;
 }
 
