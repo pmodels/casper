@@ -327,6 +327,9 @@ typedef struct CSP_win {
     unsigned long *g_bytes_counts;      /* byte = g_ops_bytes[g_rank_in_ug] */
 #endif
 
+    /* constant flavor attribute to override real flavor when user queries. */
+    MPIR_Win_flavor_t create_flavor;
+
 } CSP_win;
 
 typedef struct CSP_func_info {

@@ -748,6 +748,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     CSP_DBG_PRINT("[%d] Created window 0x%x\n", user_rank, ug_win->win);
 
+    ug_win->create_flavor = MPI_WIN_FLAVOR_ALLOCATE;
     *win = ug_win->win;
     *base_pp = ug_win->base;
 
