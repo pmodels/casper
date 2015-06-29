@@ -46,7 +46,7 @@ int run_g_main(void)
             break;
 
         default:
-            CSPG_DBG_PRINT(" FUNC %d not supported\n", FUNC);
+            CSPG_DBG_PRINT(" FUNC %d not supported\n", (int) FUNC);
             break;
         }
     }

@@ -360,9 +360,9 @@ extern int UG_WIN_HANDLE_KEY;
 }
 
 #define CSP_fetch_ug_win_from_cache(win, ug_win) { \
-    int flag = 0;   \
-    mpi_errno = PMPI_Win_get_attr(win, UG_WIN_HANDLE_KEY, &ug_win, &flag);   \
-    if (!flag || mpi_errno != MPI_SUCCESS){  \
+    int fetch_ug_win_flag = 0;   \
+    mpi_errno = PMPI_Win_get_attr(win, UG_WIN_HANDLE_KEY, &ug_win, &fetch_ug_win_flag);   \
+    if (!fetch_ug_win_flag || mpi_errno != MPI_SUCCESS){  \
         CSP_DBG_PRINT("Cannot fetch ug_win from win 0x%x\n", win);   \
         ug_win = NULL; \
     }   \
@@ -746,6 +746,10 @@ extern void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr);
 
 extern int CSP_win_bind_ghosts(CSP_win * ug_win);
 
+/* Receive buffer for receiving complete-wait sync message.
+ * We don't need its value, so just use a global char variable to ensure
+ * receive buffer is always allocated.*/
+extern char wait_flg;
 extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking, int *flag);
 
 #endif /* CSP_H_ */

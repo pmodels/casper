@@ -47,7 +47,7 @@ int CSPG_func_start(CSP_func * FUNC, int *user_local_root, int *user_nprocs, int
     *user_local_root = g_info.user_root_in_local;
 
     CSPG_DBG_PRINT(" all ghosts started for Func %d, user nprocs %d, local_nprocs %d,"
-                   "user_local_root %d\n", *FUNC, *user_nprocs, *user_local_nprocs,
+                   "user_local_root %d\n", (int) (*FUNC), *user_nprocs, *user_local_nprocs,
                    *user_local_root);
 
     return mpi_errno;

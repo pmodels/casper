@@ -8,11 +8,6 @@
 #include <stdlib.h>
 #include "csp.h"
 
-/* Receive buffer for receiving complete-wait sync message.
- * We don't need its value, so just use a global char variable to ensure
- * receive buffer is always allocated.*/
-extern char wait_flg;
-
 static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;

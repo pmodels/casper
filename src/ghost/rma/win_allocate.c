@@ -300,7 +300,8 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
         CSPG_DBG_PRINT("   shared base[%d]=%p, addr 0x%lx, offset 0x%lx"
                        ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
                        win->user_base_addrs_in_local[dst],
-                       (unsigned long) (user_bases[dst] - win->base), r_size, r_disp_unit);
+                       (unsigned long) ((char *) user_bases[dst] - (char *) win->base), r_size,
+                       r_disp_unit);
 
         size += r_size; /* size in byte */
     }
