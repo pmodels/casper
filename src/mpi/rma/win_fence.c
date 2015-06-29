@@ -96,6 +96,15 @@ int MPI_Win_fence(int assert, MPI_Win win)
         goto fn_fail;
     }
     CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
+
+    /* Check exposure epoch status.
+     * The current epoch can be none or FENCE.*/
+    if (ug_win->exp_epoch_stat == CSP_WIN_EXP_EPOCH_PSCW) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
 #endif
 
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
@@ -133,6 +142,9 @@ int MPI_Win_fence(int assert, MPI_Win win)
     /* Indicate epoch status.
      * Later operations will be redirected to active_win */
     ug_win->epoch_stat = CSP_WIN_EPOCH_FENCE;
+
+    /* Indicate exposure epoch status. */
+    ug_win->exp_epoch_stat = CSP_WIN_EXP_EPOCH_FENCE;
 
   fn_exit:
     return mpi_errno;

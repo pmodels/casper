@@ -101,6 +101,19 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 
     CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
 
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check exposure epoch status.
+     * The current epoch can be none or FENCE.
+     * We do not require closed FENCE epoch, because we don't know whether
+     * the previous FENCE is closed or not.*/
+    if (ug_win->exp_epoch_stat == CSP_WIN_EXP_EPOCH_PSCW) {
+        CSP_ERR_PRINT("Wrong synchronization call! "
+                      "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
+        mpi_errno = -1;
+        goto fn_fail;
+    }
+#endif
+
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
         CSP_DBG_PRINT("Post empty group\n");
@@ -141,6 +154,9 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     mpi_errno = PMPI_Win_sync(ug_win->active_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+
+    /* Indicate exposure epoch status. */
+    ug_win->exp_epoch_stat = CSP_WIN_EXP_EPOCH_PSCW;
 
     CSP_DBG_PRINT("Post done\n");
 

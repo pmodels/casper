@@ -174,8 +174,14 @@ typedef enum {
     CSP_WIN_NO_EPOCH,
     CSP_WIN_EPOCH_FENCE,
     CSP_WIN_EPOCH_LOCK_ALL,
-    CSP_WIN_EPOCH_PER_TARGET,
+    CSP_WIN_EPOCH_PER_TARGET
 } CSP_win_epoch_stat;
+
+typedef enum {
+    CSP_WIN_NO_EXP_EPOCH,
+    CSP_WIN_EXP_EPOCH_FENCE,
+    CSP_WIN_EXP_EPOCH_PSCW
+} CSP_win_exp_epoch_stat;
 
 typedef enum {
     CSP_FUNC_NULL,
@@ -290,6 +296,8 @@ typedef struct CSP_win {
                                          * change from PER_TARGET to NO_EPOCH when both lock counter
                                          * and start counter are equal to 0, otherwise should check
                                          * per-target epoch status. */
+    CSP_win_exp_epoch_stat exp_epoch_stat;      /* indicate which exposure epoch is opened.
+                                                 * For now only post-wait/test uses it to avoid duplicate receive.*/
     int lock_counter;
     int start_counter;
 
@@ -299,6 +307,7 @@ typedef struct CSP_win {
     MPI_Group post_group;
     int *start_ranks_in_win_group;
     int *post_ranks_in_win_group;
+    MPI_Request *wait_reqs;     /* requests for receiving complete-wait synchronization messages. */
 
     void *base;
     MPI_Win win;
@@ -733,5 +742,7 @@ extern int CSP_op_segments_decode_basic_datatype(const void *origin_addr, int or
 extern void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr);
 
 extern int CSP_win_bind_ghosts(CSP_win * ug_win);
+
+extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking, int *flag);
 
 #endif /* CSP_H_ */

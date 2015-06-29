@@ -157,11 +157,13 @@ int MPI_Win_free(MPI_Win * win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* free PSCW array in case use does not call complete/wait. */
+    /* free PSCW arrays in case use does not call complete/wait. */
     if (ug_win->start_ranks_in_win_group)
         free(ug_win->start_ranks_in_win_group);
     if (ug_win->post_ranks_in_win_group)
         free(ug_win->post_ranks_in_win_group);
+    if (ug_win->wait_reqs)
+        free(ug_win->wait_reqs);
 
     /* ug_win->user_comm is created by user, will be freed by user. */
 
