@@ -578,10 +578,10 @@ extern const char *CSP_win_epoch_stat_name[4];
 static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target * target, CSP_win * ug_win)
 {
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
-        return CSP_win_epoch_stat_name[ug_win->epoch_stat];
+        return CSP_target_epoch_stat_name[target->epoch_stat];
     }
     else {
-        return CSP_target_epoch_stat_name[target->epoch_stat];
+        return CSP_win_epoch_stat_name[ug_win->epoch_stat];
     }
 }
 
