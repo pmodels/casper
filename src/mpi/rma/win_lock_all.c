@@ -7,30 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-static inline int CSP_win_lock_self_impl(CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    /* lockall already locked window for local target */
-#else
-    int user_rank;
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-    CSP_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
-                  ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-
-    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->my_rank_in_ug_comm,
-                              MPI_MODE_NOCHECK, ug_win->my_ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-#endif
-
-    ug_win->is_self_locked = 1;
-    return mpi_errno;
-}
-#endif
+#include "csp_rma_local.h"
 
 static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
 {
@@ -74,7 +51,8 @@ static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
     }
 #endif
 
-    is_local_lock_granted = 0;
+    ug_win->is_self_locked = 0;
+
     if (!ug_win->info_args.no_local_load_store &&
         !(ug_win->targets[user_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
         /* We need grant the local lock (self-target) before return.
@@ -89,22 +67,15 @@ static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
         mpi_errno = CSP_win_grant_local_lock(user_rank, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-
-        is_local_lock_granted = 1;
     }
 
-    ug_win->is_self_locked = 0;
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    /* Lock local rank so that operations can be executed through local target.
-     * 1. Need grant lock on ghost in advance due to permission check,
-     * OR
-     * 2. there is no concurrent epochs, hence it is safe to get local lock.*/
-    if (is_local_lock_granted || (ug_win->targets[user_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
+    /* Lock local rank for memory consistency on local load/store operations.
+     * If user passed no_local_load_store, this step can be skipped.*/
+    if (!ug_win->info_args.no_local_load_store) {
         mpi_errno = CSP_win_lock_self_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-#endif
 
   fn_exit:
     return mpi_errno;

@@ -271,7 +271,6 @@ typedef struct CSP_win {
     int num_g_ranks_in_ug;      /* number of unique ghost ranks */
     int *g_ranks_in_ug;         /* unique ghost ranks in world, used in lockall only epoches. */
     int my_rank_in_ug_comm;     /* remember my rank in internal ug_comm for local RMA. Specified in win_allocate. */
-    MPI_Win my_ug_win;          /* Do not free the window, it is referred from another window. Specified in win_allocate. */
     unsigned short is_self_locked;
 
     /* communicator including all the user processes and ghosts */

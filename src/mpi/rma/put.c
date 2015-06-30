@@ -121,10 +121,10 @@ static int CSP_put_impl(const void *origin_addr, int origin_count,
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
     if (target_rank == rank && ug_win->is_self_locked) {
-        /* If target is itself, we do not need translate it to any Ghosts because
+        /* If target is itself, we do not need translate it to any ghosts because
          * win_lock(self) will force lock(ghost) to be granted so that it is safe
-         * to send operations to the real target.
-         */
+         * to send operations to the real target. For active modes, local redirection
+         * is always allowed, since we do lock_all on global window at win allocate time. */
         mpi_errno = CSP_put_shared_impl(origin_addr, origin_count,
                                         origin_datatype, target_rank, target_disp, target_count,
                                         target_datatype, ug_win);

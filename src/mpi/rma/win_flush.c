@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
+#include "csp_rma_local.h"
+
 
 int MPI_Win_flush(int target_rank, MPI_Win win)
 {
@@ -49,16 +51,12 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    if (user_rank == target_rank && ug_win->is_self_locked) {
-
-        /* If target is itself, also flush the target on local window.
-         * Local window is referred from another internal window in win_allocate.
-         * Note that global windows still need to be flushed because atomicity required
-         * operations (i.e., ACC and FOP) are still sent through global window.
-         */
-        CSP_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
-                      ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-        mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
+    if (user_rank == target_rank) {
+        /* If LOCAL_LOCK_OPT is enabled, PUT/GET may be issued to local
+         * target. Thus we need flush the local target as well.
+         * Note that ACC operations are always issued to main ghost,
+         * since atomicity and ordering issue. */
+        mpi_errno = CSP_win_flush_self_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

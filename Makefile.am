@@ -3,7 +3,8 @@
 #
 
 ACLOCAL_AMFLAGS = -I confdb
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include 
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
+AM_CPPFLAGS += -I$(top_srcdir)/src/mpi/include
 
 lib_LTLIBRARIES = libcasper.la
 

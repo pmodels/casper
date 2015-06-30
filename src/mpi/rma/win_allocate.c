@@ -501,9 +501,6 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
         }
     }
 
-    /* Setup window for local target */
-    ug_win->my_ug_win = ug_win->targets[user_rank].segs[0].ug_win;
-
   fn_exit:
     return mpi_errno;
 

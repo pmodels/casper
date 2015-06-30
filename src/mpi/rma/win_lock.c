@@ -7,30 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-static inline int CSP_win_lock_self_impl(CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank;
-
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    /* lockall already locked window for local target */
-#else
-    CSP_DBG_PRINT("[%d]lock self(%d, local win 0x%x)\n", user_rank,
-                  ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->my_rank_in_ug_comm,
-                              MPI_MODE_NOCHECK, ug_win->my_ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-#endif
-
-    ug_win->is_self_locked = 1;
-    return mpi_errno;
-}
-#endif
+#include "csp_rma_local.h"
 
 int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 {
@@ -39,7 +16,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
     int k;
-    int is_local_lock_granted ATTRIBUTE((unused));
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -119,7 +95,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     ug_win->is_self_locked = 0;
 
     if (user_rank == target_rank) {
-        is_local_lock_granted = 0;
 
         /* If target is itself, we need grant this lock before return.
          * However, the actual locked processes are the Ghosts whose locks may be delayed by
@@ -134,20 +109,15 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
             mpi_errno = CSP_win_grant_local_lock(user_rank, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
-            is_local_lock_granted = 1;
         }
 
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-        /* Lock local rank so that operations can be executed through local target.
-         * 1. Need grant lock on ghost in advance due to permission check,
-         * OR
-         * 2. there is no concurrent epochs, hence it is safe to get local lock.*/
-        if (is_local_lock_granted || (target->remote_lock_assert & MPI_MODE_NOCHECK)) {
+        /* Lock local rank for memory consistency on local load/store operations.
+         * If user passed no_local_load_store, this step can be skipped.*/
+        if (!ug_win->info_args.no_local_load_store) {
             mpi_errno = CSP_win_lock_self_impl(ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-#endif
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)

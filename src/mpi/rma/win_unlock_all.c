@@ -7,33 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-static inline int CSP_win_unlock_self_impl(CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    /* unlockall already released window for local target */
-#else
-    int user_rank;
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-
-    if (ug_win->is_self_locked) {
-        /* We need also release the lock of local rank */
-
-        CSP_DBG_PRINT("[%d]unlock self(%d, local win 0x%x)\n", user_rank,
-                      ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-        mpi_errno = PMPI_Win_unlock(ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
-    }
-#endif
-
-    ug_win->is_self_locked = 0;
-    return mpi_errno;
-}
-#endif
+#include "csp_rma_local.h"
 
 static int CSP_win_mixed_unlock_all_impl(CSP_win * ug_win)
 {
@@ -71,11 +45,11 @@ static int CSP_win_mixed_unlock_all_impl(CSP_win * ug_win)
     }
 #endif
 
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    mpi_errno = CSP_win_unlock_self_impl(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#endif
+    if (ug_win->is_self_locked) {
+        mpi_errno = CSP_win_unlock_self_impl(ug_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
 
   fn_exit:
     return mpi_errno;

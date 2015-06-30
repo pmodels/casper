@@ -7,30 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-static inline int CSP_win_flush_self_impl(CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    /* flush_all already flushed local target */
-#else
-    int user_rank;
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-
-    if (ug_win->is_self_locked) {
-        /* Flush local window for local communication (self-target). */
-        CSP_DBG_PRINT("[%d]flush self(%d, local win 0x%x)\n", user_rank,
-                      ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-        mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, ug_win->my_ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
-    }
-#endif
-    return mpi_errno;
-}
-#endif
+#include "csp_rma_local.h"
 
 static int CSP_win_mixed_flush_all_impl(CSP_win * ug_win)
 {
@@ -90,12 +67,6 @@ static int CSP_win_mixed_flush_all_impl(CSP_win * ug_win)
 #endif /*end of CSP_ENABLE_RUNTIME_LOAD_OPT */
     }
 #endif /*end of CSP_ENABLE_SYNC_ALL_OPT */
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    mpi_errno = CSP_win_flush_self_impl(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#endif
 
   fn_exit:
     return mpi_errno;
@@ -162,13 +133,6 @@ int MPI_Win_flush_all(MPI_Win win)
                 goto fn_fail;
         }
 #endif
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-        mpi_errno = CSP_win_flush_self_impl(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-#endif
-
     }
     else {
 
@@ -177,6 +141,16 @@ int MPI_Win_flush_all(MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
+
+#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
+    /* If LOCAL_LOCK_OPT is enabled, PUT/GET may be issued to local
+     * target. Thus we need flush the local target as well.
+     * Note that ACC operations are always issued to main ghost,
+     * since atomicity and ordering issue. */
+    mpi_errno = CSP_win_flush_self_impl(ug_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+#endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     int j;
