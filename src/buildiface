@@ -184,38 +184,27 @@ while (<INFILE>) {
                     print CFILE "$argbits[$#argbits] x$x";
                 }
             }
-
-            if ($comm_arg eq -1 && grep/MPI_Comm/, $arglist[$x]) {
-                $comm_arg = $x;
-            }
         }
         print CFILE ")\n{\n";
 
-        if ($comm_arg >= 0) {
-            print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n${tab}${tab}return P$routine(";
-            for ($x = 0; $x <= $#arglist; $x++) {
-                if ($x == $comm_arg) {
-                    print CFILE "CSP_COMM_USER_WORLD";
-                }
-                else {
-                    print CFILE "x$x";
-                }
-                if ($x == $#arglist) {
-                    print CFILE ");\n";
-                }
-                else {
-                    print CFILE ", ";
-                }
+        # check and replace each comm input argument (no *)
+        for ($x = 0; $x <= $#arglist; $x++) {
+            if (grep/MPI_Comm $/, $arglist[$x]) {
+                $comm_arg = $x;
+
+                print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n";
+                print CFILE "${tab}${tab}x$comm_arg = CSP_COMM_USER_WORLD;\n"
             }
-            print CFILE "${tab}else\n${tab}${tab}return P$routine(";
-            for ($x = 0; $x <= $#arglist; $x++) {
-                print CFILE "x$x";
-                if ($x == $#arglist) {
-                    print CFILE ");\n";
-                }
-                else {
-                    print CFILE ", ";
-                }
+        }
+
+        print CFILE "${tab}return P$routine(";
+        for ($x = 0; $x <= $#arglist; $x++) {
+            print CFILE "x$x";
+            if ($x == $#arglist) {
+                print CFILE ");\n";
+            }
+            else {
+                print CFILE ", ";
             }
         }
 
