@@ -126,7 +126,7 @@ while (<INFILE>) {
 
     # skip MPIX_ routines
     if (!($routine =~ /MPI_/)) {
-	next;
+        next;
     }
 
     @arglist = split(/,/, $args);
@@ -179,44 +179,44 @@ while (<INFILE>) {
             if (defined($argbits[$#argbits]) && $argbits[$#argbits] =~ /\[\]/) {
                 print CFILE "x$x\[\]";
             }
-            else { 
-		if (defined($argbits[$#argbits])) {
-                	print CFILE "$argbits[$#argbits] x$x";
-		}
+            else {
+                if (defined($argbits[$#argbits])) {
+                    print CFILE "$argbits[$#argbits] x$x";
+                }
             }
 
-	    if ($comm_arg eq -1 && grep/MPI_Comm/, $arglist[$x]) {
-		$comm_arg = $x;
-	    }
+            if ($comm_arg eq -1 && grep/MPI_Comm/, $arglist[$x]) {
+                $comm_arg = $x;
+            }
         }
         print CFILE ")\n{\n";
 
-	if ($comm_arg >= 0) {
-	    print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n${tab}${tab}return P$routine(";
-	    for ($x = 0; $x <= $#arglist; $x++) {
-		if ($x == $comm_arg) {
-		    print CFILE "CSP_COMM_USER_WORLD";
-		}
-		else {
-		    print CFILE "x$x";
-		}
-		if ($x == $#arglist) {
-		    print CFILE ");\n";
-		}
-		else {
-		    print CFILE ", ";
-		}
-	    }
-	    print CFILE "${tab}else\n${tab}${tab}return P$routine(";
-	    for ($x = 0; $x <= $#arglist; $x++) {
-		print CFILE "x$x";
-		if ($x == $#arglist) {
-		    print CFILE ");\n";
-		}
-		else {
-		    print CFILE ", ";
-		}
-	    }
+        if ($comm_arg >= 0) {
+            print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n${tab}${tab}return P$routine(";
+            for ($x = 0; $x <= $#arglist; $x++) {
+                if ($x == $comm_arg) {
+                    print CFILE "CSP_COMM_USER_WORLD";
+                }
+                else {
+                    print CFILE "x$x";
+                }
+                if ($x == $#arglist) {
+                    print CFILE ");\n";
+                }
+                else {
+                    print CFILE ", ";
+                }
+            }
+            print CFILE "${tab}else\n${tab}${tab}return P$routine(";
+            for ($x = 0; $x <= $#arglist; $x++) {
+                print CFILE "x$x";
+                if ($x == $#arglist) {
+                    print CFILE ");\n";
+                }
+                else {
+                    print CFILE ", ";
+                }
+            }
         }
 
         print CFILE "}\n";
