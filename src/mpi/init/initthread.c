@@ -235,6 +235,11 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    /* Set name for user comm_world.  */
+    mpi_errno = PMPI_Comm_set_name(CSP_COMM_USER_WORLD, "MPI_COMM_WORLD");
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
     PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank);
     PMPI_Comm_group(CSP_COMM_USER_WORLD, &CSP_GROUP_USER_WORLD);
