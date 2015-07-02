@@ -119,6 +119,8 @@ while (<INFILE>) {
         || ($routine eq "MPI_Comm_spawn")
         || ($routine eq "MPI_Comm_spawn_multiple")
         || ($routine eq "MPI_DUP_FN")
+        || ($routine eq "MPI_Errhandler_set")
+        || ($routine eq "MPI_Comm_set_errhandler")
         ) {
         $fullline = "";
         next;

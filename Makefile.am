@@ -47,6 +47,8 @@ libcasper_la_SOURCES = src/mpi_wrap.c	\
                     src/mpi/init/init.c \
                     src/mpi/init/initthread.c \
                     src/mpi/init/finalize.c \
+                    src/mpi/errhan/comm_set_errhandler.c \
+                    src/mpi/errhan/errhandler_set.c \
                     src/ghost/func.c \
                     src/ghost/main.c \
                     src/ghost/mpi/finalize.c \
