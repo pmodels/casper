@@ -90,8 +90,22 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
                   ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
                   ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "lock" : ""),
                   ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "pscw" : ""),
-                  ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "fence" : "")
-);
+                  ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "fence" : ""));
+
+    if (CSP_ENV.verbose) {
+        int user_rank = -1;
+        PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+        if (user_rank == 0) {
+            CSP_INFO_PRINT(2, "CASPER Window:  \n"
+                           "    no_local_load_store = %s\n"
+                           "    epoch_type = %s%s%s%s\n\n",
+                           (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
+                           ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                           ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "|lock" : ""),
+                           ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "|pscw" : ""),
+                           ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "|fence" : ""));
+        }
+    }
 
   fn_exit:
     return mpi_errno;
