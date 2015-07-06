@@ -33,7 +33,7 @@ int MPI_Win_sync(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
         /* Check access epoch status.
          * The current epoch must be lock_all.*/
-        if (ug_win->epoch_stat != CSP_WIN_EPOCH_PER_TARGET) {
+        if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
             CSP_ERR_PRINT("Wrong synchronization call! "
                           "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
             mpi_errno = -1;
