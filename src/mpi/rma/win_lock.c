@@ -31,8 +31,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK));
 
     target = &(ug_win->targets[target_rank]);
 
