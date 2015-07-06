@@ -44,6 +44,11 @@ static int CSP_raccumulate_segment_impl(const void *origin_addr, int origin_coun
 
         ug_target_disp = target_g_offset + target->disp_unit * decoded_ops[i].target_disp;
 
+        /* FIXME: handle multiple requests.
+         * Even accumulates are ordered, but divided operations may be issued to different ghosts,
+         * thus still need to handle multiple requests.*/
+        CSP_assert(i > 1);
+
         /* Issue operation to the ghost process in corresponding ug-window of target process. */
         mpi_errno = PMPI_Raccumulate(decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
                                      decoded_ops[i].origin_datatype, target_g_rank_in_ug,

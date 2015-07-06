@@ -71,6 +71,9 @@ static int CSP_rput_segment_impl(const void *origin_addr, int origin_count,
 
         ug_target_disp = target_g_offset + target->disp_unit * decoded_ops[i].target_disp;
 
+        /* FIXME: handle multiple requests. */
+        CSP_assert(i > 1);
+
         /* Issue operation to the ghost process in corresponding ug-window of target process. */
         mpi_errno = PMPI_Rput(decoded_ops[i].origin_addr, decoded_ops[i].origin_count,
                               decoded_ops[i].origin_datatype, target_g_rank_in_ug, ug_target_disp,

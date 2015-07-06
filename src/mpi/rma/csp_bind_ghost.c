@@ -64,10 +64,11 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
             assigned_size += ug_win->targets[t_rank].size;
 
             /* next target */
-            if (i >= n_targets) {
+            i++;
+            if (i >= n_targets)
                 break;
-            }
-            t_rank = local_targets[++i];
+
+            t_rank = local_targets[i];
             t_size = ug_win->targets[t_rank].size;
             t_num_segs = 0;
         }

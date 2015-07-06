@@ -56,12 +56,16 @@ static int CSP_rget_accumulate_impl(const void *origin_addr, int origin_count,
     CSP_target_check_epoch_per_op(target, ug_win);
 #endif
 
-#warning MPI_Rget_accumulate is not implemented in segment-lock mode for now. \
-Please do not set CSP_LOCK_METHOD=segment when using MPI_Rget_accumulate.
-
     /* Should not do local RMA in accumulate because of atomicity issue */
     /* TODO: Implement get_acc for segmentation */
-    {
+    if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
+        target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
+                                 target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
+        CSP_ERR_PRINT("Segment-binding does not support Rget_accumulate operation for now\n");
+        mpi_errno = MPI_ERR_OTHER;
+        goto fn_fail;
+    }
+    else {
         /* Translation for intra/inter-node operations.
          *
          * We do not use force flush + shared window for optimizing operations to local targets.
