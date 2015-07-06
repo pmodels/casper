@@ -90,13 +90,13 @@
 
 #define CSP_DBG_PRINT_FCNAME() CSP_DBG_PRINT("in %s\n", __FUNCTION__)
 #define CSP_ERR_PRINT(str,...) do { \
-    fprintf(stderr, "[%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stderr, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 
 #define CSP_assert(EXPR) do { if (unlikely(!(EXPR))){ \
-            CSP_ERR_PRINT("[CSP][N-%d, %d]  assert fail in [%s:%d]: \"%s\"\n", \
-                    CSP_MY_NODE_ID, CSP_MY_RANK_IN_WORLD, __FILE__, __LINE__, #EXPR); \
+            CSP_ERR_PRINT("  assert fail in [%s:%d]: \"%s\"\n", \
+                          __FILE__, __LINE__, #EXPR); \
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
 

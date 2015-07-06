@@ -15,17 +15,20 @@
 /* #define CSPG_DEBUG */
 #ifdef CSPG_DEBUG
 #define CSPG_DBG_PRINT(str, ...) do { \
-    fprintf(stdout, "[CSP-H][N-%d]"str, CSP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
+    fprintf(stdout, "[CSPG][N-%d]"str, CSP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
     } while (0)
 #else
 #define CSPG_DBG_PRINT(str, ...) {}
 #endif
 
-#define CSPG_ERR_PRINT(str...) do {fprintf(stderr, str);fflush(stdout);} while (0)
+#define CSPG_ERR_PRINT(str,...) do { \
+    fprintf(stderr, "[CSPG][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fflush(stdout); \
+    } while (0)
 
 #define CSPG_assert(EXPR) do { if (unlikely(!(EXPR))){ \
-            CSPG_ERR_PRINT("[CSP-H][N-%d, %d]  assert fail in [%s:%d]: \"%s\"\n", \
-                    CSP_MY_NODE_ID, CSP_MY_RANK_IN_WORLD, __FILE__, __LINE__, #EXPR); \
+            CSPG_ERR_PRINT("  assert fail in [%s:%d]: \"%s\"\n", \
+                           __FILE__, __LINE__, #EXPR); \
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
 
