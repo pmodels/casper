@@ -211,6 +211,7 @@ struct CSP_win_info_args {
     unsigned short no_local_load_store;
     int epoch_type;
     CSP_async_config async_config;
+    char win_name[MPI_MAX_OBJECT_NAME + 1];
 };
 
 typedef struct CSP_op_segment {

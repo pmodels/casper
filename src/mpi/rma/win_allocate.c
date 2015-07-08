@@ -99,6 +99,19 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
             if (user_epoch_type != 0)
                 ug_win->info_args.epoch_type = user_epoch_type;
         }
+
+        /* Check if user sets window name.
+         * It is not passed to MPI, only for casper debug use). For the name
+         * user wants to pass to MPI, should call MPI_Win_set_name instead. */
+        memset(ug_win->info_args.win_name, 0, sizeof(ug_win->info_args.win_name));
+        memset(info_value, 0, sizeof(info_value));
+        mpi_errno = PMPI_Info_get(info, "win_name", MPI_MAX_INFO_VAL, info_value, &info_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        if (info_flag == 1) {
+            strncpy(ug_win->info_args.win_name, info_value, MPI_MAX_OBJECT_NAME);
+        }
     }
 
     CSP_DBG_PRINT("no_local_load_store %d, epoch_type=%s|%s|%s|%s\n",
@@ -112,10 +125,11 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
         int user_rank = -1;
         PMPI_Comm_rank(ug_win->user_comm, &user_rank);
         if (user_rank == 0) {
-            CSP_INFO_PRINT(2, "CASPER Window:  \n"
+            CSP_INFO_PRINT(2, "CASPER Window: %s \n"
                            "    no_local_load_store = %s\n"
                            "    epoch_type = %s%s%s%s\n"
                            "    async_config = %s\n\n",
+                           ug_win->info_args.win_name,
                            (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
                            ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
                            ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "|lock" : ""),
