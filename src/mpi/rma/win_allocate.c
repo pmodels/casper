@@ -437,6 +437,7 @@ static int gather_base_offsets(CSP_win * ug_win)
     int i, j;
     int user_local_rank, user_local_nprocs, user_rank, user_nprocs;
     MPI_Aint *base_g_offsets;
+    MPI_Aint root_g_size = 0;
 
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs);
@@ -450,29 +451,27 @@ static int gather_base_offsets(CSP_win * ug_win)
     ug_win->grant_lock_g_offset = 0;
 #endif
 
-    /* -Calculate the offset of local shared buffer and wait_counter.
-     * All wait_counters are on ghost 0.  */
+    /* Calculate the window size of ghost 0, because it contains extra space
+     * for sync. */
+    root_g_size = CSP_GP_SHARED_SG_SIZE;
+#ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+    root_g_size = max(root_g_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
+#endif
+
+    /* Calculate my offset on the local shared buffer.
+     * Note that all the ghosts start the window from baseptr of ghost 0,
+     * hence all the local ghosts use the same offset of user buffers.
+     * My offset is the total window size of all ghosts and all users in front of
+     * me on the node (loop world ranks to get its window size without rank translate).*/
+    tmp_u_offsets = root_g_size + CSP_GP_SHARED_SG_SIZE * (CSP_ENV.num_g - 1);
+
     i = 0;
-    tmp_u_offsets = 0;
     while (i < user_rank) {
         if (ug_win->targets[i].node_id == ug_win->node_id) {
             tmp_u_offsets += ug_win->targets[i].size;   /* size in bytes */
         }
         i++;
     }
-
-    /* Note that all the ghosts start the window from baseptr of ghost 0.
-     * Hence all the local ghosts use the same offset of user buffers */
-
-    /* Calculate the window size of ghost 0, because it contains extra space
-     * for sync. */
-    int root_g_size = CSP_GP_SHARED_SG_SIZE;
-#ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    root_g_size = max(root_g_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
-#endif
-
-    tmp_u_offsets += root_g_size;
-    tmp_u_offsets += CSP_GP_SHARED_SG_SIZE * (CSP_ENV.num_g - 1);
 
     for (j = 0; j < CSP_ENV.num_g; j++) {
         base_g_offsets[user_rank * CSP_ENV.num_g + j] = tmp_u_offsets;

@@ -222,7 +222,7 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
     int ug_nprocs, ug_rank;
     CSPG_win *win;
     void **user_bases = NULL;
-    int csp_buf_size = CSP_GP_SHARED_SG_SIZE;
+    MPI_Aint csp_buf_size = CSP_GP_SHARED_SG_SIZE;
     MPI_Info user_info = MPI_INFO_NULL;
     MPI_Info shared_info = MPI_INFO_NULL;
 
@@ -254,11 +254,12 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
 
     /* Allocate a shared window with local USER processes */
 
+    /* -Calculate the window size of ghost 0, because it contains extra space
+     *  for sync. */
     if (local_ug_rank == 0) {
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
         csp_buf_size = max(csp_buf_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
 #endif
-        csp_buf_size = max(csp_buf_size, sizeof(int) * user_nprocs);
     }
 
     /* -Always set alloc_shm to true, same_size to false for the shared internal window.
