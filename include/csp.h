@@ -13,7 +13,7 @@
 #include <mpi.h>
 #include <casperconf.h>
 
-#define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
+/* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 
 /* #define CSP_ENABLE_LOCAL_LOCK_OPT */
 /* Optimization for local target.
@@ -32,7 +32,7 @@
 
 /*FIXME: It is a workaround for shared window overlapping problem
  * when shared segment size of each ghost is 0 */
-#define CSP_GP_SHARED_SG_SIZE 4096
+#define CSP_GP_SHARED_SG_SIZE 0
 
 /* Options for lock permission controlling among multiple ghosts.
  *
