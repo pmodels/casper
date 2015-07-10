@@ -310,8 +310,8 @@ static int run_test3(int nop)
 
             /* source may start next start before this lock */
 
-            /* check result */
-            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
+            /* check result (need lockall here, because we set epoch_used info.) */
+            MPI_Win_lock_all(0, win);
             if (winbuf[0] != sum_result) {
                 fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf, iter %d\n", rank, 0,
                         winbuf[0], sum_result, x);
@@ -331,8 +331,9 @@ static int run_test3(int nop)
             for (i = 0; i < 2; i++) {
                 winbuf[i] = 0.0;
             }
-            MPI_Win_unlock(rank, win);
+            MPI_Win_unlock_all(win);
 
+            /* notify source to start the next epoch. */
             MPI_Barrier(MPI_COMM_WORLD);
         }
     }
