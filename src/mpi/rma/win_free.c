@@ -8,12 +8,165 @@
 #include <stdlib.h>
 #include "csp.h"
 
+/**
+ * Release all window internal resources maintained by CASPER.
+ */
+int CSP_win_release(CSP_win * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i;
+    int user_nprocs;
+
+    if (ug_win == NULL)
+        goto fn_exit;
+
+    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+
+    /* Free windows. */
+
+    /* Free ug_win before local_ug_win, because all the incoming operations
+     * should be done before free shared buffers.
+     *
+     * We do not need additional barrier in CASPER for waiting all
+     * operations complete, because Win_free already internally add a barrier
+     * for waiting operations on that window complete. */
+    if (ug_win->num_ug_wins > 0 && ug_win->ug_wins) {
+        CSP_DBG_PRINT("\t free ug windows\n");
+        for (i = 0; i < ug_win->num_ug_wins; i++) {
+            if (ug_win->ug_wins[i] && ug_win->ug_wins[i] != MPI_WIN_NULL) {
+                mpi_errno = PMPI_Win_free(&ug_win->ug_wins[i]);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
+            }
+        }
+    }
+
+    if (ug_win->active_win && ug_win->active_win != MPI_WIN_NULL) {
+        CSP_DBG_PRINT("\t free active window\n");
+        mpi_errno = PMPI_Win_free(&ug_win->active_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->win && ug_win->win != MPI_WIN_NULL) {
+        CSP_DBG_PRINT("\t free user window\n");
+        mpi_errno = PMPI_Win_free(&ug_win->win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->local_ug_win && ug_win->local_ug_win != MPI_WIN_NULL) {
+        CSP_DBG_PRINT("\t free shared window\n");
+        mpi_errno = PMPI_Win_free(&ug_win->local_ug_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    /* Free communicators.
+     * ug_win->user_comm is created by user, will be freed by user. */
+
+    if (ug_win->ur_g_comm && ug_win->ur_g_comm != MPI_COMM_NULL) {
+        CSP_DBG_PRINT("\t free user root + ghosts communicator\n");
+        mpi_errno = PMPI_Comm_free(&ug_win->ur_g_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->local_ug_comm && ug_win->local_ug_comm != MPI_COMM_NULL
+        && ug_win->local_ug_comm != CSP_COMM_LOCAL) {
+        CSP_DBG_PRINT("\t free shared communicator\n");
+        mpi_errno = PMPI_Comm_free(&ug_win->local_ug_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->ug_comm && ug_win->ug_comm != MPI_COMM_NULL && ug_win->ug_comm != MPI_COMM_WORLD) {
+        CSP_DBG_PRINT("\t free ug communicator\n");
+        mpi_errno = PMPI_Comm_free(&ug_win->ug_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->local_user_comm && ug_win->local_user_comm != MPI_COMM_NULL
+        && ug_win->local_user_comm != CSP_COMM_USER_LOCAL) {
+        CSP_DBG_PRINT("\t free local USER communicator\n");
+        mpi_errno = PMPI_Comm_free(&ug_win->local_user_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->user_root_comm && ug_win->user_root_comm != MPI_COMM_NULL
+        && ug_win->user_root_comm != CSP_COMM_UR_WORLD) {
+        CSP_DBG_PRINT("\t free ur communicator\n");
+        mpi_errno = PMPI_Comm_free(&ug_win->user_root_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    /* Free groups. */
+
+    if (ug_win->local_ug_group && ug_win->local_ug_group != MPI_GROUP_NULL) {
+        mpi_errno = PMPI_Group_free(&ug_win->local_ug_group);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->ug_group && ug_win->ug_group != MPI_GROUP_NULL) {
+        mpi_errno = PMPI_Group_free(&ug_win->ug_group);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    if (ug_win->user_group && ug_win->user_group != MPI_GROUP_NULL) {
+        mpi_errno = PMPI_Group_free(&ug_win->user_group);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    /* Free allocations. */
+
+#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+    if (ug_win->g_ops_counts)
+        free(ug_win->g_ops_counts);
+    if (ug_win->g_bytes_counts)
+        free(ug_win->g_bytes_counts);
+#endif
+
+    if (ug_win->targets) {
+        for (i = 0; i < user_nprocs; i++) {
+            if (ug_win->targets[i].base_g_offsets)
+                free(ug_win->targets[i].base_g_offsets);
+            if (ug_win->targets[i].g_ranks_in_ug)
+                free(ug_win->targets[i].g_ranks_in_ug);
+            if (ug_win->targets[i].segs)
+                free(ug_win->targets[i].segs);
+        }
+        free(ug_win->targets);
+    }
+    if (ug_win->g_ranks_in_ug)
+        free(ug_win->g_ranks_in_ug);
+    if (ug_win->g_win_handles)
+        free(ug_win->g_win_handles);
+    if (ug_win->ug_wins)
+        free(ug_win->ug_wins);
+
+    free(ug_win);
+
+    CSP_DBG_PRINT("Freed CASPER window\n");
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 int MPI_Win_free(MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_win *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
-    int i, j;
+    int j;
     MPI_Request *reqs = NULL;
     MPI_Status *stats = NULL;
 
@@ -66,98 +219,10 @@ int MPI_Win_free(MPI_Win * win)
             goto fn_fail;
     }
 
-    /* Free ug_win before local_ug_win, because all the incoming operations
-     * should be done before free shared buffers.
-     *
-     * We do not need additional barrier in CASPER for waiting all
-     * operations complete, because Win_free already internally add a barrier
-     * for waiting operations on that window complete.
-     */
-    if (ug_win->num_ug_wins > 0 && ug_win->ug_wins) {
-        CSP_DBG_PRINT("\t free ug windows\n");
-        for (i = 0; i < ug_win->num_ug_wins; i++) {
-            if (ug_win->ug_wins[i]) {
-                mpi_errno = PMPI_Win_free(&ug_win->ug_wins[i]);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
-            }
-        }
-    }
-
-    if (ug_win->active_win) {
-        CSP_DBG_PRINT("\t free active window\n");
-        mpi_errno = PMPI_Win_free(&ug_win->active_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->local_ug_win) {
-        CSP_DBG_PRINT("\t free shared window\n");
-        mpi_errno = PMPI_Win_free(&ug_win->local_ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->user_group != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&ug_win->user_group);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->ur_g_comm && ug_win->ur_g_comm != MPI_COMM_NULL) {
-        CSP_DBG_PRINT("\t free user root + ghosts communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->ur_g_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->local_ug_comm && ug_win->local_ug_comm != CSP_COMM_LOCAL) {
-        CSP_DBG_PRINT("\t free shared communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->local_ug_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-    if (ug_win->local_ug_group != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&ug_win->local_ug_group);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->ug_comm != MPI_COMM_NULL && ug_win->ug_comm != MPI_COMM_WORLD) {
-        CSP_DBG_PRINT("\t free ug communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->ug_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-    if (ug_win->ug_group != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&ug_win->ug_group);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->local_user_comm && ug_win->local_user_comm != CSP_COMM_USER_LOCAL) {
-        CSP_DBG_PRINT("\t free local USER communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->local_user_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    if (ug_win->user_root_comm && ug_win->user_root_comm != CSP_COMM_UR_WORLD) {
-        CSP_DBG_PRINT("\t free ur communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->user_root_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
     CSP_DBG_PRINT("\t free window cache\n");
     CSP_remove_ug_win_from_cache(*win);
 
-    CSP_DBG_PRINT("\t free user window\n");
-    mpi_errno = PMPI_Win_free(win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* free PSCW arrays in case use does not call complete/wait. */
+    /* Free PSCW arrays in case use does not call complete/wait. */
     if (ug_win->start_ranks_in_win_group)
         free(ug_win->start_ranks_in_win_group);
     if (ug_win->post_ranks_in_win_group)
@@ -165,36 +230,8 @@ int MPI_Win_free(MPI_Win * win)
     if (ug_win->wait_reqs)
         free(ug_win->wait_reqs);
 
-    /* ug_win->user_comm is created by user, will be freed by user. */
-
-#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    if (ug_win->g_ops_counts)
-        free(ug_win->g_ops_counts);
-    if (ug_win->g_bytes_counts)
-        free(ug_win->g_bytes_counts);
-#endif
-
-    if (ug_win->targets) {
-        for (i = 0; i < user_nprocs; i++) {
-            if (ug_win->targets[i].base_g_offsets)
-                free(ug_win->targets[i].base_g_offsets);
-            if (ug_win->targets[i].g_ranks_in_ug)
-                free(ug_win->targets[i].g_ranks_in_ug);
-            if (ug_win->targets[i].segs)
-                free(ug_win->targets[i].segs);
-        }
-        free(ug_win->targets);
-    }
-    if (ug_win->g_ranks_in_ug)
-        free(ug_win->g_ranks_in_ug);
-    if (ug_win->g_win_handles)
-        free(ug_win->g_win_handles);
-    if (ug_win->ug_wins)
-        free(ug_win->ug_wins);
-
-    free(ug_win);
-
-    CSP_DBG_PRINT("Freed CASPER window 0x%x\n", *win);
+    /* Free all window resources. */
+    mpi_errno = CSP_win_release(ug_win);
 
   fn_exit:
     if (reqs)
@@ -204,6 +241,5 @@ int MPI_Win_free(MPI_Win * win)
     return mpi_errno;
 
   fn_fail:
-
     goto fn_exit;
 }

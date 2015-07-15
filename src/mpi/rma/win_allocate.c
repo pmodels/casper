@@ -560,7 +560,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int mpi_errno = MPI_SUCCESS;
     int ug_rank, ug_nprocs, user_nprocs, user_rank, user_world_rank, world_rank,
         user_local_rank, user_local_nprocs, ug_local_rank, ug_local_nprocs;
-    CSP_win *ug_win;
+    CSP_win *ug_win = NULL;
     int i;
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
@@ -583,12 +583,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         ug_win->user_comm = user_comm;
     }
     else {
+        ug_win->user_comm = user_comm;
         mpi_errno = PMPI_Comm_split_type(user_comm, MPI_COMM_TYPE_SHARED, 0,
                                          MPI_INFO_NULL, &ug_win->local_user_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-
-        ug_win->user_comm = user_comm;
 
         /* Create a user root communicator in order to figure out node_id and
          * num_nodes of this user communicator */
@@ -832,10 +831,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     return mpi_errno;
 
   fn_noasync:
-    if (ug_win->local_user_comm && ug_win->local_user_comm != CSP_COMM_USER_LOCAL)
-        PMPI_Comm_free(&ug_win->local_user_comm);
-    if (ug_win->user_root_comm && ug_win->user_root_comm != CSP_COMM_UR_WORLD)
-        free(ug_win);
+    CSP_win_release(ug_win);
     goto fn_exit;
 
   fn_fail:
@@ -843,65 +839,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     /* Caching is the last possible error, so we do not need remove
      * cache here. */
 
-    if (ug_win->local_ug_win)
-        PMPI_Win_free(&ug_win->local_ug_win);
-    if (ug_win->win)
-        PMPI_Win_free(&ug_win->win);
-    if (ug_win->active_win)
-        PMPI_Win_free(&ug_win->active_win);
-    if (ug_win->num_ug_wins > 0 && ug_win->ug_wins) {
-        for (i = 0; i < ug_win->num_ug_wins; i++) {
-            if (ug_win->ug_wins)
-                PMPI_Win_free(&ug_win->ug_wins[i]);
-        }
-    }
-
-    if (ug_win->ur_g_comm && ug_win->ur_g_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&ug_win->ur_g_comm);
-    if (ug_win->local_ug_comm && ug_win->local_ug_comm != CSP_COMM_LOCAL)
-        PMPI_Comm_free(&ug_win->local_ug_comm);
-    if (ug_win->ug_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&ug_win->ug_comm);
-    if (ug_win->ug_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&ug_win->ug_group);
-    if (ug_win->local_user_comm && ug_win->local_user_comm != CSP_COMM_USER_LOCAL)
-        PMPI_Comm_free(&ug_win->local_user_comm);
-    if (ug_win->user_root_comm && ug_win->user_root_comm != CSP_COMM_UR_WORLD)
-        PMPI_Comm_free(&ug_win->user_root_comm);
-
-    if (ug_win->local_ug_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&ug_win->local_ug_group);
-    if (ug_win->ug_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&ug_win->ug_group);
-    if (ug_win->user_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&ug_win->user_group);
-
-#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    if (ug_win->g_ops_counts)
-        free(ug_win->g_ops_counts);
-    if (ug_win->g_bytes_counts)
-        free(ug_win->g_bytes_counts);
-#endif
-
-    if (ug_win->targets) {
-        for (i = 0; i < user_nprocs; i++) {
-            if (ug_win->targets[i].base_g_offsets)
-                free(ug_win->targets[i].base_g_offsets);
-            if (ug_win->targets[i].g_ranks_in_ug)
-                free(ug_win->targets[i].g_ranks_in_ug);
-            if (ug_win->targets[i].segs)
-                free(ug_win->targets[i].segs);
-        }
-        free(ug_win->targets);
-    }
-    if (ug_win->g_ranks_in_ug)
-        free(ug_win->g_ranks_in_ug);
-    if (ug_win->g_win_handles)
-        free(ug_win->g_win_handles);
-    if (ug_win->ug_wins)
-        free(ug_win->ug_wins);
-    if (ug_win)
-        free(ug_win);
+    CSP_win_release(ug_win);
 
     *win = MPI_WIN_NULL;
     *base_pp = NULL;

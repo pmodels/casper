@@ -759,4 +759,6 @@ extern int CSP_win_bind_ghosts(CSP_win * ug_win);
 extern char wait_flg;
 extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking, int *flag);
 
+extern int CSP_win_release(CSP_win * ug_win);
+
 #endif /* CSP_H_ */
