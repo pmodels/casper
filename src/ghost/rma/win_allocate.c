@@ -285,7 +285,7 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
                                          win->local_ug_comm, &win->base, &win->local_ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSPG_DBG_PRINT(" Created local_ug_win, base=%p, size=%d\n", win->base, csp_buf_size);
+    CSPG_DBG_PRINT(" Created local_ug_win, base=%p, size=%ld\n", win->base, csp_buf_size);
 
     /* -Query address of user buffers and send to USER processes */
     user_bases = CSP_calloc(local_ug_nprocs, sizeof(void *));
