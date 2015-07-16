@@ -8,19 +8,22 @@ AC_CONFIG_AUX_DIR(confdb)
 AC_CONFIG_MACRO_DIR(confdb)
 AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability-recursive silent-rules foreign 1.12.3 subdir-objects])
 
+# Bug in libtool adds -O2 and -g by default
+PAC_PUSH_FLAG([CFLAGS])
 AC_PROG_CC(mpicc)
 AM_PROG_CC_C_O
+PAC_POP_FLAG([CFLAGS])
 
 AM_PROG_AR
 
 LT_PREREQ([2.2.6])
 
+AC_CONFIG_HEADER([include/casperconf.h])
+
 # Bug in libtool adds -O2 and -g by default
 PAC_PUSH_FLAG([CFLAGS])
 LT_INIT()
 PAC_POP_FLAG([CFLAGS])
-
-AC_CONFIG_HEADER([include/casperconf.h])
 
 # Checks for libraries.
 
@@ -30,20 +33,18 @@ AC_CHECK_HEADERS([stdlib.h])
 # Non-verbose make
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
+# Set default value for CFLAGS if user does not specify
+if test -z "$CFLAGS"; then
+   CFLAGS=-O2
+fi
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_RESTRICT
 AC_C_INLINE
 
-# Check for debugging support
-AC_ARG_ENABLE(g, AC_HELP_STRING([--enable-g],[Enable Debugging]),
-                 [ debug=$enableval ],
-                 [ debug=no ])
-AC_MSG_CHECKING(debugging support)
-AC_MSG_RESULT($debug)
-if test "$debug" = "yes"; then
-   CFLAGS="$CFLAGS -g -O0"
-fi
+# Check for enabling strict
+PAC_ARG_STRICT
 
 # Runtime load balancing optimization
 AC_ARG_ENABLE(runtime-load, AC_HELP_STRING([--enable-runtime-load],[Enable Runtime Load Balancing]),
@@ -103,9 +104,17 @@ pac_cv_gnu_attr_format=yes,pac_cv_gnu_attr_format=no)])
     fi
 fi
 
-if test "$enable_shared" = "yes"; then
-   CFLAGS="$CFLAGS -fPIC"
+# check for compiler support for the __typeof() extension
+AC_CACHE_CHECK([whether the compiler supports __typeof(variable)],
+               [pac_cv_have___typeof],
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[double foo = 0.0; __typeof(foo) bar = 1.0;]])],
+                  [pac_cv_have___typeof=yes],
+                  [pac_cv_have___typeof=no])]
+)
+if test "$pac_cv_have___typeof" = "yes" ; then
+    AC_DEFINE([HAVE___TYPEOF],[1],[defined if the C compiler supports __typeof(variable)])
 fi
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([test/perf/Makefile])

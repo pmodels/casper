@@ -62,6 +62,22 @@
 #  define likely(x_)   (x_)
 #endif
 
+#if !defined typeof
+#ifdef HAVE___TYPEOF
+#define typeof(x_) __typeof(x_)
+#else
+#define typeof(x_) char*
+#endif
+#endif /* typeof */
+
+#if !defined ATTRIBUTE
+#if defined HAVE_GCC_ATTRIBUTE
+#define ATTRIBUTE(a_) __attribute__(a_)
+#else
+#define ATTRIBUTE(a_)
+#endif
+#endif /* ATTRIBUTE */
+
 #ifdef DEBUG
 #define CSP_DBG_PRINT(str,...) do { \
     fprintf(stdout, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
@@ -118,14 +134,6 @@
 #ifndef align
 #define align(val, align) (((val) + (align) - 1) & ~((align) - 1))
 #endif
-
-#if !defined ATTRIBUTE
-#if defined HAVE_GCC_ATTRIBUTE
-#define ATTRIBUTE(a_) __attribute__(a_)
-#else
-#define ATTRIBUTE(a_)
-#endif
-#endif /* ATTRIBUTE */
 
 typedef enum {
     CSP_LOAD_OPT_STATIC,
