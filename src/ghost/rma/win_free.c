@@ -39,7 +39,7 @@ int CSPG_win_free(int user_local_root)
     }
 
     /* Release CASPER resources if there is a corresponding CASPER-window */
-    if (win > 0) {
+    if (win != NULL) {
 
         /* Free ug_win before local_ug_win, because all the incoming operations
          * should be done before free shared buffers.
