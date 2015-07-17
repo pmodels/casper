@@ -27,9 +27,9 @@
 #define NPROCS_M 16
 
 #ifdef DEBUG
-#define debug_printf(str...) {fprintf(stdout, str);fflush(stdout);}
+#define debug_printf(str,...) {fprintf(stdout, str, ## __VA_ARGS__);fflush(stdout);}
 #else
-#define debug_printf(str...) {}
+#define debug_printf(str,...) {}
 #endif
 
 double *winbuf = NULL;

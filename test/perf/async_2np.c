@@ -21,9 +21,9 @@
 #define ITER 10000
 
 #ifdef DEBUG
-#define debug_printf(str...) {fprintf(stdout, str);fflush(stdout);}
+#define debug_printf(str,...) {fprintf(stdout, str, ## __VA_ARGS__);fflush(stdout);}
 #else
-#define debug_printf(str...) {}
+#define debug_printf(str,...) {}
 #endif
 
 #ifdef ENABLE_CSP

@@ -30,11 +30,10 @@ int ITER = 10;
 double max_result = 0.0;
 double sum_result = 0.0;
 
-#undef DEBUG
 #ifdef DEBUG
-#define debug_printf(str...) {fprintf(stdout, str);fflush(stdout);}
+#define debug_printf(str,...) {fprintf(stdout, str, ## __VA_ARGS__);fflush(stdout);}
 #else
-#define debug_printf(str...) {}
+#define debug_printf(str,...) {}
 #endif
 
 static int run_test(int nop)
