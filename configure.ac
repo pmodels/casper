@@ -25,8 +25,6 @@ PAC_PUSH_FLAG([CFLAGS])
 LT_INIT()
 PAC_POP_FLAG([CFLAGS])
 
-# Checks for libraries.
-
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])
 
