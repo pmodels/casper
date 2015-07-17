@@ -33,11 +33,6 @@ AC_CHECK_HEADERS([stdlib.h])
 # Non-verbose make
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-# Set default value for CFLAGS if user does not specify
-if test -z "$CFLAGS"; then
-   CFLAGS=-O2
-fi
-
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_RESTRICT
