@@ -53,7 +53,7 @@ int MPI_Win_sync(MPI_Win win)
      * that are involved in opened lock epoch.*/
     else if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
         CSP_win_target *target = NULL;
-        int synced ATTRIBUTE((unused)) = 0;
+        int synced CSP_ATTRIBUTE((unused)) = 0;
         PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
         for (i = 0; i < user_nprocs; i++) {

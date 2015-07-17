@@ -54,29 +54,45 @@
  *      But it is more fine-grained than Rank binding.
  * */
 
+/* Generic MACROs.
+ * ====================================================================== */
+
+#ifndef CSP_unlikely
 #ifdef HAVE_BUILTIN_EXPECT
-#  define unlikely(x_) __builtin_expect(!!(x_),0)
-#  define likely(x_)   __builtin_expect(!!(x_),1)
+#  define CSP_unlikely(x_) __builtin_expect(!!(x_),0)
 #else
-#  define unlikely(x_) (x_)
-#  define likely(x_)   (x_)
+#  define CSP_unlikely(x_) (x_)
+#endif
+#endif /* CSP_unlikely */
+
+#ifndef CSP_ATTRIBUTE
+#ifdef HAVE_GCC_ATTRIBUTE
+#define CSP_ATTRIBUTE(a_) __attribute__(a_)
+#else
+#define CSP_ATTRIBUTE(a_)
+#endif
+#endif /* CSP_ATTRIBUTE */
+
+/* Note that, it is recommended to only pass single variables to the following MACROs.
+ * Because these input arguments may be executed twice, thus it is risky to use
+ * functions if it updates a global state. */
+#ifndef CSP_max
+#define CSP_max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
-#if !defined typeof
-#ifdef HAVE___TYPEOF
-#define typeof(x_) __typeof(x_)
-#else
-#define typeof(x_) char*
+#ifndef CSP_min
+#define CSP_min(a,b) ((a) < (b) ? (a) : (b))
 #endif
-#endif /* typeof */
 
-#if !defined ATTRIBUTE
-#if defined HAVE_GCC_ATTRIBUTE
-#define ATTRIBUTE(a_) __attribute__(a_)
-#else
-#define ATTRIBUTE(a_)
+#ifndef CSP_align
+#define CSP_align(val, align) (((val) + (align) - 1) & ~((align) - 1))
 #endif
-#endif /* ATTRIBUTE */
+
+/* ====================================================================== */
+
+
+/* Casper debugging/info/warning/error MACROs.
+ * ====================================================================== */
 
 #ifdef DEBUG
 #define CSP_DBG_PRINT(str,...) do { \
@@ -110,30 +126,14 @@
     fflush(stdout); \
     } while (0)
 
-#define CSP_assert(EXPR) do { if (unlikely(!(EXPR))){ \
+#define CSP_assert(EXPR) do { if (CSP_unlikely(!(EXPR))){ \
             CSP_ERR_PRINT("  assert fail in [%s:%d]: \"%s\"\n", \
                           __FILE__, __LINE__, #EXPR); \
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
 
+/* ====================================================================== */
 
-#ifndef max
-#define max(a,b) \
-    ({ typeof (a) _a = (a); \
-       typeof (b) _b = (b); \
-       _a > _b ? _a : _b; })
-#endif
-
-#ifndef min
-#define min(a,b) \
-    ({ typeof (a) _a = (a); \
-       typeof (b) _b = (b); \
-       _a < _b ? _a : _b; })
-#endif
-
-#ifndef align
-#define align(val, align) (((val) + (align) - 1) & ~((align) - 1))
-#endif
 
 typedef enum {
     CSP_LOAD_OPT_STATIC,
@@ -730,8 +730,8 @@ static inline int CSP_target_get_ghost(int target_rank, int target_seg_off,
 /**
  * Get ghost that is statically bound with the target.
  */
-static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int is_order_required ATTRIBUTE((unused)),  /* arguments used only in dynamic load */
-                                       int size ATTRIBUTE((unused)), CSP_win * ug_win,
+static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int is_order_required CSP_ATTRIBUTE((unused)),      /* arguments used only in dynamic load */
+                                       int size CSP_ATTRIBUTE((unused)), CSP_win * ug_win,
                                        int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;

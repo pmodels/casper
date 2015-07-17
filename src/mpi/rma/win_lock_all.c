@@ -14,7 +14,7 @@ static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
     int i, k;
-    int is_local_lock_granted ATTRIBUTE((unused));
+    int is_local_lock_granted CSP_ATTRIBUTE((unused));
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);

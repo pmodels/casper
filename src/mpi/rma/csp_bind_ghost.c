@@ -14,6 +14,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint seg_size, t_size, sum_size, size_per_ghost, assigned_size, max_t_size;
+    MPI_Aint tmp_size_per_ghost;
     int t_num_segs, t_last_g_off, max_t_num_seg;
     int i, j, g_off, t_rank, user_nprocs;
     MPI_Aint *t_seg_sizes = NULL;
@@ -28,10 +29,11 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
         CSP_assert(t_rank < user_nprocs);
 
         sum_size += ug_win->targets[t_rank].size;
-        max_t_size = max(max_t_size, ug_win->targets[t_rank].size);
+        max_t_size = CSP_max(max_t_size, ug_win->targets[t_rank].size);
     }
     /* Never divide less than segment unit */
-    size_per_ghost = align(sum_size / CSP_ENV.num_g, CSP_SEGMENT_UNIT);
+    tmp_size_per_ghost = sum_size / CSP_ENV.num_g;
+    size_per_ghost = CSP_align(tmp_size_per_ghost, CSP_SEGMENT_UNIT);
     max_t_num_seg = sum_size / size_per_ghost + 3;
     t_seg_sizes = CSP_calloc(max_t_num_seg, sizeof(MPI_Aint));
 
@@ -80,7 +82,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
             t_seg_sizes[t_num_segs++] = t_size;
             seg_size -= t_size;
             /* make sure remaining segment size is aligned */
-            seg_size = align(seg_size, CSP_SEGMENT_UNIT);
+            seg_size = CSP_align(seg_size, CSP_SEGMENT_UNIT);
 
             t_size = 0;
 
@@ -104,7 +106,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
             seg_size = size_per_ghost
                 + (g_off == CSP_ENV.num_g - 1 ? (sum_size % CSP_ENV.num_g) : 0);
             /* make sure new segment size is aligned */
-            seg_size = align(seg_size, CSP_SEGMENT_UNIT);
+            seg_size = CSP_align(seg_size, CSP_SEGMENT_UNIT);
         }
     }
 

@@ -56,7 +56,7 @@ static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win * ug_win)
     goto fn_exit;
 }
 
-static int CSP_complete_flush(int start_grp_size ATTRIBUTE((unused)), CSP_win * ug_win)
+static int CSP_complete_flush(int start_grp_size CSP_ATTRIBUTE((unused)), CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;

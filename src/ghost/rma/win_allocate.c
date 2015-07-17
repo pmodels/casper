@@ -258,7 +258,7 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
      *  for sync. */
     if (local_ug_rank == 0) {
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-        csp_buf_size = max(csp_buf_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
+        csp_buf_size = CSP_max(csp_buf_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
 #endif
     }
 

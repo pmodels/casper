@@ -26,7 +26,7 @@
     fflush(stdout); \
     } while (0)
 
-#define CSPG_assert(EXPR) do { if (unlikely(!(EXPR))){ \
+#define CSPG_assert(EXPR) do { if (CSP_unlikely(!(EXPR))){ \
             CSPG_ERR_PRINT("  assert fail in [%s:%d]: \"%s\"\n", \
                            __FILE__, __LINE__, #EXPR); \
             PMPI_Abort(MPI_COMM_WORLD, -1); \

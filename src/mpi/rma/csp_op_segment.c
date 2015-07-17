@@ -17,7 +17,7 @@ void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr)
 }
 
 int CSP_op_segments_decode_basic_datatype(const void *origin_addr,
-                                          int origin_count ATTRIBUTE((unused)),
+                                          int origin_count CSP_ATTRIBUTE((unused)),
                                           MPI_Datatype origin_datatype, int target_rank,
                                           MPI_Aint target_disp, int target_count,
                                           MPI_Datatype target_datatype, CSP_win * ug_win,
@@ -59,7 +59,12 @@ int CSP_op_segments_decode_basic_datatype(const void *origin_addr,
         sg_size = ug_win->targets[target_rank].segs[sg_off].size;
 
         if (sg_base <= op_sg_base && sg_base + sg_size > op_sg_base) {
-            op_sg_size = min(sg_size - op_sg_base + sg_base, target_data_size - dt_size);
+            MPI_Aint tmp_op_sg_size, tmp_dt_size;
+
+            /* next segment size */
+            tmp_op_sg_size = sg_size - op_sg_base + sg_base;
+            tmp_dt_size = target_data_size - dt_size;
+            op_sg_size = CSP_min(tmp_op_sg_size, tmp_dt_size);
 
             decoded_ops[op_sg_off].origin_addr = (void *) ((MPI_Aint) origin_addr + dt_size);   /* byte unit */
             decoded_ops[op_sg_off].origin_datatype = origin_datatype;

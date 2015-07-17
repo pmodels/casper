@@ -118,7 +118,7 @@ static int CSP_accumulate_impl(const void *origin_addr, int origin_count,
          * shorter CPU occupancy.
          */
         int target_g_rank_in_ug = -1;
-        int data_size ATTRIBUTE((unused)) = 0;
+        int data_size CSP_ATTRIBUTE((unused)) = 0;
         MPI_Aint target_g_offset = 0;
         MPI_Win *win_ptr = NULL;
 

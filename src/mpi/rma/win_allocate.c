@@ -455,7 +455,7 @@ static int gather_base_offsets(CSP_win * ug_win)
      * for sync. */
     root_g_size = CSP_GP_SHARED_SG_SIZE;
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    root_g_size = max(root_g_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
+    root_g_size = CSP_max(root_g_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
 #endif
 
     /* Calculate my offset on the local shared buffer.
@@ -666,8 +666,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         ug_win->targets[i].local_user_nprocs = (int) tmp_gather_buf[7 * i + 6];
 
         /* Calculate the maximum number of processes per node */
-        ug_win->max_local_user_nprocs = max(ug_win->max_local_user_nprocs,
-                                            ug_win->targets[i].local_user_nprocs);
+        ug_win->max_local_user_nprocs = CSP_max(ug_win->max_local_user_nprocs,
+                                                ug_win->targets[i].local_user_nprocs);
     }
 
 #ifdef DEBUG
