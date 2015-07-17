@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks lockall and lock with MPI_MODE_NOCHECK.
@@ -49,7 +50,7 @@ static int check_data_all(int nop)
 
     for (dst = 0; dst < nprocs; dst++) {
         for (i = 0; i < nop; i++) {
-            if (checkbuf[dst * nop + i] != locbuf[dst * nop + i]) {
+            if (CTEST_precise_double_diff(checkbuf[dst * nop + i], locbuf[dst * nop + i])) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i,
                         checkbuf[dst * nop + i], locbuf[dst * nop + i]);
                 errs++;
@@ -59,17 +60,8 @@ static int check_data_all(int nop)
 
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
-
-        fprintf(stderr, "[%d] winbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", checkbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
+        CTEST_print_double_array(checkbuf, nop * nprocs, "winbuf");
     }
 #endif
 
@@ -88,7 +80,7 @@ static int check_data(int nop, int dst)
     MPI_Win_flush(dst, win);
 
     for (i = 0; i < nop; i++) {
-        if (checkbuf[dst * nop + i] != locbuf[dst * nop + i]) {
+        if (CTEST_precise_double_diff(checkbuf[dst * nop + i], locbuf[dst * nop + i])) {
             fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i,
                     checkbuf[dst * nop + i], locbuf[dst * nop + i]);
             errs++;
@@ -96,17 +88,8 @@ static int check_data(int nop, int dst)
     }
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[dst * nop + i]);
-        }
-        fprintf(stderr, "\n");
-
-        fprintf(stderr, "[%d] winbuf:\n", rank);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", checkbuf[dst * nop + i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(&locbuf[dst * nop], nop, "locbuf");
+        CTEST_print_double_array(&checkbuf[dst * nop], nop, "winbuf");
     }
 #endif
     return errs;

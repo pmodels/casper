@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks lockall with put for segment-binding mode.
@@ -60,7 +61,7 @@ static int run_test1(int nop)
             for (j = 0; j < OP_SIZE; j++) {
                 dst_disp = OP_SIZE * i + j;
                 orig_disp = rank * OP_SIZE * nop + i * OP_SIZE + j;
-                if (winbuf[dst_disp] != locbuf[orig_disp]) {
+                if (CTEST_double_diff(winbuf[dst_disp], locbuf[orig_disp])) {
                     fprintf(stderr, "[%d] winbuf[%d] %.1lf != locbuf[%d]%.1lf\n", rank, dst_disp,
                             winbuf[dst_disp], orig_disp, locbuf[orig_disp]);
                     errs++;
@@ -74,11 +75,7 @@ static int run_test1(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 
@@ -116,7 +113,7 @@ static int run_test2(int nop)
             for (j = 0; j < OP_SIZE; j++) {
                 dst_disp = OP_SIZE * i + j;
                 orig_disp = rank * OP_SIZE * nop + i * OP_SIZE + j;
-                if (winbuf[dst_disp] != locbuf[orig_disp]) {
+                if (CTEST_double_diff(winbuf[dst_disp], locbuf[orig_disp])) {
                     fprintf(stderr, "[%d] winbuf[%d] %.1lf != locbuf[%d]%.1lf\n", rank, dst_disp,
                             winbuf[dst_disp], orig_disp, locbuf[orig_disp]);
                     errs++;
@@ -130,11 +127,7 @@ static int run_test2(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 

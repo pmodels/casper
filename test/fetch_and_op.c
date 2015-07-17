@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks fetch_and_op with lock and lockall.
@@ -46,15 +47,8 @@ static void change_data(int nop, int x)
 
 static void print_buffers(int nop)
 {
-    int i;
-    fprintf(stderr, "[%d] locbuf:\n", rank);
-    for (i = 0; i < nop; i++) {
-        fprintf(stderr, "%.1lf ", locbuf[i]);
-    }
-    fprintf(stderr, "\n");
-    for (i = 0; i < nprocs; i++) {
-        fprintf(stderr, "winbuf[%d]: %.1lf\n", i, winbuf[i]);
-    }
+    CTEST_print_double_array(locbuf, nop, "locbuf");
+    CTEST_print_double_array(winbuf, nprocs, "winbuf");
 }
 
 /* Test self communication.
@@ -75,7 +69,7 @@ static int run_test1(int nop)
             MPI_Fetch_and_op(&locbuf[i], result, MPI_DOUBLE, dst, rank, MPI_SUM, win);
             MPI_Win_flush(dst, win);
 
-            if (result[0] != sum) {
+            if (CTEST_double_diff(result[0], sum)) {
                 fprintf(stderr, "[%d] iter %d, op %d, result %.1lf != sum %.1lf \n", rank,
                         x, i, result[0], sum);
                 errs++;
@@ -119,7 +113,7 @@ static int run_test2(int nop)
             MPI_Fetch_and_op(&locbuf[i], result, MPI_DOUBLE, dst, rank, MPI_SUM, win);
             MPI_Win_flush(dst, win);
 
-            if (result[0] != sum) {
+            if (CTEST_double_diff(result[0], sum)) {
                 fprintf(stderr, "[%d] iter %d, op %d, result %.1lf != sum %.1lf \n", rank,
                         x, i, result[0], sum);
                 errs++;
@@ -165,7 +159,7 @@ static int run_test3(int nop)
             MPI_Win_flush_all(win);
 
             for (dst = 0; dst < nprocs; dst++) {
-                if (result[dst] != sum) {
+                if (CTEST_double_diff(result[dst], sum)) {
                     fprintf(stderr, "[%d] iter %d, op %d, dst %d, result %.1lf != sum %.1lf \n",
                             rank, x, i, dst, result[dst], sum);
                     errs++;
@@ -217,7 +211,7 @@ static int run_test4(int nop)
         sum = max + locbuf[nop - 1];
 
         for (dst = 0; dst < nprocs; dst++) {
-            if (result[dst] != max) {
+            if (CTEST_double_diff(result[dst], max)) {
                 fprintf(stderr, "[%d] iter %d, dst %d, result %.1lf != max %.1lf \n",
                         rank, x, dst, result[dst], max);
                 errs++;
@@ -230,7 +224,7 @@ static int run_test4(int nop)
         MPI_Win_unlock_all(win);
 
         for (dst = 0; dst < nprocs; dst++) {
-            if (result[dst] != sum) {
+            if (CTEST_double_diff(result[dst], sum)) {
                 fprintf(stderr, "[%d] iter %d, dst %d, result %.1lf != sum %.1lf \n",
                         rank, x, dst, result[dst], sum);
                 errs++;

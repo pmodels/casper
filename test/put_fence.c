@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks fence with put.
@@ -40,7 +41,7 @@ static int run_test1(int nop)
 
         /* check in every iteration */
         for (i = 0; i < nop; i++) {
-            if (winbuf[i] != (1.0 * rank + i * nprocs)) {
+            if (CTEST_double_diff(winbuf[i], (1.0 * rank + i * nprocs))) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", rank, i,
                         winbuf[i], 1.0 * rank + i * nprocs);
                 errs++;
@@ -52,11 +53,7 @@ static int run_test1(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 
@@ -83,7 +80,7 @@ static int run_test2(int nop)
 
         /* check in every iteration */
         for (i = 0; i < nop; i++) {
-            if (winbuf[i] != (1.0 * rank + i * nprocs)) {
+            if (CTEST_double_diff(winbuf[i], (1.0 * rank + i * nprocs))) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", rank, i,
                         winbuf[i], 1.0 * rank + i * nprocs);
                 errs++;
@@ -95,11 +92,7 @@ static int run_test2(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 

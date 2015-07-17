@@ -2,6 +2,8 @@
 # Copyright (C) 2010. See COPYRIGHT in top-level directory.
 #
 
+AM_CPPFLAGS = -I$(top_srcdir)/test/include
+
 noinst_PROGRAMS = \
 	get	\
 	csp_get \
@@ -43,7 +45,7 @@ noinst_PROGRAMS = \
 	csp_epoch_type_assert \
 	win_allocate_info	\
 	csp_win_allocate_info 
-
+	
 csp_get_SOURCES= get.c
 csp_get_LDFLAGS= -L$(libdir) -lcasper
 

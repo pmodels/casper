@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks acc with pscw.
@@ -89,12 +90,12 @@ static int run_test(int nop)
 
             /* check result */
             MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
-            if (winbuf[0] != sum_result) {
+            if (CTEST_double_diff(winbuf[0], sum_result)) {
                 fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf, iter %d\n", rank, 0,
                         winbuf[0], sum_result, x);
                 errs++;
             }
-            if (winbuf[1] != max_result) {
+            if (CTEST_double_diff(winbuf[1], max_result)) {
                 fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf, iter %d\n", rank, 1, winbuf[1],
                         max_result, x);
                 errs++;

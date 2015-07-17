@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks RMA communication with different value of epoch_types info.
@@ -50,7 +51,7 @@ static int check_data_all(int nop)
 
     for (dst = 0; dst < nprocs; dst++) {
         for (i = 0; i < nop; i++) {
-            if (checkbuf[dst * nop + i] != locbuf[dst * nop + i]) {
+            if (CTEST_precise_double_diff(checkbuf[dst * nop + i], locbuf[dst * nop + i])) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i,
                         checkbuf[dst * nop + i], locbuf[dst * nop + i]);
                 errs++;
@@ -60,17 +61,8 @@ static int check_data_all(int nop)
 
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
-
-        fprintf(stderr, "[%d] winbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", checkbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
+        CTEST_print_double_array(checkbuf, nop * nprocs, "winbuf");
     }
 #endif
 
@@ -89,7 +81,7 @@ static int check_data(int nop, int dst)
     MPI_Win_flush(dst, win);
 
     for (i = 0; i < nop; i++) {
-        if (checkbuf[dst * nop + i] != locbuf[dst * nop + i]) {
+        if (CTEST_precise_double_diff(checkbuf[dst * nop + i], locbuf[dst * nop + i])) {
             fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i,
                     checkbuf[dst * nop + i], locbuf[dst * nop + i]);
             errs++;
@@ -97,17 +89,8 @@ static int check_data(int nop, int dst)
     }
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        fprintf(stderr, "[%d] %d locbuf:\n", rank, x);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[dst * nop + i]);
-        }
-        fprintf(stderr, "\n");
-
-        fprintf(stderr, "[%d] %d winbuf:\n", rank, x);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", checkbuf[dst * nop + i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(&locbuf[dst * nop], nop, "locbuf");
+        CTEST_print_double_array(&checkbuf[dst * nop], nop, "winbuf");
     }
 #endif
     return errs;
@@ -312,12 +295,12 @@ static int run_test3(int nop)
 
             /* check result (need lockall here, because we set epoch_used info.) */
             MPI_Win_lock_all(0, win);
-            if (winbuf[0] != sum_result) {
+            if (CTEST_double_diff(winbuf[0], sum_result)) {
                 fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf, iter %d\n", rank, 0,
                         winbuf[0], sum_result, x);
                 errs++;
             }
-            if (winbuf[1] != max_result) {
+            if (CTEST_double_diff(winbuf[1], max_result)) {
                 fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf, iter %d\n", rank, 1, winbuf[1],
                         max_result, x);
                 errs++;
@@ -392,7 +375,7 @@ static int run_test4(int nop)
 
         /* check in every iteration */
         for (i = 0; i < nop; i++) {
-            if (winbuf[i] != locbuf[i + rank * nop] * nprocs) {
+            if (CTEST_double_diff(winbuf[i], locbuf[i + rank * nop] * nprocs)) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf (%.1f*%d)\n",
                         rank, i, winbuf[i], locbuf[i + rank * nop] * nprocs,
                         locbuf[i + rank * nop], nprocs);
@@ -409,11 +392,7 @@ static int run_test4(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 

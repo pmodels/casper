@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks get with lockall.
@@ -50,7 +51,7 @@ static int run_test1(int nop)
         /* check in every iteration */
         for (i = 0; i < nop; i++) {
             for (dst = 0; dst < nprocs; dst++) {
-                if (locbuf[dst + i * nprocs] != (1.0 * i + dst * nprocs)) {
+                if (CTEST_double_diff(locbuf[dst + i * nprocs], (1.0 * i + dst * nprocs))) {
                     fprintf(stderr, "[%d] locbuf[%d] %.1lf != %.1lf\n", rank, dst + i * nprocs,
                             locbuf[dst + i * nprocs], 1.0 * i + dst * nprocs);
                     errs++;
@@ -64,11 +65,7 @@ static int run_test1(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 
@@ -101,7 +98,7 @@ static int run_test2(int nop)
         /* check in every iteration */
         for (i = 0; i < nop; i++) {
             for (dst = 0; dst < nprocs; dst++) {
-                if (locbuf[dst + i * nprocs] != (1.0 * i + dst * nprocs)) {
+                if (CTEST_double_diff(locbuf[dst + i * nprocs], (1.0 * i + dst * nprocs))) {
                     fprintf(stderr, "[%d] locbuf[%d] %.1lf != %.1lf\n", rank, dst + i * nprocs,
                             locbuf[dst + i * nprocs], 1.0 * i + dst * nprocs);
                     errs++;
@@ -115,11 +112,7 @@ static int run_test2(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 

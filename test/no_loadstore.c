@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks window with no_local_load_store info.
@@ -42,7 +43,7 @@ static int run_test()
     buf = 0;
     MPI_Get(&buf, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
     MPI_Win_unlock(rank, win);
-    if (buf != 1.0) {
+    if (CTEST_precise_double_diff(buf, 1.0)) {
         fprintf(stderr, "[%d] lock_all: winbuf %.1lf != %.1lf\n", rank, buf, 1.0);
         errs++;
     }
@@ -65,7 +66,7 @@ static int run_test()
         buf = 0;
         MPI_Get(&buf, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
         MPI_Win_unlock(rank, win);
-        if (buf != 2.0) {
+        if (CTEST_precise_double_diff(buf, 2.0)) {
             fprintf(stderr, "[%d] lock(1): winbuf %.1lf != %.1lf\n", rank, buf, 2.0);
             errs++;
         }
@@ -91,7 +92,7 @@ static int run_test()
         MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
         MPI_Get(&buf, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
         MPI_Win_unlock(rank, win);
-        if (buf != 3.0) {
+        if (CTEST_precise_double_diff(buf, 3.0)) {
             fprintf(stderr, "[%d] lock(0): winbuf %.1lf != %.1lf\n", rank, buf, 3.0);
             errs++;
         }

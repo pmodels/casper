@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 #define NUM_OPS 5
 #define CHECK
@@ -52,7 +53,7 @@ static int check_data_all(int nop)
         MPI_Win_flush(dst, win);
 
         for (i = 0; i < nop; i++) {
-            if (checkbuf[i] != locbuf[i]) {
+            if (CTEST_precise_double_diff(checkbuf[i], locbuf[i])) {
                 fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i, checkbuf[i], locbuf[i]);
                 errs++;
             }
@@ -61,17 +62,8 @@ static int check_data_all(int nop)
 
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
-
-        fprintf(stderr, "[%d] winbuf:\n", rank);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", checkbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop, "locbuf");
+        CTEST_print_double_array(checkbuf, nop, "winbuf");
     }
 #endif
 
@@ -90,7 +82,7 @@ static int check_data(int nop, int dst)
     MPI_Win_flush(dst, win);
 
     for (i = 0; i < nop; i++) {
-        if (checkbuf[i] != locbuf[i]) {
+        if (CTEST_precise_double_diff(checkbuf[i], locbuf[i])) {
             fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i, checkbuf[i], locbuf[i]);
             errs++;
         }
@@ -98,17 +90,8 @@ static int check_data(int nop, int dst)
 
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
-
-        fprintf(stderr, "[%d] winbuf:\n", rank);
-        for (i = 0; i < nop; i++) {
-            fprintf(stderr, "%.1lf ", checkbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop, "locbuf");
+        CTEST_print_double_array(checkbuf, nop, "winbuf");
     }
 #endif
 

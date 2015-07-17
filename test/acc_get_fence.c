@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks acc-get with fence.
@@ -53,7 +54,7 @@ static int run_test1(int nop)
 
         /* check in every iteration */
         for (dst = 0; dst < nprocs; dst++) {
-            if (checkbuf[dst] != locbuf[dst * nop + nop - 1]) {
+            if (CTEST_precise_double_diff(checkbuf[dst], locbuf[dst * nop + nop - 1])) {
                 fprintf(stderr, "[%d] iter %d checkbuf[%d] %.1lf != %.1lf\n", rank, x,
                         dst, checkbuf[dst], locbuf[dst * nop + nop - 1]);
                 errs++;
@@ -64,10 +65,7 @@ static int run_test1(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 
@@ -106,7 +104,7 @@ static int run_test2(int nop)
 
         /* check in every iteration */
         for (dst = 0; dst < nprocs; dst++) {
-            if (checkbuf[dst] != locbuf[dst * nop + nop - 1]) {
+            if (CTEST_precise_double_diff(checkbuf[dst], locbuf[dst * nop + nop - 1])) {
                 fprintf(stderr, "[%d] iter %d checkbuf[%d] %.1lf != %.1lf\n", rank, x,
                         dst, checkbuf[dst], locbuf[dst * nop + nop - 1]);
                 errs++;
@@ -117,10 +115,7 @@ static int run_test2(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
 #endif
     }
 

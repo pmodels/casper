@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  * This test checks acc with lock.
@@ -62,12 +63,12 @@ static int run_test(int nop)
      * doesn't wait for target completion in exclusive lock */
     MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
 
-    if (winbuf[0] != sum_result * ITER) {
+    if (CTEST_double_diff(winbuf[0], sum_result * ITER)) {
         fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf (%.1lf * %d)\n", rank, 0,
                 winbuf[0], sum_result * ITER, sum_result, ITER);
         errs++;
     }
-    if (winbuf[1] != max_result) {
+    if (CTEST_double_diff(winbuf[1], max_result)) {
         fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf\n", rank, 1, winbuf[1], max_result);
         errs++;
     }
@@ -77,11 +78,7 @@ static int run_test(int nop)
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
 #ifdef OUTPUT_FAIL_DETAIL
-        fprintf(stderr, "[%d] locbuf:\n", rank);
-        for (i = 0; i < nop * nprocs; i++) {
-            fprintf(stderr, "%.1lf ", locbuf[i]);
-        }
-        fprintf(stderr, "\n");
+        CTEST_print_double_array(locbuf, nop * nprocs, "locbuf");
         fprintf(stderr, "winbuf: %.1lf %.1lf\n", winbuf[0], winbuf[1]);
 #endif
     }
