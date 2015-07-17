@@ -372,7 +372,7 @@ static int create_communicators(CSP_win * ug_win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
             PMPI_Comm_rank(ug_win->ug_comm, &ug_rank);
@@ -386,7 +386,7 @@ static int create_communicators(CSP_win * ug_win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
             PMPI_Comm_rank(ug_win->local_ug_comm, &ug_rank);
@@ -408,7 +408,7 @@ static int create_communicators(CSP_win * ug_win)
                    sizeof(int) * CSP_ENV.num_g);
     }
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
     {
         CSP_DBG_PRINT("%d unique g_ranks:\n", ug_win->num_g_ranks_in_ug);
         for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
@@ -670,7 +670,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                                                 ug_win->targets[i].local_user_nprocs);
     }
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
     CSP_DBG_PRINT("my user local rank %d/%d, max_local_user_nprocs=%d, num_nodes=%d\n",
                   user_local_rank, user_local_nprocs, ug_win->max_local_user_nprocs,
                   ug_win->num_nodes);

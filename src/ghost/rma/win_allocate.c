@@ -150,7 +150,7 @@ static int create_communicators(int user_nprocs, CSPG_win * win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
             PMPI_Comm_rank(win->ug_comm, &ug_rank);
@@ -163,7 +163,7 @@ static int create_communicators(int user_nprocs, CSPG_win * win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
             PMPI_Comm_rank(win->local_ug_comm, &ug_rank);

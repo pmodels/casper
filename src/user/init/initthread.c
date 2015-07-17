@@ -341,7 +341,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         }
     }
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
     CSP_DBG_PRINT("Debug gathered info ***** \n");
     for (i = 0; i < nprocs; i++) {
         CSP_DBG_PRINT("node_id[%d]: %d\n", i, CSP_ALL_NODE_IDS[i]);
@@ -360,7 +360,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
         for (i = 0; i < user_nprocs; i++) {
             CSP_DBG_PRINT("gp_rank_in_world[%d]:\n", i);
             for (j = 0; j < CSP_ENV.num_g; j++) {

@@ -75,7 +75,7 @@
 /* Casper debugging/info/warning/error MACROs.
  * ====================================================================== */
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
 #define CSP_DBG_PRINT(str,...) do { \
     fprintf(stdout, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
     fflush(stdout); \
@@ -85,7 +85,7 @@
 #endif
 
 /* #define WARN */
-#ifdef WARN
+#ifdef CSP_WARN
 #define CSP_WARN_PRINT(str,...) do { \
     fprintf(stdout, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
     fflush(stdout); \

@@ -53,7 +53,7 @@ int CSP_func_new_ur_g_comm(MPI_Comm * ur_g_comm)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
     int ur_g_rank, ur_g_nprocs;
     PMPI_Comm_rank(*ur_g_comm, &ur_g_rank);
     PMPI_Comm_size(*ur_g_comm, &ur_g_nprocs);

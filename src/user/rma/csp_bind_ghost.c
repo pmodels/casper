@@ -196,7 +196,7 @@ int CSP_win_bind_ghosts(CSP_win * ug_win)
         }
     }
 
-#ifdef DEBUG
+#ifdef CSP_DEBUG
     int j;
     for (i = 0; i < user_nprocs; i++) {
         CSP_DBG_PRINT("\t target[%d] .num_segs %d\n", i, ug_win->targets[i].num_segs);
