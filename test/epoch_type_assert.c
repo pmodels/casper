@@ -26,7 +26,7 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = 2;
 
-static int run_test1(int nop)
+static int run_test1()
 {
     int errs = 0;
     int dst;
@@ -56,7 +56,6 @@ static int run_test1(int nop)
 
 int main(int argc, char *argv[])
 {
-    int size = NUM_OPS;
     int i, errs = 0;
 
     MPI_Init(&argc, &argv);
@@ -76,7 +75,7 @@ int main(int argc, char *argv[])
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    errs = run_test1(size);
+    errs = run_test1();
     if (errs)
         goto exit;
 

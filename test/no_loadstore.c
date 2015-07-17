@@ -13,7 +13,6 @@
  * This test checks window with no_local_load_store info.
  */
 
-#define NUM_OPS 2
 #define CHECK
 
 double *winbuf = NULL;
@@ -21,7 +20,7 @@ double locbuf[1];
 int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 
-static int run_test(int nop)
+static int run_test()
 {
     int errs = 0, errs_total = 0;
     int dst;
@@ -85,7 +84,7 @@ static int run_test(int nop)
     }
 
     if (rank == 0) {
-        double buf = 0;
+        buf = 0;
 
         /* It is wrong to load/store local winbuf with no_local_load_store,
          * also mpich does not wait for target completion in exclusive lock*/
@@ -106,7 +105,6 @@ static int run_test(int nop)
 
 int main(int argc, char *argv[])
 {
-    int size = NUM_OPS;
     int errs = 0;
     MPI_Init(&argc, &argv);
     MPI_Info win_info = MPI_INFO_NULL;
@@ -133,7 +131,7 @@ int main(int argc, char *argv[])
     MPI_Win_unlock(rank, win);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    errs = run_test(size);
+    errs = run_test();
 
     if (rank == 0) {
         fprintf(stdout, "%d errors\n", errs);

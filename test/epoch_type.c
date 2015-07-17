@@ -35,7 +35,7 @@ static void change_data(int nop, int x)
     }
 }
 
-static int check_data_all(int nop, int x)
+static int check_data_all(int nop)
 {
     int errs = 0;
     /* note that it is in an epoch */
@@ -77,7 +77,7 @@ static int check_data_all(int nop, int x)
     return errs;
 }
 
-int check_data(int nop, int x, int dst)
+static int check_data(int nop, int dst)
 {
     int errs = 0;
     /* note that it is in an epoch */
@@ -90,7 +90,7 @@ int check_data(int nop, int x, int dst)
 
     for (i = 0; i < nop; i++) {
         if (checkbuf[dst * nop + i] != locbuf[dst * nop + i]) {
-            fprintf(stderr, "[%d] %d winbuf[%d] %.1lf != %.1lf\n", dst, x, i,
+            fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i,
                     checkbuf[dst * nop + i], locbuf[dst * nop + i]);
             errs++;
         }
@@ -158,7 +158,7 @@ static int run_test1(int nop)
             MPI_Win_flush_all(win);
 
             /* check in every iteration */
-            errs += check_data_all(nop, x);
+            errs += check_data_all(nop);
         }
     }
     MPI_Win_unlock_all(win);
@@ -213,7 +213,7 @@ static int run_test2(int nop)
             }
             MPI_Win_flush(dst, win);
 
-            errs += check_data(nop, x, dst);
+            errs += check_data(nop, dst);
 
             MPI_Win_unlock(dst, win);
         }

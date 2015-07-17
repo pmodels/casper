@@ -39,7 +39,7 @@ static void change_data(int nop, int x)
     }
 }
 
-static int check_data_all(int nop, int x)
+static int check_data_all(int nop)
 {
     int errs = 0;
     /* note that it is in an epoch */
@@ -78,7 +78,7 @@ static int check_data_all(int nop, int x)
     return errs;
 }
 
-static int check_data(int nop, int x, int dst)
+static int check_data(int nop, int dst)
 {
     int errs = 0;
     /* note that it is in an epoch */
@@ -145,7 +145,7 @@ static int run_test1(int nop)
             /* still need flush before checking result on the target side */
             MPI_Win_flush_all(win);
 
-            errs += check_data_all(nop, x);
+            errs += check_data_all(nop);
 
             MPI_Win_unlock_all(win);
         }
@@ -186,7 +186,7 @@ static int run_test2(int nop)
             /* still need flush before checking result on the target side */
             MPI_Win_flush(dst, win);
 
-            errs += check_data(nop, x, dst);
+            errs += check_data(nop, dst);
 
             MPI_Win_unlock(dst, win);
         }
