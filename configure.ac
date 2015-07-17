@@ -66,27 +66,8 @@ if test "$enable_epochstat_check" = "yes"; then
    AC_DEFINE(CSP_ENABLE_EPOCH_STAT_CHECK,1,[Define if disable epoch status check])
 fi
 
-# Check for __attribute__ support.  This was originally taken from
-# the PAC_C_GNU_ATTRIBUTE macro in mpich.
-#
-# We start by requiring Gcc.  Some other compilers accept __attribute__
-# but generate warning messages, or have different interpretations
-# (which seems to make __attribute__ just as bad as #pragma)
-# For example, the Intel icc compiler accepts __attribute__ and
-# __attribute__((pure)) but generates warnings for __attribute__((format...))
-if test "$GCC" = "yes" ; then
-    AC_CACHE_CHECK([whether __attribute__ allowed],
-pac_cv_gnu_attr_pure,[
-AC_TRY_COMPILE([int foo(int) __attribute__ ((pure));],[int a;],
-pac_cv_gnu_attr_pure=yes,pac_cv_gnu_attr_pure=no)])
-AC_CACHE_CHECK([whether __attribute__((format)) allowed],
-pac_cv_gnu_attr_format,[
-AC_TRY_COMPILE([int foo(char *,...) __attribute__ ((format(printf,1,2)));],[int a;],
-pac_cv_gnu_attr_format=yes,pac_cv_gnu_attr_format=no)])
-    if test "$pac_cv_gnu_attr_pure" = "yes" -a "$pac_cv_gnu_attr_format" = "yes" ; then
-        AC_DEFINE(HAVE_GCC_ATTRIBUTE,1,[Define if GNU __attribute__ is supported])
-    fi
-fi
+# check for attribute support
+PAC_C_GNU_ATTRIBUTE
 
 # check for compiler support for the __typeof() extension
 AC_CACHE_CHECK([whether the compiler supports __typeof(variable)],
