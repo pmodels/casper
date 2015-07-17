@@ -34,25 +34,6 @@
  * when shared segment size of each ghost is 0 */
 #define CSP_GP_SHARED_SG_SIZE 0
 
-/* Options for lock permission controlling among multiple ghosts.
- *
- * Since RMA Ops to a given target may be distributed to different ghosts
- * and locks will be guaranteed to be acquired only when an Op happens,
- * two origins may access a target concurrently if their Ops are distributed
- * to different ghosts.
- *
- *  Rank binding:
- *      Statically specify single ghost for each target, thus real locks/Ops
- *      to a given target will only be issued to the same ghost.
- *
- *  Segment binding:
- *      Statically specify single ghost for each segment of shared memory,
- *      thus real locks/Ops to a given byte will only be issued to the same
- *      ghost. Consequently, it eliminates the case that two origins concurrently
- *      access the same address of a target.
- *      This method has additional overhead especially for derived target datatype.
- *      But it is more fine-grained than Rank binding.
- * */
 
 /* Generic MACROs.
  * ====================================================================== */
@@ -165,7 +146,25 @@ typedef struct CSP_env_param {
     int seg_size;               /* segment size in lock segment binding */
     CSP_load_opt load_opt;      /* runtime load balancing options */
     CSP_load_lock load_lock;    /* how to grant locks for runtime load balancing */
-    CSP_lock_binding lock_binding;      /* how to handle locks */
+
+    /* Options for lock permission controlling among multiple ghosts.
+     *
+     * Since RMA Ops to a given target may be distributed to different ghosts
+     * and locks will be guaranteed to be acquired only when an Op happens,
+     * two origins may access a target concurrently if their Ops are distributed
+     * to different ghosts.
+     *
+     *  Rank binding:
+     *      Statically specify single ghost for each target, thus real locks/Ops
+     *      to a given target will only be issued to the same ghost.
+     *
+     *  Segment binding:
+     *      Statically specify single ghost for each segment of shared memory,
+     *      thus real locks/Ops to a given byte will only be issued to the same
+     *      ghost. This method has additional overhead especially for derived
+     *      target datatype, but it is more fine-grained than Rank binding. */
+    CSP_lock_binding lock_binding;
+
     int verbose;                /* verbose level. print configuration information. */
     CSP_async_config async_config;
 } CSP_env_param;
