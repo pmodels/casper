@@ -7,8 +7,10 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
 AM_CPPFLAGS += -I$(top_srcdir)/src/user/include
 
 lib_LTLIBRARIES = libcasper.la
+include_HEADERS = include/casper.h
 
 libcasper_la_SOURCES = src/mpi_wrap.c	\
+                    src/casper.c	\
                     src/user/func.c \
                     src/user/rma/win_allocate.c \
                     src/user/rma/win_create.c \
