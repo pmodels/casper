@@ -30,7 +30,8 @@ int shm_rank = 0;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
 #ifdef ENABLE_CSP
-extern int CSP_NUM_G;
+#include <casper.h>
+int CSP_NUM_G = 1;
 #endif
 
 int NOP_MAX = 1, NOP_MIN = 1, NOP = 1, NOP_ITER = 2;    /* us */
@@ -144,6 +145,9 @@ int main(int argc, char *argv[])
 
     MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shm_comm);
     MPI_Comm_rank(shm_comm, &shm_rank);
+#ifdef ENABLE_CSP
+    CSP_ghost_size(&CSP_NUM_G);
+#endif
 
     if (nprocs < 2) {
         fprintf(stderr, "Please run using at least 2 processes\n");

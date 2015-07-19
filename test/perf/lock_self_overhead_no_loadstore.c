@@ -26,11 +26,8 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int NOP = 1;
 
-#ifdef ENABLE_CSP
-extern int CSP_NUM_G;
-#else
-int CSP_NUM_G = 0;
-#endif
+#include <casper.h>
+int CSP_NUM_G = 1;
 
 static int run_test()
 {
@@ -71,6 +68,7 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    CSP_ghost_size(&CSP_NUM_G);
 
     if (argc >= 2) {
         NOP = atoi(argv[1]);

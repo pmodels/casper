@@ -26,7 +26,8 @@
 #endif
 
 #ifdef ENABLE_CSP
-extern int CSP_NUM_G;
+#include <casper.h>
+int CSP_NUM_G = 1;
 #endif
 
 double *winbuf = NULL;
@@ -136,6 +137,9 @@ int main(int argc, char *argv[])
 
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#ifdef ENABLE_CSP
+    CSP_ghost_size(&CSP_NUM_G);
+#endif
 
     debug_printf("[%d]init done, %d/%d\n", rank, rank, nprocs);
 

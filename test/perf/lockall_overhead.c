@@ -27,7 +27,8 @@ int rank, nprocs;
 MPI_Win win = MPI_WIN_NULL;
 int ITER = ITER_S;
 #ifdef ENABLE_CSP
-extern int CSP_NUM_G;
+#include <casper.h>
+int CSP_NUM_G = 1;
 #endif
 
 static int run_test()
@@ -112,6 +113,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Please run using at least 2 processes\n");
         goto exit;
     }
+#ifdef ENABLE_CSP
+    CSP_ghost_size(&CSP_NUM_G);
+#endif
 
     locbuf[0] = (rank + 1) * 1.0;
     MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
