@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010. See COPYRIGHT in top-level directory.
+# Copyright (C) 2014. See COPYRIGHT in top-level directory.
 #
 
 noinst_PROGRAMS = \

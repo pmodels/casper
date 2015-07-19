@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010. See COPYRIGHT in top-level directory.
+# Copyright (C) 2014. See COPYRIGHT in top-level directory.
 #
 
 AM_CPPFLAGS = -I$(top_srcdir)/test/include
