@@ -44,7 +44,7 @@ const char *OP_TYPE_NM[3] = { "ACC", "PUT", "GET" };
 enum {
     OP_ACC,
     OP_PUT,
-    OP_GET,
+    OP_GET
 };
 int OP_TYPE = OP_ACC;
 
@@ -55,7 +55,7 @@ static int usleep_by_count(unsigned long us)
     return 0;
 }
 
-void DO_OP_LOOP(int time, int iter)
+static void DO_OP_LOOP(int time, int iter)
 {
     int i, x, dst;
 

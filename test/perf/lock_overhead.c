@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /* This benchmark evaluates the overhead of CASPER wrapped MPI_Win_lock using 2 processes.
  * Rank 0 locks rank 1 and issues an accumulate operation to grant that lock. */
@@ -67,7 +68,7 @@ static int run_test()
          * doesn't wait for target completion in exclusive lock */
         MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
         sum = 1.0 * (ITER + SKIP);
-        if (winbuf[0] != sum) {
+        if (CTEST_double_diff(winbuf[0], sum)) {
             fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, winbuf[0],
                     sum);
             errs += 1;

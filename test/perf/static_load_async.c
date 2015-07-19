@@ -94,10 +94,10 @@ static int run_test()
 
 #ifdef ENABLE_CSP
         fprintf(stdout,
-                "casper: iter %d comp_size %ld num_op %d nprocs %d nh %d total_time %.2lf\n", ITER,
+                "casper: iter %d comp_size %lu num_op %d nprocs %d nh %d total_time %.2lf\n", ITER,
                 SLEEP_TIME, NOP, nprocs, CSP_NUM_G, avg_total_time);
 #else
-        fprintf(stdout, "orig: iter %d comp_size %ld num_op %d nprocs %d total_time %.2lf\n",
+        fprintf(stdout, "orig: iter %d comp_size %lu num_op %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, NOP, nprocs, avg_total_time);
 #endif
     }

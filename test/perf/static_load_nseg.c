@@ -107,10 +107,10 @@ static int run_test()
 #ifdef ENABLE_CSP
         const char *lock_mtd = getenv("CSP_LOCK_METHOD");
         fprintf(stdout,
-                "casper-%s: iter %d comp_size %ld num_op %d %d nprocs %d nh %d total_time %.2lf\n",
+                "casper-%s: iter %d comp_size %lu num_op %d %d nprocs %d nh %d total_time %.2lf\n",
                 lock_mtd, ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, CSP_NUM_G, avg_total_time);
 #else
-        fprintf(stdout, "orig: iter %d comp_size %ld num_op %d %d nprocs %d total_time %.2lf\n",
+        fprintf(stdout, "orig: iter %d comp_size %lu num_op %d %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, NOP_MIN, NOP, nprocs, avg_total_time);
 #endif
     }

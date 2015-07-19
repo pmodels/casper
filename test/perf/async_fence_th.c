@@ -15,7 +15,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include <sched.h>
-#include <sys/sysinfo.h>
+#include "ctest.h"
 
 /* This benchmark evaluates manual thread-based asynchronous progress in fence
  * epoch. Every process performs fence-compute-accumulate-fence, and each of
@@ -107,15 +107,11 @@ static int get_pthread_cpu_bind(int *cpuid_ptr, int num_cores)
 #define debug_printf(str,...) {}
 #endif
 
-#ifdef ENABLE_CSP
-extern int CSP_NUM_G;
-#endif
-
 #define TH_DEBUG
 #ifdef TH_DEBUG
-#define th_debug_print(str...) {fprintf(stdout, str);fflush(stdout);}
+#define th_debug_print(str,...) {fprintf(stdout, str, ## __VA_ARGS__);fflush(stdout);}
 #else
-#define th_debug_print(str...) {}
+#define th_debug_print(str,...) {}
 #endif
 
 double *winbuf = NULL;
@@ -132,7 +128,7 @@ static int usleep_by_count(unsigned long us)
     return 0;
 }
 
-static int run_test(int time)
+static int run_test(int comp_time)
 {
     int i, x, errs = 0, errs_total = 0;
     int dst;
@@ -152,7 +148,7 @@ static int run_test(int time)
     for (x = 0; x < ITER; x++) {
         MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
 
-        usleep_by_count(time);
+        usleep_by_count(comp_time);
 
         for (dst = 0; dst < nprocs; dst++) {
             for (i = 1; i < NOP; i++) {
@@ -169,15 +165,9 @@ static int run_test(int time)
 
     if (rank == 0) {
         avg_total_time = avg_total_time / nprocs * 1000 * 1000;
-#ifdef ENABLE_CSP
         fprintf(stdout,
-                "casper: iter %d comp_size %d num_op %d nprocs %d nh %d total_time %.2lf\n",
-                ITER, time, NOP, nprocs, CSP_NUM_G, avg_total_time);
-#else
-        fprintf(stdout,
-                "orig: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
-                ITER, time, NOP, nprocs, avg_total_time);
-#endif
+                "thread: iter %d comp_size %d num_op %d nprocs %d total_time %.2lf\n",
+                ITER, comp_time, NOP, nprocs, avg_total_time);
     }
 
     return errs_total;
@@ -215,7 +205,7 @@ static void *progress_fn(void *arg CTEST_ATTRIBUTE((unused)))
     return (void *) (0);
 }
 
-int init_async_thread(void)
+static int init_async_thread(void)
 {
     int err = 0;
     pthread_attr_t attr;
@@ -239,7 +229,7 @@ int init_async_thread(void)
     return err;
 }
 
-void finalize_async_thread(void)
+static void finalize_async_thread(void)
 {
     int err = 0;
     MPI_Request request;
@@ -312,7 +302,7 @@ static void check_cpu_binding()
 int main(int argc, char *argv[])
 {
     int i, errs;
-    int min_time = D_SLEEP_TIME, max_time = D_SLEEP_TIME, iter_time = 2, time;
+    int min_time = D_SLEEP_TIME, max_time = D_SLEEP_TIME, iter_time = 2, comp_time = 0;
     int provided;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
@@ -355,7 +345,7 @@ int main(int argc, char *argv[])
     init_async_thread();
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (time = min_time; time <= max_time; time *= iter_time) {
+    for (comp_time = min_time; comp_time <= max_time; comp_time *= iter_time) {
         /* reset window */
         MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
         for (i = 0; i < nprocs; i++) {
@@ -365,7 +355,7 @@ int main(int argc, char *argv[])
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-        errs = run_test(time);
+        errs = run_test(comp_time);
         if (errs > 0)
             break;
     }

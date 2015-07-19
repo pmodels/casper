@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /* This benchmark measures the overhead of Win_lock_all with
  * user-specified number of processes (>= 2). Rank 0 locks
@@ -33,7 +34,7 @@ int CSP_NUM_G = 1;
 
 static int run_test()
 {
-    int i, x, errs = 0;
+    int x, errs = 0;
     int dst;
     double t0, t_total = 0.0;
     double sum = 0.0;
@@ -83,9 +84,9 @@ static int run_test()
      * doesn't wait for target completion in exclusive lock */
     MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
     sum = 1.0 * (ITER + SKIP);
-    if (winbuf[0] != sum) {
+    if (CTEST_double_diff(winbuf[0], sum)) {
         fprintf(stderr, "[%d]computation error : winbuf[%d] %.2lf != %.2lf\n",
-                rank, i, winbuf[0], sum);
+                rank, 0, winbuf[0], sum);
         errs += 1;
     }
     MPI_Win_unlock(rank, win);

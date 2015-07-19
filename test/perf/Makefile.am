@@ -84,7 +84,7 @@ csp_op_overhead_LDADD= -L$(libdir) -lcasper
 csp_op_overhead_CFLAGS= -O2 -DENABLE_CSP
 
 async_fence_CFLAGS= -O2
-async_fence_th_CFLAGS= -O2 -lpthread
+async_fence_th_LDADD= -lpthread
 csp_async_fence_SOURCES= async_fence.c
 csp_async_fence_LDADD= -L$(libdir) -lcasper
 csp_async_fence_CFLAGS= -O2 -DENABLE_CSP

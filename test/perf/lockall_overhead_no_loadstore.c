@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /* This benchmark evaluates the overhead of Win_lock_all using
  * user-specified number of processes (>= 2) with no_local_load_store option.
@@ -88,7 +89,7 @@ static int run_test()
     MPI_Get(&result, 1, MPI_DOUBLE, rank, 0, 1, MPI_DOUBLE, win);
     MPI_Win_unlock(rank, win);
 
-    if (result != sum) {
+    if (CTEST_double_diff(result, sum)) {
         fprintf(stderr, "[%d]computation error : winbuf %.2lf != %.2lf\n", rank, result, sum);
         errs += 1;
     }

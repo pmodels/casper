@@ -109,12 +109,12 @@ static int run_test()
 #ifdef ENABLE_CSP
         const char *load_opt = getenv("CSP_RUMTIME_LOAD_OPT");
         fprintf(stdout,
-                "casper-%s: iter %d comp_size %ld op_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
+                "casper-%s: iter %d comp_size %lu op_size %d %d num_op %d nprocs %d nh %d total_time %.2lf\n",
                 load_opt, ITER, SLEEP_TIME, OPSIZE_MIN, OPSIZE, NOP, nprocs, CSP_NUM_G,
                 avg_total_time);
 #else
         fprintf(stdout,
-                "orig: iter %d comp_size %ld op_size %d %d num_op %d nprocs %d total_time %.2lf\n",
+                "orig: iter %d comp_size %lu op_size %d %d num_op %d nprocs %d total_time %.2lf\n",
                 ITER, SLEEP_TIME, OPSIZE_MIN, OPSIZE, NOP, nprocs, avg_total_time);
 #endif
     }
@@ -122,7 +122,7 @@ static int run_test()
     return errs;
 }
 
-int set_opsize_unbalanced()
+static int set_opsize_unbalanced()
 {
     /* local rank 0 receives more operations */
     if (shm_rank == 0) {

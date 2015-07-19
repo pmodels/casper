@@ -28,15 +28,16 @@ const char *OP_TYPE_NM[3] = { "ACC", "PUT", "GET" };
 enum {
     OP_ACC,
     OP_PUT,
-    OP_GET,
+    OP_GET
 };
 int OP_TYPE = OP_ACC;
 
 #ifdef ENABLE_CSP
-extern int CSP_NUM_G;
+#include <casper.h>
+int CSP_NUM_G = 1;
 #endif
 
-void DO_OP_LOOP(int dst, int iter)
+static void DO_OP_LOOP(int dst, int iter)
 {
     int i, x;
 
