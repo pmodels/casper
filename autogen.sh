@@ -4,6 +4,11 @@
 mpidir=`which mpicc| sed -e 's_/[^/]*$__g'`/../
 mpih_path=
 
+echo_n() {
+	# "echo_n" isn't portable, must portably implement with printf
+	printf "%s" "$*"
+}
+
 # user specified MPI path
 for arg in "$@" ; do
     case $arg in
@@ -19,7 +24,7 @@ for arg in "$@" ; do
     esac
 done
 
-echo -n "Checking header file mpi.h at $mpidir ..."
+echo_n "Checking header file mpi.h at $mpidir ..."
 _mpih=$mpidir/include/mpi.h
 if [ ! -f $_mpih ];then
     echo "not found (error)"
@@ -32,7 +37,7 @@ fi
 echo "Found $mpih_path"
 
 echo ""
-echo -n "Generating MPI wrappers... "
+echo_n "Generating MPI wrappers... "
 ./src/buildiface --infile $mpih_path --outfile src/mpi_wrap.c
 echo "done"
 
@@ -42,7 +47,7 @@ subdirs=test
 echo ""
 for subdir in $subdirs ; do
 	subconfdb_dir=$subdir/confdb
-	echo -n "Syncronizing confdb -> $subconfdb_dir... "
+	echo_n "Syncronizing confdb -> $subconfdb_dir... "
 	if [ -x $subconfdb_dir ] ; then
 		rm -rf "$subconfdb_dir"
 		cp -pPR confdb "$subconfdb_dir"
