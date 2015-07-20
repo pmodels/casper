@@ -3,7 +3,8 @@
 #
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
-LDADD = -L$(libdir) -lcasper
+AM_LDFLAGS = -Wl,-rpath -Wl,$(libdir)
+LDADD = -L$(libdir) -lcasper 
 
 noinst_PROGRAMS = \
 	get	\
