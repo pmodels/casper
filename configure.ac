@@ -73,11 +73,6 @@ if test "$pac_cv_have___typeof" = "yes" ; then
     AC_DEFINE([HAVE___TYPEOF],[1],[defined if the C compiler supports __typeof(variable)])
 fi
 
+AC_CONFIG_SUBDIRS([test])
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([test/Makefile])
-AC_CONFIG_FILES([test/perf/Makefile])
-AC_CONFIG_FILES([test/testlist])
-AC_CONFIG_FILES([test/runtest])
-AC_OUTPUT_COMMANDS([chmod a+x test/runtest])
-
 AC_OUTPUT

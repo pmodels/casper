@@ -2,7 +2,7 @@
 # Copyright (C) 2014. See COPYRIGHT in top-level directory.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir)/test/include -I$(includedir)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(includedir)
 
 noinst_PROGRAMS = \
 	lockall_overhead	\

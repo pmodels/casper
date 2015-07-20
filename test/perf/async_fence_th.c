@@ -21,6 +21,77 @@
  * epoch. Every process performs fence-compute-accumulate-fence, and each of
  * them creates an asynchronous thread to poll MPI progress .*/
 
+/* OS-dependent implementations */
+
+#ifdef HAVE_SYS_SYSINFO_H
+#include <sys/sysinfo.h>
+#endif
+
+#ifdef HAVE_SYS_SYSCTL_H
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
+static inline int get_num_cores()
+{
+    int n = 1;
+
+#if defined(HAVE_GET_NPROCS)
+    n = get_nprocs();
+#elif defined(HAVE_GET_NPROCS_CONF)
+    n = get_nprocs_conf();
+#elif defined(_SC_NPROCESSORS_ONLN)
+    n = sysconf(_SC_NPROCESSORS_ONLN);
+#elif defined(_SC_NPROC_ONLN)
+    n = sysconf(_SC_NPROC_ONLN);
+#elif defined(_SC_NPROCESSORS_CONF)
+    n = sysconf(_SC_NPROCESSORS_CONF);
+#elif defined(_SC_NPROC_CONF)
+    n = sysconf(_SC_NPROC_CONF);
+#elif defined(HAVE_SYSCTL) && defined(CTL_HW) && defined(HW_NCPU)
+    static int name[2] = { CTL_HW, HW_NCPU };
+    size_t size = sizeof(n);
+    if (sysctl(name, 2, &n, &size, NULL, 0) || size != sizeof(n))
+        n = -1;
+#else
+    fprintf(stderr, "Warning: cannot detect number of processes, return 1 by default\n");
+#endif
+    return n;
+}
+
+#if defined(HAVE_CPU_SET_T) && defined(HAVE_PTHREAD_GETAFFINITY_NP)
+#if defined(HAVE_PTHREAD_NP_H)
+#include <pthread_np.h>
+#endif
+
+static int get_pthread_cpu_bind(int *cpuid_ptr, int num_cores)
+{
+    cpu_set_t cpuset;
+    int i, ret = 0;
+
+    *cpuid_ptr = 0;
+    CPU_ZERO(&cpuset);
+    ret = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+    if (ret < 0) {
+        fprintf(stderr, "pthread_getaffinity_np failed\n");
+        return ret;
+    }
+
+    for (i = 0; i < num_cores; i++) {
+        if (CPU_ISSET(i, &cpuset))
+            *cpuid_ptr = i;
+    }
+    return 0;
+}
+#else
+static int get_pthread_cpu_bind(int *cpuid_ptr, int num_cores)
+{
+    *cpuid_ptr = 0;
+    fprintf(stderr, "Warning: cannot detect affinity, return 0 by default\n");
+    return 0;
+}
+#endif
+
 #define D_SLEEP_TIME 100        // 100us
 
 //#define DEBUG
@@ -120,27 +191,7 @@ static volatile int progress_thread_done = 0;
 #define WAKE_TAG 9898
 static volatile int thread_inited = 0;
 
-static int get_pthread_cpu_bind(int *cpuid, int ncores)
-{
-    cpu_set_t cpuset;
-    int i, ret = 0;
-
-    *cpuid = 0;
-    CPU_ZERO(&cpuset);
-    ret = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
-    if (ret < 0) {
-        fprintf(stderr, "pthread_getaffinity_np failed\n");
-        return ret;
-    }
-
-    for (i = 0; i < ncores; i++) {
-        if (CPU_ISSET(i, &cpuset))
-            *cpuid = i;
-    }
-    return 0;
-}
-
-static void *progress_fn(void *arg)
+static void *progress_fn(void *arg CTEST_ATTRIBUTE((unused)))
 {
     int err;
     MPI_Request request;
@@ -270,7 +321,8 @@ int main(int argc, char *argv[])
         printf("This test requires MPI_THREAD_MULTIPLE, but %d\n", provided);
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    ncores = get_nprocs();
+
+    ncores = get_num_cores();
     get_pthread_cpu_bind(&cpuid, ncores);
 
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);

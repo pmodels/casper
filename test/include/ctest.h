@@ -8,7 +8,21 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <unistd.h>
 #include <mpi.h>
+#include <ctestconf.h>
+
+/* OS-dependent implementations */
+
+#ifndef CTEST_ATTRIBUTE
+#ifdef HAVE_GCC_ATTRIBUTE
+#define CTEST_ATTRIBUTE(a_) __attribute__(a_)
+#else
+#define CTEST_ATTRIBUTE(a_)
+#endif
+#endif /* CTEST_ATTRIBUTE */
+
+/* Generic functions for double test data */
 
 #define DOUBLE_TOLERANCE (0.00001)
 

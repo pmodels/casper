@@ -2,7 +2,7 @@
 # Copyright (C) 2014. See COPYRIGHT in top-level directory.
 #
 
-AM_CPPFLAGS = -I$(top_srcdir)/test/include
+AM_CPPFLAGS = -I$(top_srcdir)/include
 LDADD = -L$(libdir) -lcasper
 
 noinst_PROGRAMS = \

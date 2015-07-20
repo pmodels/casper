@@ -31,8 +31,28 @@ fi
 
 echo "Found $mpih_path"
 
+echo ""
 echo -n "Generating MPI wrappers... "
 ./src/buildiface --infile $mpih_path --outfile src/mpi_wrap.c
 echo "done"
 
-autoreconf -vif
+subdirs=test
+
+# copy confdb
+echo ""
+for subdir in $subdirs ; do
+	subconfdb_dir=$subdir/confdb
+	echo -n "Syncronizing confdb -> $subconfdb_dir... "
+	if [ -x $subconfdb_dir ] ; then
+		rm -rf "$subconfdb_dir"
+		cp -pPR confdb "$subconfdb_dir"
+	fi
+	echo "done"
+done
+
+# generate configures
+for subdir in . $subdirs ; do
+	echo ""
+	echo "Generating configure in $subdir"
+	(cd $subdir && autoreconf -vif) || exit 1
+done
