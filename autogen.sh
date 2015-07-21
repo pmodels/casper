@@ -1,7 +1,9 @@
 #! /bin/bash
 
 # default MPI path
-mpidir=`which mpicc| sed -e 's_/[^/]*$__g'`/../
+# drop any error reported by which command.
+tmp_mpidir=`which mpicc 2>/dev/null`
+mpidir=`echo $tmp_mpidir| sed -e 's_/[^/]*$__g'`/../
 mpih_path=
 
 echo_n() {
