@@ -24,6 +24,13 @@ AM_PROG_CC_C_O
 AC_PROG_RANLIB
 AM_PROG_AR
 
+# Check for enabling strict
+AC_ARG_ENABLE(stricttest,
+AC_HELP_STRING([--enable-stricttest], [Turn on strict compilation for test suite]))
+PAC_CC_STRICT($enable_stricttest)
+CFLAGS="$CFLAGS $pac_cc_strict_flags"
+# Checking should be executed after --enable-stricttest being interpreted.
+
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS(sys/sysctl.h sys/sysinfo.h pthread_np.h)
@@ -38,9 +45,6 @@ AC_CHECK_FUNCS(sysctl get_nprocs get_nprocs_conf pthread_getaffinity_np)
 
 # Check for types
 AC_CHECK_TYPES([cpu_set_t],,,[[#include <sched.h>]])
-
-# Check for enabling strict
-PAC_ARG_STRICT
 
 # check for attribute support
 PAC_C_GNU_ATTRIBUTE
