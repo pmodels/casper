@@ -30,6 +30,8 @@
 #ifdef HAVE_SYS_SYSCTL_H
 #include <sys/types.h>
 #include <sys/sysctl.h>
+/* We don't need to maintain u_* types separately, since configure will report
+ * sys/sysctl.h is not compilable if u_* is not defined.*/
 #endif
 
 static inline int get_num_cores()
