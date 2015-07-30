@@ -52,8 +52,8 @@ for subdir in $subdirs ; do
 	echo_n "Syncronizing confdb -> $subconfdb_dir... "
 	if [ -x $subconfdb_dir ] ; then
 		rm -rf "$subconfdb_dir"
-		cp -pPR confdb "$subconfdb_dir"
 	fi
+	cp -pPR confdb "$subconfdb_dir"
 	echo "done"
 done
 
