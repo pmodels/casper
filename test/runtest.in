@@ -7,48 +7,45 @@ if [ "x$MPIEXEC" = "x" ]; then
     exit
 fi
 
-for f in `cat ./testlist`;do
-    np=4
-    nh=1
-    export CSP_NG=$nh
-    echo "testing $f -np $np -nh $nh ..."
-    exec 5>&1
-    output=$($MPIEXEC -np $np $path/$f | tee /dev/fd/5 )
-    rs="$(echo $output | grep "0 errors"  --count)"
-    if [ $rs != 1 ];then
-        echo "test failed !"
-        echo "$MPIEXEC -np $np $path/$f"
-        exit
+first=1
+
+programs=
+exec_flags=
+num_progs=0
+
+# read from testlist
+while read LINE
+do
+    #skip the first commend line
+    if [ $first -eq 1 ];then
+        first=0
+        continue
     fi
 
-    np=8
-    nh=1
-    export CSP_NG=$nh
-    echo "testing $f -np $np -nh $nh ..."
-    exec 5>&1
-    output=$($MPIEXEC -np $np $path/$f | tee /dev/fd/5 )
-    rs="$(echo $output | grep "0 errors"  --count)"
-    if [ $rs != 1 ];then
-        echo "test failed !"
-        echo "$MPIEXEC -np $np $path/$f"
-        exit
-    fi
+    # parse format: program exec_flag
+    f=$(echo $LINE|awk '{print $1}')
+    flag=$(echo $LINE|awk '{print $2}')
 
-    np=8
-    nh=2
-    export CSP_NG=$nh
-    echo "testing $f -np $np -nh $nh ..."
-    exec 5>&1
-    output=$($MPIEXEC -np $np $path/$f | tee /dev/fd/5 )
-    rs="$(echo $output | grep "0 errors"  --count)"
-    if [ $rs != 1 ];then
-        echo "test failed !"
-        echo "$MPIEXEC -np $np $path/$f"
-        exit
-    fi
+    if [ -f $path/$f ];then
+        programs[$num_progs]=$f
 
-    np=10
-    nh=2
+        # do not execute test if the flag is set but not equal to 1
+        if [ "x$flag" != "x" ] && [ "$flag" != "exec=1" ];then
+                exec_flags[$num_progs]=0
+        else
+                exec_flags[$num_progs]=1
+        fi
+        let num_progs+=1
+    fi
+done < ./testlist
+
+# generic function to execute a test program
+# exec_program <np> <nh> <relative path of testfile>
+function exec_program()
+{
+    np=$1
+    nh=$2
+    f=$3
     export CSP_NG=$nh
     echo "testing $f -np $np -nh $nh ..."
     exec 5>&1
@@ -60,5 +57,37 @@ for f in `cat ./testlist`;do
         exit
     fi
     echo ""
+}
+
+# execute test programs
+i=0
+while [ $i -lt $num_progs ]
+do
+    f=${programs[$i]}
+    exec=${exec_flags[$i]}
+
+    if [ "$exec" -eq "0" ]; then
+        echo "skip test $f"
+        let i+=1
+        continue
+    fi
+
+    np=4
+    nh=1
+    exec_program $np $nh $f
+
+    np=8
+    nh=1
+    exec_program $np $nh $f
+
+    np=8
+    nh=2
+    exec_program $np $nh $f
+
+    np=10
+    nh=2
+    exec_program $np $nh $f
+
+    let i+=1
 done
 echo "all passed"
