@@ -1,13 +1,11 @@
-echo $MTCORE_RUNTIME_LOAD_LOCK
-echo $MTCORE_LOCK_METHOD
-echo $MTCORE_RUMTIME_LOAD_OPT
+#!/bin/bash
+
+path=$(pwd)
 
 if [ "x$MPIEXEC" = "x" ]; then
     echo "MPIEXEC is undefined"
     exit
 fi
-
-path=$(pwd)
 
 for f in `cat ./testlist`;do
     np=4
