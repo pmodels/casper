@@ -27,7 +27,8 @@ noinst_PROGRAMS = \
 	init_thread_acc	\
 	epoch_type	\
 	epoch_type_assert	\
-	win_allocate_info
+	win_allocate_info	\
+	finalize
 
 MPIEXEC=mpiexec
 
