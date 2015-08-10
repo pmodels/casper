@@ -60,19 +60,18 @@ typedef struct CSPG_win {
     unsigned long csp_g_win_handle;
 } CSPG_win;
 
-typedef struct CSPG_func_info {
-    CSP_func_info info;
+typedef struct CSPG_cmd_info {
+    CSP_cmd_info info;
     int user_root_in_local;
-} CSPG_func_info;
+} CSPG_cmd_info;
 
 extern int CSPG_win_allocate(int user_local_root, int user_nprocs);
 extern int CSPG_win_free(int user_local_root);
-
 extern int CSPG_finalize(void);
 
-extern int CSPG_func_start(CSP_func * FUNC, int *user_local_root, int *user_nprocs,
-                           int *user_local_nprocs);
-extern int CSPG_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm);
-extern int CSPG_func_get_param(char *func_params, int size, MPI_Comm ur_g_comm);
+extern int CSPG_cmd_start(CSP_cmd * CMD, int *user_local_root, int *user_nprocs,
+                          int *user_local_nprocs);
+extern int CSPG_cmd_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm);
+extern int CSPG_cmd_get_param(char *cmd_params, int size, MPI_Comm ur_g_comm);
 
 #endif /* CSPG_H_ */

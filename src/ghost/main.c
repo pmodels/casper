@@ -13,7 +13,7 @@ int run_g_main(void)
     int mpi_errno = MPI_SUCCESS;
     int err_class = 0, errstr_len = 0;
     char err_string[MPI_MAX_ERROR_STRING];
-    CSP_func FUNC;
+    CSP_cmd CMD;
     int user_local_root, user_nprocs, user_local_nprocs;
     int finalize_cnt = 0;
     int local_nprocs = 0, local_user_nprocs = 0;
@@ -31,27 +31,27 @@ int run_g_main(void)
     /*TODO: init in user app or here ? */
     /*    MPI_Init(&argc, &argv); */
     while (1) {
-        mpi_errno = CSPG_func_start(&FUNC, &user_local_root, &user_nprocs, &user_local_nprocs);
+        mpi_errno = CSPG_cmd_start(&CMD, &user_local_root, &user_nprocs, &user_local_nprocs);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        switch (FUNC) {
-        case CSP_FUNC_WIN_ALLOCATE:
+        switch (CMD) {
+        case CSP_CMD_WIN_ALLOCATE:
             mpi_errno = CSPG_win_allocate(user_local_root, user_nprocs);
             break;
 
-        case CSP_FUNC_WIN_FREE:
+        case CSP_CMD_WIN_FREE:
             mpi_errno = CSPG_win_free(user_local_root);
             break;
 
             /* other commands */
-        case CSP_FUNC_ABORT:
+        case CSP_CMD_ABORT:
             PMPI_Abort(MPI_COMM_WORLD, 1);
             goto fn_exit;
 
             break;
 
-        case CSP_FUNC_FINALIZE:
+        case CSP_CMD_FINALIZE:
             finalize_cnt++;
             CSPG_DBG_PRINT(" %d processes are finalizing...\n", finalize_cnt);
 
@@ -65,8 +65,8 @@ int run_g_main(void)
             break;
 
         default:
-            /* Skip incorrect FUNC. */
-            CSPG_DBG_PRINT(" FUNC %d not supported\n", (int) FUNC);
+            /* Skip incorrect CMD. */
+            CSPG_DBG_PRINT(" CMD %d not supported\n", (int) CMD);
             break;
         }
     }

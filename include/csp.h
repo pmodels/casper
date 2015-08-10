@@ -197,15 +197,15 @@ typedef enum {
 } CSP_win_exp_epoch_stat;
 
 typedef enum {
-    CSP_FUNC_NULL,
-    CSP_FUNC_WIN_ALLOCATE,
-    CSP_FUNC_WIN_FREE,
-    CSP_FUNC_LOCL_ALL,
-    CSP_FUNC_UNLOCK_ALL,
-    CSP_FUNC_ABORT,
-    CSP_FUNC_FINALIZE,
-    CSP_FUNC_MAX
-} CSP_func;
+    CSP_CMD_NULL,
+    CSP_CMD_WIN_ALLOCATE,
+    CSP_CMD_WIN_FREE,
+    CSP_CMD_LOCL_ALL,
+    CSP_CMD_UNLOCK_ALL,
+    CSP_CMD_ABORT,
+    CSP_CMD_FINALIZE,
+    CSP_CMD_MAX
+} CSP_cmd;
 
 typedef enum {
     CSP_EPOCH_LOCK_ALL = 1,
@@ -346,13 +346,13 @@ typedef struct CSP_win {
 
 } CSP_win;
 
-typedef struct CSP_func_info {
-    CSP_func FUNC;
+typedef struct CSP_cmd_info {
+    CSP_cmd CMD;
     int user_nprocs;
     int user_local_nprocs;
-} CSP_func_info;
+} CSP_cmd_info;
 
-#define CSP_FUNC_TAG 9889
+#define CSP_CMD_TAG 9889
 
 #define CSP_define_win_cache int UG_WIN_HANDLE_KEY = MPI_KEYVAL_INVALID
 extern int UG_WIN_HANDLE_KEY;
@@ -601,11 +601,9 @@ static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target * target
 }
 
 extern int run_g_main(void);
-
-extern int CSP_func_start(CSP_func FUNC, int user_nprocs, int user_local_nprocs);
-extern int CSP_func_new_ur_g_comm(MPI_Comm * ur_g_comm);
-extern int CSP_func_set_param(char *func_params, int size, MPI_Comm ur_g_comm);
-
+extern int CSP_cmd_start(CSP_cmd CMD, int user_nprocs, int user_local_nprocs);
+extern int CSP_cmd_new_ur_g_comm(MPI_Comm * ur_g_comm);
+extern int CSP_cmd_set_param(char *cmd_params, int size, MPI_Comm ur_g_comm);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
 

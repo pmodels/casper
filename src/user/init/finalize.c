@@ -18,7 +18,7 @@ int MPI_Finalize(void)
     CSP_DBG_PRINT_FCNAME();
 
     /* Ghosts do not need user process information because it is a global call. */
-    CSP_func_start(CSP_FUNC_FINALIZE, 0, 0);
+    CSP_cmd_start(CSP_CMD_FINALIZE, 0, 0);
 
     if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");

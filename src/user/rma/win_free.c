@@ -200,7 +200,7 @@ int MPI_Win_free(MPI_Win * win)
     }
 
     if (user_local_rank == 0) {
-        CSP_func_start(CSP_FUNC_WIN_FREE, user_nprocs, user_local_nprocs);
+        CSP_cmd_start(CSP_CMD_WIN_FREE, user_nprocs, user_local_nprocs);
     }
 
     /* Notify the handle of target Ghost win. It is noted that ghosts cannot

@@ -13,25 +13,25 @@
  * function. A user root + ghosts communicator will be created for later information
  * exchanges.
  */
-int CSP_func_start(CSP_func FUNC, int user_nprocs, int user_local_nprocs)
+int CSP_cmd_start(CSP_cmd CMD, int user_nprocs, int user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_func_info info;
+    CSP_cmd_info info;
 
-    info.FUNC = FUNC;
+    info.CMD = CMD;
     info.user_nprocs = user_nprocs;
     info.user_local_nprocs = user_local_nprocs;
 
-    CSP_DBG_PRINT("[%d] send Func start request to ghost local %d\n",
+    CSP_DBG_PRINT("[%d] send CMD start request to ghost local %d\n",
                   CSP_MY_RANK_IN_WORLD, CSP_G_RANKS_IN_LOCAL[0]);
     /* Only send start request to root ghost. */
-    mpi_errno = PMPI_Send((char *) &info, sizeof(CSP_func_info), MPI_CHAR,
-                          CSP_G_RANKS_IN_LOCAL[0], CSP_FUNC_TAG, CSP_COMM_LOCAL);
+    mpi_errno = PMPI_Send((char *) &info, sizeof(CSP_cmd_info), MPI_CHAR,
+                          CSP_G_RANKS_IN_LOCAL[0], CSP_CMD_TAG, CSP_COMM_LOCAL);
     return mpi_errno;
 }
 
 
-int CSP_func_new_ur_g_comm(MPI_Comm * ur_g_comm)
+int CSP_cmd_new_ur_g_comm(MPI_Comm * ur_g_comm)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_rank;
@@ -72,11 +72,11 @@ int CSP_func_new_ur_g_comm(MPI_Comm * ur_g_comm)
     goto fn_exit;
 }
 
-int CSP_func_set_param(char *func_params, int size, MPI_Comm ur_g_comm)
+int CSP_cmd_set_param(char *cmd_params, int size, MPI_Comm ur_g_comm)
 {
     /* Simply broadcast parameters to all the ghosts, because all of them are
      * guaranteed to be in current function.
      * User + all ghosts communicator is organized as h0, h1,...,user root */
     CSP_DBG_PRINT("set param to ghosts: size %d\n", size);
-    return PMPI_Bcast(func_params, size, MPI_CHAR, CSP_ENV.num_g, ur_g_comm);
+    return PMPI_Bcast(cmd_params, size, MPI_CHAR, CSP_ENV.num_g, ur_g_comm);
 }

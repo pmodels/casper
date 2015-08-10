@@ -11,11 +11,11 @@
 /**
  * Ghosts receive a new function from user root process
  */
-int CSPG_func_start(CSP_func * FUNC, int *user_local_root, int *user_nprocs, int *user_local_nprocs)
+int CSPG_cmd_start(CSP_cmd * CMD, int *user_local_root, int *user_nprocs, int *user_local_nprocs)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Status status;
-    CSPG_func_info g_info;
+    CSPG_cmd_info g_info;
     int local_gp_rank = 0;
 
     PMPI_Comm_rank(CSP_COMM_GHOST_LOCAL, &local_gp_rank);
@@ -25,35 +25,35 @@ int CSPG_func_start(CSP_func * FUNC, int *user_local_root, int *user_nprocs, int
      * Otherwise deadlock may happen if multiple user roots send request to
      * ghosts concurrently and some ghosts are locked in different communicator creation. */
     if (local_gp_rank == 0) {
-        mpi_errno = PMPI_Recv((char *) &g_info, sizeof(CSP_func_info), MPI_CHAR,
-                              MPI_ANY_SOURCE, CSP_FUNC_TAG, CSP_COMM_LOCAL, &status);
+        mpi_errno = PMPI_Recv((char *) &g_info, sizeof(CSP_cmd_info), MPI_CHAR,
+                              MPI_ANY_SOURCE, CSP_CMD_TAG, CSP_COMM_LOCAL, &status);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
 
-        CSPG_DBG_PRINT(" received Func start request from local rank %d\n", status.MPI_SOURCE);
+        CSPG_DBG_PRINT(" received CMD start request from local rank %d\n", status.MPI_SOURCE);
 
         g_info.user_root_in_local = status.MPI_SOURCE;
     }
 
     /* All other ghosts start from here */
-    mpi_errno = PMPI_Bcast((char *) &g_info, sizeof(CSPG_func_info), MPI_CHAR, 0,
+    mpi_errno = PMPI_Bcast((char *) &g_info, sizeof(CSPG_cmd_info), MPI_CHAR, 0,
                            CSP_COMM_GHOST_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         return mpi_errno;
 
-    *FUNC = g_info.info.FUNC;
+    *CMD = g_info.info.CMD;
     *user_nprocs = g_info.info.user_nprocs;
     *user_local_nprocs = g_info.info.user_local_nprocs;
     *user_local_root = g_info.user_root_in_local;
 
-    CSPG_DBG_PRINT(" all ghosts started for Func %d, user nprocs %d, local_nprocs %d,"
-                   "user_local_root %d\n", (int) (*FUNC), *user_nprocs, *user_local_nprocs,
+    CSPG_DBG_PRINT(" all ghosts started for CMD %d, user nprocs %d, local_nprocs %d,"
+                   "user_local_root %d\n", (int) (*CMD), *user_nprocs, *user_local_nprocs,
                    *user_local_root);
 
     return mpi_errno;
 }
 
-int CSPG_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
+int CSPG_cmd_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
 {
     int mpi_errno = MPI_SUCCESS;
     int *ur_g_ranks_in_local = NULL;
@@ -91,9 +91,9 @@ int CSPG_func_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
     goto fn_exit;
 }
 
-int CSPG_func_get_param(char *func_params, int size, MPI_Comm ur_g_comm)
+int CSPG_cmd_get_param(char *cmd_params, int size, MPI_Comm ur_g_comm)
 {
     /* User root is always the last rank in user root + ghosts communicator */
     CSPG_DBG_PRINT("get param from user root: size %d\n", size);
-    return PMPI_Bcast(func_params, size, MPI_CHAR, CSP_ENV.num_g, ur_g_comm);
+    return PMPI_Bcast(cmd_params, size, MPI_CHAR, CSP_ENV.num_g, ur_g_comm);
 }

@@ -203,7 +203,7 @@ static int send_win_general_parameters(MPI_Info info, CSP_win * ug_win)
     int is_u_world = 0;
     CSP_info_keyval_t *info_keyvals = NULL;
     int npairs = 0;
-    int func_params[4];
+    int cmd_params[4];
 
     is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
 
@@ -212,12 +212,12 @@ static int send_win_general_parameters(MPI_Info info, CSP_win * ug_win)
         goto fn_fail;
 
     /* Send first part of parameters */
-    func_params[0] = ug_win->max_local_user_nprocs;
-    func_params[1] = ug_win->info_args.epoch_type;
-    func_params[2] = is_u_world;
-    func_params[3] = npairs;
+    cmd_params[0] = ug_win->max_local_user_nprocs;
+    cmd_params[1] = ug_win->info_args.epoch_type;
+    cmd_params[2] = is_u_world;
+    cmd_params[3] = npairs;
 
-    mpi_errno = CSP_func_set_param((char *) func_params, sizeof(func_params), ug_win->ur_g_comm);
+    mpi_errno = CSP_cmd_set_param((char *) cmd_params, sizeof(cmd_params), ug_win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     CSP_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d, "
@@ -226,8 +226,8 @@ static int send_win_general_parameters(MPI_Info info, CSP_win * ug_win)
 
     /* Send user info */
     if (npairs > 0 && info_keyvals) {
-        mpi_errno = CSP_func_set_param((char *) info_keyvals,
-                                       sizeof(CSP_info_keyval_t) * npairs, ug_win->ur_g_comm);
+        mpi_errno = CSP_cmd_set_param((char *) info_keyvals,
+                                      sizeof(CSP_info_keyval_t) * npairs, ug_win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSP_DBG_PRINT(" Send parameters: info\n");
@@ -297,7 +297,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
 static int create_communicators(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int *func_params = NULL;
+    int *cmd_params = NULL;
     int *user_ranks_in_world = NULL;
     int *gp_ranks_in_world = NULL;
     int num_ghosts = 0, max_num_ghosts;
@@ -346,20 +346,20 @@ static int create_communicators(CSP_win * ug_win)
              *  [1:N]: user ranks in comm_world
              *  [N+1:]: ghost ranks in comm_world
              */
-            int func_param_size = user_nprocs + max_num_ghosts + 1;
-            func_params = CSP_calloc(func_param_size, sizeof(int));
+            int cmd_param_size = user_nprocs + max_num_ghosts + 1;
+            cmd_params = CSP_calloc(cmd_param_size, sizeof(int));
 
-            func_params[0] = num_ghosts;
+            cmd_params[0] = num_ghosts;
 
             /* user ranks in comm_world */
-            user_ranks_in_world = &func_params[1];
+            user_ranks_in_world = &cmd_params[1];
             for (i = 0; i < user_nprocs; i++)
                 user_ranks_in_world[i] = ug_win->targets[i].world_rank;
 
             /* ghost ranks in comm_world */
-            memcpy(&func_params[user_nprocs + 1], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
-            mpi_errno = CSP_func_set_param((char *) func_params, sizeof(int) * func_param_size,
-                                           ug_win->ur_g_comm);
+            memcpy(&cmd_params[user_nprocs + 1], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
+            mpi_errno = CSP_cmd_set_param((char *) cmd_params, sizeof(int) * cmd_param_size,
+                                          ug_win->ur_g_comm);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -418,8 +418,8 @@ static int create_communicators(CSP_win * ug_win)
 #endif
 
   fn_exit:
-    if (func_params)
-        free(func_params);
+    if (cmd_params)
+        free(cmd_params);
     if (gp_ranks_in_world)
         free(gp_ranks_in_world);
     if (gp_ranks_in_ug)
@@ -687,11 +687,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     /* Notify Ghosts start and create user root + ghosts communicator for
      * internal information exchange between users and ghosts. */
     if (user_local_rank == 0) {
-        mpi_errno = CSP_func_start(CSP_FUNC_WIN_ALLOCATE, user_nprocs, user_local_nprocs);
+        mpi_errno = CSP_cmd_start(CSP_CMD_WIN_ALLOCATE, user_nprocs, user_local_nprocs);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        mpi_errno = CSP_func_new_ur_g_comm(&ug_win->ur_g_comm);
+        mpi_errno = CSP_cmd_new_ur_g_comm(&ug_win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

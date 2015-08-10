@@ -18,16 +18,16 @@ static int recv_win_general_parameters(CSPG_win * win, MPI_Info * user_info)
     int mpi_errno = MPI_SUCCESS;
     int info_npairs = 0;
     CSP_info_keyval_t *info_keyvals = NULL;
-    int func_params[4];
+    int cmd_params[4];
 
-    mpi_errno = CSPG_func_get_param((char *) func_params, sizeof(func_params), win->ur_g_comm);
+    mpi_errno = CSPG_cmd_get_param((char *) cmd_params, sizeof(cmd_params), win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    win->max_local_user_nprocs = func_params[0];
-    win->info_args.epoch_type = func_params[1];
-    win->is_u_world = func_params[2];
-    info_npairs = func_params[3];
+    win->max_local_user_nprocs = cmd_params[0];
+    win->info_args.epoch_type = cmd_params[1];
+    win->is_u_world = cmd_params[2];
+    info_npairs = cmd_params[3];
     CSPG_DBG_PRINT(" Received parameters: max_local_user_nprocs = %d, epoch_type=%d, "
                    "is_u_world=%d, info npairs=%d\n", win->max_local_user_nprocs,
                    win->info_args.epoch_type, win->is_u_world, info_npairs);
@@ -35,8 +35,8 @@ static int recv_win_general_parameters(CSPG_win * win, MPI_Info * user_info)
     /* Receive window info */
     if (info_npairs > 0) {
         info_keyvals = CSP_calloc(info_npairs, sizeof(CSP_info_keyval_t));
-        mpi_errno = CSPG_func_get_param((char *) info_keyvals,
-                                        sizeof(CSP_info_keyval_t) * info_npairs, win->ur_g_comm);
+        mpi_errno = CSPG_cmd_get_param((char *) info_keyvals,
+                                       sizeof(CSP_info_keyval_t) * info_npairs, win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSPG_DBG_PRINT(" Received parameters: info\n");
@@ -110,7 +110,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
 static int create_communicators(int user_nprocs, CSPG_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int *func_params = NULL;
+    int *cmd_params = NULL;
 
     if (win->is_u_world) {
         /* Fast path of communicator creation for window with user world communicator.
@@ -128,17 +128,17 @@ static int create_communicators(int user_nprocs, CSPG_win * win)
          */
         int *user_ranks_in_world = NULL, *gp_ranks_in_world = NULL;
         int num_ghosts = 0;
-        int func_param_size = user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
+        int cmd_param_size = user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
 
-        func_params = CSP_calloc(func_param_size, sizeof(int));
-        mpi_errno = CSPG_func_get_param((char *) func_params, sizeof(int) * func_param_size,
-                                        win->ur_g_comm);
+        cmd_params = CSP_calloc(cmd_param_size, sizeof(int));
+        mpi_errno = CSPG_cmd_get_param((char *) cmd_params, sizeof(int) * cmd_param_size,
+                                       win->ur_g_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        num_ghosts = func_params[0];
-        user_ranks_in_world = &func_params[1];
-        gp_ranks_in_world = &func_params[user_nprocs + 1];
+        num_ghosts = cmd_params[0];
+        user_ranks_in_world = &cmd_params[1];
+        gp_ranks_in_world = &cmd_params[user_nprocs + 1];
         CSPG_DBG_PRINT(" Received parameters: num_ghosts %d\n", num_ghosts);
 
         /* General communicator creation.
@@ -174,8 +174,8 @@ static int create_communicators(int user_nprocs, CSPG_win * win)
     }
 
   fn_exit:
-    if (func_params)
-        free(func_params);
+    if (cmd_params)
+        free(cmd_params);
     return mpi_errno;
 
   fn_fail:
@@ -230,7 +230,7 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
 
     /* Create user root + ghosts communicator for
      * internal information exchange between users and ghosts. */
-    mpi_errno = CSPG_func_new_ur_g_comm(user_local_root, &win->ur_g_comm);
+    mpi_errno = CSPG_cmd_new_ur_g_comm(user_local_root, &win->ur_g_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
