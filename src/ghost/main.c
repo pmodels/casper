@@ -15,8 +15,13 @@ int run_g_main(void)
     char err_string[MPI_MAX_ERROR_STRING];
     CSP_func FUNC;
     int user_local_root, user_nprocs, user_local_nprocs;
+    int finalize_cnt = 0;
+    int local_nprocs = 0, local_user_nprocs = 0;
 
     CSPG_DBG_PRINT(" main start\n");
+
+    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
+    local_user_nprocs = local_nprocs - CSP_ENV.num_g;
 
     /* Disable MPI automatic error messages. */
     mpi_errno = PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
@@ -47,9 +52,16 @@ int run_g_main(void)
             break;
 
         case CSP_FUNC_FINALIZE:
-            CSPG_finalize();
-            goto fn_exit;
+            finalize_cnt++;
+            CSPG_DBG_PRINT(" %d processes are finalizing...\n", finalize_cnt);
 
+            /* wait till all local processes arrive finalize. */
+            if (finalize_cnt >= local_user_nprocs) {
+                CSPG_DBG_PRINT(" All processes arrived finalize.\n");
+
+                CSPG_finalize();
+                goto fn_exit;
+            }
             break;
 
         default:
