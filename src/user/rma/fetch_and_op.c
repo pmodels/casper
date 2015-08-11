@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
                                          MPI_Datatype datatype, int target_rank,

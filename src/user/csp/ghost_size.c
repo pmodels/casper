@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <casper.h>
-#include "csp.h"
+#include "cspu.h"
 
 
 /* This file defines Casper external function. */

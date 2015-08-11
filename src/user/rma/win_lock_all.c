@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
-#include "csp_rma_local.h"
+#include "cspu.h"
+#include "cspu_rma_local.h"
 
 static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
 {

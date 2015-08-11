@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 
 static int CSP_get_accumulate_impl(const void *origin_addr, int origin_count,

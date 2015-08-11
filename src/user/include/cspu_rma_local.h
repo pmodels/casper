@@ -3,15 +3,15 @@
  * (C) 2015 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_RMA_LOCAL_H_
-#define CSP_RMA_LOCAL_H_
+#ifndef CSPU_RMA_LOCAL_H_
+#define CSPU_RMA_LOCAL_H_
 
 /* This header file includes all generic routines used in local RMA communication. */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
-#include "csp.h"
+#include "cspu.h"
 
 /* Lock self process on lock window.
  * It is called by both WIN_LOCK and WIN_LOCK_ALL. */
@@ -106,4 +106,4 @@ static inline int CSP_win_flush_self_impl(CSP_win * ug_win)
 }
 #endif
 
-#endif /* CSP_RMA_LOCAL_H_ */
+#endif /* CSPU_RMA_LOCAL_H_ */

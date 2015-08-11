@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 static int CSP_raccumulate_segment_impl(const void *origin_addr, int origin_count,
                                         MPI_Datatype origin_datatype, int target_rank,

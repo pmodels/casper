@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
 void CSP_target_get_ghost_opload_by_op(int target_rank, int is_order_required,

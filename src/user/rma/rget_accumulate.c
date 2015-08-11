@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 static inline int CSP_proc_null_rget_accumualte_impl(const void *origin_addr, int origin_count,
                                                      MPI_Datatype origin_datatype,

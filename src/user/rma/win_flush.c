@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
-#include "csp_rma_local.h"
+#include "cspu.h"
+#include "cspu_rma_local.h"
 
 
 int MPI_Win_flush(int target_rank, MPI_Win win)

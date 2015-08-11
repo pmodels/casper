@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 static int CSP_compare_and_swap_segment_impl(const void *origin_addr, const void *compare_addr,
                                              void *result_addr, MPI_Datatype datatype,

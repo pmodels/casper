@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag)
 {

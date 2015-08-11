@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
-#include "csp.h"
+#include "cspu.h"
 #include "info.h"
 
 #include <ctype.h>

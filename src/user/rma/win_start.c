@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 static int fill_ranks_in_win_grp(CSP_win * ug_win)
 {

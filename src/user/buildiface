@@ -60,7 +60,7 @@ print CFILE <<EOT;
  */
 
 #include "mpi.h"
-#include "csp.h"
+#include "cspu.h"
 EOT
 
 

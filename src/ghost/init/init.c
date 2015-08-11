@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-int run_g_main(void)
+int CSPG_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int err_class = 0, errstr_len = 0;

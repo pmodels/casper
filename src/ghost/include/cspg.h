@@ -32,6 +32,10 @@
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
 
+struct CSPG_win_info_args {
+    int epoch_type;
+};
+
 typedef struct CSPG_win {
     MPI_Aint *user_base_addrs_in_local;
 
@@ -56,7 +60,7 @@ typedef struct CSPG_win {
 
     MPI_Win active_win;
 
-    struct CSP_win_info_args info_args;
+    struct CSPG_win_info_args info_args;
     unsigned long csp_g_win_handle;
 } CSPG_win;
 

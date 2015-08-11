@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler)
 {

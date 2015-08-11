@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
+#include "cspu.h"
 
 /**
  * The root process in current local user communicator ask ghosts to start a new

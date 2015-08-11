@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
-#include "cspg.h"
 
 MPI_Comm CSP_COMM_USER_WORLD = MPI_COMM_NULL;
 MPI_Comm CSP_COMM_LOCAL = MPI_COMM_NULL;
@@ -30,8 +29,6 @@ int CSP_MY_NODE_ID = -1;
 int CSP_NUM_NODES = 0;
 int *CSP_ALL_NODE_IDS = NULL;
 int CSP_MY_RANK_IN_WORLD = -1;
-
-CSP_define_win_cache;
 
 /* TODO: Move load balancing option into env setting */
 CSP_env_param CSP_ENV;
@@ -373,7 +370,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
                       local_nprocs, user_rank, user_nprocs, local_user_rank,
                       local_user_nprocs, CSP_MY_NODE_ID);
 
-        CSP_init_win_cache();
+        mpi_errno = CSP_init();
     }
     /* Ghost processes */
     /* TODO: Ghost process should not run user program */
@@ -388,7 +385,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
         CSP_DBG_PRINT("I am ghost, %d/%d in world, %d/%d in local, node_id %d\n", rank,
                       nprocs, local_rank, local_nprocs, CSP_MY_NODE_ID);
-        run_g_main();
+        CSPG_init();
         exit(0);
     }
 
@@ -444,8 +441,6 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         free(CSP_ALL_NODE_IDS);
     if (CSP_USER_RANKS_IN_WORLD)
         free(CSP_USER_RANKS_IN_WORLD);
-
-    CSP_destroy_win_cache();
 
     /* Reset global variables */
     CSP_COMM_USER_WORLD = MPI_COMM_NULL;

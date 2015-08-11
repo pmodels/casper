@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
-#include "csp.h"
+#include "cspu.h"
 
 static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
 {

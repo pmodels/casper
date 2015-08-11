@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
-#include "csp.h"
+#include "cspu.h"
 
 void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr)
 {

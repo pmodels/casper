@@ -40,7 +40,7 @@ echo "Found $mpih_path"
 
 echo ""
 echo_n "Generating MPI wrappers... "
-./src/buildiface --infile $mpih_path --outfile src/mpi_wrap.c
+./src/user/buildiface --infile $mpih_path --outfile src/user/mpi_wrap.c
 echo "done"
 
 subdirs=test

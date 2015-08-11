@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 int MPI_Win_create_dynamic(MPI_Info info, MPI_Comm comm, MPI_Win * win)
 {

@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "csp.h"
+#include "cspu.h"
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
 static int CSP_rput_shared_impl(const void *origin_addr, int origin_count,

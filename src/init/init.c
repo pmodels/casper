@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "csp.h"
-#include "cspg.h"
 
 int MPI_Init(int *argc, char ***argv)
 {
