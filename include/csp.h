@@ -232,16 +232,12 @@ extern MPI_Comm CSP_COMM_UR_WORLD;
 extern MPI_Comm CSP_COMM_GHOST_LOCAL;
 extern MPI_Group CSP_GROUP_WORLD;
 extern MPI_Group CSP_GROUP_LOCAL;
-extern MPI_Group CSP_GROUP_USER_WORLD;
 
-extern int *CSP_G_RANKS_IN_WORLD;
 extern int *CSP_G_RANKS_IN_LOCAL;
 extern int *CSP_ALL_G_RANKS_IN_WORLD;
 extern int *CSP_ALL_UNIQUE_G_RANKS_IN_WORLD;
-extern int *CSP_USER_RANKS_IN_WORLD;
 extern int CSP_NUM_NODES;
 extern int CSP_MY_NODE_ID;
-extern int *CSP_ALL_NODE_IDS;
 extern int CSP_MY_RANK_IN_WORLD;
 
 extern CSP_env_param CSP_ENV;

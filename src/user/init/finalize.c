@@ -49,13 +49,8 @@ int MPI_Finalize(void)
         PMPI_Group_free(&CSP_GROUP_WORLD);
     if (CSP_GROUP_LOCAL != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_LOCAL);
-    if (CSP_GROUP_USER_WORLD != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_USER_WORLD);
 
     CSP_destroy_win_cache();
-
-    if (CSP_G_RANKS_IN_WORLD)
-        free(CSP_G_RANKS_IN_WORLD);
 
     if (CSP_G_RANKS_IN_LOCAL)
         free(CSP_G_RANKS_IN_LOCAL);
@@ -65,12 +60,6 @@ int MPI_Finalize(void)
 
     if (CSP_ALL_UNIQUE_G_RANKS_IN_WORLD)
         free(CSP_ALL_UNIQUE_G_RANKS_IN_WORLD);
-
-    if (CSP_ALL_NODE_IDS)
-        free(CSP_ALL_NODE_IDS);
-
-    if (CSP_USER_RANKS_IN_WORLD)
-        free(CSP_USER_RANKS_IN_WORLD);
 
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)

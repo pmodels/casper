@@ -37,11 +37,6 @@ int CSPG_finalize(void)
         PMPI_Group_free(&CSP_GROUP_WORLD);
     if (CSP_GROUP_LOCAL != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_LOCAL);
-    if (CSP_GROUP_USER_WORLD != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_USER_WORLD);
-
-    if (CSP_G_RANKS_IN_WORLD)
-        free(CSP_G_RANKS_IN_WORLD);
 
     if (CSP_G_RANKS_IN_LOCAL)
         free(CSP_G_RANKS_IN_LOCAL);
@@ -51,9 +46,6 @@ int CSPG_finalize(void)
 
     if (CSP_ALL_UNIQUE_G_RANKS_IN_WORLD)
         free(CSP_ALL_UNIQUE_G_RANKS_IN_WORLD);
-
-    if (CSP_ALL_NODE_IDS)
-        free(CSP_ALL_NODE_IDS);
 
     CSPG_DBG_PRINT(" PMPI_Finalize\n");
     mpi_errno = PMPI_Finalize();
