@@ -8,92 +8,35 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-/**
- * Ghosts receive a new function from user root process
- */
-int CSPG_cmd_start(CSP_cmd * CMD, int *user_local_root, int *user_nprocs, int *user_local_nprocs)
+/* Receive command from any local user process (blocking call). */
+int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Status status;
-    CSPG_cmd_info g_info;
     int local_gp_rank = 0;
 
     PMPI_Comm_rank(CSP_COMM_GHOST_LOCAL, &local_gp_rank);
-    memset(&g_info, 0, sizeof(g_info));
+    memset(pkt, 0, sizeof(CSP_cmd_pkt_t));
 
-    /* Only root ghost receives start request from user roots.
+    /* Only the first ghost receives command from any local user process.
      * Otherwise deadlock may happen if multiple user roots send request to
      * ghosts concurrently and some ghosts are locked in different communicator creation. */
     if (local_gp_rank == 0) {
-        mpi_errno = PMPI_Recv((char *) &g_info, sizeof(CSP_cmd_info), MPI_CHAR,
-                              MPI_ANY_SOURCE, CSP_CMD_TAG, CSP_COMM_LOCAL, &status);
+        mpi_errno = PMPI_Recv((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
+                              MPI_ANY_SOURCE, CSP_CMD_TAG, CSP_COMM_LOCAL, MPI_STATUS_IGNORE);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
 
-        CSPG_DBG_PRINT(" received CMD start request from local rank %d\n", status.MPI_SOURCE);
-
-        g_info.user_root_in_local = status.MPI_SOURCE;
+        CSPG_DBG_PRINT(" ghost 0 received CMD %d\n", (int) (pkt->cmd));
     }
 
-    /* All other ghosts start from here */
-    mpi_errno = PMPI_Bcast((char *) &g_info, sizeof(CSPG_cmd_info), MPI_CHAR, 0,
-                           CSP_COMM_GHOST_LOCAL);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
-
-    *CMD = g_info.info.CMD;
-    *user_nprocs = g_info.info.user_nprocs;
-    *user_local_nprocs = g_info.info.user_local_nprocs;
-    *user_local_root = g_info.user_root_in_local;
-
-    CSPG_DBG_PRINT(" all ghosts started for CMD %d, user nprocs %d, local_nprocs %d,"
-                   "user_local_root %d\n", (int) (*CMD), *user_nprocs, *user_local_nprocs,
-                   *user_local_root);
+    if (CSP_ENV.num_g > 1) {
+        /* All other ghosts start from here */
+        mpi_errno = PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0,
+                               CSP_COMM_GHOST_LOCAL);
+        if (mpi_errno != MPI_SUCCESS)
+            return mpi_errno;
+        CSPG_DBG_PRINT(" all ghosts received CMD %d\n", (int) (pkt->cmd));
+    }
 
     return mpi_errno;
-}
-
-int CSPG_cmd_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int *ur_g_ranks_in_local = NULL;
-    MPI_Group ur_g_group = MPI_GROUP_NULL;
-    int i;
-
-    /* Create a user root + all ghosts communicator for later information exchanges. */
-    ur_g_ranks_in_local = CSP_calloc(sizeof(int), CSP_ENV.num_g + 1);
-    /* Ghosts' rank are always start from 0 */
-    for (i = 0; i < CSP_ENV.num_g; i++)
-        ur_g_ranks_in_local[i] = i;
-    ur_g_ranks_in_local[CSP_ENV.num_g] = user_local_root;
-
-    PMPI_Group_incl(CSP_GROUP_LOCAL, CSP_ENV.num_g + 1, ur_g_ranks_in_local, &ur_g_group);
-    mpi_errno = PMPI_Comm_create_group(CSP_COMM_LOCAL, ur_g_group, 0, ur_g_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-#ifdef CSP_DEBUG
-    int ur_g_rank, ur_g_nprocs;
-    PMPI_Comm_rank(*ur_g_comm, &ur_g_rank);
-    PMPI_Comm_size(*ur_g_comm, &ur_g_nprocs);
-    CSPG_DBG_PRINT(" created ur_h comm, my rank %d/%d \n", ur_g_rank, ur_g_nprocs);
-#endif
-
-  fn_exit:
-    if (ur_g_ranks_in_local)
-        free(ur_g_ranks_in_local);
-    if (ur_g_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&ur_g_group);
-
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-int CSPG_cmd_get_param(char *cmd_params, int size, MPI_Comm ur_g_comm)
-{
-    /* User root is always the last rank in user root + ghosts communicator */
-    CSPG_DBG_PRINT("get param from user root: size %d\n", size);
-    return PMPI_Bcast(cmd_params, size, MPI_CHAR, CSP_ENV.num_g, ur_g_comm);
 }

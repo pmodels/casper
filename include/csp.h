@@ -33,8 +33,8 @@
 #define CSP_PSCW_CW_TAG 900
 #define CSP_PSCW_PS_TAG 901
 
-/*FIXME: It is a workaround for shared window overlapping problem
- * when shared segment size of each ghost is 0 */
+/* Using non-zero segment size as the workaround for shared window
+ * overlapping problem. */
 #define CSP_GP_SHARED_SG_SIZE 0
 
 
@@ -131,24 +131,42 @@ static inline void *CSP_calloc(int n, size_t size)
  * Command related definition.
  * ====================================================================== */
 
+#define CSP_CMD_TAG 9889        /* tag for command */
+#define CSP_CMD_PARAM_TAG 9890  /* tag for any later command parameters */
+
 typedef enum {
     CSP_CMD_NULL,
     CSP_CMD_WIN_ALLOCATE,
     CSP_CMD_WIN_FREE,
-    CSP_CMD_LOCL_ALL,
-    CSP_CMD_UNLOCK_ALL,
-    CSP_CMD_ABORT,
     CSP_CMD_FINALIZE,
     CSP_CMD_MAX
 } CSP_cmd;
 
-typedef struct CSP_cmd_info {
-    CSP_cmd CMD;
+typedef struct CSP_cmd_winalloc_pkt {
+    CSP_cmd cmd;
+    int user_local_root;
     int user_nprocs;
-    int user_local_nprocs;
-} CSP_cmd_info;
+    int max_local_user_nprocs;
+    int epoch_type;
+    int is_u_world;
+    int info_npairs;
+} CSP_cmd_winalloc_pkt_t;
 
-#define CSP_CMD_TAG 9889
+typedef struct CSP_cmd_winfree_pkt {
+    CSP_cmd cmd;
+    int user_local_root;
+} CSP_cmd_winfree_pkt_t;
+
+typedef struct CSP_cmd_finalize_pkt {
+    CSP_cmd cmd;
+} CSP_cmd_finalize_pkt_t;
+
+typedef union CSP_cmd_pkt {
+    CSP_cmd cmd;
+    CSP_cmd_winalloc_pkt_t winalloc;
+    CSP_cmd_winfree_pkt_t winfree;
+    CSP_cmd_finalize_pkt_t finalize;
+} CSP_cmd_pkt_t;
 
 
 /* ======================================================================

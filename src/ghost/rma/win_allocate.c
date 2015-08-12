@@ -13,30 +13,44 @@
 #undef FUNCNAME
 #define FUNCNAME CSPG_win_allocate
 
-static int recv_win_general_parameters(CSPG_win * win, MPI_Info * user_info)
+/* Receive parameters from user root via local communicator (blocking call). */
+static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win * win)
+{
+    return PMPI_Recv(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
+                     CSP_COMM_LOCAL, MPI_STATUS_IGNORE);
+}
+
+/* Send parameters to user root via local communicator (blocking call). */
+static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win * win)
+{
+    return PMPI_Send(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
+                     CSP_COMM_LOCAL);
+}
+
+static int init_ghost_win(CSP_cmd_winalloc_pkt_t * winalloc_pkt, CSPG_win * win,
+                          MPI_Info * user_info)
 {
     int mpi_errno = MPI_SUCCESS;
     int info_npairs = 0;
     CSP_info_keyval_t *info_keyvals = NULL;
-    int cmd_params[4];
 
-    mpi_errno = CSPG_cmd_get_param((char *) cmd_params, sizeof(cmd_params), win->ur_g_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    win->max_local_user_nprocs = winalloc_pkt->max_local_user_nprocs;
+    win->info_args.epoch_type = winalloc_pkt->epoch_type;
+    win->is_u_world = winalloc_pkt->is_u_world;
+    win->user_nprocs = winalloc_pkt->user_nprocs;
+    win->user_local_root = winalloc_pkt->user_local_root;
+    info_npairs = winalloc_pkt->info_npairs;
 
-    win->max_local_user_nprocs = cmd_params[0];
-    win->info_args.epoch_type = cmd_params[1];
-    win->is_u_world = cmd_params[2];
-    info_npairs = cmd_params[3];
-    CSPG_DBG_PRINT(" Received parameters: max_local_user_nprocs = %d, epoch_type=%d, "
-                   "is_u_world=%d, info npairs=%d\n", win->max_local_user_nprocs,
-                   win->info_args.epoch_type, win->is_u_world, info_npairs);
+    CSPG_DBG_PRINT(" Received command from %d: max_local_user_nprocs = %d, epoch_type=%d, "
+                   "is_u_world=%d, user_nprocs=%d, info npairs=%d\n", win->user_local_root,
+                   win->max_local_user_nprocs, win->info_args.epoch_type, win->is_u_world,
+                   win->user_nprocs, info_npairs);
 
     /* Receive window info */
     if (info_npairs > 0) {
         info_keyvals = CSP_calloc(info_npairs, sizeof(CSP_info_keyval_t));
-        mpi_errno = CSPG_cmd_get_param((char *) info_keyvals,
-                                       sizeof(CSP_info_keyval_t) * info_npairs, win->ur_g_comm);
+        mpi_errno = recv_ghost_cmd_param(info_keyvals, sizeof(CSP_info_keyval_t) * info_npairs,
+                                         win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSPG_DBG_PRINT(" Received parameters: info\n");
@@ -107,7 +121,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     goto fn_exit;
 }
 
-static int create_communicators(int user_nprocs, CSPG_win * win)
+static int create_communicators(CSPG_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *cmd_params = NULL;
@@ -128,24 +142,23 @@ static int create_communicators(int user_nprocs, CSPG_win * win)
          */
         int *user_ranks_in_world = NULL, *gp_ranks_in_world = NULL;
         int num_ghosts = 0;
-        int cmd_param_size = user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
+        int cmd_param_size = win->user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
 
         cmd_params = CSP_calloc(cmd_param_size, sizeof(int));
-        mpi_errno = CSPG_cmd_get_param((char *) cmd_params, sizeof(int) * cmd_param_size,
-                                       win->ur_g_comm);
+        mpi_errno = recv_ghost_cmd_param((char *) cmd_params, sizeof(int) * cmd_param_size, win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         num_ghosts = cmd_params[0];
         user_ranks_in_world = &cmd_params[1];
-        gp_ranks_in_world = &cmd_params[user_nprocs + 1];
+        gp_ranks_in_world = &cmd_params[win->user_nprocs + 1];
         CSPG_DBG_PRINT(" Received parameters: num_ghosts %d\n", num_ghosts);
 
         /* General communicator creation.
          *  local_ug_comm: including local USER and Ghost processes
          *  ug_comm: including all USER and Ghost processes
          */
-        mpi_errno = create_ug_comm(user_nprocs, user_ranks_in_world, num_ghosts,
+        mpi_errno = create_ug_comm(win->user_nprocs, user_ranks_in_world, num_ghosts,
                                    gp_ranks_in_world, win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -213,29 +226,26 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win
 }
 
 
-int CSPG_win_allocate(int user_local_root, int user_nprocs)
+int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag)
 {
     int mpi_errno = MPI_SUCCESS;
     int dst, local_ug_rank, local_ug_nprocs;
     MPI_Aint r_size, size = 0;
     int r_disp_unit;
     int ug_nprocs, ug_rank;
-    CSPG_win *win;
+    CSPG_win *win = NULL;
     void **user_bases = NULL;
     MPI_Aint csp_buf_size = CSP_GP_SHARED_SG_SIZE;
     MPI_Info user_info = MPI_INFO_NULL;
     MPI_Info shared_info = MPI_INFO_NULL;
+    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->winalloc;
 
     win = CSP_calloc(1, sizeof(CSPG_win));
 
-    /* Create user root + ghosts communicator for
-     * internal information exchange between users and ghosts. */
-    mpi_errno = CSPG_cmd_new_ur_g_comm(user_local_root, &win->ur_g_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    (*exit_flag) = 0;
 
-    /* Every ghost receive parameters from user root process. */
-    mpi_errno = recv_win_general_parameters(win, &user_info);
+    /* Every ghost initialize ghost window by using received parameters. */
+    mpi_errno = init_ghost_win(winalloc_pkt, win, &user_info);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -243,7 +253,7 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
      *  ug_comm: including all USER and Ghost processes
      *  local_ug_comm: including local USER and Ghost processes
      */
-    create_communicators(user_nprocs, win);
+    create_communicators(win);
 
     PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank);
     PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);
@@ -341,10 +351,8 @@ int CSPG_win_allocate(int user_local_root, int user_nprocs)
 
     win->csp_g_win_handle = (unsigned long) win;
 
-    /* Notify user root the handle of ghost win. User root is always rank num_g in
-     * user root + ghosts communicator */
-    mpi_errno = PMPI_Gather(&win->csp_g_win_handle, 1, MPI_UNSIGNED_LONG, NULL,
-                            0, MPI_UNSIGNED_LONG, CSP_ENV.num_g, win->ur_g_comm);
+    /* Notify user root the handle of ghost win. */
+    mpi_errno = send_ghost_cmd_param(&win->csp_g_win_handle, sizeof(unsigned long), win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     CSPG_DBG_PRINT(" Define csp_g_win_handle=0x%lx\n", win->csp_g_win_handle);

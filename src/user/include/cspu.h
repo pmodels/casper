@@ -101,10 +101,6 @@ typedef struct CSP_win_target {
 } CSP_win_target;
 
 typedef struct CSP_win {
-    /* communicator including root user processes and all ghosts,
-     * used for internal information exchange between users and ghosts */
-    MPI_Comm ur_g_comm;
-
     /* communicator including local process and ghosts */
     MPI_Comm local_ug_comm;
     MPI_Group local_ug_group;
@@ -172,12 +168,6 @@ typedef struct CSP_win {
     MPIR_Win_flavor_t create_flavor;
 
 } CSP_win;
-
-
-extern int CSP_cmd_start(CSP_cmd CMD, int user_nprocs, int user_local_nprocs);
-extern int CSP_cmd_new_ur_g_comm(MPI_Comm * ur_g_comm);
-extern int CSP_cmd_set_param(char *cmd_params, int size, MPI_Comm ur_g_comm);
-
 
 /* ======================================================================
  * Window cache related routine.
@@ -508,6 +498,12 @@ static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int 
 }
 #endif
 
+
+/* ======================================================================
+ * Other prototypes
+ * ====================================================================== */
+
+extern int CSP_cmd_issue(CSP_cmd_pkt_t * pkt);
 extern int CSP_op_segments_decode(const void *origin_addr, int origin_count,
                                   MPI_Datatype origin_datatype,
                                   int target_rank, MPI_Aint target_disp,
@@ -531,4 +527,5 @@ extern char wait_flg;
 extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking, int *flag);
 
 extern int CSP_win_release(CSP_win * ug_win);
+
 #endif /* CSPU_H_ */

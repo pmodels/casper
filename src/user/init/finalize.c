@@ -8,6 +8,15 @@
 #include <stdlib.h>
 #include "cspu.h"
 
+static inline int issue_ghost_cmd(void)
+{
+    CSP_cmd_pkt_t pkt;
+    pkt.cmd = CSP_CMD_FINALIZE;
+
+    /* send command to ghosts. */
+    return CSP_cmd_issue(&pkt);
+}
+
 int MPI_Finalize(void)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -17,8 +26,10 @@ int MPI_Finalize(void)
 
     CSP_DBG_PRINT_FCNAME();
 
-    /* Ghosts do not need user process information because it is a global call. */
-    CSP_cmd_start(CSP_CMD_FINALIZE, 0, 0);
+    /* notify ghost processes to finalize */
+    mpi_errno = issue_ghost_cmd();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");

@@ -12,10 +12,14 @@
 #include <mpi.h>
 #include "csp.h"
 
-/* #define CSPG_DEBUG */
+/* ======================================================================
+ * Casper ghost debugging/error/assert MACROs.
+ * ====================================================================== */
+
 #ifdef CSPG_DEBUG
 #define CSPG_DBG_PRINT(str, ...) do { \
-    fprintf(stdout, "[CSPG][N-%d]"str, CSP_MY_NODE_ID, ## __VA_ARGS__); fflush(stdout); \
+    fprintf(stdout, "[CSPG][%d-%d]"str, CSP_MY_NODE_ID, CSP_MY_RANK_IN_WORLD,   \
+            ## __VA_ARGS__); fflush(stdout); \
     } while (0)
 #else
 #define CSPG_DBG_PRINT(str, ...) {}
@@ -32,6 +36,11 @@
             PMPI_Abort(MPI_COMM_WORLD, -1); \
         }} while (0)
 
+
+/* ======================================================================
+ * Window related definitions.
+ * ====================================================================== */
+
 struct CSPG_win_info_args {
     int epoch_type;
 };
@@ -39,20 +48,17 @@ struct CSPG_win_info_args {
 typedef struct CSPG_win {
     MPI_Aint *user_base_addrs_in_local;
 
-    /* communicator including root user processes and all ghosts,
-     * used for internal information exchange between users and ghosts */
-    MPI_Comm ur_g_comm;
-
-    /* communicator including local processes and ghosts */
-    MPI_Comm local_ug_comm;
+    MPI_Comm local_ug_comm;     /* including local user and ghost processes */
     MPI_Win local_ug_win;
-    int max_local_user_nprocs;
 
-    /* whether user communicator is equal to USER WORLD. */
-    int is_u_world;
+    int max_local_user_nprocs;  /* max number of local processes in this window,
+                                 * used for creating lock N-window */
+    int user_nprocs;            /* number of user processes in this window */
+    int user_local_root;        /* rank of local user root in comm_local. */
 
-    /* communicator including all the user processes and ghosts */
-    MPI_Comm ug_comm;
+    int is_u_world;             /* whether user communicator is equal to USER WORLD. */
+
+    MPI_Comm ug_comm;           /* including all user and ghosts processes */
 
     void *base;
     MPI_Win *ug_wins;
@@ -64,18 +70,17 @@ typedef struct CSPG_win {
     unsigned long csp_g_win_handle;
 } CSPG_win;
 
-typedef struct CSPG_cmd_info {
-    CSP_cmd_info info;
-    int user_root_in_local;
-} CSPG_cmd_info;
 
-extern int CSPG_win_allocate(int user_local_root, int user_nprocs);
-extern int CSPG_win_free(int user_local_root);
-extern int CSPG_finalize(void);
+/* ======================================================================
+ * Command related definition.
+ * ====================================================================== */
 
-extern int CSPG_cmd_start(CSP_cmd * CMD, int *user_local_root, int *user_nprocs,
-                          int *user_local_nprocs);
-extern int CSPG_cmd_new_ur_g_comm(int user_local_root, MPI_Comm * ur_g_comm);
-extern int CSPG_cmd_get_param(char *cmd_params, int size, MPI_Comm ur_g_comm);
+
+typedef int (*CSPG_cmd_handler_t) (CSP_cmd_pkt_t * pkt, int *exit_flag);
+
+extern int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag);
+extern int CSPG_win_free(CSP_cmd_pkt_t * pkt, int *exit_flag);
+extern int CSPG_finalize(CSP_cmd_pkt_t * pkt, int *exit_flag);
+extern int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt);
 
 #endif /* CSPG_H_ */

@@ -8,67 +8,49 @@
 #include <stdlib.h>
 #include "cspg.h"
 
+CSPG_cmd_handler_t cmd_handlers[CSP_CMD_MAX] = { NULL };
+
+static void init_cmd_handlers(void)
+{
+    cmd_handlers[CSP_CMD_WIN_ALLOCATE] = CSPG_win_allocate;
+    cmd_handlers[CSP_CMD_WIN_FREE] = CSPG_win_free;
+    cmd_handlers[CSP_CMD_FINALIZE] = CSPG_finalize;
+}
+
 int CSPG_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int err_class = 0, errstr_len = 0;
     char err_string[MPI_MAX_ERROR_STRING];
-    CSP_cmd CMD;
-    int user_local_root, user_nprocs, user_local_nprocs;
-    int finalize_cnt = 0;
-    int local_nprocs = 0, local_user_nprocs = 0;
+    CSP_cmd_pkt_t pkt;
+    int exit_flag = 0;
 
     CSPG_DBG_PRINT(" main start\n");
-
-    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
-    local_user_nprocs = local_nprocs - CSP_ENV.num_g;
+    init_cmd_handlers();
 
     /* Disable MPI automatic error messages. */
     mpi_errno = PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /*TODO: init in user app or here ? */
-    /*    MPI_Init(&argc, &argv); */
     while (1) {
-        mpi_errno = CSPG_cmd_start(&CMD, &user_local_root, &user_nprocs, &user_local_nprocs);
+        mpi_errno = CSPG_cmd_recv(&pkt);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        switch (CMD) {
-        case CSP_CMD_WIN_ALLOCATE:
-            mpi_errno = CSPG_win_allocate(user_local_root, user_nprocs);
-            break;
-
-        case CSP_CMD_WIN_FREE:
-            mpi_errno = CSPG_win_free(user_local_root);
-            break;
-
-            /* other commands */
-        case CSP_CMD_ABORT:
-            PMPI_Abort(MPI_COMM_WORLD, 1);
-            goto fn_exit;
-
-            break;
-
-        case CSP_CMD_FINALIZE:
-            finalize_cnt++;
-            CSPG_DBG_PRINT(" %d processes are finalizing...\n", finalize_cnt);
-
-            /* wait till all local processes arrive finalize. */
-            if (finalize_cnt >= local_user_nprocs) {
-                CSPG_DBG_PRINT(" All processes arrived finalize.\n");
-
-                CSPG_finalize();
-                goto fn_exit;
-            }
-            break;
-
-        default:
-            /* Skip incorrect CMD. */
-            CSPG_DBG_PRINT(" CMD %d not supported\n", (int) CMD);
-            break;
+        /* skip unknown command */
+        if (pkt.cmd <= CSP_CMD_NULL || pkt.cmd >= CSP_CMD_MAX || !cmd_handlers[pkt.cmd]) {
+            CSPG_DBG_PRINT(" Received unknown CMD %d\n", (int) (pkt.cmd));
+            continue;
         }
+
+        mpi_errno = cmd_handlers[pkt.cmd] (&pkt, &exit_flag);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* exit when finalize finished */
+        if (exit_flag)
+            goto fn_exit;
     }
 
     CSPG_DBG_PRINT(" main done\n");

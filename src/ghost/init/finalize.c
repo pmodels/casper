@@ -8,9 +8,29 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-int CSPG_finalize(void)
+static int finalize_cnt = 0;
+
+int CSPG_finalize(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
 {
     int mpi_errno = MPI_SUCCESS;
+    int local_nprocs, local_user_nprocs;
+
+    finalize_cnt++;
+    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
+    local_user_nprocs = local_nprocs - CSP_ENV.num_g;
+
+    CSPG_DBG_PRINT(" %d/%d processes already arrived finalize...\n",
+                   finalize_cnt, local_user_nprocs);
+
+    /* wait till all local processes arrive finalize.
+     * Because every ghost is shared by multiple local user processes.*/
+    if (finalize_cnt < local_user_nprocs) {
+        (*exit_flag) = 0;
+        goto fn_exit;
+    }
+
+    CSPG_DBG_PRINT(" All processes arrived finalize.\n");
+    (*exit_flag) = 1;
 
     if (CSP_COMM_LOCAL != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_COMM_LOCAL\n");

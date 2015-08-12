@@ -64,14 +64,6 @@ int CSP_win_release(CSP_win * ug_win)
 
     /* Free communicators.
      * ug_win->user_comm is created by user, will be freed by user. */
-
-    if (ug_win->ur_g_comm && ug_win->ur_g_comm != MPI_COMM_NULL) {
-        CSP_DBG_PRINT("\t free user root + ghosts communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->ur_g_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
     if (ug_win->local_ug_comm && ug_win->local_ug_comm != MPI_COMM_NULL
         && ug_win->local_ug_comm != CSP_COMM_LOCAL) {
         CSP_DBG_PRINT("\t free shared communicator\n");
@@ -161,14 +153,59 @@ int CSP_win_release(CSP_win * ug_win)
     goto fn_exit;
 }
 
+static int issue_ghost_cmd(CSP_win * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_cmd_pkt_t pkt;
+    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt.winfree;
+    MPI_Request *reqs = NULL;
+    MPI_Status *stats = NULL;
+    int i, user_local_rank = 0;
+
+    reqs = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+    stats = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
+    PMPI_Comm_rank(CSP_COMM_LOCAL, &user_local_rank);
+
+    /* send command to root ghost. */
+    winfree_pkt->cmd = CSP_CMD_WIN_FREE;
+    winfree_pkt->user_local_root = user_local_rank;
+
+    mpi_errno = CSP_cmd_issue(&pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* send the handle of target ghost win.
+     * Note that ghosts cannot fetch the corresponding window without handlers
+     * so that only global communicator can be used here.*/
+    for (i = 0; i < CSP_ENV.num_g; i++) {
+        mpi_errno = PMPI_Isend(&ug_win->g_win_handles[i], 1, MPI_UNSIGNED_LONG,
+                               CSP_G_RANKS_IN_LOCAL[i], CSP_CMD_PARAM_TAG, CSP_COMM_LOCAL,
+                               &reqs[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    if (reqs)
+        free(reqs);
+    if (stats)
+        free(stats);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
 int MPI_Win_free(MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_win *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
-    int j;
-    MPI_Request *reqs = NULL;
-    MPI_Status *stats = NULL;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -199,22 +236,9 @@ int MPI_Win_free(MPI_Win * win)
             goto fn_fail;
     }
 
+    /* Local user root issues command to ghosts. */
     if (user_local_rank == 0) {
-        CSP_cmd_start(CSP_CMD_WIN_FREE, user_nprocs, user_local_nprocs);
-    }
-
-    /* Notify the handle of target Ghost win. It is noted that ghosts cannot
-     * fetch the corresponding window without handlers so that only global communicator
-     * can be used here.*/
-    if (user_local_rank == 0) {
-        reqs = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
-        stats = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
-
-        for (j = 0; j < CSP_ENV.num_g; j++) {
-            mpi_errno = PMPI_Isend(&ug_win->g_win_handles[j], 1, MPI_UNSIGNED_LONG,
-                                   CSP_G_RANKS_IN_LOCAL[j], 0, CSP_COMM_LOCAL, &reqs[j]);
-        }
-        mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
+        mpi_errno = issue_ghost_cmd(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -234,10 +258,6 @@ int MPI_Win_free(MPI_Win * win)
     mpi_errno = CSP_win_release(ug_win);
 
   fn_exit:
-    if (reqs)
-        free(reqs);
-    if (stats)
-        free(stats);
     return mpi_errno;
 
   fn_fail:

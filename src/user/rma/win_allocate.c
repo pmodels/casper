@@ -147,6 +147,125 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
     goto fn_exit;
 }
 
+/* Gather parameters from all the local ghosts (blocking call).
+ * It is OK to be blocking, since all of them are guaranteed to be in current function. */
+static int gather_ghost_cmd_params(void *params, size_t size)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i;
+    MPI_Status *stats = NULL;
+    MPI_Request *reqs = NULL;
+    size_t offset = 0;
+
+    reqs = (MPI_Request *) CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+    stats = (MPI_Status *) CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
+
+    /* ghosts are always start from rank 0 on local communicator. */
+    for (i = 0; i < CSP_ENV.num_g; i++) {
+        offset = i * size;
+        mpi_errno = PMPI_Irecv(((char *) params + offset), size, MPI_CHAR, i,
+                               CSP_CMD_PARAM_TAG, CSP_COMM_LOCAL, &reqs[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    if (stats)
+        free(stats);
+    if (reqs)
+        free(reqs);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+/* Distribute parameters to all the local ghosts (blocking call).
+ * It is OK to be blocking, since all of them are guaranteed to be in current function. */
+static int bcast_ghost_cmd_params(void *params, size_t size)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i;
+    MPI_Status *stats = NULL;
+    MPI_Request *reqs = NULL;
+
+    reqs = (MPI_Request *) CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+    stats = (MPI_Status *) CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
+
+    /* ghosts are always start from rank 0 on local communicator. */
+    for (i = 0; i < CSP_ENV.num_g; i++) {
+        mpi_errno =
+            PMPI_Isend(params, size, MPI_CHAR, i, CSP_CMD_PARAM_TAG, CSP_COMM_LOCAL, &reqs[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    if (stats)
+        free(stats);
+    if (reqs)
+        free(reqs);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_cmd_pkt_t pkt;
+    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt.winalloc;
+    CSP_info_keyval_t *info_keyvals = NULL;
+    int user_local_rank = 0;
+    int npairs = 0;
+
+    PMPI_Comm_rank(CSP_COMM_LOCAL, &user_local_rank);
+
+    winalloc_pkt->cmd = CSP_CMD_WIN_ALLOCATE;
+    winalloc_pkt->user_local_root = user_local_rank;
+    winalloc_pkt->user_nprocs = user_nprocs;
+    winalloc_pkt->epoch_type = ug_win->info_args.epoch_type;
+    winalloc_pkt->max_local_user_nprocs = ug_win->max_local_user_nprocs;
+    winalloc_pkt->is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
+
+    mpi_errno = CSP_info_deserialize(info, &info_keyvals, &npairs);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    winalloc_pkt->info_npairs = npairs;
+
+    /* Only send start request to root ghost. */
+    mpi_errno = CSP_cmd_issue(&pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Send user info */
+    if (npairs > 0 && info_keyvals) {
+        mpi_errno = bcast_ghost_cmd_params(info_keyvals, sizeof(CSP_info_keyval_t) * npairs);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        CSP_DBG_PRINT(" Send parameters: info\n");
+    }
+
+  fn_exit:
+    if (info_keyvals && npairs > 0)
+        free(info_keyvals);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
                         int *unique_gp_ranks_in_world)
 {
@@ -197,50 +316,7 @@ static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
     goto fn_exit;
 }
 
-static int send_win_general_parameters(MPI_Info info, CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int is_u_world = 0;
-    CSP_info_keyval_t *info_keyvals = NULL;
-    int npairs = 0;
-    int cmd_params[4];
 
-    is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
-
-    mpi_errno = CSP_info_deserialize(info, &info_keyvals, &npairs);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Send first part of parameters */
-    cmd_params[0] = ug_win->max_local_user_nprocs;
-    cmd_params[1] = ug_win->info_args.epoch_type;
-    cmd_params[2] = is_u_world;
-    cmd_params[3] = npairs;
-
-    mpi_errno = CSP_cmd_set_param((char *) cmd_params, sizeof(cmd_params), ug_win->ur_g_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    CSP_DBG_PRINT(" Send parameters: max_local_user_nprocs %d, epoch_type %d, "
-                  "is_u_world=%d, info npairs=%d\n", ug_win->max_local_user_nprocs,
-                  ug_win->info_args.epoch_type, is_u_world, npairs);
-
-    /* Send user info */
-    if (npairs > 0 && info_keyvals) {
-        mpi_errno = CSP_cmd_set_param((char *) info_keyvals,
-                                      sizeof(CSP_info_keyval_t) * npairs, ug_win->ur_g_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        CSP_DBG_PRINT(" Send parameters: info\n");
-    }
-
-  fn_exit:
-    if (info_keyvals)
-        free(info_keyvals);
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
 
 static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
 {
@@ -358,8 +434,7 @@ static int create_communicators(CSP_win * ug_win)
 
             /* ghost ranks in comm_world */
             memcpy(&cmd_params[user_nprocs + 1], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
-            mpi_errno = CSP_cmd_set_param((char *) cmd_params, sizeof(int) * cmd_param_size,
-                                          ug_win->ur_g_comm);
+            mpi_errno = bcast_ghost_cmd_params(cmd_params, sizeof(int) * cmd_param_size);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -684,21 +759,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     }
 #endif
 
-    /* Notify Ghosts start and create user root + ghosts communicator for
-     * internal information exchange between users and ghosts. */
+    /* Ask ghosts to start win_allocate. */
     if (user_local_rank == 0) {
-        mpi_errno = CSP_cmd_start(CSP_CMD_WIN_ALLOCATE, user_nprocs, user_local_nprocs);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        mpi_errno = CSP_cmd_new_ur_g_comm(&ug_win->ur_g_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    /* Send parameter to ghosts */
-    if (user_local_rank == 0) {
-        mpi_errno = send_win_general_parameters(info, ug_win);
+        mpi_errno = issue_ghost_cmd(user_nprocs, info, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -806,16 +869,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     *win = ug_win->win;
     *base_pp = ug_win->base;
 
-    /* Gather the handle of Ghosts' win. User root is always rank num_g in user
-     * root + ghosts communicator */
-    /* TODO:
-     * How about use handler on user root ?
-     * How to solve the case that different processes may have the same handler ? */
+    /* Gather the handle of ghosts' win. */
     if (user_local_rank == 0) {
-        unsigned long tmp_send_buf;
-        ug_win->g_win_handles = CSP_calloc(CSP_ENV.num_g + 1, sizeof(unsigned long));
-        mpi_errno = PMPI_Gather(&tmp_send_buf, 1, MPI_UNSIGNED_LONG, ug_win->g_win_handles,
-                                1, MPI_UNSIGNED_LONG, CSP_ENV.num_g, ug_win->ur_g_comm);
+        ug_win->g_win_handles = CSP_calloc(CSP_ENV.num_g, sizeof(unsigned long));
+        mpi_errno = gather_ghost_cmd_params(ug_win->g_win_handles, sizeof(unsigned long));
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
