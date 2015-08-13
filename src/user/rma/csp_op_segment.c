@@ -39,10 +39,11 @@ int CSP_op_segments_decode_basic_datatype(const void *origin_addr,
     target_data_size = target_count * t_type_size;
 
     if (target_base_off + target_data_size > ug_win->targets[target_rank].size) {
-        fprintf(stderr, "Wrong operation target_disp 0x%lx, target_count %d "
-                "(base 0x%lx + size 0x%lx > 0x%lx)\n",
-                target_disp, target_count, target_base_off, target_data_size,
-                ug_win->targets[target_rank].size);
+        CSP_ERR_PRINT("Segmentation failed\n");
+        CSP_DBG_PRINT("Wrong operation target_disp 0x%lx, target_count %d "
+                      "(base 0x%lx + size 0x%lx > 0x%lx)\n",
+                      target_disp, target_count, target_base_off, target_data_size,
+                      ug_win->targets[target_rank].size);
         return -1;
     }
 
@@ -126,17 +127,17 @@ int CSP_op_segments_decode(const void *origin_addr, int origin_count,
     }
     /* Derived origin datatype and basic target datatype */
     else if (t_combiner == MPI_COMBINER_NAMED) {
-        fprintf(stderr, "Origin derived datatype is not supported for now.\n");
+        CSP_ERR_PRINT("Origin derived datatype is not supported for now.\n");
         mpi_errno = -1;
     }
     /* Basic origin datatype and derived target datatype */
     else if (o_combiner == MPI_COMBINER_NAMED) {
-        fprintf(stderr, "Target derived datatype is not supported for now.\n");
+        CSP_ERR_PRINT("Target derived datatype is not supported for now.\n");
         mpi_errno = -1;
     }
     else {
-        fprintf(stderr,
-                "Both origin and target are derived datatype, it is not supported for now.\n");
+        CSP_ERR_PRINT("Both origin and target are derived datatype, it is not "
+                      "supported for now.\n");
         mpi_errno = -1;
     }
 

@@ -41,7 +41,7 @@ static int CSP_initialize_env()
         CSP_ENV.seg_size = atoi(val);
     }
     if (CSP_ENV.seg_size <= 0) {
-        fprintf(stderr, "Wrong CSP_SEG_SIZE %d\n", CSP_ENV.seg_size);
+        CSP_ERR_PRINT("Wrong CSP_SEG_SIZE %d\n", CSP_ENV.seg_size);
         return -1;
     }
 
@@ -51,7 +51,7 @@ static int CSP_initialize_env()
         CSP_ENV.num_g = atoi(val);
     }
     if (CSP_ENV.num_g <= 0) {
-        fprintf(stderr, "Wrong CSP_NG %d\n", CSP_ENV.num_g);
+        CSP_ERR_PRINT("Wrong CSP_NG %d\n", CSP_ENV.num_g);
         return -1;
     }
 
@@ -74,7 +74,7 @@ static int CSP_initialize_env()
             CSP_ENV.lock_binding = CSP_LOCK_BINDING_SEGMENT;
         }
         else {
-            fprintf(stderr, "Unknown CSP_LOCK_METHOD %s\n", val);
+            CSP_ERR_PRINT("Unknown CSP_LOCK_METHOD %s\n", val);
             return -1;
         }
     }
@@ -89,7 +89,7 @@ static int CSP_initialize_env()
             CSP_ENV.async_config = CSP_ASYNC_CONFIG_OFF;
         }
         else {
-            fprintf(stderr, "Unknown CSP_ASYNC_CONFIG %s\n", val);
+            CSP_ERR_PRINT("Unknown CSP_ASYNC_CONFIG %s\n", val);
             return -1;
         }
     }
@@ -109,7 +109,7 @@ static int CSP_initialize_env()
             CSP_ENV.load_opt = CSP_LOAD_BYTE_COUNTING;
         }
         else {
-            fprintf(stderr, "Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
+            CSP_ERR_PRINT("Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
             return -1;
         }
     }
@@ -124,7 +124,7 @@ static int CSP_initialize_env()
             CSP_ENV.load_lock = CSP_LOAD_LOCK_FORCE;
         }
         else {
-            fprintf(stderr, "Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
+            CSP_ERR_PRINT("Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
             return -1;
         }
     }
@@ -213,13 +213,13 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
 
     if (local_nprocs < 2) {
-        fprintf(stderr, "No user process found, please run with more than 2 process per node\n");
+        CSP_ERR_PRINT("No user process found, please run with more than 2 process per node\n");
         mpi_errno = -1;
         goto fn_fail;
     }
     if (CSP_ENV.num_g < 1 || CSP_ENV.num_g >= local_nprocs) {
-        fprintf(stderr, "Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
-                CSP_ENV.num_g, local_nprocs);
+        CSP_ERR_PRINT("Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
+                      CSP_ENV.num_g, local_nprocs);
         mpi_errno = -1;
         goto fn_fail;
     }

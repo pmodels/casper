@@ -76,7 +76,7 @@ int CSPG_finalize(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
     return mpi_errno;
 
   fn_fail:
-    fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
+    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
     PMPI_Abort(MPI_COMM_WORLD, 0);
     goto fn_exit;
 }

@@ -340,10 +340,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
     for (i = 0; i < user_nprocs; i++) {
         ug_ranks_in_world[num_ug_ranks++] = win->targets[i].world_rank;
     }
-    if (num_ug_ranks > world_nprocs) {
-        fprintf(stderr, "num_ug_ranks %d > world_nprocs %d, num_ghosts=%d, user_nprocs=%d\n",
-                num_ug_ranks, world_nprocs, num_ghosts, user_nprocs);
-    }
+
     CSP_assert(num_ug_ranks <= world_nprocs);
 
     PMPI_Group_incl(CSP_GROUP_WORLD, num_ug_ranks, ug_ranks_in_world, &win->ug_group);

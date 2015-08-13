@@ -368,7 +368,7 @@ int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag)
     return mpi_errno;
 
   fn_fail:
-    fprintf(stderr, "error happened in %s, abort\n", __FUNCTION__);
+    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
     /* cannot release global comm/win/group */
 
     if (win->user_base_addrs_in_local)
