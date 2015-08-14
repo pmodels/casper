@@ -41,12 +41,12 @@ int MPI_Win_sync(MPI_Win win)
         }
 #endif
 
-        mpi_errno = PMPI_Win_sync(ug_win->ug_wins[0]);
+        mpi_errno = PMPI_Win_sync(ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         CSP_DBG_PRINT("[%d] win sync on %s single win 0x%x\n", user_rank,
-                      CSP_win_epoch_stat_name[ug_win->epoch_stat], ug_win->ug_wins[0]);
+                      CSP_win_epoch_stat_name[ug_win->epoch_stat], ug_win->active_win);
     }
 
     /* For window that may contain locks, we should sync on all per-target windows

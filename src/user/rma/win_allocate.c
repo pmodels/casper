@@ -583,15 +583,7 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
-    /* Need multiple windows for single lock synchronization */
-    if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) {
-        ug_win->num_ug_wins = ug_win->max_local_user_nprocs;
-    }
-    /* Need a single window for lock_all only synchronization */
-    else if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) {
-        ug_win->num_ug_wins = 1;
-    }
-
+    ug_win->num_ug_wins = ug_win->max_local_user_nprocs;
     ug_win->ug_wins = CSP_calloc(ug_win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < ug_win->num_ug_wins; i++) {
         mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
@@ -818,18 +810,18 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Create windows using shared buffers. */
-    if ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-        (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL)) {
-
+    /* Create N-windows for lock */
+    if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) {
         mpi_errno = create_lock_windows(size, disp_unit, info, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    /* - Create global active window */
+    /* Create global active window when fence|pscw are specified,
+     * or only lock_all is specified.*/
     if ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
-        (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW)) {
+        (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
+        (ug_win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
         mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
                                     ug_win->ug_comm, &ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)

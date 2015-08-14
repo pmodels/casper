@@ -225,7 +225,8 @@ int MPI_Win_free(MPI_Win * win)
 
     /* First unlock global active window */
     if ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
-        (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW)) {
+        (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
+        (ug_win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
 
         CSP_DBG_PRINT("[%d]unlock_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
 

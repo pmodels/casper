@@ -289,7 +289,11 @@ extern const char *CSP_win_epoch_stat_name[4];
                 win_ptr = &ug_win->active_win;   \
                 break;  \
             case CSP_WIN_EPOCH_LOCK_ALL:    \
-                win_ptr = &target->segs[seg].ug_win;   \
+                if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) {  \
+                    win_ptr = &target->segs[seg].ug_win;   \
+                } else {    \
+                    win_ptr = &ug_win->active_win;   \
+                }   \
                 break;  \
             case CSP_WIN_NO_EPOCH:   \
             case CSP_WIN_EPOCH_PER_TARGET: /* never go here */  \

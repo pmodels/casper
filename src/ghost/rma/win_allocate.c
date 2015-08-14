@@ -201,14 +201,7 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win
     int i;
 
     /* Need multiple windows for single lock synchronization */
-    if (win->info_args.epoch_type & CSP_EPOCH_LOCK) {
-        win->num_ug_wins = win->max_local_user_nprocs;
-    }
-    /* Need a single window for lock_all only synchronization */
-    else if (win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) {
-        win->num_ug_wins = 1;
-    }
-
+    win->num_ug_wins = win->max_local_user_nprocs;
     win->ug_wins = CSP_calloc(win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < win->num_ug_wins; i++) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->ug_wins[i]);
@@ -331,18 +324,19 @@ int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag)
      *  i.e., win[x] can be shared by processes whose local rank is x.
      */
 
-    /* - Create lock/lockall windows */
-    if ((win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-        (win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL)) {
+    /* - Create lock N-windows */
+    if ((win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
 
         mpi_errno = create_lock_windows(size, user_info, win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    /* - Create global active window */
+    /* - Create global active window when fence|pscw are specified,
+     *   or only lock_all is specified.*/
     if ((win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
-        (win->info_args.epoch_type & CSP_EPOCH_PSCW)) {
+        (win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
+        (win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

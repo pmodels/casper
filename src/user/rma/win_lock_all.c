@@ -133,44 +133,18 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
     if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
 
-        /* In lock_all only epoch, lock all ghosts on the single window. */
+        /* In lock_all only epoch, lock_all already issued on global window
+         * in win_allocate. */
+        CSP_DBG_PRINT("[%d]lock_all(active_win 0x%x) (no actual lock call)\n", user_rank,
+                      ug_win->active_win);
 
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-        /* Optimization for MPI implementations that have optimized lock_all.
-         * However, user should be noted that, if MPI implementation issues lock messages
-         * for every target even if it does not have any operation, this optimization
-         * could lose performance and even lose asynchronous! */
-        CSP_DBG_PRINT("[%d]lock_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[0]);
-        mpi_errno = PMPI_Win_lock_all(assert, ug_win->ug_wins[0]);
+        /* Do not need grant local lock before lock local target, because only shared lock
+         * in current epoch. But memory barrier is still necessary for local RMA. */
+        mpi_errno = PMPI_Win_sync(ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-#else
-        mpi_errno = PMPI_Win_lock_all(assert, ug_win->ug_wins[0]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-#if 0   /* segmentation fault */
-        for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-            mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->g_ranks_in_ug[i],
-                                      assert, ug_win->ug_wins[0]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-#endif
-#endif
 
-        ug_win->is_self_locked = 0;
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-#if 0   /* workaround of lock_all */
-        /* Do not need grant lock before lock local target, because only shared lock
-         * in current epoch. */
-        mpi_errno = CSP_win_lock_self_impl(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-#else
         ug_win->is_self_locked = 1;
-#endif
-#endif
     }
     else {
 

@@ -120,19 +120,18 @@ int MPI_Win_flush_all(MPI_Win win)
          * However, user should be noted that, if MPI implementation issues lock messages
          * for every target even if it does not have any operation, this optimization
          * could lose performance and even lose asynchronous! */
-        CSP_DBG_PRINT("[%d]flush_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[0]);
-        mpi_errno = PMPI_Win_flush_all(ug_win->ug_wins[0]);
+        CSP_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
+        mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 #else
         /* Flush every ghost once in the single window.
          * TODO: track op issuing, only flush the ghosts which receive ops. */
         for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-            mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->ug_wins[0]);
+            mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-#endif
     }
     else {
 
