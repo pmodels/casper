@@ -119,10 +119,6 @@ static int CSP_get_impl(void *origin_addr, int origin_count,
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
     if (target_rank == rank && ug_win->is_self_locked) {
-        /* If target is itself, we do not need translate it to any ghosts because
-         * win_lock(self) will force lock(ghost) to be granted so that it is safe
-         * to send operations to the real target. For active modes, local redirection
-         * is always allowed, since we do lock_all on global window at win allocate time. */
         mpi_errno = CSP_get_shared_impl(origin_addr, origin_count,
                                         origin_datatype, target_rank, target_disp, target_count,
                                         target_datatype, ug_win);
@@ -145,14 +141,8 @@ static int CSP_get_impl(void *origin_addr, int origin_count,
                 return mpi_errno;
         }
         else {
-            /* Translation for intra/inter-node operations.
-             *
-             * We do not use force flush + shared window for optimizing operations to local targets.
-             * Because: 1) we lose lock optimization on force flush; 2) Although most implementation
-             * does shared-communication for operations on shared windows, MPI standard doesn’t
-             * require it. Some implementation may use network even for shared targets for
-             * shorter CPU occupancy.
-             */
+            /* Redirect operation to ghost process.
+             * (See discussion of optimization for intra-node operations in csp.h.) */
             int target_g_rank_in_ug = -1;
             int data_size CSP_ATTRIBUTE((unused)) = 0;
             MPI_Aint target_g_offset = 0;

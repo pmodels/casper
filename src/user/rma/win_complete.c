@@ -68,11 +68,6 @@ static int CSP_complete_flush(int start_grp_size CSP_ATTRIBUTE((unused)), CSP_wi
 
     /* Flush ghosts to finish the sequence of locally issued RMA operations */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
     CSP_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
     mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
     if (mpi_errno != MPI_SUCCESS)

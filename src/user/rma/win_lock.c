@@ -64,11 +64,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
     /* Lock Ghost processes in corresponding ug-window of target process. */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
-
     CSP_DBG_PRINT("[%d]lock_all(ug_win 0x%x), instead of target rank %d\n",
                   user_rank, target->ug_win, target_rank);
     mpi_errno = PMPI_Win_lock_all(assert, target->ug_win);
@@ -92,26 +87,23 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 #endif
 
     ug_win->is_self_locked = 0;
-
     if (user_rank == target_rank) {
-
-        /* If target is itself, we need grant this lock before return.
-         * However, the actual locked processes are the Ghosts whose locks may be delayed by
-         * most MPI implementation, thus we need a flush to force the lock to be granted.
-         *
-         * For performance reason, this operation is ignored if meet at least one of following conditions:
-         * 1. if user passed information that this process will not do local load/store on this window.
-         * 2. if user passed information that there is no concurrent epochs.
-         */
+        /* Local lock processing.
+         * - Force lock.
+         * We need grant local lock (self-target) before return. However, since
+         * the actual locked processes are remote ghost processes, whose locks may be
+         * delayed in most MPI implementation, we need a flush to force the lock to be
+         * granted. This operation could be ignored if (1) received user hint
+         * no_local_load_store, or (2) no concurrent epoch (MODE_NOCHECK).
+         * - Lock self.
+         * This step is for memory consistency on local load/store operations.
+         * But it can be skipped if received user hint no_local_load_store. */
         if (!ug_win->info_args.no_local_load_store &&
             !(target->remote_lock_assert & MPI_MODE_NOCHECK)) {
             mpi_errno = CSP_win_grant_local_lock(user_rank, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
-
-        /* Lock local rank for memory consistency on local load/store operations.
-         * If user passed no_local_load_store, this step can be skipped.*/
         if (!ug_win->info_args.no_local_load_store) {
             mpi_errno = CSP_win_lock_self_impl(ug_win);
             if (mpi_errno != MPI_SUCCESS)

@@ -20,11 +20,6 @@ static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
     for (i = 0; i < ug_win->num_ug_wins; i++) {
         CSP_DBG_PRINT("[%d]lock_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[i]);
         mpi_errno = PMPI_Win_lock_all(assert, ug_win->ug_wins[i]);
@@ -51,26 +46,15 @@ static int CSP_win_mixed_lock_all_impl(int assert, CSP_win * ug_win)
     }
 #endif
 
+    /* Local lock processing.
+     * (See discussion in win_lock.c.) */
     ug_win->is_self_locked = 0;
-
     if (!ug_win->info_args.no_local_load_store &&
         !(ug_win->targets[user_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
-        /* We need grant the local lock (self-target) before return.
-         * However, the actual locked processes are the Ghosts whose locks may be delayed by
-         * most MPI implementation, thus we need a flush to force the lock to be granted on ghost 0
-         * who is the one actually controls the locks.
-         *
-         * For performance reason, this operation is ignored if meet at least one of following conditions:
-         * 1. if user passed information that this process will not do local load/store on this window.
-         * 2. if user passed information that there is no concurrent epochs.
-         */
         mpi_errno = CSP_win_grant_local_lock(user_rank, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-
-    /* Lock local rank for memory consistency on local load/store operations.
-     * If user passed no_local_load_store, this step can be skipped.*/
     if (!ug_win->info_args.no_local_load_store) {
         mpi_errno = CSP_win_lock_self_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)

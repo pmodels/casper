@@ -20,11 +20,6 @@ static int CSP_win_mixed_flush_all_impl(CSP_win * ug_win)
 
     /* Flush all Ghosts in corresponding ug-window of each target process.. */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
     for (i = 0; i < ug_win->num_ug_wins; i++) {
         CSP_DBG_PRINT("[%d]flush_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[i]);
         mpi_errno = PMPI_Win_flush_all(ug_win->ug_wins[i]);
@@ -115,11 +110,6 @@ int MPI_Win_flush_all(MPI_Win win)
         /* In lock_all only epoch, single window is shared by multiple targets. */
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-        /* Optimization for MPI implementations that have optimized lock_all.
-         * However, user should be noted that, if MPI implementation issues lock messages
-         * for every target even if it does not have any operation, this optimization
-         * could lose performance and even lose asynchronous! */
         CSP_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
         mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
@@ -142,10 +132,6 @@ int MPI_Win_flush_all(MPI_Win win)
     }
 
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    /* If LOCAL_LOCK_OPT is enabled, PUT/GET may be issued to local
-     * target. Thus we need flush the local target as well.
-     * Note that ACC operations are always issued to main ghost,
-     * since atomicity and ordering issue. */
     mpi_errno = CSP_win_flush_self_impl(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;

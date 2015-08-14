@@ -59,12 +59,6 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 
     /* Unlock all ghost processes in every ug-window of target process. */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
-
     CSP_DBG_PRINT("[%d]unlock_all(ug_win 0x%x), instead of target rank %d\n",
                   user_rank, target->ug_win, target_rank);
     mpi_errno = PMPI_Win_unlock_all(target->ug_win);

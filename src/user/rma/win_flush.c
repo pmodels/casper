@@ -52,10 +52,6 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
     if (user_rank == target_rank) {
-        /* If LOCAL_LOCK_OPT is enabled, PUT/GET may be issued to local
-         * target. Thus we need flush the local target as well.
-         * Note that ACC operations are always issued to main ghost,
-         * since atomicity and ordering issue. */
         mpi_errno = CSP_win_flush_self_impl(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -64,11 +60,6 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     {
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-        /* Optimization for MPI implementations that have optimized lock_all.
-         * However, user should be noted that, if MPI implementation issues lock messages
-         * for every target even if it does not have any operation, this optimization
-         * could lose performance and even lose asynchronous! */
         CSP_DBG_PRINT("[%d]flush_all(ug_win 0x%x), instead of target rank %d\n",
                       user_rank, target->ug_win, target_rank);
         mpi_errno = PMPI_Win_flush_all(target->ug_win);

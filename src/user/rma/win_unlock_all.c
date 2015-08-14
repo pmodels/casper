@@ -19,11 +19,6 @@ static int CSP_win_mixed_unlock_all_impl(CSP_win * ug_win)
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-
-    /* Optimization for MPI implementations that have optimized lock_all.
-     * However, user should be noted that, if MPI implementation issues lock messages
-     * for every target even if it does not have any operation, this optimization
-     * could lose performance and even lose asynchronous! */
     for (i = 0; i < ug_win->num_ug_wins; i++) {
         CSP_DBG_PRINT("[%d]unlock_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[i]);
         mpi_errno = PMPI_Win_unlock_all(ug_win->ug_wins[i]);

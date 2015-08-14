@@ -110,14 +110,8 @@ static int CSP_compare_and_swap_impl(const void *origin_addr, const void *compar
             return mpi_errno;
     }
     else {
-        /* Translation for intra/inter-node operations.
-         *
-         * We do not use force flush + shared window for optimizing operations to local targets.
-         * Because: 1) we lose lock optimization on force flush; 2) Although most implementation
-         * does shared-communication for operations on shared windows, MPI standard doesn’t
-         * require it. Some implementation may use network even for shared targets for
-         * shorter CPU occupancy.
-         */
+        /* Redirect operation to ghost process.
+         * (See discussion of optimization for intra-node operations in csp.h.) */
         int target_g_rank_in_ug = -1;
         int data_size CSP_ATTRIBUTE((unused)) = 0;
         MPI_Aint target_g_offset = 0;

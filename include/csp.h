@@ -18,10 +18,37 @@
 
 /* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 
-/* #define CSP_ENABLE_LOCAL_LOCK_OPT */
-/* Optimization for local target.
- * Lock/RMA/Flush/Unlock local target instead of ghosts.
- * Only available when local lock is granted. */
+/* #define CSP_ENABLE_LOCAL_LOCK_OPT
+ *
+ * Optimization for PUT/GET issued on local target.
+ * PUT/GET can be issued to local target instead of remote ghost process, but ACC
+ * operations are always issued to the main ghost because of atomicity and ordering
+ * issue existing with other remote origin processes. To enable PUT/GET optimization,
+ * additional synchronization needs to be also issued on the local process in all
+ * synchronization calls . */
+
+/* #define CSP_ENABLE_SYNC_ALL_OPT
+ *
+ * Optimization that benefits from MPI optimized global synchronization.
+ * Some synchronization calls like lock/flush/unlock issued to a target process,
+ * must be translated to synchronizations on every ghost process on the target window
+ * in default mode.
+ * In this optimization, such pre-ghost calls can be changed to single global
+ * synchronization call, thus potentially benefiting from optimized global synchronization
+ * that can be provided in lower MPI layer.
+ * However, user should also note that, if MPI implementation chooses to issue
+ * sync message to every target even if it does not receive any operation, this
+ * optimization could result in loss of asynchronous progress in synchronization
+ * calls. */
+
+/* About optimization for intra-node operations.
+ *
+ * We do not use force flush + shared window for optimizing operations to intra-node
+ * targets. Because: 1) we lose lock optimization on force flush; 2) Although most
+ * implementation does shared-communication for operations on shared windows, MPI
+ * standard doesn’t require it. Some implementation may use network even for
+ * shared targets for shorter CPU occupancy. However, we do not have knowledge of
+ * such low-level information. */
 
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
 #define CSP_GRANT_LOCK_DATATYPE char
