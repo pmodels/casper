@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cspu.h"
+#include "cspu_rma_sync.h"
 
 int MPI_Win_test(MPI_Win win, int *flag)
 {

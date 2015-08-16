@@ -845,6 +845,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     ug_win->start_counter = 0;
     ug_win->lock_counter = 0;
+    ug_win->is_self_locked = 0;
 
     /* - Only expose user window in order to hide ghosts in all non-wrapped window functions */
     mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,

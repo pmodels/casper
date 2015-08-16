@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cspu.h"
+#include "cspu_rma_sync.h"
 
 /* Receive buffer for receiving complete-wait sync message.
  * We don't need its value, so just use a global char variable to ensure

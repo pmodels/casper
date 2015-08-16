@@ -93,6 +93,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
     int i;
+    int user_rank;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -120,6 +121,8 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
         CSP_DBG_PRINT("Start empty group\n");
         return mpi_errno;
     }
+
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     ug_win->start_group = group;
     ug_win->start_ranks_in_win_group = CSP_calloc(start_grp_size, sizeof(int));
@@ -156,6 +159,8 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
                 err = 1;
                 break;
             }
+
+            CSP_assert(user_rank != target_rank || ug_win->is_self_locked == 0);
         }
         if (err) {
             mpi_errno = -1;
@@ -171,12 +176,16 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
             goto fn_fail;
     }
 
-    ug_win->is_self_locked = 0;
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    /* During pscw epoch, it is allowed to access local target directly.
-     * Note that user may do wrong RMA call such as access the local target
-     * without start-post on local window. But we do not check it. */
-    ug_win->is_self_locked = 1;
+    {
+        /* Enable local RMA optimization if local target is in the start group. */
+        for (i = 0; i < start_grp_size; i++) {
+            if (ug_win->start_ranks_in_win_group[i] == user_rank) {
+                ug_win->is_self_locked = 1;
+                break;
+            }
+        }
+    }
 #endif
 
     /* Indicate epoch status.

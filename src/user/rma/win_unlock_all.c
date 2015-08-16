@@ -7,57 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cspu.h"
-#include "cspu_rma_local.h"
-
-static int CSP_win_mixed_unlock_all_impl(CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs;
-    int i, k;
-
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
-
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    for (i = 0; i < ug_win->num_ug_wins; i++) {
-        CSP_DBG_PRINT("[%d]unlock_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[i]);
-        mpi_errno = PMPI_Win_unlock_all(ug_win->ug_wins[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-#else
-    for (i = 0; i < user_nprocs; i++) {
-        for (k = 0; k < CSP_ENV.num_g; k++) {
-            int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[k];
-
-            CSP_DBG_PRINT("[%d]unlock(Ghost(%d), ug_win 0x%x), instead of "
-                          "target rank %d\n", user_rank, target_g_rank_in_ug,
-                          ug_win->targets[i].ug_win, i);
-            mpi_errno = PMPI_Win_unlock(target_g_rank_in_ug, ug_win->targets[i].ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-    }
-#endif
-
-    if (ug_win->is_self_locked) {
-        mpi_errno = CSP_win_unlock_self_impl(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
+#include "cspu_rma_sync.h"
 
 int MPI_Win_unlock_all(MPI_Win win)
 {
     CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs;
+    int user_nprocs;
     int i;
 
     CSP_DBG_PRINT_FCNAME();
@@ -86,7 +42,6 @@ int MPI_Win_unlock_all(MPI_Win win)
     CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 #endif
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
     for (i = 0; i < user_nprocs; i++) {
@@ -94,40 +49,37 @@ int MPI_Win_unlock_all(MPI_Win win)
     }
 
     if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
-        /* In lock_all only epoch, unlock_all will be issued on global window
+        /* In no-lock epoch, unlock_all will be issued on global window
          * in win_free. We only need flush_all here.*/
-        CSP_DBG_PRINT("[%d]unlock_all(active_win 0x%x) (no actual unlock call)\n",
-                      user_rank, ug_win->active_win);
 
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-        CSP_DBG_PRINT("\t flush_all(active_win 0x%x)\n", ug_win->active_win);
-        mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
+        CSP_DBG_PRINT(" unlock_all(active_win 0x%x) (no actual unlock call)\n", ug_win->active_win);
+        mpi_errno = CSP_win_global_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        /* memory consistency for local load/store. */
+        mpi_errno = PMPI_Win_sync(ug_win->active_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+    else {
+        /* In lock-exist epoch, separate windows are bound with targets. */
+
+#ifdef CSP_ENABLE_SYNC_ALL_OPT
+        for (i = 0; i < ug_win->num_ug_wins; i++) {
+            CSP_DBG_PRINT(" unlock_all(ug_win 0x%x)\n", ug_win->ug_wins[i]);
+            mpi_errno = PMPI_Win_unlock_all(ug_win->ug_wins[i]);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+
 #else
-        /* Flush every ghost once in the single window.
-         * TODO: track op issuing, only flush the ghosts which receive ops. */
-        for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-            CSP_DBG_PRINT("\t flush(%d, active_win 0x%x)\n", ug_win->g_ranks_in_ug[i],
-                          ug_win->active_win);
-            mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
+        for (i = 0; i < user_nprocs; i++) {
+            mpi_errno = CSP_win_target_unlock(i, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 #endif
-
-        /* Memory barrier for local RMA. */
-        mpi_errno = PMPI_Win_sync(ug_win->active_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        ug_win->is_self_locked = 0;
-    }
-    else {
-
-        /* In lock_all/lock mixed epoch, separate windows are bound with each target. */
-        mpi_errno = CSP_win_mixed_unlock_all_impl(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
@@ -138,6 +90,8 @@ int MPI_Win_unlock_all(MPI_Win win)
         }
     }
 #endif
+
+    ug_win->is_self_locked = 0;
 
     /* Reset epoch status. */
     ug_win->epoch_stat = CSP_WIN_NO_EPOCH;

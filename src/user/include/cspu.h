@@ -218,53 +218,6 @@ extern int UG_WIN_HANDLE_KEY;
     }   \
 }
 
-static inline int CSP_win_grant_local_lock(int target_rank, CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank, j;
-
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-
-    /* force lock all the main ghosts for each segment */
-    for (j = 0; j < ug_win->targets[target_rank].num_segs; j++) {
-        int main_g_off = ug_win->targets[target_rank].segs[j].main_g_off;
-        int target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[main_g_off];
-
-#ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-        CSP_GRANT_LOCK_DATATYPE buf[1];
-        mpi_errno = PMPI_Get(buf, 1, CSP_GRANT_LOCK_MPI_DATATYPE, target_g_rank_in_ug,
-                             ug_win->grant_lock_g_offset, 1, CSP_GRANT_LOCK_MPI_DATATYPE,
-                             ug_win->targets[target_rank].segs[j].ug_win);
-#else
-        /* Simply get 1 byte from start, it does not affect the result of other updates */
-        char buf[1];
-        mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_g_rank_in_ug, 0,
-                             1, MPI_CHAR, ug_win->targets[user_rank].segs[j].ug_win);
-#endif
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        mpi_errno = PMPI_Win_flush(target_g_rank_in_ug,
-                                   ug_win->targets[target_rank].segs[j].ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        ug_win->targets[target_rank].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-#endif
-        CSP_DBG_PRINT("[%d]grant local lock(Ghost(%d), ug_wins 0x%x) seg %d\n", user_rank,
-                      target_g_rank_in_ug, ug_win->targets[target_rank].segs[j].ug_win, j);
-
-    }
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-
 extern const char *CSP_target_epoch_stat_name[4];       /* for debug */
 extern const char *CSP_win_epoch_stat_name[4];
 
@@ -523,12 +476,6 @@ extern int CSP_op_segments_decode_basic_datatype(const void *origin_addr, int or
 extern void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr);
 
 extern int CSP_win_bind_ghosts(CSP_win * ug_win);
-
-/* Receive buffer for receiving complete-wait sync message.
- * We don't need its value, so just use a global char variable to ensure
- * receive buffer is always allocated.*/
-extern char wait_flg;
-extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking, int *flag);
 
 extern int CSP_win_release(CSP_win * ug_win);
 

@@ -7,61 +7,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cspu.h"
-#include "cspu_rma_local.h"
+#include "cspu_rma_sync.h"
 
-static int CSP_win_mixed_flush_all_impl(CSP_win * ug_win)
+/* Flush all ghost processes on global window.
+ * It is called by FENCE/COMPLETE, or UNLOCK_ALL/FLUSH_ALL (only no-Lock mode).*/
+int CSP_win_global_flush_all(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs;
-    int i;
+    int i CSP_ATTRIBUTE((unused));
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
-
-    /* Flush all Ghosts in corresponding ug-window of each target process.. */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-    for (i = 0; i < ug_win->num_ug_wins; i++) {
-        CSP_DBG_PRINT("[%d]flush_all(ug_win 0x%x)\n", user_rank, ug_win->ug_wins[i]);
-        mpi_errno = PMPI_Win_flush_all(ug_win->ug_wins[i]);
+    CSP_DBG_PRINT(" flush_all(active_win 0x%x)\n", ug_win->active_win);
+    mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+#else
+    /* Flush every ghost once in the single window.
+     * TODO: track op issuing, only flush the ghosts which receive ops. */
+    for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
+        CSP_DBG_PRINT(" flush(ghost %d, active_win 0x%x)\n", ug_win->g_ranks_in_ug[i],
+                      ug_win->active_win);
+        mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
-#else
 
-    /* TODO: track op issuing, only flush the ghosts which receive ops. */
-    for (i = 0; i < user_nprocs; i++) {
-#if !defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        int j;
-        /* RMA operations are only issued to the main ghost, so we only flush it. */
-        for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            int main_g_off = ug_win->targets[i].segs[j].main_g_off;
-            int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[main_g_off];
-            CSP_DBG_PRINT("[%d]flush(Ghost(%d), ug_wins 0x%x), instead of "
-                          "target rank %d seg %d\n", user_rank, target_g_rank_in_ug,
-                          ug_win->targets[i].segs[j].ug_win, i, j);
-
-            mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[i].segs[j].ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-#else
-        int k;
-
-        /* RMA operations may be distributed to all ghosts, so we should
-         * flush all ghosts on all windows. See discussion in win_flush. */
-        for (k = 0; k < CSP_ENV.num_g; k++) {
-            int target_g_rank_in_ug = ug_win->targets[i].g_ranks_in_ug[k];
-            CSP_DBG_PRINT("[%d]flush(Ghost(%d), ug_win 0x%x), instead of "
-                          "target rank %d\n", user_rank, target_g_rank_in_ug,
-                          ug_win->targets[i].ug_win, i);
-
-            mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[i].ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-#endif /*end of CSP_ENABLE_RUNTIME_LOAD_OPT */
+    if (ug_win->is_self_locked) {
+        mpi_errno = CSP_win_flush_self(ug_win, 1 /*active_win */);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
-#endif /*end of CSP_ENABLE_SYNC_ALL_OPT */
+#endif
 
   fn_exit:
     return mpi_errno;
@@ -74,7 +50,7 @@ int MPI_Win_flush_all(MPI_Win win)
 {
     CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, user_nprocs;
+    int user_nprocs;
     int i;
 
     CSP_DBG_PRINT_FCNAME();
@@ -103,39 +79,32 @@ int MPI_Win_flush_all(MPI_Win win)
     CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 #endif
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
     if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
-        /* In lock_all only epoch, single window is shared by multiple targets. */
-
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-        CSP_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
-        mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
+        /* In no-lock epoch, single window is shared by multiple targets. */
+        mpi_errno = CSP_win_global_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-#else
-        /* Flush every ghost once in the single window.
-         * TODO: track op issuing, only flush the ghosts which receive ops. */
-        for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-            mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
+    }
+    else {
+        /* In lock-exist epoch, separate windows are bound with targets. */
+
+#ifdef CSP_ENABLE_SYNC_ALL_OPT
+        for (i = 0; i < ug_win->num_ug_wins; i++) {
+            CSP_DBG_PRINT(" flush_all(ug_win 0x%x)\n", ug_win->ug_wins[i]);
+            mpi_errno = PMPI_Win_flush_all(ug_win->ug_wins[i]);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
+#else
+        for (i = 0; i < user_nprocs; i++) {
+            mpi_errno = CSP_win_target_flush(i, ug_win);
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
+#endif /*end of CSP_ENABLE_SYNC_ALL_OPT */
     }
-    else {
-
-        /* In lock_all/lock mixed epoch, separate windows are bound with each target. */
-        mpi_errno = CSP_win_mixed_flush_all_impl(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    mpi_errno = CSP_win_flush_self_impl(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     int j;
@@ -145,7 +114,7 @@ int MPI_Win_flush_all(MPI_Win win)
              * Note that only target which was issued operations to is guaranteed to be granted. */
             if (ug_win->targets[i].segs[j].main_lock_stat == CSP_MAIN_LOCK_OP_ISSUED) {
                 ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-                CSP_DBG_PRINT("[%d] main lock (rank %d, seg %d) granted\n", user_rank, i, j);
+                CSP_DBG_PRINT(" main lock (rank %d, seg %d) granted\n", i, j);
             }
 
             CSP_reset_target_opload(i, ug_win);

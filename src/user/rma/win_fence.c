@@ -7,12 +7,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cspu.h"
+#include "cspu_rma_sync.h"
 
 static int CSP_fence_flush_all(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
-    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -20,29 +20,12 @@ static int CSP_fence_flush_all(CSP_win * ug_win)
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
     /* Flush all ghosts to finish the sequence of locally issued RMA operations */
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    CSP_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
-    mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
+    mpi_errno = CSP_win_global_flush_all(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-#else
-    /* TODO: track op issuing, only flush the ghosts which receive ops. */
-    for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-        mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, ug_win->active_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#endif
-
-#endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    int j;
+    int i, j;
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
             /* Runtime load balancing is allowed in fence epoch because
@@ -90,7 +73,6 @@ int MPI_Win_fence(int assert, MPI_Win win)
         mpi_errno = -1;
         goto fn_fail;
     }
-    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 
     /* Check exposure epoch status.
      * The current epoch can be none or FENCE.*/
@@ -100,6 +82,9 @@ int MPI_Win_fence(int assert, MPI_Win win)
         mpi_errno = -1;
         goto fn_fail;
     }
+
+    CSP_assert(ug_win->is_self_locked == 0);
+    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 #endif
 
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
@@ -109,26 +94,24 @@ int MPI_Win_fence(int assert, MPI_Win win)
             goto fn_fail;
     }
 
-    /* Eliminate win_sync if user explicitly specifies no preceding store.
-     * Still need it to avoid instruction reordering of preceding load even if
+    /* Always need sync to avoid instruction reordering of preceding load even if
      * user says no preceding store.*/
     mpi_errno = PMPI_Win_sync(ug_win->active_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Cannot eliminate barrier for either no_precede or no_succeed.
-     * In no_precede fence, it is used for synchronization between local store
-     * and remote RMA; In no_succeed fence, it is also required to wait for
-     * remote RMA completion.
-     * The only time it is safe to drop it is when user specifies
-     * noprecede + nostore + noput which means everyone is doing load/get. */
+    /* Eliminate barrier when user specifies noprecede + nostore + noput.
+     * In all other cases, barrier is still required. In no_precede fence, it
+     * is required to synchronize between local store and remote RMA; in no_succeed
+     * fence, it is also required to wait for remote RMA completion.
+     * Only when user specifies noprecede + nostore + noput, which means everyone
+     * is only doing load/get, it is safe to drop barrier. */
     if ((assert & MPI_MODE_NOPRECEDE & MPI_MODE_NOSTORE & MPI_MODE_NOPUT) == 0) {
         mpi_errno = PMPI_Barrier(ug_win->user_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
-    ug_win->is_self_locked = 0;
 #ifdef CSP_ENABLE_LOCAL_LOCK_OPT
     /* During fence epoch, it is allowed to access local target directly */
     ug_win->is_self_locked = 1;

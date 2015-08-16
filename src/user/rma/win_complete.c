@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cspu.h"
+#include "cspu_rma_sync.h"
 
 static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win * ug_win)
 {
@@ -50,52 +51,6 @@ static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win * ug_win)
         free(reqs);
     if (stats)
         free(stats);
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-static int CSP_complete_flush(int start_grp_size CSP_ATTRIBUTE((unused)), CSP_win * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int user_rank;
-    int i;
-
-    CSP_DBG_PRINT_FCNAME();
-
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-
-    /* Flush ghosts to finish the sequence of locally issued RMA operations */
-#ifdef CSP_ENABLE_SYNC_ALL_OPT
-    CSP_DBG_PRINT("[%d]flush_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
-    mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-#else
-
-    /* Flush every ghost once in the single window.
-     * TODO: track op issuing, only flush the ghosts which receive ops. */
-    for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-        mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
-    /* Need flush local target */
-    for (i = 0; i < start_grp_size; i++) {
-        if (ug_win->start_ranks_in_win_group[i] == user_rank) {
-            mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, ug_win->active_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
-        }
-    }
-#endif
-
-#endif
-
-  fn_exit:
     return mpi_errno;
 
   fn_fail:
@@ -156,15 +111,16 @@ int MPI_Win_complete(MPI_Win win)
     }
 #endif
 
-    mpi_errno = CSP_complete_flush(start_grp_size, ug_win);
+    /* Flush ghosts to finish the sequence of locally issued RMA operations. */
+    mpi_errno = CSP_win_global_flush_all(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-
-    ug_win->is_self_locked = 0;
 
     mpi_errno = CSP_send_pscw_complete_msg(start_grp_size, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+
+    ug_win->is_self_locked = 0;
 
     /* Reset per-target epoch status. */
     for (i = 0; i < start_grp_size; i++) {
