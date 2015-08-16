@@ -18,9 +18,9 @@
 
 /* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 
-/* #define CSP_ENABLE_LOCAL_LOCK_OPT
+/* #define CSP_ENABLE_LOCAL_RMA_OP_OPT
  *
- * Optimization for PUT/GET issued on local target.
+ * Optimization for RMA operations issued on local target.
  * PUT/GET can be issued to local target instead of remote ghost process, but ACC
  * operations are always issued to the main ghost because of atomicity and ordering
  * issue existing with other remote origin processes. To enable PUT/GET optimization,

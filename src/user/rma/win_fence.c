@@ -112,7 +112,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
             goto fn_fail;
     }
 
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
+#ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
     /* During fence epoch, it is allowed to access local target directly */
     ug_win->is_self_locked = 1;
 #endif

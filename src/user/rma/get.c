@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
+#ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
 static int CSP_get_shared_impl(void *origin_addr, int origin_count,
                                MPI_Datatype origin_datatype, int target_rank,
                                MPI_Aint target_disp, int target_count,
@@ -117,7 +117,7 @@ static int CSP_get_impl(void *origin_addr, int origin_count,
     CSP_target_check_epoch_per_op(target, ug_win);
 #endif
 
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
+#ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
     if (target_rank == rank && ug_win->is_self_locked) {
         mpi_errno = CSP_get_shared_impl(origin_addr, origin_count,
                                         origin_datatype, target_rank, target_disp, target_count,

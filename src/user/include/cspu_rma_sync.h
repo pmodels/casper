@@ -143,7 +143,7 @@ static inline int CSP_win_flush_self(CSP_win * ug_win CSP_ATTRIBUTE((unused)),
                                      int global_win_flag CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
-#if defined(CSP_ENABLE_LOCAL_LOCK_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
+#if defined(CSP_ENABLE_LOCAL_RMA_OP_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
     CSP_win_target *target;
     int user_rank;
     MPI_Win flush_win = MPI_WIN_NULL;

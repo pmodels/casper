@@ -176,7 +176,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
             goto fn_fail;
     }
 
-#ifdef CSP_ENABLE_LOCAL_LOCK_OPT
+#ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
     {
         /* Enable local RMA optimization if local target is in the start group. */
         for (i = 0; i < start_grp_size; i++) {
