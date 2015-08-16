@@ -817,23 +817,23 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
             goto fn_fail;
     }
 
-    /* Create global active window when fence|pscw are specified,
+    /* Create global window when fence|pscw are specified,
      * or only lock_all is specified.*/
     if ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
         (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
         (ug_win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
         mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
-                                    ug_win->ug_comm, &ug_win->active_win);
+                                    ug_win->ug_comm, &ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSP_DBG_PRINT("[%d] Created active window 0x%x\n", user_rank, ug_win->active_win);
+        CSP_DBG_PRINT("[%d] Created global window 0x%x\n", user_rank, ug_win->global_win);
 
         /* Since all processes must be in win_allocate, we do not need worry
          * the possibility losing asynchronous progress.
          * This lock_all guarantees the semantics correctness when internally
          * change to passive mode. */
-        mpi_errno = PMPI_Win_lock_all(MPI_MODE_NOCHECK, ug_win->active_win);
+        mpi_errno = PMPI_Win_lock_all(MPI_MODE_NOCHECK, ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

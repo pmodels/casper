@@ -53,7 +53,7 @@ int MPI_Win_test(MPI_Win win, int *flag)
         goto fn_fail;
 
     /* NOTE: MPI implementation should do memory barrier in flush handler. */
-    mpi_errno = PMPI_Win_sync(ug_win->active_win);
+    mpi_errno = PMPI_Win_sync(ug_win->global_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

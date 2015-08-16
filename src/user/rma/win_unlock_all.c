@@ -52,13 +52,13 @@ int MPI_Win_unlock_all(MPI_Win win)
         /* In no-lock epoch, unlock_all will be issued on global window
          * in win_free. We only need flush_all here.*/
 
-        CSP_DBG_PRINT(" unlock_all(active_win 0x%x) (no actual unlock call)\n", ug_win->active_win);
+        CSP_DBG_PRINT(" unlock_all(global_win 0x%x) (no actual unlock call)\n", ug_win->global_win);
         mpi_errno = CSP_win_global_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         /* memory consistency for local load/store. */
-        mpi_errno = PMPI_Win_sync(ug_win->active_win);
+        mpi_errno = PMPI_Win_sync(ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

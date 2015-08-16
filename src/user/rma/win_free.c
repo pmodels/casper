@@ -41,9 +41,9 @@ int CSP_win_release(CSP_win * ug_win)
         }
     }
 
-    if (ug_win->active_win && ug_win->active_win != MPI_WIN_NULL) {
-        CSP_DBG_PRINT("\t free active window\n");
-        mpi_errno = PMPI_Win_free(&ug_win->active_win);
+    if (ug_win->global_win && ug_win->global_win != MPI_WIN_NULL) {
+        CSP_DBG_PRINT("\t free global window\n");
+        mpi_errno = PMPI_Win_free(&ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -223,16 +223,16 @@ int MPI_Win_free(MPI_Win * win)
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs);
 
-    /* First unlock global active window */
+    /* First unlock global window */
     if ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
         (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
         (ug_win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
 
-        CSP_DBG_PRINT("[%d]unlock_all(active_win 0x%x)\n", user_rank, ug_win->active_win);
+        CSP_DBG_PRINT("[%d]unlock_all(global_win 0x%x)\n", user_rank, ug_win->global_win);
 
         /* Since all processes must be in win_free, we do not need worry
          * the possibility losing asynchronous progress. */
-        mpi_errno = PMPI_Win_unlock_all(ug_win->active_win);
+        mpi_errno = PMPI_Win_unlock_all(ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

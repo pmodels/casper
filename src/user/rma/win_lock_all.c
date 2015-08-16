@@ -59,11 +59,11 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, lock_all already issued on global window
          * in win_allocate. */
-        CSP_DBG_PRINT(" lock_all(active_win 0x%x) (no actual lock call)\n", ug_win->active_win);
+        CSP_DBG_PRINT(" lock_all(global_win 0x%x) (no actual lock call)\n", ug_win->global_win);
 
         /* Do not need grant local lock, because only shared lock in current epoch.
          * But memory consistency is still necessary for local load/store. */
-        mpi_errno = PMPI_Win_sync(ug_win->active_win);
+        mpi_errno = PMPI_Win_sync(ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 

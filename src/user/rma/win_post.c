@@ -169,7 +169,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     /* Need win_sync for synchronizing local window update.
      * Still need it to avoid instruction reordering of preceding load
      * even if user says no preceding store. */
-    mpi_errno = PMPI_Win_sync(ug_win->active_win);
+    mpi_errno = PMPI_Win_sync(ug_win->global_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

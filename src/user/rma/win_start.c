@@ -189,7 +189,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 #endif
 
     /* Indicate epoch status.
-     * Later operations will be redirected to active_win for these targets.*/
+     * Later operations will be redirected to global_win for these targets.*/
     for (i = 0; i < start_grp_size; i++) {
         int target_rank = ug_win->start_ranks_in_win_group[i];
         ug_win->targets[target_rank].epoch_stat = CSP_TARGET_EPOCH_PSCW;

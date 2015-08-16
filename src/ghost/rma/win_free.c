@@ -62,9 +62,9 @@ int CSPG_win_free(CSP_cmd_pkt_t * pkt, int *exit_flag)
             }
         }
 
-        if (win->active_win) {
-            CSPG_DBG_PRINT(" free active window\n");
-            mpi_errno = PMPI_Win_free(&win->active_win);
+        if (win->global_win) {
+            CSPG_DBG_PRINT(" free global window\n");
+            mpi_errno = PMPI_Win_free(&win->global_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }

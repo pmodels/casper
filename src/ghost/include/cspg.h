@@ -64,7 +64,7 @@ typedef struct CSPG_win {
     MPI_Win *ug_wins;
     int num_ug_wins;
 
-    MPI_Win active_win;
+    MPI_Win global_win;
 
     struct CSPG_win_info_args info_args;
     unsigned long csp_g_win_handle;

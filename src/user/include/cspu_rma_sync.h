@@ -140,7 +140,7 @@ static inline int CSP_win_unlock_self(CSP_win * ug_win)
  * It is called in all flush{all}-included operations.
  * Note that the actual flush is only issued when local PUT/GET optimization is enabled. */
 static inline int CSP_win_flush_self(CSP_win * ug_win CSP_ATTRIBUTE((unused)),
-                                     int active_win_flag CSP_ATTRIBUTE((unused)))
+                                     int global_win_flag CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
 #if defined(CSP_ENABLE_LOCAL_LOCK_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
@@ -154,8 +154,8 @@ static inline int CSP_win_flush_self(CSP_win * ug_win CSP_ATTRIBUTE((unused)),
     target = &(ug_win->targets[user_rank]);
 
     flush_win = target->ug_win;
-    if (active_win_flag)
-        flush_win = ug_win->active_win;
+    if (global_win_flag)
+        flush_win = ug_win->global_win;
 
     CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, flush_win);
     mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, flush_win);

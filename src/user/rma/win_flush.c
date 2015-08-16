@@ -69,8 +69,8 @@ int CSP_win_target_flush(int target_rank, CSP_win * ug_win)
 #endif /*end of CSP_ENABLE_RUNTIME_LOAD_OPT */
 
     if (user_rank == target_rank && ug_win->is_self_locked) {
-        int active_win_flag = !(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK);
-        mpi_errno = CSP_win_flush_self(ug_win, active_win_flag);
+        int global_win_flag = !(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK);
+        mpi_errno = CSP_win_flush_self(ug_win, global_win_flag);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

@@ -138,7 +138,7 @@ typedef struct CSP_win {
     int lock_counter;
     int start_counter;
 
-    MPI_Win active_win;
+    MPI_Win global_win;         /* global window used in active epochs, and lockall epoch in no-lock mode. */
 
     MPI_Group start_group;
     MPI_Group post_group;
@@ -227,7 +227,7 @@ extern const char *CSP_win_epoch_stat_name[4];
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {    \
         switch (target->epoch_stat) {   \
             case CSP_TARGET_EPOCH_PSCW:    \
-                win_ptr = &ug_win->active_win;   \
+                win_ptr = &ug_win->global_win;   \
                 break;  \
             case CSP_TARGET_EPOCH_LOCK:    \
                 win_ptr = &target->segs[seg].ug_win;   \
@@ -239,13 +239,13 @@ extern const char *CSP_win_epoch_stat_name[4];
     } else {    \
         switch (ug_win->epoch_stat) {   \
             case CSP_WIN_EPOCH_FENCE:    \
-                win_ptr = &ug_win->active_win;   \
+                win_ptr = &ug_win->global_win;   \
                 break;  \
             case CSP_WIN_EPOCH_LOCK_ALL:    \
                 if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) {  \
                     win_ptr = &target->segs[seg].ug_win;   \
                 } else {    \
-                    win_ptr = &ug_win->active_win;   \
+                    win_ptr = &ug_win->global_win;   \
                 }   \
                 break;  \
             case CSP_WIN_NO_EPOCH:   \

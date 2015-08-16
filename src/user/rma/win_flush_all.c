@@ -17,23 +17,23 @@ int CSP_win_global_flush_all(CSP_win * ug_win)
     int i CSP_ATTRIBUTE((unused));
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-    CSP_DBG_PRINT(" flush_all(active_win 0x%x)\n", ug_win->active_win);
-    mpi_errno = PMPI_Win_flush_all(ug_win->active_win);
+    CSP_DBG_PRINT(" flush_all(global_win 0x%x)\n", ug_win->global_win);
+    mpi_errno = PMPI_Win_flush_all(ug_win->global_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #else
     /* Flush every ghost once in the single window.
      * TODO: track op issuing, only flush the ghosts which receive ops. */
     for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
-        CSP_DBG_PRINT(" flush(ghost %d, active_win 0x%x)\n", ug_win->g_ranks_in_ug[i],
-                      ug_win->active_win);
-        mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->active_win);
+        CSP_DBG_PRINT(" flush(ghost %d, global_win 0x%x)\n", ug_win->g_ranks_in_ug[i],
+                      ug_win->global_win);
+        mpi_errno = PMPI_Win_flush(ug_win->g_ranks_in_ug[i], ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
 
     if (ug_win->is_self_locked) {
-        mpi_errno = CSP_win_flush_self(ug_win, 1 /*active_win */);
+        mpi_errno = CSP_win_flush_self(ug_win, 1 /*global_win */);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

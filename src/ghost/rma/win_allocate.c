@@ -332,15 +332,15 @@ int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag)
             goto fn_fail;
     }
 
-    /* - Create global active window when fence|pscw are specified,
+    /* - Create global window when fence|pscw are specified,
      *   or only lock_all is specified.*/
     if ((win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
         (win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
         (win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
-        mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->active_win);
+        mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-        CSPG_DBG_PRINT(" Created active windows 0x%x\n", win->active_win);
+        CSPG_DBG_PRINT(" Created global windows 0x%x\n", win->global_win);
     }
 
     win->csp_g_win_handle = (unsigned long) win;

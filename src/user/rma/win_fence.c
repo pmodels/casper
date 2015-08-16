@@ -96,7 +96,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     /* Always need sync to avoid instruction reordering of preceding load even if
      * user says no preceding store.*/
-    mpi_errno = PMPI_Win_sync(ug_win->active_win);
+    mpi_errno = PMPI_Win_sync(ug_win->global_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -118,7 +118,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
 #endif
 
     /* Indicate epoch status.
-     * Later operations will be redirected to active_win */
+     * Later operations will be redirected to global_win */
     ug_win->epoch_stat = CSP_WIN_EPOCH_FENCE;
 
     /* Indicate exposure epoch status. */
