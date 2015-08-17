@@ -596,16 +596,14 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
         int win_off;
         CSP_DBG_PRINT("[%d] targets[%d].\n", user_rank, i);
 
-        /* unique windows of each process, used in lock/flush */
+        /* unique window of each process, used in lock/flush */
         win_off = ug_win->targets[i].local_user_rank % ug_win->num_ug_wins;
         ug_win->targets[i].ug_win = ug_win->ug_wins[win_off];
         CSP_DBG_PRINT("\t\t .ug_win=0x%x (win_off %d)\n", ug_win->targets[i].ug_win, win_off);
 
         /* windows of each segment, used in OPs */
         for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            win_off = ug_win->targets[i].local_user_rank % ug_win->num_ug_wins;
-            ug_win->targets[i].segs[j].ug_win = ug_win->ug_wins[win_off];
-
+            ug_win->targets[i].segs[j].ug_win = ug_win->targets[i].ug_win;
             CSP_DBG_PRINT("\t\t .seg[%d].ug_win=0x%x (win_off %d)\n",
                           j, ug_win->targets[i].segs[j].ug_win, win_off);
         }

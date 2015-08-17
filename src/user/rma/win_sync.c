@@ -13,7 +13,7 @@ int MPI_Win_sync(MPI_Win win)
     CSP_win *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank = 0, user_nprocs = 0;
-    int i, j;
+    int i;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -28,7 +28,7 @@ int MPI_Win_sync(MPI_Win win)
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
-    /* For lock_all only window, just sync on single window. */
+    /* For no-lock window, just sync on single window. */
     if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
         /* Check access epoch status.
@@ -45,7 +45,7 @@ int MPI_Win_sync(MPI_Win win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSP_DBG_PRINT("[%d] win sync on %s single win 0x%x\n", user_rank,
+        CSP_DBG_PRINT(" win sync on %s single win 0x%x\n",
                       CSP_win_epoch_stat_name[ug_win->epoch_stat], ug_win->global_win);
     }
 
@@ -58,17 +58,13 @@ int MPI_Win_sync(MPI_Win win)
 
         for (i = 0; i < user_nprocs; i++) {
             target = &ug_win->targets[i];
-
             if (target->epoch_stat == CSP_TARGET_EPOCH_LOCK) {
-                for (j = 0; j < target->num_segs; j++) {
-                    mpi_errno = PMPI_Win_sync(target->segs[j].ug_win);
-                    if (mpi_errno != MPI_SUCCESS)
-                        goto fn_fail;
+                mpi_errno = PMPI_Win_sync(target->ug_win);
+                if (mpi_errno != MPI_SUCCESS)
+                    goto fn_fail;
 
-                    CSP_DBG_PRINT("[%d] win sync on %s target %d, win 0x%x\n",
-                                  user_rank, CSP_target_epoch_stat_name[target->epoch_stat],
-                                  i, target->segs[j].ug_win);
-                }
+                CSP_DBG_PRINT(" win sync on %s target %d, win 0x%x\n",
+                              CSP_target_epoch_stat_name[target->epoch_stat], i, target->ug_win);
                 synced = 1;
             }
         }
