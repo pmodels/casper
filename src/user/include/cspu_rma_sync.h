@@ -17,6 +17,7 @@ extern int CSP_win_target_lock(int lock_type, int assert, int target_rank, CSP_w
 extern int CSP_win_target_flush(int target_rank, CSP_win * ug_win);
 extern int CSP_win_target_unlock(int target_rank, CSP_win * ug_win);
 extern int CSP_win_global_flush_all(CSP_win * ug_win);
+extern int CSP_win_target_flush_local(int target_rank, CSP_win * ug_win);
 
 /* Receive buffer for receiving complete-wait sync message.
  * We don't need its value, so just use a global char variable to ensure
@@ -159,6 +160,34 @@ static inline int CSP_win_flush_self(CSP_win * ug_win CSP_ATTRIBUTE((unused)),
 
     CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, flush_win);
     mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, flush_win);
+#endif
+    return mpi_errno;
+}
+
+
+/* Locally flush the local process.
+ * It is called in all flush_local{all}-included operations.
+ * Note that the actual flush_local is only issued when local PUT/GET optimization is enabled. */
+static inline int CSP_win_flush_local_self(CSP_win * ug_win CSP_ATTRIBUTE((unused)),
+                                           int global_win_flag CSP_ATTRIBUTE((unused)))
+{
+    int mpi_errno = MPI_SUCCESS;
+#if defined(CSP_ENABLE_LOCAL_RMA_OP_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
+    CSP_win_target *target;
+    int user_rank;
+    MPI_Win flush_win = MPI_WIN_NULL;
+
+    CSP_assert(ug_win->is_self_locked == 1);
+
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    target = &(ug_win->targets[user_rank]);
+
+    flush_win = target->ug_win;
+    if (global_win_flag)
+        flush_win = ug_win->global_win;
+
+    CSP_DBG_PRINT(" flush_local self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, flush_win);
+    mpi_errno = PMPI_Win_flush_local(ug_win->my_rank_in_ug_comm, flush_win);
 #endif
     return mpi_errno;
 }
