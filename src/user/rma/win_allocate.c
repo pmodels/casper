@@ -372,7 +372,7 @@ static int create_communicators(CSP_win * ug_win)
     int mpi_errno = MPI_SUCCESS;
     int *cmd_params = NULL;
     int *user_ranks_in_world = NULL;
-    int *gp_ranks_in_world = NULL;
+    int *gp_ranks_in_world = NULL, *unique_gp_rank_in_world = NULL;
     int num_ghosts = 0, max_num_ghosts;
     int user_nprocs, user_local_rank;
     int *gp_ranks_in_ug = NULL;
@@ -406,10 +406,11 @@ static int create_communicators(CSP_win * ug_win)
     else {
         /* ghost ranks for every user process, used for ghost fetching in epoch */
         gp_ranks_in_world = CSP_calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
+        unique_gp_rank_in_world = CSP_calloc(CSP_ENV.num_g * ug_win->num_nodes, sizeof(int));
         gp_ranks_in_ug = CSP_calloc(CSP_ENV.num_g * user_nprocs, sizeof(int));
 
         /* Gather user rank information */
-        mpi_errno = gather_ranks(ug_win, &num_ghosts, gp_ranks_in_world, ug_win->g_ranks_in_ug);
+        mpi_errno = gather_ranks(ug_win, &num_ghosts, gp_ranks_in_world, unique_gp_rank_in_world);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -430,7 +431,7 @@ static int create_communicators(CSP_win * ug_win)
                 user_ranks_in_world[i] = ug_win->targets[i].world_rank;
 
             /* ghost ranks in comm_world */
-            memcpy(&cmd_params[user_nprocs + 1], ug_win->g_ranks_in_ug, num_ghosts * sizeof(int));
+            memcpy(&cmd_params[user_nprocs + 1], unique_gp_rank_in_world, num_ghosts * sizeof(int));
             mpi_errno = bcast_ghost_cmd_params(cmd_params, sizeof(int) * cmd_param_size);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -440,7 +441,7 @@ static int create_communicators(CSP_win * ug_win)
          *  ug_comm: including all USER and Ghost processes
          *  local_ug_comm: including local USER and Ghost processes
          */
-        mpi_errno = create_ug_comm(num_ghosts, ug_win->g_ranks_in_ug, ug_win);
+        mpi_errno = create_ug_comm(num_ghosts, unique_gp_rank_in_world, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -458,6 +459,8 @@ static int create_communicators(CSP_win * ug_win)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+        PMPI_Comm_group(ug_win->local_ug_comm, &ug_win->local_ug_group);
+
 #ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
@@ -467,13 +470,17 @@ static int create_communicators(CSP_win * ug_win)
         }
 #endif
 
-        /* Get all Ghost rank in ug communicator */
+        /* Get all ghost rank in ug communicator */
+        mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, num_ghosts,
+                                               unique_gp_rank_in_world, ug_win->ug_group,
+                                               ug_win->g_ranks_in_ug);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
         mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, user_nprocs * CSP_ENV.num_g,
                                                gp_ranks_in_world, ug_win->ug_group, gp_ranks_in_ug);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
-
-        PMPI_Comm_group(ug_win->local_ug_comm, &ug_win->local_ug_group);
 
         for (i = 0; i < user_nprocs; i++)
             memcpy(ug_win->targets[i].g_ranks_in_ug, &gp_ranks_in_ug[i * CSP_ENV.num_g],
@@ -482,9 +489,17 @@ static int create_communicators(CSP_win * ug_win)
 
 #ifdef CSP_DEBUG
     {
+        int j;
         CSP_DBG_PRINT("%d unique g_ranks:\n", ug_win->num_g_ranks_in_ug);
         for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
             CSP_DBG_PRINT("\t[%d] %d\n", i, ug_win->g_ranks_in_ug[i]);
+        }
+        CSP_DBG_PRINT("  per target g_ranks:\n");
+        for (i = 0; i < user_nprocs; i++) {
+            for (j = 0; j < CSP_ENV.num_g; j++) {
+                CSP_DBG_PRINT("\ttarget[%d].g_ranks_in_ug[%d] %d\n", i, j,
+                              ug_win->targets[i].g_ranks_in_ug[j]);
+            }
         }
     }
 #endif
@@ -496,6 +511,8 @@ static int create_communicators(CSP_win * ug_win)
         free(gp_ranks_in_world);
     if (gp_ranks_in_ug)
         free(gp_ranks_in_ug);
+    if (unique_gp_rank_in_world)
+        free(unique_gp_rank_in_world);
     return mpi_errno;
 
   fn_fail:
