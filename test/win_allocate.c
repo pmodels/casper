@@ -49,6 +49,26 @@ static void run_test2()
     }
 }
 
+/* check N * [win_allocate + win_free] on windows sharing the same ghosts.
+ * This sub test checks windows with disjoint user subsets but sharing the same ghosts.
+ * i.e., [P0, P1] are bound to G0, [P2, P3] are bound to G1, now two communicators
+ * [P0, P2] and [P1, P3] are creating window concurrently.*/
+static void run_test3()
+{
+    int x;
+    MPI_Comm oddeven_comm = MPI_COMM_NULL;
+    MPI_Comm_split(MPI_COMM_WORLD, rank % 2, rank, &oddeven_comm);
+
+    for (x = 0; x < ITER; x++) {
+        /* size in byte */
+        MPI_Win_allocate(sizeof(double) * size, sizeof(double), MPI_INFO_NULL,
+                         oddeven_comm, &winbuf[x], &win[x]);
+        MPI_Win_free(&win[x]);
+    }
+
+    MPI_Comm_free(&oddeven_comm);
+}
+
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);
@@ -66,6 +86,9 @@ int main(int argc, char *argv[])
 
     MPI_Barrier(MPI_COMM_WORLD);
     run_test2();
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    run_test3();
 
   exit:
     if (rank == 0) {
