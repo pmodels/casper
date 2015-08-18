@@ -219,7 +219,7 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win
 }
 
 
-int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag)
+int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
 {
     int mpi_errno = MPI_SUCCESS;
     int dst, local_ug_rank, local_ug_nprocs;
@@ -231,7 +231,7 @@ int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag)
     MPI_Aint csp_buf_size = CSP_GP_SHARED_SG_SIZE;
     MPI_Info user_info = MPI_INFO_NULL;
     MPI_Info shared_info = MPI_INFO_NULL;
-    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->winalloc;
+    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->extend.winalloc;
 
     win = CSP_calloc(1, sizeof(CSPG_win));
 

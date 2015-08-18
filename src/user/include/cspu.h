@@ -460,7 +460,16 @@ static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int 
  * Other prototypes
  * ====================================================================== */
 
-extern int CSP_cmd_issue(CSP_cmd_pkt_t * pkt);
+static inline void CSP_cmd_init_fnc_pkt(CSP_cmd_fnc_pkt_t * pkt)
+{
+    pkt->cmd_type = CSP_CMD_FNC;
+    pkt->fnc_cmd = CSP_CMD_FNC_NONE;
+    pkt->lock_flag = 0;
+}
+
+extern int CSP_cmd_fnc_issue(CSP_cmd_pkt_t * pkt);
+extern int CSP_cmd_acquire_lock(MPI_Comm user_root_comm);
+
 extern int CSP_op_segments_decode(const void *origin_addr, int origin_count,
                                   MPI_Datatype origin_datatype,
                                   int target_rank, MPI_Aint target_disp,

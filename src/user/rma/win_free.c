@@ -157,7 +157,7 @@ static int issue_ghost_cmd(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt.winfree;
+    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt.fnc.extend.winfree;
     MPI_Request *reqs = NULL;
     MPI_Status *stats = NULL;
     int i, user_local_rank = 0;
@@ -166,11 +166,24 @@ static int issue_ghost_cmd(CSP_win * ug_win)
     stats = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
     PMPI_Comm_rank(CSP_COMM_LOCAL, &user_local_rank);
 
+    /* Ensure all user roots have arrived before start lock. */
+    mpi_errno = PMPI_Barrier(ug_win->user_root_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Lock ghost processes on all nodes. */
+    mpi_errno = CSP_cmd_acquire_lock(ug_win->user_root_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     /* send command to root ghost. */
-    winfree_pkt->cmd = CSP_CMD_WIN_FREE;
+    CSP_cmd_init_fnc_pkt(&pkt.fnc);
+    pkt.fnc.fnc_cmd = CSP_CMD_FNC_WIN_FREE;
+    pkt.fnc.lock_flag = 1;
+
     winfree_pkt->user_local_root = user_local_rank;
 
-    mpi_errno = CSP_cmd_issue(&pkt);
+    mpi_errno = CSP_cmd_fnc_issue(&pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

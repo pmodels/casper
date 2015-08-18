@@ -30,6 +30,15 @@
     fflush(stdout); \
     } while (0)
 
+#ifdef CSPG_WARN
+#define CSPG_WARN_PRINT(str,...) do { \
+    fprintf(stderr, "[CSPG][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fflush(stdout); \
+    } while (0)
+#else
+#define CSPG_WARN_PRINT(str, ...) {}
+#endif
+
 #define CSPG_assert(EXPR) do { if (CSP_unlikely(!(EXPR))){ \
             CSPG_ERR_PRINT("  assert fail in [%s:%d]: \"%s\"\n", \
                            __FILE__, __LINE__, #EXPR); \
@@ -74,13 +83,23 @@ typedef struct CSPG_win {
 /* ======================================================================
  * Command related definition.
  * ====================================================================== */
+typedef struct CSPG_acquire_lock_req {
+    int group_id;
+    int user_local_rank;
+    CSP_cmd_lock_stat stat;
+} CSPG_cmd_lock_req_t;
 
+typedef int (*CSPG_cmd_fnc_handler_t) (CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
+typedef int (*CSPG_cmd_lock_handler_t) (CSP_cmd_lock_pkt_t * pkt, int user_local_rank);
 
-typedef int (*CSPG_cmd_handler_t) (CSP_cmd_pkt_t * pkt, int *exit_flag);
+extern CSPG_cmd_fnc_handler_t fnc_cmd_handlers[CSP_CMD_FNC_MAX];
 
-extern int CSPG_win_allocate(CSP_cmd_pkt_t * pkt, int *exit_flag);
-extern int CSPG_win_free(CSP_cmd_pkt_t * pkt, int *exit_flag);
-extern int CSPG_finalize(CSP_cmd_pkt_t * pkt, int *exit_flag);
+extern int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
+extern int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
+extern int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
+
+extern void CSPG_cmd_init(void);
+extern void CSPG_cmd_destory(void);
+extern int CSPG_cmd_release_lock(void);
 extern int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt);
-
 #endif /* CSPG_H_ */

@@ -11,10 +11,13 @@
 static inline int issue_ghost_cmd(void)
 {
     CSP_cmd_pkt_t pkt;
-    pkt.cmd = CSP_CMD_FINALIZE;
+
+    CSP_cmd_init_fnc_pkt(&pkt.fnc);
+    pkt.fnc.fnc_cmd = CSP_CMD_FNC_FINALIZE;
+    pkt.fnc.lock_flag = 0;
 
     /* send command to ghosts. */
-    return CSP_cmd_issue(&pkt);
+    return CSP_cmd_fnc_issue(&pkt);
 }
 
 int MPI_Finalize(void)

@@ -8,25 +8,17 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-CSPG_cmd_handler_t cmd_handlers[CSP_CMD_MAX] = { NULL };
-
-static void init_cmd_handlers(void)
-{
-    cmd_handlers[CSP_CMD_WIN_ALLOCATE] = CSPG_win_allocate;
-    cmd_handlers[CSP_CMD_WIN_FREE] = CSPG_win_free;
-    cmd_handlers[CSP_CMD_FINALIZE] = CSPG_finalize;
-}
-
 int CSPG_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int err_class = 0, errstr_len = 0;
     char err_string[MPI_MAX_ERROR_STRING];
     CSP_cmd_pkt_t pkt;
+    CSP_cmd_fnc_pkt_t *fnc_pkt = &pkt.fnc;
     int exit_flag = 0;
 
     CSPG_DBG_PRINT(" main start\n");
-    init_cmd_handlers();
+    CSPG_cmd_init();
 
     /* Disable MPI automatic error messages. */
     mpi_errno = PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
@@ -38,15 +30,25 @@ int CSPG_init(void)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+        CSPG_assert(pkt.cmd_type == CSP_CMD_FNC);
+
         /* skip unknown command */
-        if (pkt.cmd <= CSP_CMD_NULL || pkt.cmd >= CSP_CMD_MAX || !cmd_handlers[pkt.cmd]) {
-            CSPG_DBG_PRINT(" Received unknown CMD %d\n", (int) (pkt.cmd));
+        if (fnc_pkt->fnc_cmd <= CSP_CMD_FNC_NONE || fnc_pkt->fnc_cmd >= CSP_CMD_FNC_MAX ||
+            !fnc_cmd_handlers[fnc_pkt->fnc_cmd]) {
+            CSPG_DBG_PRINT(" Received unknown FUNCTION %d\n", (int) (fnc_pkt->fnc_cmd));
             continue;
         }
 
-        mpi_errno = cmd_handlers[pkt.cmd] (&pkt, &exit_flag);
+        mpi_errno = fnc_cmd_handlers[fnc_pkt->fnc_cmd] (fnc_pkt, &exit_flag);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        /* Release local lock if a locked command finished. */
+        if (fnc_pkt->lock_flag) {
+            mpi_errno = CSPG_cmd_release_lock();
+            if (mpi_errno != MPI_SUCCESS)
+                goto fn_fail;
+        }
 
         /* exit when finalize finished */
         if (exit_flag)
@@ -56,6 +58,7 @@ int CSPG_init(void)
     CSPG_DBG_PRINT(" main done\n");
 
   fn_exit:
+    CSPG_cmd_destory();
     return mpi_errno;
 
   fn_fail:

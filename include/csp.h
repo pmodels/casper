@@ -162,15 +162,34 @@ static inline void *CSP_calloc(int n, size_t size)
 #define CSP_CMD_PARAM_TAG 9890  /* tag for any later command parameters */
 
 typedef enum {
-    CSP_CMD_NULL,
-    CSP_CMD_WIN_ALLOCATE,
-    CSP_CMD_WIN_FREE,
-    CSP_CMD_FINALIZE,
-    CSP_CMD_MAX
-} CSP_cmd;
+    CSP_CMD_FNC,
+    CSP_CMD_LOCK
+} CSP_cmd_type;
+
+typedef enum {
+    CSP_CMD_FNC_NONE,
+    CSP_CMD_FNC_WIN_ALLOCATE,
+    CSP_CMD_FNC_WIN_FREE,
+    CSP_CMD_FNC_FINALIZE,
+    CSP_CMD_FNC_MAX
+} CSP_cmd_fnc;
+
+typedef enum {
+    CSP_CMD_LOCK_ACQUIRE,
+    CSP_CMD_LOCK_DISCARD,
+    CSP_CMD_LOCK_RELEASE,
+    CSP_CMD_LOCK_MAX
+} CSP_cmd_lock;
+
+typedef enum {
+    CSP_CMD_LOCK_STAT_NONE,
+    CSP_CMD_LOCK_STAT_SUSPENDED_L,
+    CSP_CMD_LOCK_STAT_SUSPENDED_H,
+    CSP_CMD_LOCK_STAT_ACQUIRED,
+    CSP_CMD_LOCK_STAT_MAX
+} CSP_cmd_lock_stat;
 
 typedef struct CSP_cmd_winalloc_pkt {
-    CSP_cmd cmd;
     int user_local_root;
     int user_nprocs;
     int max_local_user_nprocs;
@@ -180,21 +199,47 @@ typedef struct CSP_cmd_winalloc_pkt {
 } CSP_cmd_winalloc_pkt_t;
 
 typedef struct CSP_cmd_winfree_pkt {
-    CSP_cmd cmd;
     int user_local_root;
 } CSP_cmd_winfree_pkt_t;
 
-typedef struct CSP_cmd_finalize_pkt {
-    CSP_cmd cmd;
-} CSP_cmd_finalize_pkt_t;
+typedef struct CSP_cmd_fnc_pkt {
+    CSP_cmd_type cmd_type;
+    CSP_cmd_fnc fnc_cmd;
+    int lock_flag;
+    union {
+        CSP_cmd_winalloc_pkt_t winalloc;
+        CSP_cmd_winfree_pkt_t winfree;
+    } extend;
+} CSP_cmd_fnc_pkt_t;
+
+typedef struct CSP_cmd_lock_acquire_extpkt {
+    int group_id;               /* global unique id of user communicator. For now, it is safe to use
+                                 * world rank of the lowest rank, since all blocking command must be issued
+                                 * after all user processes arrived, thus two communicators within the same
+                                 * global comm id must always issue command in sequential.*/
+} CSP_cmd_lock_acquire_extpkt_t;
+typedef CSP_cmd_lock_acquire_extpkt_t CSP_cmd_lock_discard_extpkt_t;
+typedef CSP_cmd_lock_acquire_extpkt_t CSP_cmd_lock_release_extpkt_t;
+
+typedef struct CSP_cmd_lock_pkt {
+    CSP_cmd_type cmd_type;
+    CSP_cmd_lock lock_cmd;
+    union {
+        CSP_cmd_lock_acquire_extpkt_t acquire;
+        CSP_cmd_lock_discard_extpkt_t discard;
+        CSP_cmd_lock_release_extpkt_t release;
+    } extend;
+} CSP_cmd_lock_pkt_t;
 
 typedef union CSP_cmd_pkt {
-    CSP_cmd cmd;
-    CSP_cmd_winalloc_pkt_t winalloc;
-    CSP_cmd_winfree_pkt_t winfree;
-    CSP_cmd_finalize_pkt_t finalize;
+    CSP_cmd_type cmd_type;
+    CSP_cmd_fnc_pkt_t fnc;
+    CSP_cmd_lock_pkt_t lock;
 } CSP_cmd_pkt_t;
 
+typedef struct CSP_cmd_lock_stat_pkt {
+    CSP_cmd_lock_stat stat;
+} CSP_cmd_lock_stat_pkt_t;
 
 /* ======================================================================
  * Window related definitions.

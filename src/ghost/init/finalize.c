@@ -10,7 +10,7 @@
 
 static int finalize_cnt = 0;
 
-int CSPG_finalize(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
+int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_nprocs, local_user_nprocs;
@@ -49,7 +49,7 @@ int CSPG_finalize(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
         PMPI_Comm_free(&CSP_COMM_UR_WORLD);
     }
     if (CSP_COMM_GHOST_LOCAL != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT("free CSP_COMM_GHOST_LOCAL\n");
+        CSPG_DBG_PRINT(" free CSP_COMM_GHOST_LOCAL\n");
         PMPI_Comm_free(&CSP_COMM_GHOST_LOCAL);
     }
 

@@ -11,12 +11,12 @@
 #undef FUNCNAME
 #define FUNCNAME CSPG_win_free
 
-int CSPG_win_free(CSP_cmd_pkt_t * pkt, int *exit_flag)
+int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPG_win *win = NULL;
     unsigned long csp_g_win_handle = 0UL;
-    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt->winfree;
+    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt->extend.winfree;
     int i;
 
     (*exit_flag) = 0;

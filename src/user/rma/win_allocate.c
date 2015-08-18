@@ -224,14 +224,25 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt.winalloc;
+    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt.fnc.extend.winalloc;
     CSP_info_keyval_t *info_keyvals = NULL;
     int user_local_rank = 0;
     int npairs = 0;
 
     PMPI_Comm_rank(CSP_COMM_LOCAL, &user_local_rank);
 
-    winalloc_pkt->cmd = CSP_CMD_WIN_ALLOCATE;
+    /* Previous allgather ensures all user roots have arrived, thus skip
+     * barrier(user_root_comm). */
+
+    /* Lock ghost processes on all nodes. */
+    mpi_errno = CSP_cmd_acquire_lock(ug_win->user_root_comm);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    CSP_cmd_init_fnc_pkt(&pkt.fnc);
+    pkt.fnc.fnc_cmd = CSP_CMD_FNC_WIN_ALLOCATE;
+    pkt.fnc.lock_flag = 1;
+
     winalloc_pkt->user_local_root = user_local_rank;
     winalloc_pkt->user_nprocs = user_nprocs;
     winalloc_pkt->epoch_type = ug_win->info_args.epoch_type;
@@ -245,7 +256,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
     winalloc_pkt->info_npairs = npairs;
 
     /* Only send start request to root ghost. */
-    mpi_errno = CSP_cmd_issue(&pkt);
+    mpi_errno = CSP_cmd_fnc_issue(&pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -763,7 +774,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     }
 #endif
 
-    /* Ask ghosts to start win_allocate. */
     if (user_local_rank == 0) {
         mpi_errno = issue_ghost_cmd(user_nprocs, info, ug_win);
         if (mpi_errno != MPI_SUCCESS)
