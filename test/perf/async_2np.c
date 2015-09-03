@@ -153,13 +153,13 @@ int main(int argc, char *argv[])
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall");
 
-    // size in byte
+    /* size in byte */
     MPI_Win_allocate(sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
 
     /* reset window */
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
+    MPI_Win_lock_all(0, win);
     winbuf[0] = 0.0;
-    MPI_Win_unlock(rank, win);
+    MPI_Win_unlock_all(win);
 
     debug_printf("[%d]win_allocate done\n", rank);
 

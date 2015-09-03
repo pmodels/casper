@@ -152,11 +152,11 @@ int main(int argc, char *argv[])
 
     for (time = min_time; time <= max_time; time *= iter_time) {
         /* reset window */
-        MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
+        MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
         for (i = 0; i < nprocs; i++) {
             winbuf[i] = 0.0;
         }
-        MPI_Win_unlock(rank, win);
+        MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
 
         MPI_Barrier(MPI_COMM_WORLD);
 
