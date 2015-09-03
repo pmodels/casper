@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     locbuf[0] = (rank + 1) * 1.0;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "lockall");
 
     MPI_Win_allocate(win_size * sizeof(double), sizeof(double), win_info, MPI_COMM_WORLD,
                      &winbuf, &win);

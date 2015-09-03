@@ -27,8 +27,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
     /* casper window starts */
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
+               (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
@@ -56,7 +56,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     CSP_DBG_PRINT(" lock_all, MPI_MODE_NOCHECK %d(assert %d)\n", (assert & MPI_MODE_NOCHECK) != 0,
                   assert);
 
-    if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
+    if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, lock_all already issued on global window
          * in win_allocate. */
         CSP_DBG_PRINT(" lock_all(global_win 0x%x) (no actual lock call)\n", ug_win->global_win);

@@ -10,7 +10,7 @@
 #include <mpi.h>
 
 /* This benchmark measures the overhead of win_allocate with different
- * epoch_types info.*/
+ * epochs_used info.*/
 
 #define ITER 100
 int rank, nprocs;
@@ -25,7 +25,7 @@ static void run_test(const char *info)
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", info);
+    MPI_Info_set(win_info, (char *) "epochs_used", info);
 
     t0 = MPI_Wtime();
     for (x = 0; x < ITER; x++) {

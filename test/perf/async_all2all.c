@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
     }
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "lockall");
 
     // size in byte
     MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), win_info,

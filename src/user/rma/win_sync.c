@@ -29,7 +29,7 @@ int MPI_Win_sync(MPI_Win win)
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     /* For no-lock window, just sync on single window. */
-    if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
+    if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
         /* Check access epoch status.
          * The current epoch must be lock_all.*/

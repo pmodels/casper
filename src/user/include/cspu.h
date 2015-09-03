@@ -43,7 +43,7 @@ typedef enum {
 
 struct CSP_win_info_args {
     unsigned short no_local_load_store;
-    int epoch_type;
+    int epochs_used;
     CSP_async_config async_config;
     char win_name[MPI_MAX_OBJECT_NAME + 1];
 };
@@ -242,7 +242,7 @@ extern const char *CSP_win_epoch_stat_name[4];
                 win_ptr = &ug_win->global_win;   \
                 break;  \
             case CSP_WIN_EPOCH_LOCK_ALL:    \
-                if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) {  \
+                if (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) {  \
                     win_ptr = &target->segs[seg].ug_win;   \
                 } else {    \
                     win_ptr = &ug_win->global_win;   \

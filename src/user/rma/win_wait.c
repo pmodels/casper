@@ -100,7 +100,7 @@ int MPI_Win_wait(MPI_Win win)
         return PMPI_Win_wait(win);
     }
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     /* Check exposure epoch status.
      * Note that this is not only a user-friendly check, but also

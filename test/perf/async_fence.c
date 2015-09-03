@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     }
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "fence");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "fence");
 
     // size in byte
     MPI_Win_allocate(sizeof(double) * nprocs, sizeof(double), win_info,

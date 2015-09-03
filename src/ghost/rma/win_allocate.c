@@ -35,15 +35,15 @@ static int init_ghost_win(CSP_cmd_winalloc_pkt_t * winalloc_pkt, CSPG_win * win,
     CSP_info_keyval_t *info_keyvals = NULL;
 
     win->max_local_user_nprocs = winalloc_pkt->max_local_user_nprocs;
-    win->info_args.epoch_type = winalloc_pkt->epoch_type;
+    win->info_args.epochs_used = winalloc_pkt->epochs_used;
     win->is_u_world = winalloc_pkt->is_u_world;
     win->user_nprocs = winalloc_pkt->user_nprocs;
     win->user_local_root = winalloc_pkt->user_local_root;
     info_npairs = winalloc_pkt->info_npairs;
 
-    CSPG_DBG_PRINT(" Received command from %d: max_local_user_nprocs = %d, epoch_type=%d, "
+    CSPG_DBG_PRINT(" Received command from %d: max_local_user_nprocs = %d, epochs_used=%d, "
                    "is_u_world=%d, user_nprocs=%d, info npairs=%d\n", win->user_local_root,
-                   win->max_local_user_nprocs, win->info_args.epoch_type, win->is_u_world,
+                   win->max_local_user_nprocs, win->info_args.epochs_used, win->is_u_world,
                    win->user_nprocs, info_npairs);
 
     /* Receive window info */
@@ -325,7 +325,7 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
      */
 
     /* - Create lock N-windows */
-    if ((win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
+    if ((win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
 
         mpi_errno = create_lock_windows(size, user_info, win);
         if (mpi_errno != MPI_SUCCESS)
@@ -334,9 +334,9 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
 
     /* - Create global window when fence|pscw are specified,
      *   or only lock_all is specified.*/
-    if ((win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
-        (win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
-        (win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
+    if ((win->info_args.epochs_used & CSP_EPOCH_FENCE) ||
+        (win->info_args.epochs_used & CSP_EPOCH_PSCW) ||
+        (win->info_args.epochs_used == CSP_EPOCH_LOCK_ALL)) {
         mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->global_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

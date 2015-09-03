@@ -60,8 +60,8 @@ int MPI_Win_flush_local_all(MPI_Win win)
     }
 
     /* casper window starts */
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
+               (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
@@ -77,7 +77,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
-    if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
+    if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, single window is shared by multiple targets. */
         mpi_errno = CSP_win_global_flush_local_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)

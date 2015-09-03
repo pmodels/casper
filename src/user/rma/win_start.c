@@ -104,7 +104,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
         return PMPI_Win_start(group, assert, win);
     }
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */

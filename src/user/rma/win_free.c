@@ -237,9 +237,9 @@ int MPI_Win_free(MPI_Win * win)
     PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs);
 
     /* First unlock global window */
-    if ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
-        (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
-        (ug_win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
+    if ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ||
+        (ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ||
+        (ug_win->info_args.epochs_used == CSP_EPOCH_LOCK_ALL)) {
 
         CSP_DBG_PRINT("[%d]unlock_all(global_win 0x%x)\n", user_rank, ug_win->global_win);
 

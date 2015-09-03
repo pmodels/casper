@@ -12,7 +12,7 @@
 #include "ctest.h"
 
 /*
- * This test checks RMA communication with different value of epoch_types info.
+ * This test checks RMA communication with different value of epochs_used info.
  */
 
 #define NUM_OPS 5
@@ -96,7 +96,7 @@ static int check_data(int nop, int dst)
     return errs;
 }
 
-/* Test win_allocate(epoch_type=lockall) with lockall epoch. */
+/* Test win_allocate(epochs_used=lockall) with lockall epoch. */
 static int run_test1(int nop)
 {
     int i, x, errs = 0;
@@ -104,7 +104,7 @@ static int run_test1(int nop)
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "lockall");
 
     /* size in byte */
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,
@@ -147,7 +147,7 @@ static int run_test1(int nop)
     MPI_Win_unlock_all(win);
 
     if (rank == 0 && errs > 0) {
-        fprintf(stderr, "Test win_allocate(epoch_type=lockall) found %d errors\n", errs);
+        fprintf(stderr, "Test win_allocate(epochs_used=lockall) found %d errors\n", errs);
     }
 
     MPI_Bcast(&errs, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -158,7 +158,7 @@ static int run_test1(int nop)
     return errs;
 }
 
-/* Test win_allocate(epoch_type=lockall|lock) with lock epoch. */
+/* Test win_allocate(epochs_used=lockall|lock) with lock epoch. */
 static int run_test2(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
@@ -166,7 +166,7 @@ static int run_test2(int nop)
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lock|lockall");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "lock|lockall");
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,
                      MPI_COMM_WORLD, &winbuf, &win);
 
@@ -205,7 +205,8 @@ static int run_test2(int nop)
     MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     if (rank == 0 && errs_total > 0) {
-        fprintf(stderr, "Test win_allocate(epoch_type=lock|lockall) found %d errors\n", errs_total);
+        fprintf(stderr, "Test win_allocate(epochs_used=lock|lockall) found %d errors\n",
+                errs_total);
     }
 
     if (win != MPI_WIN_NULL)
@@ -215,7 +216,7 @@ static int run_test2(int nop)
     return errs_total;
 }
 
-/* Test win_allocate(epoch_type=lockall|pscw) with pscw epoch. */
+/* Test win_allocate(epochs_used=lockall|pscw) with pscw epoch. */
 static int run_test3(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
@@ -229,7 +230,7 @@ static int run_test3(int nop)
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall|pscw");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "lockall|pscw");
     MPI_Win_allocate(sizeof(double) * 2, sizeof(double), win_info, MPI_COMM_WORLD, &winbuf, &win);
 
     /* reset window */
@@ -324,7 +325,8 @@ static int run_test3(int nop)
     MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     if (rank == 0 && errs_total > 0) {
-        fprintf(stderr, "Test win_allocate(epoch_type=lockall|pscw) found %d errors\n", errs_total);
+        fprintf(stderr, "Test win_allocate(epochs_used=lockall|pscw) found %d errors\n",
+                errs_total);
     }
 
     if (post_group != MPI_GROUP_NULL)
@@ -342,7 +344,7 @@ static int run_test3(int nop)
     return errs_total;
 }
 
-/* Test win_allocate(epoch_type=fence) with fence epoch. */
+/* Test win_allocate(epochs_used=fence) with fence epoch. */
 static int run_test4(int nop)
 {
     int i, x, errs = 0, errs_total = 0;
@@ -350,7 +352,7 @@ static int run_test4(int nop)
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "fence");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "fence");
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info, MPI_COMM_WORLD, &winbuf,
                      &win);
 
@@ -399,7 +401,7 @@ static int run_test4(int nop)
     MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     if (rank == 0 && errs_total > 0) {
-        fprintf(stderr, "Test win_allocate(epoch_type=fence) found %d errors\n", errs_total);
+        fprintf(stderr, "Test win_allocate(epochs_used=fence) found %d errors\n", errs_total);
     }
 
     if (win != MPI_WIN_NULL)

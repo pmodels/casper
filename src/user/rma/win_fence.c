@@ -58,7 +58,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
         return PMPI_Win_fence(assert, win);
     }
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE));
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.

@@ -51,7 +51,7 @@
  * ====================================================================== */
 
 struct CSPG_win_info_args {
-    int epoch_type;
+    int epochs_used;
 };
 
 typedef struct CSPG_win {

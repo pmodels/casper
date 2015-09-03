@@ -60,7 +60,7 @@ int CSP_win_target_flush_local(int target_rank, CSP_win * ug_win)
 #endif /*end of CSP_ENABLE_RUNTIME_LOAD_OPT */
 
     if (user_rank == target_rank && ug_win->is_self_locked) {
-        int global_win_flag = !(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK);
+        int global_win_flag = !(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK);
         mpi_errno = CSP_win_flush_local_self(ug_win, global_win_flag);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -91,8 +91,8 @@ int MPI_Win_flush_local(int target_rank, MPI_Win win)
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
+               (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
     target = &(ug_win->targets[target_rank]);
 

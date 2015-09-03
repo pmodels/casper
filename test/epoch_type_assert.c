@@ -11,7 +11,7 @@
 #include <mpi.h>
 
 /*
- * This test checks lock with "lockall|fence" epoch_type info.
+ * This test checks lock with "lockall|fence" epochs_used info.
  * It expects to report assert error.
  */
 
@@ -33,7 +33,7 @@ static int run_test1()
     MPI_Info win_info = MPI_INFO_NULL;
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "epoch_type", (char *) "lockall|fence");
+    MPI_Info_set(win_info, (char *) "epochs_used", (char *) "lockall|fence");
 
     /* size in byte */
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,

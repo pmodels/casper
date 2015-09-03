@@ -117,7 +117,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
         return PMPI_Win_post(group, assert, win);
     }
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check exposure epoch status.

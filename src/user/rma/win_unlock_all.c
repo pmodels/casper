@@ -27,8 +27,8 @@ int MPI_Win_unlock_all(MPI_Win win)
 
     /* casper window starts */
 
-    CSP_assert((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ||
-               (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL));
+    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
+               (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
@@ -48,7 +48,7 @@ int MPI_Win_unlock_all(MPI_Win win)
         ug_win->targets[i].remote_lock_assert = 0;
     }
 
-    if (!(ug_win->info_args.epoch_type & CSP_EPOCH_LOCK)) {
+    if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, unlock_all will be issued on global window
          * in win_free. We only need flush_all here.*/
 

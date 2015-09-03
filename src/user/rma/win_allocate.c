@@ -33,7 +33,7 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
     int mpi_errno = MPI_SUCCESS;
 
     ug_win->info_args.no_local_load_store = 0;
-    ug_win->info_args.epoch_type = CSP_EPOCH_LOCK_ALL | CSP_EPOCH_LOCK |
+    ug_win->info_args.epochs_used = CSP_EPOCH_LOCK_ALL | CSP_EPOCH_LOCK |
         CSP_EPOCH_PSCW | CSP_EPOCH_FENCE;
     ug_win->info_args.async_config = CSP_ENV.async_config;      /* default */
 
@@ -71,33 +71,33 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
 
         /* Check if user specifies epoch types */
         memset(info_value, 0, sizeof(info_value));
-        mpi_errno = PMPI_Info_get(info, "epoch_type", MPI_MAX_INFO_VAL, info_value, &info_flag);
+        mpi_errno = PMPI_Info_get(info, "epochs_used", MPI_MAX_INFO_VAL, info_value, &info_flag);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         if (info_flag == 1) {
-            int user_epoch_type = 0;
+            int user_epochs_used = 0;
             char *type = NULL;
 
-            type = strtok(info_value, "|");
+            type = strtok(info_value, ",|;");
             while (type != NULL) {
                 if (!strncmp(type, "lockall", strlen("lockall"))) {
-                    user_epoch_type |= CSP_EPOCH_LOCK_ALL;
+                    user_epochs_used |= CSP_EPOCH_LOCK_ALL;
                 }
                 else if (!strncmp(type, "lock", strlen("lock"))) {
-                    user_epoch_type |= CSP_EPOCH_LOCK;
+                    user_epochs_used |= CSP_EPOCH_LOCK;
                 }
                 else if (!strncmp(type, "pscw", strlen("pscw"))) {
-                    user_epoch_type |= CSP_EPOCH_PSCW;
+                    user_epochs_used |= CSP_EPOCH_PSCW;
                 }
                 else if (!strncmp(type, "fence", strlen("fence"))) {
-                    user_epoch_type |= CSP_EPOCH_FENCE;
+                    user_epochs_used |= CSP_EPOCH_FENCE;
                 }
                 type = strtok(NULL, "|");
             }
 
-            if (user_epoch_type != 0)
-                ug_win->info_args.epoch_type = user_epoch_type;
+            if (user_epochs_used != 0)
+                ug_win->info_args.epochs_used = user_epochs_used;
         }
 
         /* Check if user sets window name.
@@ -114,12 +114,12 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
         }
     }
 
-    CSP_DBG_PRINT("no_local_load_store %d, epoch_type=%s|%s|%s|%s\n",
+    CSP_DBG_PRINT("no_local_load_store %d, epochs_used=%s|%s|%s|%s\n",
                   ug_win->info_args.no_local_load_store,
-                  ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
-                  ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "lock" : ""),
-                  ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "pscw" : ""),
-                  ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "fence" : ""));
+                  ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                  ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ? "lock" : ""),
+                  ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "pscw" : ""),
+                  ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "fence" : ""));
 
     if (CSP_ENV.verbose) {
         int user_rank = -1;
@@ -127,14 +127,14 @@ static int read_win_info(MPI_Info info, CSP_win * ug_win)
         if (user_rank == 0) {
             CSP_INFO_PRINT(2, "CASPER Window: %s \n"
                            "    no_local_load_store = %s\n"
-                           "    epoch_type = %s%s%s%s\n"
+                           "    epochs_used = %s%s%s%s\n"
                            "    async_config = %s\n\n",
                            ug_win->info_args.win_name,
                            (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
-                           ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
-                           ((ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) ? "|lock" : ""),
-                           ((ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ? "|pscw" : ""),
-                           ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ? "|fence" : ""),
+                           ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                           ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ? "|lock" : ""),
+                           ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "|pscw" : ""),
+                           ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "|fence" : ""),
                            ((ug_win->info_args.async_config ==
                              CSP_ASYNC_CONFIG_ON) ? "on" : "off"));
         }
@@ -245,7 +245,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
 
     winalloc_pkt->user_local_root = user_local_rank;
     winalloc_pkt->user_nprocs = user_nprocs;
-    winalloc_pkt->epoch_type = ug_win->info_args.epoch_type;
+    winalloc_pkt->epochs_used = ug_win->info_args.epochs_used;
     winalloc_pkt->max_local_user_nprocs = ug_win->max_local_user_nprocs;
     winalloc_pkt->is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
 
@@ -836,7 +836,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         goto fn_fail;
 
     /* Create N-windows for lock */
-    if (ug_win->info_args.epoch_type & CSP_EPOCH_LOCK) {
+    if (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) {
         mpi_errno = create_lock_windows(size, disp_unit, info, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -844,9 +844,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Create global window when fence|pscw are specified,
      * or only lock_all is specified.*/
-    if ((ug_win->info_args.epoch_type & CSP_EPOCH_FENCE) ||
-        (ug_win->info_args.epoch_type & CSP_EPOCH_PSCW) ||
-        (ug_win->info_args.epoch_type == CSP_EPOCH_LOCK_ALL)) {
+    if ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ||
+        (ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ||
+        (ug_win->info_args.epochs_used == CSP_EPOCH_LOCK_ALL)) {
         mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
                                     ug_win->ug_comm, &ug_win->global_win);
         if (mpi_errno != MPI_SUCCESS)
