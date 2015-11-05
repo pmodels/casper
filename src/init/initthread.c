@@ -213,7 +213,8 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
 
     if (local_nprocs < 2) {
-        CSP_ERR_PRINT("No user process found, please run with more than 2 process per node\n");
+        CSP_ERR_PRINT("Can not create shared memory region, %d process in "
+                      "MPI_COMM_TYPE_SHARED subcommunicator.\n", local_nprocs);
         mpi_errno = -1;
         goto fn_fail;
     }
