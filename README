@@ -9,19 +9,6 @@ model for MPI remote memory access (RMA) communication.
 
 
 ====================================
-Important Notice
-====================================
-Following functions are not supported in Casper for now, and we plan to include
-them in the next release.
-    MPI_Compare_and_swap
-    MPI_Rput
-    MPI_Rget
-    MPI_Raccumulate
-    MPI_Rget_accumulate
-    MPI_Win_test
-
-
-====================================
 Getting Started
 ====================================
 1. Installation
