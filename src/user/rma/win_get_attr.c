@@ -25,11 +25,7 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag
      * internally created by WIN_CREATE. For all the other attributes, just return
      * its real value.*/
     if (win_keyval == MPI_WIN_CREATE_FLAVOR) {
-#ifdef MPICH
         *((MPIR_Win_flavor_t **) attribute_val) = &ug_win->create_flavor;
-#else
-        *((int **) attribute_val) = &ug_win->create_flavor;
-#endif
         *flag = 1;
     }
     else {
