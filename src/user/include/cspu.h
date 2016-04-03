@@ -165,7 +165,11 @@ typedef struct CSP_win {
 #endif
 
     /* constant flavor attribute to override real flavor when user queries. */
+#ifdef MPICH
     MPIR_Win_flavor_t create_flavor;
+#else
+    int create_flavor;
+#endif
 
 } CSP_win;
 
