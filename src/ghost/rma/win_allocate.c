@@ -232,6 +232,7 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
     MPI_Info user_info = MPI_INFO_NULL;
     MPI_Info shared_info = MPI_INFO_NULL;
     CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->extend.winalloc;
+    int is_first_nonzero = 1;
 
     win = CSP_calloc(1, sizeof(CSPG_win));
 
@@ -307,16 +308,24 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
                        (unsigned long) ((char *) user_bases[dst] - (char *) win->base), r_size,
                        r_disp_unit);
 
+        /* ISSUE: NULL base may be returned if that process passed size=0 in
+         * win_allocate_shared (e.g., the ghost process's). If just using the
+         * NULL base with non-zero size in later win_create, MPI error happens.
+         *
+         * SOLUTION: using the first non-zero remote region's start address as the
+         * base for win_create. (It is a portable solution because standard
+         * guarantees win_allocate_shared always allocates contiguous memory
+         * unless `alloc_shared_noncontig` passed).
+         *
+         * NOTE: Since all ghosts create window starting from the first non-zero
+         * region, users can use the same offset for all ghosts */
+        if (r_size > 0 && is_first_nonzero) {
+            win->base = user_bases[dst];
+            is_first_nonzero = 0;
+        }
+
         size += r_size; /* size in byte */
     }
-
-    /* All ghosts create window starting from the baseptr of ghost 0, so users
-     * can use the same offset for all ghosts*/
-
-    /* FIXME: if size=0 and ghost rank > 0, base may be returned as 0x0.
-     * Is it implementation specific ? What is the uniform solution ?
-     * It is not wrong that simply use base[0] for creating window, because it is accessible. */
-    win->base = user_bases[0];
 
     /* Create ug windows including all User and Ghost processes.
      * Every User process has a window used for permission check and accessing Ghosts.
