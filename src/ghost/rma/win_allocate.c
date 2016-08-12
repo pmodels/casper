@@ -195,68 +195,22 @@ static int create_communicators(CSPG_win * win)
     goto fn_exit;
 }
 
-static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win)
+/* Allocate shared window with local GHOSTs and USERs.
+ * Return the size of whole shared memory buffer across processes, and
+ * the shared window is stored as a CSPG_win struct member.*/
+static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int i;
-
-    /* Need multiple windows for single lock synchronization */
-    win->num_ug_wins = win->max_local_user_nprocs;
-    win->ug_wins = CSP_calloc(win->num_ug_wins, sizeof(MPI_Win));
-    for (i = 0; i < win->num_ug_wins; i++) {
-        mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->ug_wins[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        CSPG_DBG_PRINT(" Created ug windows[%d] 0x%x\n", i, win->ug_wins[i]);
-    }
-
-  fn_exit:
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-
-int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int dst, local_ug_rank, local_ug_nprocs;
-    MPI_Aint r_size, size = 0;
-    int r_disp_unit;
-    int ug_nprocs, ug_rank;
-    CSPG_win *win = NULL;
-    void **user_bases = NULL;
     MPI_Aint csp_buf_size = CSP_GP_SHARED_SG_SIZE;
-    MPI_Info user_info = MPI_INFO_NULL;
+    int dst, local_ug_rank, local_ug_nprocs;
     MPI_Info shared_info = MPI_INFO_NULL;
-    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->extend.winalloc;
+    int r_disp_unit;
+    MPI_Aint r_size;
+    void **user_bases = NULL;
     int is_first_nonzero = 1;
-
-    win = CSP_calloc(1, sizeof(CSPG_win));
-
-    (*exit_flag) = 0;
-
-    /* Every ghost initialize ghost window by using received parameters. */
-    mpi_errno = init_ghost_win(winalloc_pkt, win, &user_info);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Create communicators
-     *  ug_comm: including all USER and Ghost processes
-     *  local_ug_comm: including local USER and Ghost processes
-     */
-    create_communicators(win);
 
     PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank);
     PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);
-    PMPI_Comm_size(win->ug_comm, &ug_nprocs);
-    PMPI_Comm_rank(win->ug_comm, &ug_rank);
-    CSPG_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
-                   ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
-
-    /* Allocate a shared window with local USER processes */
 
     /* -Calculate the window size of ghost 0, because it contains extra space
      *  for sync. */
@@ -289,7 +243,6 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
                                          win->local_ug_comm, &win->base, &win->local_ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSPG_DBG_PRINT(" Created local_ug_win, base=%p, size=%ld\n", win->base, csp_buf_size);
 
     /* -Query address of user buffers and send to USER processes */
     user_bases = CSP_calloc(local_ug_nprocs, sizeof(void *));
@@ -321,8 +274,81 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
             is_first_nonzero = 0;
         }
 
-        size += r_size; /* size in byte */
+        (*size) += r_size;      /* size in byte */
     }
+
+    CSPG_DBG_PRINT(" Created shared window, base=%p, size=%ld\n", win->base, (*size));
+
+  fn_exit:
+    if (shared_info && shared_info != MPI_INFO_NULL)
+        PMPI_Info_free(&shared_info);
+    if (user_bases)
+        free(user_bases);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i;
+
+    /* Need multiple windows for single lock synchronization */
+    win->num_ug_wins = win->max_local_user_nprocs;
+    win->ug_wins = CSP_calloc(win->num_ug_wins, sizeof(MPI_Win));
+    for (i = 0; i < win->num_ug_wins; i++) {
+        mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->ug_wins[i]);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        CSPG_DBG_PRINT(" Created ug windows[%d] 0x%x\n", i, win->ug_wins[i]);
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int local_ug_rank, local_ug_nprocs;
+    MPI_Aint size = 0;
+    int ug_nprocs, ug_rank;
+    CSPG_win *win = NULL;
+    MPI_Info user_info = MPI_INFO_NULL;
+    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->extend.winalloc;
+
+    win = CSP_calloc(1, sizeof(CSPG_win));
+
+    (*exit_flag) = 0;
+
+    /* Every ghost initialize ghost window by using received parameters. */
+    mpi_errno = init_ghost_win(winalloc_pkt, win, &user_info);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Create communicators
+     *  ug_comm: including all USER and Ghost processes
+     *  local_ug_comm: including local USER and Ghost processes
+     */
+    create_communicators(win);
+
+    PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank);
+    PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);
+    PMPI_Comm_size(win->ug_comm, &ug_nprocs);
+    PMPI_Comm_rank(win->ug_comm, &ug_rank);
+    CSPG_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
+                   ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
+
+    /* Allocate local shared window */
+    mpi_errno = alloc_shared_window(user_info, &size, win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     /* Create ug windows including all User and Ghost processes.
      * Every User process has a window used for permission check and accessing Ghosts.
@@ -360,10 +386,6 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
   fn_exit:
     if (user_info && user_info != MPI_INFO_NULL)
         PMPI_Info_free(&user_info);
-    if (shared_info && shared_info != MPI_INFO_NULL)
-        PMPI_Info_free(&shared_info);
-    if (user_bases)
-        free(user_bases);
 
     return mpi_errno;
 

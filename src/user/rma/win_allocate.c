@@ -602,6 +602,56 @@ static int gather_base_offsets(CSP_win * ug_win)
     goto fn_exit;
 }
 
+/* Allocate shared window with local GHOSTs and USERs.
+ * Return the size of whole shared memory buffer across processes, and
+ * the shared window is stored as a CSP_win struct member.*/
+static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPI_Info shared_info = MPI_INFO_NULL;
+    int user_rank;
+
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+
+    /* Allocate a shared window with local ghosts.
+     * Always set alloc_shm to true, same_size to false for the shared internal window.
+     *
+     * We only pass user specified alloc_shm to win_create windows.
+     * - If alloc_shm is true, MPI implementation can still provide shm optimization;
+     * - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI. */
+    if (info != MPI_INFO_NULL) {
+        mpi_errno = PMPI_Info_dup(info, &shared_info);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Info_set(shared_info, "alloc_shm", "true");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, shared_info, ug_win->local_ug_comm,
+                                         &ug_win->base, &ug_win->local_ug_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    CSP_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, ug_win->base);
+
+    /* Gather user offsets on corresponding ghost processes */
+    mpi_errno = gather_base_offsets(ug_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    /* Only release local variables. local_ug_win is released at the end of win_alloc. */
+    if (shared_info && shared_info != MPI_INFO_NULL)
+        PMPI_Info_free(&shared_info);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -655,7 +705,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
     int tmp_bcast_buf[2];
-    MPI_Info shared_info = MPI_INFO_NULL;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -801,32 +850,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     ug_win->g_bytes_counts = CSP_calloc(ug_nprocs, sizeof(unsigned long));
 #endif
 
-    /* Allocate a shared window with local ghosts.
-     * Always set alloc_shm to true, same_size to false for the shared internal window.
-     *
-     * We only pass user specified alloc_shm to win_create windows.
-     * - If alloc_shm is true, MPI implementation can still provide shm optimization;
-     * - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI. */
-    if (info != MPI_INFO_NULL) {
-        mpi_errno = PMPI_Info_dup(info, &shared_info);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "alloc_shm", "true");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
-
-    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, shared_info, ug_win->local_ug_comm,
-                                         &ug_win->base, &ug_win->local_ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    CSP_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, ug_win->base);
-
-    /* Gather user offsets on corresponding ghost processes */
-    mpi_errno = gather_base_offsets(ug_win);
+    /* Allocate local shared window */
+    mpi_errno = alloc_shared_window(size, disp_unit, info, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -895,8 +920,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     CSP_cache_ug_win(ug_win->win, ug_win);
 
   fn_exit:
-    if (shared_info && shared_info != MPI_INFO_NULL)
-        PMPI_Info_free(&shared_info);
     if (tmp_gather_buf)
         free(tmp_gather_buf);
 
