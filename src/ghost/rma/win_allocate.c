@@ -293,7 +293,6 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
 
     /* -Query address of user buffers and send to USER processes */
     user_bases = CSP_calloc(local_ug_nprocs, sizeof(void *));
-    win->user_base_addrs_in_local = CSP_calloc(local_ug_nprocs, sizeof(MPI_Aint));
 
     for (dst = 0; dst < local_ug_nprocs; dst++) {
         mpi_errno = PMPI_Win_shared_query(win->local_ug_win, dst, &r_size,
@@ -301,10 +300,8 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        PMPI_Get_address(user_bases[dst], &win->user_base_addrs_in_local[dst]);
-        CSPG_DBG_PRINT("   shared base[%d]=%p, addr 0x%lx, offset 0x%lx"
+        CSPG_DBG_PRINT("   shared base[%d]=%p, offset 0x%lx"
                        ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
-                       win->user_base_addrs_in_local[dst],
                        (unsigned long) ((char *) user_bases[dst] - (char *) win->base), r_size,
                        r_disp_unit);
 
@@ -374,8 +371,6 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
     CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
     /* cannot release global comm/win/group */
 
-    if (win->user_base_addrs_in_local)
-        free(win->user_base_addrs_in_local);
     if (win->ug_wins)
         free(win->ug_wins);
     if (win)

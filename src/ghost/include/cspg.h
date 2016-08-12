@@ -55,8 +55,6 @@ struct CSPG_win_info_args {
 };
 
 typedef struct CSPG_win {
-    MPI_Aint *user_base_addrs_in_local;
-
     MPI_Comm local_ug_comm;     /* including local user and ghost processes */
     MPI_Win local_ug_win;
 

@@ -90,8 +90,6 @@ int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
                 goto fn_fail;
         }
 
-        if (win->user_base_addrs_in_local)
-            free(win->user_base_addrs_in_local);
         if (win->ug_wins)
             free(win->ug_wins);
 
