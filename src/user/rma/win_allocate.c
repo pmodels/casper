@@ -613,8 +613,8 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
-    /* Allocate a shared window with local ghosts.
-     * Always set alloc_shm to true, same_size to false for the shared internal window.
+    /* -Always set alloc_shm to true, same_size to false, noncontig to false
+     *  for the shared internal window.
      *
      * We only pass user specified alloc_shm to win_create windows.
      * - If alloc_shm is true, MPI implementation can still provide shm optimization;
@@ -627,6 +627,9 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false");
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

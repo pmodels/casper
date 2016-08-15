@@ -220,11 +220,12 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win * w
 #endif
     }
 
-    /* -Always set alloc_shm to true, same_size to false for the shared internal window.
+    /* -Always set alloc_shm to true, same_size to false, noncontig to false
+     *  for the shared internal window.
      *
      *  We only pass user specified alloc_shm to win_create windows.
      *  - If alloc_shm is true, MPI implementation can still provide shm optimization;
-     *  - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI. */
+     *  - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI.*/
     if (user_info != MPI_INFO_NULL) {
         mpi_errno = PMPI_Info_dup(user_info, &shared_info);
         if (mpi_errno != MPI_SUCCESS)
@@ -233,6 +234,9 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win * w
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+        mpi_errno = PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false");
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
