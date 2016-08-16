@@ -28,6 +28,29 @@ int CSP_MY_RANK_IN_WORLD = -1;
 /* TODO: Move load balancing option into env setting */
 CSP_env_param CSP_ENV;
 
+static inline int CSP_check_valid_ghost(void)
+{
+    int local_nprocs;
+    int err_flag = 0;
+
+    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
+
+    if (local_nprocs < 2) {
+        CSP_ERR_PRINT("Can not create shared memory region, %d process in "
+                      "MPI_COMM_TYPE_SHARED subcommunicator.\n", local_nprocs);
+        err_flag++;
+    }
+
+    if (CSP_ENV.num_g < 1 || CSP_ENV.num_g >= local_nprocs) {
+        CSP_ERR_PRINT("Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
+                      CSP_ENV.num_g, local_nprocs);
+        err_flag++;
+    }
+
+    return err_flag;
+}
+
+/* Initialize environment setting */
 static int CSP_initialize_env()
 {
     char *val;
@@ -166,18 +189,238 @@ static int CSP_initialize_env()
     return mpi_errno;
 }
 
+#ifdef CSP_DEBUG
+static void CSP_print_user(void)
+{
+    int rank, nprocs, local_rank, local_nprocs, user_rank, user_nprocs;
+    int local_user_rank, local_user_nprocs;
+    int i, j;
+
+    PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
+    PMPI_Comm_rank(CSP_COMM_LOCAL, &local_rank);
+    PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
+    PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank);
+    PMPI_Comm_size(CSP_COMM_USER_LOCAL, &local_user_nprocs);
+    PMPI_Comm_rank(CSP_COMM_USER_LOCAL, &local_user_rank);
+
+    CSP_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
+                  "%d/%d in user local, node_id %d\n", rank, nprocs, local_rank,
+                  local_nprocs, user_rank, user_nprocs, local_user_rank,
+                  local_user_nprocs, CSP_MY_NODE_ID);
+
+    for (i = 0; i < user_nprocs; i++) {
+        CSP_DBG_PRINT("gp_rank_in_world[%d]:\n", i);
+        for (j = 0; j < CSP_ENV.num_g; j++) {
+            CSP_DBG_PRINT("    %d\n", CSP_ALL_G_RANKS_IN_WORLD[i * CSP_ENV.num_g + j]);
+        }
+    }
+}
+
+static void CSP_print_ghost(void)
+{
+    int rank, nprocs, local_rank, local_nprocs;
+
+    PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
+    PMPI_Comm_rank(CSP_COMM_LOCAL, &local_rank);
+
+    CSP_DBG_PRINT("I am ghost, %d/%d in world, %d/%d in local, node_id %d\n", rank,
+                  nprocs, local_rank, local_nprocs, CSP_MY_NODE_ID);
+}
+#endif
+
+/* Initialize global information objects. */
+static int CSP_initialize_ginfo()
+{
+    int mpi_errno = MPI_SUCCESS;
+    int *tmp_gather_buf = NULL, tmp_bcast_buf[2], node_id = 0;
+    int *ranks_in_user_world = NULL, *ranks_in_world = NULL;
+    int *g_ranks_in_world = NULL;
+    int rank, nprocs, local_rank, local_user_rank, user_nprocs;
+    MPI_Group user_world_group = MPI_GROUP_NULL;
+    int i, j;
+
+    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    PMPI_Comm_rank(CSP_COMM_LOCAL, &local_rank);
+    PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
+
+    mpi_errno = PMPI_Comm_group(CSP_COMM_USER_WORLD, &user_world_group);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Exchange node id among local processes */
+    if (local_rank >= CSP_ENV.num_g) {
+        PMPI_Comm_rank(CSP_COMM_USER_LOCAL, &local_user_rank);
+
+        if (local_user_rank == 0) {
+            PMPI_Comm_size(CSP_COMM_UR_WORLD, &CSP_NUM_NODES);
+            PMPI_Comm_rank(CSP_COMM_UR_WORLD, &CSP_MY_NODE_ID);
+
+            tmp_bcast_buf[0] = CSP_MY_NODE_ID;
+            tmp_bcast_buf[1] = CSP_NUM_NODES;
+        }
+    }
+
+    /* -User root broadcasts to other local processes */
+    PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, CSP_ENV.num_g, CSP_COMM_LOCAL);
+    CSP_MY_NODE_ID = tmp_bcast_buf[0];
+    CSP_NUM_NODES = tmp_bcast_buf[1];
+
+    /* Specify the first N local processes to be Ghost processes */
+    CSP_G_RANKS_IN_LOCAL = CSP_calloc(CSP_ENV.num_g, sizeof(int));
+    g_ranks_in_world = CSP_calloc(CSP_ENV.num_g, sizeof(int));
+    for (i = 0; i < CSP_ENV.num_g; i++)
+        CSP_G_RANKS_IN_LOCAL[i] = i;
+
+    mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_LOCAL, CSP_ENV.num_g,
+                                           CSP_G_RANKS_IN_LOCAL, CSP_GROUP_WORLD, g_ranks_in_world);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Exchange node id and Ghost ranks among world processes */
+    ranks_in_world = CSP_calloc(nprocs, sizeof(int));
+    ranks_in_user_world = CSP_calloc(nprocs, sizeof(int));
+    for (i = 0; i < nprocs; i++)
+        ranks_in_world[i] = i;
+
+    mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, nprocs,
+                                           ranks_in_world, user_world_group, ranks_in_user_world);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    tmp_gather_buf = CSP_calloc(nprocs * (1 + CSP_ENV.num_g), sizeof(int));
+    CSP_ALL_G_RANKS_IN_WORLD = CSP_calloc(user_nprocs * CSP_ENV.num_g, sizeof(int));
+    CSP_ALL_UNIQUE_G_RANKS_IN_WORLD = CSP_calloc(CSP_NUM_NODES * CSP_ENV.num_g, sizeof(int));
+
+    /* node_id */
+    tmp_gather_buf[rank * (1 + CSP_ENV.num_g)] = CSP_MY_NODE_ID;
+    /* ghost ranks in world */
+    for (i = 0; i < CSP_ENV.num_g; i++)
+        tmp_gather_buf[rank * (1 + CSP_ENV.num_g) + i + 1] = g_ranks_in_world[i];
+
+    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                               tmp_gather_buf, 1 + CSP_ENV.num_g, MPI_INT, MPI_COMM_WORLD);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    CSP_DBG_PRINT("Debug gathered info ***** \n");
+    for (i = 0; i < nprocs; i++) {
+        int i_user_rank = 0;
+        node_id = tmp_gather_buf[i * (1 + CSP_ENV.num_g)];
+
+        /* Only copy ghost ranks for user processes */
+        i_user_rank = ranks_in_user_world[i];
+        if (i_user_rank != MPI_UNDEFINED) {
+            for (j = 0; j < CSP_ENV.num_g; j++) {
+                CSP_ALL_G_RANKS_IN_WORLD[i_user_rank * CSP_ENV.num_g + j] =
+                    tmp_gather_buf[i * (1 + CSP_ENV.num_g) + j + 1];
+                CSP_ALL_UNIQUE_G_RANKS_IN_WORLD[node_id * CSP_ENV.num_g + j] =
+                    tmp_gather_buf[i * (1 + CSP_ENV.num_g) + j + 1];
+            }
+        }
+
+        CSP_DBG_PRINT("node_id[%d]: %d\n", i, node_id);
+    }
+
+  fn_exit:
+    if (user_world_group != MPI_GROUP_NULL)
+        PMPI_Group_free(&user_world_group);
+    if (tmp_gather_buf)
+        free(tmp_gather_buf);
+    if (ranks_in_user_world)
+        free(ranks_in_user_world);
+    if (ranks_in_world)
+        free(ranks_in_world);
+    if (g_ranks_in_world)
+        free(g_ranks_in_world);
+    return mpi_errno;
+
+  fn_fail:
+    /* Free global objects in MPI_Init_thread. */
+    goto fn_exit;
+}
+
+/* Initialize global communicator objects. */
+static int CSP_initialize_comm(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int local_rank, local_user_rank;
+
+    /* Get a communicator only containing processes with shared memory */
+    mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+                                     MPI_INFO_NULL, &CSP_COMM_LOCAL);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    PMPI_Comm_rank(CSP_COMM_LOCAL, &local_rank);
+
+    /* Check if user specifies valid number of ghosts */
+    if (CSP_check_valid_ghost()) {
+        mpi_errno = MPI_ERR_OTHER;
+        goto fn_fail;
+    }
+
+    mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &CSP_GROUP_WORLD);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    mpi_errno = PMPI_Comm_group(CSP_COMM_LOCAL, &CSP_GROUP_LOCAL);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Create a user comm_world including all the users,
+     * user will access it instead of comm_world */
+    mpi_errno = PMPI_Comm_split(MPI_COMM_WORLD,
+                                local_rank < CSP_ENV.num_g, 0, &CSP_COMM_USER_WORLD);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Set name for user comm_world.  */
+    if (local_rank >= CSP_ENV.num_g) {
+        mpi_errno = PMPI_Comm_set_name(CSP_COMM_USER_WORLD, "MPI_COMM_WORLD");
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+    /* Create a user comm_local */
+    mpi_errno = PMPI_Comm_split(CSP_COMM_LOCAL,
+                                local_rank < CSP_ENV.num_g, 0, &CSP_COMM_USER_LOCAL);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Create a ghost comm_local */
+    mpi_errno = PMPI_Comm_split(CSP_COMM_LOCAL,
+                                local_rank < CSP_ENV.num_g, 1, &CSP_COMM_GHOST_LOCAL);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* Only users create a user root communicator for exchanging local informations
+     * between different nodes */
+    local_user_rank = -1;
+    if (local_rank >= CSP_ENV.num_g) {
+        PMPI_Comm_rank(CSP_COMM_USER_LOCAL, &local_user_rank);
+        mpi_errno = PMPI_Comm_split(CSP_COMM_USER_WORLD,
+                                    local_user_rank == 0, 1, &CSP_COMM_UR_WORLD);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    /* Free global objects in MPI_Init_thread. */
+    goto fn_exit;
+}
+
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
     int mpi_errno = MPI_SUCCESS;
-    int i, j;
-    int local_rank, local_nprocs, rank, nprocs, user_rank, user_nprocs;
-    int local_user_rank = -1, local_user_nprocs = -1;
-    int *tmp_gather_buf = NULL, node_id = 0;
-    int tmp_bcast_buf[2];
-    int *ranks_in_user_world = NULL, *ranks_in_world = NULL;
-    int *all_nodes_ids = NULL;
-    int *g_ranks_in_world = NULL;
-    MPI_Group user_world_group = MPI_GROUP_NULL;
+    int local_rank;
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -194,203 +437,40 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
             goto fn_fail;
     }
 
-    PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    CSP_MY_RANK_IN_WORLD = rank;
+    PMPI_Comm_rank(MPI_COMM_WORLD, &CSP_MY_RANK_IN_WORLD);
 
     mpi_errno = CSP_initialize_env();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Get a communicator only containing processes with shared memory */
-    mpi_errno = PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-                                     MPI_INFO_NULL, &CSP_COMM_LOCAL);
+    mpi_errno = CSP_initialize_comm();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Check number of ghosts and number of processes */
+    mpi_errno = CSP_initialize_ginfo();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     PMPI_Comm_rank(CSP_COMM_LOCAL, &local_rank);
-    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
-
-    if (local_nprocs < 2) {
-        CSP_ERR_PRINT("Can not create shared memory region, %d process in "
-                      "MPI_COMM_TYPE_SHARED subcommunicator.\n", local_nprocs);
-        mpi_errno = -1;
-        goto fn_fail;
-    }
-    if (CSP_ENV.num_g < 1 || CSP_ENV.num_g >= local_nprocs) {
-        CSP_ERR_PRINT("Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
-                      CSP_ENV.num_g, local_nprocs);
-        mpi_errno = -1;
-        goto fn_fail;
-    }
-
-    /* Specify the first N local processes to be Ghost processes */
-    CSP_G_RANKS_IN_LOCAL = CSP_calloc(CSP_ENV.num_g, sizeof(int));
-    g_ranks_in_world = CSP_calloc(CSP_ENV.num_g, sizeof(int));
-    for (i = 0; i < CSP_ENV.num_g; i++) {
-        CSP_G_RANKS_IN_LOCAL[i] = i;
-    }
-    mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &CSP_GROUP_WORLD);
-    mpi_errno = PMPI_Comm_group(CSP_COMM_LOCAL, &CSP_GROUP_LOCAL);
-
-    mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_LOCAL, CSP_ENV.num_g,
-                                           CSP_G_RANKS_IN_LOCAL, CSP_GROUP_WORLD, g_ranks_in_world);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Create a user comm_world including all the users,
-     * user will access it instead of comm_world */
-    mpi_errno = PMPI_Comm_split(MPI_COMM_WORLD,
-                                local_rank < CSP_ENV.num_g, 0, &CSP_COMM_USER_WORLD);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Set name for user comm_world.  */
-    mpi_errno = PMPI_Comm_set_name(CSP_COMM_USER_WORLD, "MPI_COMM_WORLD");
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
-    PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank);
-    PMPI_Comm_group(CSP_COMM_USER_WORLD, &user_world_group);
-
-    /* Create a user comm_local */
-    mpi_errno = PMPI_Comm_split(CSP_COMM_LOCAL,
-                                local_rank < CSP_ENV.num_g, 0, &CSP_COMM_USER_LOCAL);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Create a ghost comm_local */
-    mpi_errno = PMPI_Comm_split(CSP_COMM_LOCAL,
-                                local_rank < CSP_ENV.num_g, 1, &CSP_COMM_GHOST_LOCAL);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* Exchange node id among local processes */
-    /* -Only users create a user root communicator for exchanging local informations
-     * between different nodes*/
-    if (local_rank >= CSP_ENV.num_g) {
-        PMPI_Comm_rank(CSP_COMM_USER_LOCAL, &local_user_rank);
-        PMPI_Comm_size(CSP_COMM_USER_LOCAL, &local_user_nprocs);
-        mpi_errno = PMPI_Comm_split(CSP_COMM_USER_WORLD,
-                                    local_user_rank == 0, 1, &CSP_COMM_UR_WORLD);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        /* -Only user roots determine a node id for each USER processes */
-        if (local_user_rank == 0) {
-            PMPI_Comm_size(CSP_COMM_UR_WORLD, &CSP_NUM_NODES);
-            PMPI_Comm_rank(CSP_COMM_UR_WORLD, &CSP_MY_NODE_ID);
-
-            tmp_bcast_buf[0] = CSP_MY_NODE_ID;
-            tmp_bcast_buf[1] = CSP_NUM_NODES;
-        }
-    }
-    /* -User root broadcasts to other local processes */
-    PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, CSP_ENV.num_g, CSP_COMM_LOCAL);
-    CSP_MY_NODE_ID = tmp_bcast_buf[0];
-    CSP_NUM_NODES = tmp_bcast_buf[1];
-
-    /* Exchange node id and Ghost ranks among world processes */
-    ranks_in_world = CSP_calloc(nprocs, sizeof(int));
-    ranks_in_user_world = CSP_calloc(nprocs, sizeof(int));
-    for (i = 0; i < nprocs; i++) {
-        ranks_in_world[i] = i;
-    }
-    mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, nprocs,
-                                           ranks_in_world, user_world_group, ranks_in_user_world);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    all_nodes_ids = CSP_calloc(nprocs, sizeof(int));
-    tmp_gather_buf = CSP_calloc(nprocs * (1 + CSP_ENV.num_g), sizeof(int));
-    CSP_ALL_G_RANKS_IN_WORLD = CSP_calloc(user_nprocs * CSP_ENV.num_g, sizeof(int));
-    CSP_ALL_UNIQUE_G_RANKS_IN_WORLD = CSP_calloc(CSP_NUM_NODES * CSP_ENV.num_g, sizeof(int));
-
-    tmp_gather_buf[rank * (1 + CSP_ENV.num_g)] = CSP_MY_NODE_ID;
-    for (i = 0; i < CSP_ENV.num_g; i++) {
-        tmp_gather_buf[rank * (1 + CSP_ENV.num_g) + i + 1] = g_ranks_in_world[i];
-    }
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               tmp_gather_buf, 1 + CSP_ENV.num_g, MPI_INT, MPI_COMM_WORLD);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    for (i = 0; i < nprocs; i++) {
-        int i_user_rank = 0;
-        node_id = tmp_gather_buf[i * (1 + CSP_ENV.num_g)];
-        all_nodes_ids[i] = node_id;
-
-        /* Only copy ghost ranks for user processes */
-        i_user_rank = ranks_in_user_world[i];
-        if (i_user_rank != MPI_UNDEFINED) {
-            for (j = 0; j < CSP_ENV.num_g; j++) {
-                CSP_ALL_G_RANKS_IN_WORLD[i_user_rank * CSP_ENV.num_g + j] =
-                    tmp_gather_buf[i * (1 + CSP_ENV.num_g) + j + 1];
-                CSP_ALL_UNIQUE_G_RANKS_IN_WORLD[node_id * CSP_ENV.num_g + j] =
-                    tmp_gather_buf[i * (1 + CSP_ENV.num_g) + j + 1];
-            }
-        }
-    }
-
-#ifdef CSP_DEBUG
-    CSP_DBG_PRINT("Debug gathered info ***** \n");
-    for (i = 0; i < nprocs; i++) {
-        CSP_DBG_PRINT("node_id[%d]: %d\n", i, all_nodes_ids[i]);
-    }
-#endif
 
     /* USER processes */
     if (local_rank >= CSP_ENV.num_g) {
-
 #ifdef CSP_DEBUG
-        for (i = 0; i < user_nprocs; i++) {
-            CSP_DBG_PRINT("gp_rank_in_world[%d]:\n", i);
-            for (j = 0; j < CSP_ENV.num_g; j++) {
-                CSP_DBG_PRINT("    %d\n", CSP_ALL_G_RANKS_IN_WORLD[i * CSP_ENV.num_g + j]);
-            }
-        }
+        CSP_print_user();
 #endif
-        CSP_DBG_PRINT("I am user, %d/%d in world, %d/%d in local, %d/%d in user world, "
-                      "%d/%d in user local, node_id %d\n", rank, nprocs, local_rank,
-                      local_nprocs, user_rank, user_nprocs, local_user_rank,
-                      local_user_nprocs, CSP_MY_NODE_ID);
-
         mpi_errno = CSP_init();
     }
     /* Ghost processes */
     /* TODO: Ghost process should not run user program */
     else {
-        /* free local buffers before enter ghost main function */
-        if (tmp_gather_buf)
-            free(tmp_gather_buf);
-        if (ranks_in_user_world)
-            free(ranks_in_user_world);
-        if (ranks_in_world)
-            free(ranks_in_world);
-
-        CSP_DBG_PRINT("I am ghost, %d/%d in world, %d/%d in local, node_id %d\n", rank,
-                      nprocs, local_rank, local_nprocs, CSP_MY_NODE_ID);
+#ifdef CSP_DEBUG
+        CSP_print_ghost();
+#endif
         CSPG_init();
         exit(0);
     }
 
   fn_exit:
-    if (user_world_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&user_world_group);
-
-    if (tmp_gather_buf)
-        free(tmp_gather_buf);
-    if (ranks_in_user_world)
-        free(ranks_in_user_world);
-    if (ranks_in_world)
-        free(ranks_in_world);
-    if (all_nodes_ids)
-        free(all_nodes_ids);
-    if (g_ranks_in_world)
-        free(g_ranks_in_world);
-
     return mpi_errno;
 
   fn_fail:
