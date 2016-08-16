@@ -314,22 +314,75 @@ typedef struct CSP_env_param {
 /* ======================================================================
  * Process related definitions.
  * ====================================================================== */
-typedef struct CSP_proc_info {
-    int node_id;
-    int num_nodes;
-    int wrank;
+typedef enum {
+    CSP_PROC_INVALID,
+    CSP_PROC_USER,
+    CSP_PROC_GHOST
+} CSP_proc_type;
+
+typedef struct CSP_user_proc {
     int *g_lranks;
     int *g_wranks_per_user;     /* All user processes' ghost ranks.
                                  * Ghosts of user process x are stored as
                                  * [x*num_g : (x+1)*num_g-1]. */
     int *g_wranks_unique;       /* Unique ghost ranks in the world. */
 
-    MPI_Comm local_comm;        /* Includes all processes on local node. */
-    MPI_Comm user_local_comm;   /* Includes all users on local node. */
-    MPI_Comm user_root_comm;    /* Includes the first user(root) on every node. */
+    MPI_Comm u_local_comm;      /* Includes all users on local node. */
+    MPI_Comm ur_comm;           /* Includes the first user(root) on every node. */
+} CSP_user_proc;
+
+typedef struct CSP_ghost_proc {
     MPI_Comm g_local_comm;      /* Includes all ghosts on local node. */
+} CSP_ghost_proc;
+
+typedef struct CSP_proc_info {
+    /* Common */
+    CSP_proc_type proc_type;
+
+    int node_id;
+    int num_nodes;
+    int wrank;
+
+    MPI_Comm local_comm;        /* Includes all processes on local node. */
     MPI_Group wgroup;
+
+    /* User/Ghost-specific */
+    union {
+        CSP_user_proc user;
+        CSP_ghost_proc ghost;
+    };
 } CSP_proc;
+
+extern CSP_proc CSP_PROC;
+
+#define CSP_IS_USER (CSP_PROC.proc_type == CSP_PROC_USER)
+#define CSP_IS_GHOST (CSP_PROC.proc_type == CSP_PROC_GHOST)
+
+/* Initialize global information objects. */
+static inline void CSP_reset_proc(void)
+{
+    CSP_PROC.proc_type = CSP_PROC_INVALID;
+    CSP_PROC.node_id = -1;
+    CSP_PROC.num_nodes = 0;
+    CSP_PROC.wrank = -1;
+    CSP_PROC.wgroup = MPI_GROUP_NULL;
+    CSP_PROC.local_comm = MPI_COMM_NULL;
+}
+
+/* Initialize user/ghost specific information objects. */
+static inline void CSP_reset_typed_proc(void)
+{
+    if (CSP_IS_USER) {
+        CSP_PROC.user.g_lranks = NULL;
+        CSP_PROC.user.g_wranks_per_user = NULL;
+        CSP_PROC.user.g_wranks_unique = NULL;
+        CSP_PROC.user.u_local_comm = MPI_COMM_NULL;
+        CSP_PROC.user.ur_comm = MPI_COMM_NULL;
+    }
+    else {
+        CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
+    }
+}
 
 /* ======================================================================
  * Global variables and prototypes.
@@ -341,5 +394,23 @@ extern MPI_Comm CSP_COMM_USER_WORLD;
 
 extern int CSPG_init(void);
 extern int CSP_init(void);
+
+extern int CSP_setup_proc(void);
+extern int CSP_destroy_proc(void);
+
+extern int CSPG_setup_proc(void);
+extern int CSPG_destroy_proc(void);
+
+#ifdef CSP_DEBUG
+extern void CSP_print_proc(void);
+#else
+#define CSP_print_proc(void) do {} while (0);
+#endif
+
+#ifdef CSPG_DEBUG
+extern void CSPG_print_proc(void);
+#else
+#define CSPG_print_proc(void) do {} while (0);
+#endif
 
 #endif /* CSP_H_ */

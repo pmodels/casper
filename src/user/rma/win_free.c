@@ -80,7 +80,7 @@ int CSP_win_release(CSP_win * ug_win)
     }
 
     if (ug_win->local_user_comm && ug_win->local_user_comm != MPI_COMM_NULL
-        && ug_win->local_user_comm != CSP_PROC.user_local_comm) {
+        && ug_win->local_user_comm != CSP_PROC.user.u_local_comm) {
         CSP_DBG_PRINT("\t free local USER communicator\n");
         mpi_errno = PMPI_Comm_free(&ug_win->local_user_comm);
         if (mpi_errno != MPI_SUCCESS)
@@ -88,7 +88,7 @@ int CSP_win_release(CSP_win * ug_win)
     }
 
     if (ug_win->user_root_comm && ug_win->user_root_comm != MPI_COMM_NULL
-        && ug_win->user_root_comm != CSP_PROC.user_root_comm) {
+        && ug_win->user_root_comm != CSP_PROC.user.ur_comm) {
         CSP_DBG_PRINT("\t free ur communicator\n");
         mpi_errno = PMPI_Comm_free(&ug_win->user_root_comm);
         if (mpi_errno != MPI_SUCCESS)
@@ -192,7 +192,7 @@ static int issue_ghost_cmd(CSP_win * ug_win)
      * so that only global communicator can be used here.*/
     for (i = 0; i < CSP_ENV.num_g; i++) {
         mpi_errno = PMPI_Isend(&ug_win->g_win_handles[i], 1, MPI_UNSIGNED_LONG,
-                               CSP_PROC.g_lranks[i], CSP_CMD_PARAM_TAG, CSP_PROC.local_comm,
+                               CSP_PROC.user.g_lranks[i], CSP_CMD_PARAM_TAG, CSP_PROC.local_comm,
                                &reqs[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

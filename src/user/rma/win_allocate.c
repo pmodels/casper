@@ -304,7 +304,7 @@ static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
         user_world_rank = win->targets[i].user_world_rank;
 
         for (j = 0; j < CSP_ENV.num_g; j++) {
-            gp_rank = CSP_PROC.g_wranks_per_user[user_world_rank * CSP_ENV.num_g + j];
+            gp_rank = CSP_PROC.user.g_wranks_per_user[user_world_rank * CSP_ENV.num_g + j];
             gp_ranks_in_world[i * CSP_ENV.num_g + j] = gp_rank;
 
             /* Unique ghost ranks */
@@ -408,11 +408,12 @@ static int create_communicators(CSP_win * ug_win)
         PMPI_Comm_group(ug_win->ug_comm, &ug_win->ug_group);
 
         /* -Get all Ghost rank in ug communicator */
-        memcpy(ug_win->g_ranks_in_ug, CSP_PROC.g_wranks_unique,
+        memcpy(ug_win->g_ranks_in_ug, CSP_PROC.user.g_wranks_unique,
                ug_win->num_g_ranks_in_ug * sizeof(int));
         for (i = 0; i < user_nprocs; i++)
             memcpy(ug_win->targets[i].g_ranks_in_ug,
-                   &CSP_PROC.g_wranks_per_user[i * CSP_ENV.num_g], sizeof(int) * CSP_ENV.num_g);
+                   &CSP_PROC.user.g_wranks_per_user[i * CSP_ENV.num_g],
+                   sizeof(int) * CSP_ENV.num_g);
     }
     else {
         /* ghost ranks for every user process, used for ghost fetching in epoch */
@@ -717,8 +718,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
      * else this communicator directly, because it should be created from user comm_world */
     if (user_comm == MPI_COMM_WORLD) {
         user_comm = CSP_COMM_USER_WORLD;
-        ug_win->local_user_comm = CSP_PROC.user_local_comm;
-        ug_win->user_root_comm = CSP_PROC.user_root_comm;
+        ug_win->local_user_comm = CSP_PROC.user.u_local_comm;
+        ug_win->user_root_comm = CSP_PROC.user.ur_comm;
 
         ug_win->node_id = CSP_PROC.node_id;
         ug_win->num_nodes = CSP_PROC.num_nodes;

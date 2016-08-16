@@ -8,6 +8,35 @@
 #include <stdlib.h>
 #include "cspg.h"
 
+#ifdef CSPG_DEBUG
+void CSPG_print_proc(void)
+{
+    int rank, nprocs, local_rank, local_nprocs;
+    int local_ghost_rank, local_ghost_nprocs;
+
+    CSP_assert(CSP_IS_GHOST);
+
+    PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
+    PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank);
+    PMPI_Comm_size(CSP_PROC.ghost.g_local_comm, &local_ghost_nprocs);
+    PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_ghost_rank);
+
+    CSPG_DBG_PRINT("I am ghost: %d/%d in world, %d/%d in local\n"
+                   "            %d/%d in ghost local\n"
+                   "            node_id %d\n",
+                   rank, nprocs, local_rank, local_nprocs,
+                   local_ghost_rank, local_ghost_nprocs, CSP_PROC.node_id);
+}
+#endif
+
+/* Setup global ghost-specific information. */
+int CSPG_setup_proc(void)
+{
+    return MPI_SUCCESS;
+}
+
 int CSPG_init(void)
 {
     int mpi_errno = MPI_SUCCESS;

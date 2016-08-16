@@ -225,7 +225,7 @@ int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt)
     MPI_Status stat;
     CSP_cmd_lock_pkt_t *lock_pkt = NULL;
 
-    PMPI_Comm_rank(CSP_PROC.g_local_comm, &local_gp_rank);
+    PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank);
     memset(pkt, 0, sizeof(CSP_cmd_pkt_t));
 
     /* Only the first local ghost receives command from any local user process.
@@ -263,7 +263,8 @@ int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt)
     }
 
     /* All other ghosts start handling function commands */
-    mpi_errno = PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0, CSP_PROC.g_local_comm);
+    mpi_errno = PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0,
+                           CSP_PROC.ghost.g_local_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     CSPG_CMD_DBG_PRINT(" all ghosts received FNC CMD %d\n", (int) pkt->fnc.fnc_cmd);
@@ -282,7 +283,7 @@ int CSPG_cmd_release_lock(void)
     int mpi_errno = MPI_SUCCESS;
     int local_gp_rank = 0;
 
-    PMPI_Comm_rank(CSP_PROC.g_local_comm, &local_gp_rank);
+    PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank);
 
     /* Only the first local ghost handles lock. */
     if (local_gp_rank == 0) {

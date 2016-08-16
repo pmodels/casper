@@ -10,6 +10,34 @@
 
 static int finalize_cnt = 0;
 
+/* Destroy global ghost process object */
+int CSPG_destroy_proc(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    /* common objects */
+    if (CSP_PROC.local_comm != MPI_COMM_NULL) {
+        CSPG_DBG_PRINT(" free CSP_PROC.local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.local_comm);
+    }
+
+    if (CSP_PROC.wgroup != MPI_GROUP_NULL)
+        PMPI_Group_free(&CSP_PROC.wgroup);
+
+    CSP_PROC.local_comm = MPI_COMM_NULL;
+    CSP_PROC.wgroup = MPI_GROUP_NULL;
+
+    /* ghost-specific objects */
+    if (CSP_PROC.ghost.g_local_comm != MPI_COMM_NULL) {
+        CSPG_DBG_PRINT(" free CSP_PROC.ghost.g_local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm);
+    }
+
+    CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
+
+    return mpi_errno;
+}
+
 int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -32,38 +60,7 @@ int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_fla
     CSPG_DBG_PRINT(" All processes arrived finalize.\n");
     (*exit_flag) = 1;
 
-    if (CSP_PROC.local_comm != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_PROC.local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.local_comm);
-    }
-    if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
-        PMPI_Comm_free(&CSP_COMM_USER_WORLD);
-    }
-    if (CSP_PROC.user_local_comm != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_PROC.user_local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.user_local_comm);
-    }
-    if (CSP_PROC.user_root_comm != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_PROC.user_root_comm\n");
-        PMPI_Comm_free(&CSP_PROC.user_root_comm);
-    }
-    if (CSP_PROC.g_local_comm != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_PROC.g_local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.g_local_comm);
-    }
-
-    if (CSP_PROC.wgroup != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_PROC.wgroup);
-
-    if (CSP_PROC.g_lranks)
-        free(CSP_PROC.g_lranks);
-
-    if (CSP_PROC.g_wranks_per_user)
-        free(CSP_PROC.g_wranks_per_user);
-
-    if (CSP_PROC.g_wranks_unique)
-        free(CSP_PROC.g_wranks_unique);
+    CSPG_destroy_proc();
 
     CSPG_DBG_PRINT(" PMPI_Finalize\n");
     mpi_errno = PMPI_Finalize();

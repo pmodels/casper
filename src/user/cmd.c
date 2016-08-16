@@ -31,7 +31,7 @@ static inline int sync_lock_stat(CSP_cmd_lock_stat * lock_stat)
     CSP_cmd_lock_stat_pkt_t sync_pkt;
 
     mpi_errno = PMPI_Recv((char *) &sync_pkt, sizeof(CSP_cmd_lock_stat_pkt_t),
-                          MPI_CHAR, CSP_PROC.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm,
+                          MPI_CHAR, CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm,
                           MPI_STATUS_IGNORE);
     if (mpi_errno != MPI_SUCCESS)
         return mpi_errno;
@@ -54,7 +54,7 @@ static inline int issue_lock_acquire_req(int group_id)
 
     CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (acquire, %d)\n", lock_pkt->lock_cmd, group_id);
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
-                     CSP_PROC.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
+                     CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
 }
 
 static inline int issue_lock_discard_req(int group_id)
@@ -68,7 +68,7 @@ static inline int issue_lock_discard_req(int group_id)
 
     CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (discard, %d)\n", lock_pkt->lock_cmd, group_id);
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
-                     CSP_PROC.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
+                     CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
 }
 
 static inline int issue_lock_release_req(int group_id)
@@ -82,7 +82,7 @@ static inline int issue_lock_release_req(int group_id)
 
     CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (release, %d)\n", lock_pkt->lock_cmd, group_id);
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
-                     CSP_PROC.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
+                     CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
 }
 
 /* Issue a function command to the local ghost processes (blocking call).
@@ -92,9 +92,9 @@ int CSP_cmd_fnc_issue(CSP_cmd_pkt_t * pkt)
     int mpi_errno = MPI_SUCCESS;
 
     CSP_CMD_DBG_PRINT(" send CMD FNC %d to local ghost %d\n", pkt->fnc.fnc_cmd,
-                      CSP_PROC.g_lranks[0]);
+                      CSP_PROC.user.g_lranks[0]);
     mpi_errno = PMPI_Send((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
-                          CSP_PROC.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
+                          CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
     return mpi_errno;
 }
 
