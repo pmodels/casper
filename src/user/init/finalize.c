@@ -61,8 +61,6 @@ int MPI_Finalize(void)
 
     if (CSP_GROUP_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_WORLD);
-    if (CSP_GROUP_LOCAL != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_LOCAL);
 
     CSP_destroy_win_cache();
 

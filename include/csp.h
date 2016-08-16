@@ -321,7 +321,6 @@ extern MPI_Comm CSP_COMM_USER_LOCAL;
 extern MPI_Comm CSP_COMM_UR_WORLD;
 extern MPI_Comm CSP_COMM_GHOST_LOCAL;
 extern MPI_Group CSP_GROUP_WORLD;
-extern MPI_Group CSP_GROUP_LOCAL;
 
 extern int *CSP_G_RANKS_IN_LOCAL;
 extern int *CSP_ALL_G_RANKS_IN_WORLD;

@@ -55,8 +55,6 @@ int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_fla
 
     if (CSP_GROUP_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_WORLD);
-    if (CSP_GROUP_LOCAL != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_LOCAL);
 
     if (CSP_G_RANKS_IN_LOCAL)
         free(CSP_G_RANKS_IN_LOCAL);

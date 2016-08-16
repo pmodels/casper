@@ -14,7 +14,6 @@ MPI_Comm CSP_COMM_USER_LOCAL = MPI_COMM_NULL;
 MPI_Comm CSP_COMM_UR_WORLD = MPI_COMM_NULL;
 MPI_Comm CSP_COMM_GHOST_LOCAL = MPI_COMM_NULL;
 MPI_Group CSP_GROUP_WORLD = MPI_GROUP_NULL;
-MPI_Group CSP_GROUP_LOCAL = MPI_GROUP_NULL;
 
 int *CSP_G_RANKS_IN_LOCAL = NULL;
 int *CSP_ALL_G_RANKS_IN_WORLD = NULL;   /* Ghosts of user process x are stored as
@@ -240,7 +239,7 @@ static int CSP_initialize_ginfo()
     int *ranks_in_user_world = NULL, *ranks_in_world = NULL;
     int *g_ranks_in_world = NULL;
     int rank, nprocs, local_rank, local_user_rank, user_nprocs;
-    MPI_Group user_world_group = MPI_GROUP_NULL;
+    MPI_Group user_world_group = MPI_GROUP_NULL, local_group = MPI_GROUP_NULL;
     int i, j;
 
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -249,6 +248,9 @@ static int CSP_initialize_ginfo()
     PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
 
     mpi_errno = PMPI_Comm_group(CSP_COMM_USER_WORLD, &user_world_group);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+    mpi_errno = PMPI_Comm_group(CSP_COMM_LOCAL, &local_group);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -276,7 +278,7 @@ static int CSP_initialize_ginfo()
     for (i = 0; i < CSP_ENV.num_g; i++)
         CSP_G_RANKS_IN_LOCAL[i] = i;
 
-    mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_LOCAL, CSP_ENV.num_g,
+    mpi_errno = PMPI_Group_translate_ranks(local_group, CSP_ENV.num_g,
                                            CSP_G_RANKS_IN_LOCAL, CSP_GROUP_WORLD, g_ranks_in_world);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -329,6 +331,8 @@ static int CSP_initialize_ginfo()
   fn_exit:
     if (user_world_group != MPI_GROUP_NULL)
         PMPI_Group_free(&user_world_group);
+    if (local_group != MPI_GROUP_NULL)
+        PMPI_Group_free(&local_group);
     if (tmp_gather_buf)
         free(tmp_gather_buf);
     if (ranks_in_user_world)
@@ -365,10 +369,6 @@ static int CSP_initialize_comm(void)
     }
 
     mpi_errno = PMPI_Comm_group(MPI_COMM_WORLD, &CSP_GROUP_WORLD);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    mpi_errno = PMPI_Comm_group(CSP_COMM_LOCAL, &CSP_GROUP_LOCAL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -498,8 +498,6 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
     if (CSP_GROUP_WORLD != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_GROUP_WORLD);
-    if (CSP_GROUP_LOCAL != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_LOCAL);
 
     if (CSP_G_RANKS_IN_LOCAL)
         free(CSP_G_RANKS_IN_LOCAL);
