@@ -18,7 +18,7 @@
 
 #ifdef CSPG_DEBUG
 #define CSPG_DBG_PRINT(str, ...) do { \
-    fprintf(stdout, "[CSPG][%d-%d]"str, CSP_MY_NODE_ID, CSP_MY_RANK_IN_WORLD,   \
+    fprintf(stdout, "[CSPG][%d-%d]"str, CSP_PROC.node_id, CSP_PROC.wrank,   \
             ## __VA_ARGS__); fflush(stdout); \
     } while (0)
 #else
@@ -26,13 +26,13 @@
 #endif
 
 #define CSPG_ERR_PRINT(str,...) do { \
-    fprintf(stderr, "[CSPG][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stderr, "[CSPG][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 
 #ifdef CSPG_WARN
 #define CSPG_WARN_PRINT(str,...) do { \
-    fprintf(stderr, "[CSPG][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stderr, "[CSPG][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 #else

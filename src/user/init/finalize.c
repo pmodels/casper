@@ -25,7 +25,7 @@ int MPI_Finalize(void)
     int mpi_errno = MPI_SUCCESS;
     int user_local_rank;
 
-    PMPI_Comm_rank(CSP_COMM_USER_LOCAL, &user_local_rank);
+    PMPI_Comm_rank(CSP_PROC.user_local_comm, &user_local_rank);
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -39,39 +39,39 @@ int MPI_Finalize(void)
         PMPI_Comm_free(&CSP_COMM_USER_WORLD);
     }
 
-    if (CSP_COMM_LOCAL != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_LOCAL\n");
-        PMPI_Comm_free(&CSP_COMM_LOCAL);
+    if (CSP_PROC.local_comm != MPI_COMM_NULL) {
+        CSP_DBG_PRINT(" free CSP_PROC.local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.local_comm);
     }
 
-    if (CSP_COMM_USER_LOCAL != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_USER_LOCAL\n");
-        PMPI_Comm_free(&CSP_COMM_USER_LOCAL);
+    if (CSP_PROC.user_local_comm != MPI_COMM_NULL) {
+        CSP_DBG_PRINT(" free CSP_PROC.user_local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.user_local_comm);
     }
 
-    if (CSP_COMM_UR_WORLD != MPI_COMM_NULL) {
-        CSP_DBG_PRINT(" free CSP_COMM_UR_WORLD\n");
-        PMPI_Comm_free(&CSP_COMM_UR_WORLD);
+    if (CSP_PROC.user_root_comm != MPI_COMM_NULL) {
+        CSP_DBG_PRINT(" free CSP_PROC.user_root_comm\n");
+        PMPI_Comm_free(&CSP_PROC.user_root_comm);
     }
 
-    if (CSP_COMM_GHOST_LOCAL != MPI_COMM_NULL) {
-        CSP_DBG_PRINT("free CSP_COMM_GHOST_LOCAL\n");
-        PMPI_Comm_free(&CSP_COMM_GHOST_LOCAL);
+    if (CSP_PROC.g_local_comm != MPI_COMM_NULL) {
+        CSP_DBG_PRINT("free CSP_PROC.g_local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.g_local_comm);
     }
 
-    if (CSP_GROUP_WORLD != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_WORLD);
+    if (CSP_PROC.wgroup != MPI_GROUP_NULL)
+        PMPI_Group_free(&CSP_PROC.wgroup);
 
     CSP_destroy_win_cache();
 
-    if (CSP_G_RANKS_IN_LOCAL)
-        free(CSP_G_RANKS_IN_LOCAL);
+    if (CSP_PROC.g_lranks)
+        free(CSP_PROC.g_lranks);
 
-    if (CSP_ALL_G_RANKS_IN_WORLD)
-        free(CSP_ALL_G_RANKS_IN_WORLD);
+    if (CSP_PROC.g_wranks_per_user)
+        free(CSP_PROC.g_wranks_per_user);
 
-    if (CSP_ALL_UNIQUE_G_RANKS_IN_WORLD)
-        free(CSP_ALL_UNIQUE_G_RANKS_IN_WORLD);
+    if (CSP_PROC.g_wranks_unique)
+        free(CSP_PROC.g_wranks_unique);
 
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)

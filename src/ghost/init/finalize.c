@@ -16,7 +16,7 @@ int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_fla
     int local_nprocs, local_user_nprocs;
 
     finalize_cnt++;
-    PMPI_Comm_size(CSP_COMM_LOCAL, &local_nprocs);
+    PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
     local_user_nprocs = local_nprocs - CSP_ENV.num_g;
 
     CSPG_DBG_PRINT(" %d/%d processes already arrived finalize...\n",
@@ -32,38 +32,38 @@ int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_fla
     CSPG_DBG_PRINT(" All processes arrived finalize.\n");
     (*exit_flag) = 1;
 
-    if (CSP_COMM_LOCAL != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_COMM_LOCAL\n");
-        PMPI_Comm_free(&CSP_COMM_LOCAL);
+    if (CSP_PROC.local_comm != MPI_COMM_NULL) {
+        CSPG_DBG_PRINT(" free CSP_PROC.local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.local_comm);
     }
     if (CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
         PMPI_Comm_free(&CSP_COMM_USER_WORLD);
     }
-    if (CSP_COMM_USER_LOCAL != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_COMM_USER_LOCAL\n");
-        PMPI_Comm_free(&CSP_COMM_USER_LOCAL);
+    if (CSP_PROC.user_local_comm != MPI_COMM_NULL) {
+        CSPG_DBG_PRINT(" free CSP_PROC.user_local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.user_local_comm);
     }
-    if (CSP_COMM_UR_WORLD != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_COMM_UR_WORLD\n");
-        PMPI_Comm_free(&CSP_COMM_UR_WORLD);
+    if (CSP_PROC.user_root_comm != MPI_COMM_NULL) {
+        CSPG_DBG_PRINT(" free CSP_PROC.user_root_comm\n");
+        PMPI_Comm_free(&CSP_PROC.user_root_comm);
     }
-    if (CSP_COMM_GHOST_LOCAL != MPI_COMM_NULL) {
-        CSPG_DBG_PRINT(" free CSP_COMM_GHOST_LOCAL\n");
-        PMPI_Comm_free(&CSP_COMM_GHOST_LOCAL);
+    if (CSP_PROC.g_local_comm != MPI_COMM_NULL) {
+        CSPG_DBG_PRINT(" free CSP_PROC.g_local_comm\n");
+        PMPI_Comm_free(&CSP_PROC.g_local_comm);
     }
 
-    if (CSP_GROUP_WORLD != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_GROUP_WORLD);
+    if (CSP_PROC.wgroup != MPI_GROUP_NULL)
+        PMPI_Group_free(&CSP_PROC.wgroup);
 
-    if (CSP_G_RANKS_IN_LOCAL)
-        free(CSP_G_RANKS_IN_LOCAL);
+    if (CSP_PROC.g_lranks)
+        free(CSP_PROC.g_lranks);
 
-    if (CSP_ALL_G_RANKS_IN_WORLD)
-        free(CSP_ALL_G_RANKS_IN_WORLD);
+    if (CSP_PROC.g_wranks_per_user)
+        free(CSP_PROC.g_wranks_per_user);
 
-    if (CSP_ALL_UNIQUE_G_RANKS_IN_WORLD)
-        free(CSP_ALL_UNIQUE_G_RANKS_IN_WORLD);
+    if (CSP_PROC.g_wranks_unique)
+        free(CSP_PROC.g_wranks_unique);
 
     CSPG_DBG_PRINT(" PMPI_Finalize\n");
     mpi_errno = PMPI_Finalize();

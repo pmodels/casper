@@ -164,7 +164,7 @@ static int gather_ghost_cmd_params(void *params, size_t size)
     for (i = 0; i < CSP_ENV.num_g; i++) {
         offset = i * size;
         mpi_errno = PMPI_Irecv(((char *) params + offset), size, MPI_CHAR, i,
-                               CSP_CMD_PARAM_TAG, CSP_COMM_LOCAL, &reqs[i]);
+                               CSP_CMD_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -200,7 +200,7 @@ static int bcast_ghost_cmd_params(void *params, size_t size)
     /* ghosts are always start from rank 0 on local communicator. */
     for (i = 0; i < CSP_ENV.num_g; i++) {
         mpi_errno =
-            PMPI_Isend(params, size, MPI_CHAR, i, CSP_CMD_PARAM_TAG, CSP_COMM_LOCAL, &reqs[i]);
+            PMPI_Isend(params, size, MPI_CHAR, i, CSP_CMD_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -229,7 +229,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
     int user_local_rank = 0;
     int npairs = 0;
 
-    PMPI_Comm_rank(CSP_COMM_LOCAL, &user_local_rank);
+    PMPI_Comm_rank(CSP_PROC.local_comm, &user_local_rank);
 
     /* Previous allgather ensures all user roots have arrived, thus skip
      * barrier(user_root_comm). */
@@ -304,7 +304,7 @@ static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
         user_world_rank = win->targets[i].user_world_rank;
 
         for (j = 0; j < CSP_ENV.num_g; j++) {
-            gp_rank = CSP_ALL_G_RANKS_IN_WORLD[user_world_rank * CSP_ENV.num_g + j];
+            gp_rank = CSP_PROC.g_wranks_per_user[user_world_rank * CSP_ENV.num_g + j];
             gp_ranks_in_world[i * CSP_ENV.num_g + j] = gp_rank;
 
             /* Unique ghost ranks */
@@ -312,7 +312,7 @@ static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
                 unique_gp_ranks_in_world[tmp_num_ghosts++] = gp_rank;
                 gp_bitmap[gp_rank] = 1;
 
-                CSP_assert(tmp_num_ghosts <= CSP_NUM_NODES * CSP_ENV.num_g);
+                CSP_assert(tmp_num_ghosts <= CSP_PROC.num_nodes * CSP_ENV.num_g);
             }
         }
     }
@@ -354,7 +354,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
 
     CSP_assert(num_ug_ranks <= world_nprocs);
 
-    PMPI_Group_incl(CSP_GROUP_WORLD, num_ug_ranks, ug_ranks_in_world, &win->ug_group);
+    PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &win->ug_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, win->ug_group, 0, &win->ug_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -390,7 +390,7 @@ static int create_communicators(CSP_win * ug_win)
     int i;
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
-    max_num_ghosts = CSP_ENV.num_g * CSP_NUM_NODES;
+    max_num_ghosts = CSP_ENV.num_g * CSP_PROC.num_nodes;
 
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
     ug_win->num_g_ranks_in_ug = CSP_ENV.num_g * ug_win->num_nodes;
@@ -402,17 +402,17 @@ static int create_communicators(CSP_win * ug_win)
          *  local_ug_comm: including local USER and Ghost processes
          *  ug_comm: including all USER and Ghost processes
          */
-        ug_win->local_ug_comm = CSP_COMM_LOCAL;
+        ug_win->local_ug_comm = CSP_PROC.local_comm;
         ug_win->ug_comm = MPI_COMM_WORLD;
         PMPI_Comm_group(ug_win->local_ug_comm, &ug_win->local_ug_group);
         PMPI_Comm_group(ug_win->ug_comm, &ug_win->ug_group);
 
         /* -Get all Ghost rank in ug communicator */
-        memcpy(ug_win->g_ranks_in_ug, CSP_ALL_UNIQUE_G_RANKS_IN_WORLD,
+        memcpy(ug_win->g_ranks_in_ug, CSP_PROC.g_wranks_unique,
                ug_win->num_g_ranks_in_ug * sizeof(int));
         for (i = 0; i < user_nprocs; i++)
             memcpy(ug_win->targets[i].g_ranks_in_ug,
-                   &CSP_ALL_G_RANKS_IN_WORLD[i * CSP_ENV.num_g], sizeof(int) * CSP_ENV.num_g);
+                   &CSP_PROC.g_wranks_per_user[i * CSP_ENV.num_g], sizeof(int) * CSP_ENV.num_g);
     }
     else {
         /* ghost ranks for every user process, used for ghost fetching in epoch */
@@ -482,13 +482,13 @@ static int create_communicators(CSP_win * ug_win)
 #endif
 
         /* Get all ghost rank in ug communicator */
-        mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, num_ghosts,
+        mpi_errno = PMPI_Group_translate_ranks(CSP_PROC.wgroup, num_ghosts,
                                                unique_gp_rank_in_world, ug_win->ug_group,
                                                ug_win->g_ranks_in_ug);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        mpi_errno = PMPI_Group_translate_ranks(CSP_GROUP_WORLD, user_nprocs * CSP_ENV.num_g,
+        mpi_errno = PMPI_Group_translate_ranks(CSP_PROC.wgroup, user_nprocs * CSP_ENV.num_g,
                                                gp_ranks_in_world, ug_win->ug_group, gp_ranks_in_ug);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -717,11 +717,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
      * else this communicator directly, because it should be created from user comm_world */
     if (user_comm == MPI_COMM_WORLD) {
         user_comm = CSP_COMM_USER_WORLD;
-        ug_win->local_user_comm = CSP_COMM_USER_LOCAL;
-        ug_win->user_root_comm = CSP_COMM_UR_WORLD;
+        ug_win->local_user_comm = CSP_PROC.user_local_comm;
+        ug_win->user_root_comm = CSP_PROC.user_root_comm;
 
-        ug_win->node_id = CSP_MY_NODE_ID;
-        ug_win->num_nodes = CSP_NUM_NODES;
+        ug_win->node_id = CSP_PROC.node_id;
+        ug_win->num_nodes = CSP_PROC.num_nodes;
         ug_win->user_comm = user_comm;
     }
     else {

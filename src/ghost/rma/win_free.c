@@ -24,7 +24,7 @@ int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
     /* Receive the handle of ghost win from local user root. */
     mpi_errno = PMPI_Recv(&csp_g_win_handle, 1, MPI_UNSIGNED_LONG,
                           winfree_pkt->user_local_root, CSP_CMD_PARAM_TAG,
-                          CSP_COMM_LOCAL, MPI_STATUS_IGNORE);
+                          CSP_PROC.local_comm, MPI_STATUS_IGNORE);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     CSPG_DBG_PRINT(" Received window handler 0x%lx\n", csp_g_win_handle);
@@ -76,7 +76,7 @@ int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
                 goto fn_fail;
         }
 
-        if (win->local_ug_comm && win->local_ug_comm != CSP_COMM_LOCAL) {
+        if (win->local_ug_comm && win->local_ug_comm != CSP_PROC.local_comm) {
             CSPG_DBG_PRINT(" free shared communicator\n");
             mpi_errno = PMPI_Comm_free(&win->local_ug_comm);
             if (mpi_errno != MPI_SUCCESS)

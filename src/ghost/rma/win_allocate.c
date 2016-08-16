@@ -17,14 +17,14 @@
 static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win * win)
 {
     return PMPI_Recv(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
-                     CSP_COMM_LOCAL, MPI_STATUS_IGNORE);
+                     CSP_PROC.local_comm, MPI_STATUS_IGNORE);
 }
 
 /* Send parameters to user root via local communicator (blocking call). */
 static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win * win)
 {
     return PMPI_Send(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
-                     CSP_COMM_LOCAL);
+                     CSP_PROC.local_comm);
 }
 
 static int init_ghost_win(CSP_cmd_winalloc_pkt_t * winalloc_pkt, CSPG_win * win,
@@ -100,7 +100,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
 #endif
 
     /* -Create ug communicator. */
-    PMPI_Group_incl(CSP_GROUP_WORLD, num_ug_ranks, ug_ranks_in_world, &ug_group);
+    PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &ug_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &win->ug_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
@@ -131,7 +131,7 @@ static int create_communicators(CSPG_win * win)
          *  local_ug_comm: including local USER and Ghost processes
          *  ug_comm: including all USER and Ghost processes
          */
-        win->local_ug_comm = CSP_COMM_LOCAL;
+        win->local_ug_comm = CSP_PROC.local_comm;
         win->ug_comm = MPI_COMM_WORLD;
     }
     else {
@@ -142,7 +142,7 @@ static int create_communicators(CSPG_win * win)
          */
         int *user_ranks_in_world = NULL, *gp_ranks_in_world = NULL;
         int num_ghosts = 0;
-        int cmd_param_size = win->user_nprocs + CSP_ENV.num_g * CSP_NUM_NODES + 1;
+        int cmd_param_size = win->user_nprocs + CSP_ENV.num_g * CSP_PROC.num_nodes + 1;
 
         cmd_params = CSP_calloc(cmd_param_size, sizeof(int));
         mpi_errno = recv_ghost_cmd_param((char *) cmd_params, sizeof(int) * cmd_param_size, win);

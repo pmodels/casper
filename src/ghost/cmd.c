@@ -11,7 +11,7 @@
 
 #ifdef CSPG_CMD_DEBUG
 #define CSPG_CMD_DBG_PRINT(str,...) do { \
-    fprintf(stdout, "[CSPG-CMD][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stdout, "[CSPG-CMD][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 
@@ -47,7 +47,7 @@ static inline int sync_lock_stat(CSPG_cmd_lock_req_t * req)
                        stat_pkt.stat, csp_cmd_lock_stat_name[stat_pkt.stat], req->user_local_rank);
 
     return PMPI_Send((char *) &stat_pkt, sizeof(CSP_cmd_lock_stat_pkt_t), MPI_CHAR,
-                     req->user_local_rank, CSP_CMD_TAG, CSP_COMM_LOCAL);
+                     req->user_local_rank, CSP_CMD_TAG, CSP_PROC.local_comm);
 }
 
 static inline int suspend_lock_req(CSPG_cmd_lock_req_t * req)
@@ -225,7 +225,7 @@ int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt)
     MPI_Status stat;
     CSP_cmd_lock_pkt_t *lock_pkt = NULL;
 
-    PMPI_Comm_rank(CSP_COMM_GHOST_LOCAL, &local_gp_rank);
+    PMPI_Comm_rank(CSP_PROC.g_local_comm, &local_gp_rank);
     memset(pkt, 0, sizeof(CSP_cmd_pkt_t));
 
     /* Only the first local ghost receives command from any local user process.
@@ -236,7 +236,7 @@ int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt)
          * thus continuously receive command until received a function command. */
         while (1) {
             mpi_errno = PMPI_Recv((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
-                                  MPI_ANY_SOURCE, CSP_CMD_TAG, CSP_COMM_LOCAL, &stat);
+                                  MPI_ANY_SOURCE, CSP_CMD_TAG, CSP_PROC.local_comm, &stat);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
@@ -263,7 +263,7 @@ int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt)
     }
 
     /* All other ghosts start handling function commands */
-    mpi_errno = PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0, CSP_COMM_GHOST_LOCAL);
+    mpi_errno = PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0, CSP_PROC.g_local_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
     CSPG_CMD_DBG_PRINT(" all ghosts received FNC CMD %d\n", (int) pkt->fnc.fnc_cmd);
@@ -282,7 +282,7 @@ int CSPG_cmd_release_lock(void)
     int mpi_errno = MPI_SUCCESS;
     int local_gp_rank = 0;
 
-    PMPI_Comm_rank(CSP_COMM_GHOST_LOCAL, &local_gp_rank);
+    PMPI_Comm_rank(CSP_PROC.g_local_comm, &local_gp_rank);
 
     /* Only the first local ghost handles lock. */
     if (local_gp_rank == 0) {

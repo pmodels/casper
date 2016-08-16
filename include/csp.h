@@ -117,7 +117,7 @@ static inline void *CSP_calloc(int n, size_t size)
 
 #ifdef CSP_DEBUG
 #define CSP_DBG_PRINT(str,...) do { \
-    fprintf(stdout, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stdout, "[CSP][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 #else
@@ -127,7 +127,7 @@ static inline void *CSP_calloc(int n, size_t size)
 /* #define WARN */
 #ifdef CSP_WARN
 #define CSP_WARN_PRINT(str,...) do { \
-    fprintf(stdout, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stdout, "[CSP][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 #else
@@ -143,7 +143,7 @@ static inline void *CSP_calloc(int n, size_t size)
 
 #define CSP_DBG_PRINT_FCNAME() CSP_DBG_PRINT("in %s\n", __FUNCTION__)
 #define CSP_ERR_PRINT(str,...) do { \
-    fprintf(stderr, "[CSP][%d]"str, CSP_MY_RANK_IN_WORLD, ## __VA_ARGS__); \
+    fprintf(stderr, "[CSP][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 
@@ -312,24 +312,32 @@ typedef struct CSP_env_param {
 
 
 /* ======================================================================
+ * Process related definitions.
+ * ====================================================================== */
+typedef struct CSP_proc_info {
+    int node_id;
+    int num_nodes;
+    int wrank;
+    int *g_lranks;
+    int *g_wranks_per_user;     /* All user processes' ghost ranks.
+                                 * Ghosts of user process x are stored as
+                                 * [x*num_g : (x+1)*num_g-1]. */
+    int *g_wranks_unique;       /* Unique ghost ranks in the world. */
+
+    MPI_Comm local_comm;        /* Includes all processes on local node. */
+    MPI_Comm user_local_comm;   /* Includes all users on local node. */
+    MPI_Comm user_root_comm;    /* Includes the first user(root) on every node. */
+    MPI_Comm g_local_comm;      /* Includes all ghosts on local node. */
+    MPI_Group wgroup;
+} CSP_proc;
+
+/* ======================================================================
  * Global variables and prototypes.
  * ====================================================================== */
 
-extern MPI_Comm CSP_COMM_USER_WORLD;
-extern MPI_Comm CSP_COMM_LOCAL;
-extern MPI_Comm CSP_COMM_USER_LOCAL;
-extern MPI_Comm CSP_COMM_UR_WORLD;
-extern MPI_Comm CSP_COMM_GHOST_LOCAL;
-extern MPI_Group CSP_GROUP_WORLD;
-
-extern int *CSP_G_RANKS_IN_LOCAL;
-extern int *CSP_ALL_G_RANKS_IN_WORLD;
-extern int *CSP_ALL_UNIQUE_G_RANKS_IN_WORLD;
-extern int CSP_NUM_NODES;
-extern int CSP_MY_NODE_ID;
-extern int CSP_MY_RANK_IN_WORLD;
-
 extern CSP_env_param CSP_ENV;
+extern CSP_proc CSP_PROC;
+extern MPI_Comm CSP_COMM_USER_WORLD;
 
 extern int CSPG_init(void);
 extern int CSP_init(void);
