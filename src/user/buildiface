@@ -10,16 +10,18 @@ use Getopt::Long;
 
 sub usage
 {
-    print "Usage: $0 --infile [input file] --outfile [output file]\n";
+    print "Usage: $0 --infile [input file] --outfile [output file] --append\n";
     exit 1;
 }
 
 my $infile = "";
 my $outfile = "";
+my $append = 0;
 
 GetOptions(
     "infile=s" => \$infile,
-    "outfile=s" => \$outfile
+    "outfile=s" => \$outfile,
+    "append" => \$append
     ) or die "unable to parse options, stopped";
 
 if (!$infile || !$outfile) {
@@ -48,8 +50,9 @@ my $num_dtypes;
 my @dtype_bind;
 
 
-open(CFILE, ">$outfile") || die "Could not open $outfile\n";
-print CFILE <<EOT;
+if ( !$append ) {
+    open(CFILE, ">$outfile") || die "Could not open $outfile\n";
+    print CFILE <<EOT;
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2014 by Argonne National Laboratory.
@@ -62,6 +65,10 @@ print CFILE <<EOT;
 #include "mpi.h"
 #include "cspu.h"
 EOT
+} else {
+    # Open file in append mode
+    open(CFILE, ">>$outfile") || die "Could not open $outfile\n";
+}
 
 
 while (<INFILE>) {

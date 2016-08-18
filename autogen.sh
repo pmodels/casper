@@ -26,22 +26,41 @@ for arg in "$@" ; do
     esac
 done
 
+# generate MPI wrapper functions
+wrap_file=src/user/mpi_wrap.c
+
+# - MPI
 echo_n "Checking header file mpi.h at $mpidir ..."
-_mpih=$mpidir/include/mpi.h
-if [ ! -f $_mpih ];then
+mpih_file=$mpidir/include/mpi.h
+if [ ! -f $mpih_file ];then
     echo "not found (error)"
     exit 1
 else
     echo "done"
-    mpih_path=`cd $(dirname $_mpih) ; pwd ; cd $OLDPWD`/mpi.h
+    mpih_path=`cd $(dirname $mpih_file) ; pwd ; cd $OLDPWD`/mpi.h
+    echo "Found $mpih_path"
 fi
 
-echo "Found $mpih_path"
-
-echo ""
 echo_n "Generating MPI wrappers... "
-./src/user/buildiface --infile $mpih_path --outfile src/user/mpi_wrap.c
+./src/user/buildiface --infile $mpih_path --outfile $wrap_file
 echo "done"
+
+# - MPI IO
+echo ""
+echo_n "Checking header file mpio.h at $mpidir ..."
+mpioh_file=$mpidir/include/mpio.h
+if [ ! -f $mpioh_file ];then
+    echo "not found"
+else
+    echo "done"
+    mpioh_path=`cd $(dirname $mpioh_file) ; pwd ; cd $OLDPWD`/mpio.h
+    echo "Found $mpioh_path"
+
+    # add IO functions only when MPI supports it
+		echo_n "Generating MPI IO wrappers... "
+		./src/user/buildiface --infile $mpioh_path --outfile $wrap_file --append
+		echo "done"
+fi
 
 subdirs=test
 
