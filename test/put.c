@@ -116,6 +116,8 @@ int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
     int i, errs = 0;
+    MPI_Info info = MPI_INFO_NULL;
+
     MPI_Init(&argc, &argv);
 
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -131,9 +133,13 @@ int main(int argc, char *argv[])
         locbuf[i] = 1.0 * i;
     }
 
+#ifdef TEST_EPOCHS_USED_LOCKALL
+    MPI_Info_create(&info);
+    MPI_Info_set(info, (char *) "epochs_used", (char *) "lockall");
+#endif
+
     /* size in byte */
-    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), MPI_INFO_NULL,
-                     MPI_COMM_WORLD, &winbuf, &win);
+    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), info, MPI_COMM_WORLD, &winbuf, &win);
 
     /*
      * P0: 0 + [0:NOPS-1] * nprocs
@@ -142,11 +148,11 @@ int main(int argc, char *argv[])
      */
 
     /* reset window */
-    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
+    MPI_Win_lock_all(0, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
-    MPI_Win_unlock(rank, win);
+    MPI_Win_unlock_all(win);
 
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test1(size);
@@ -163,6 +169,8 @@ int main(int argc, char *argv[])
         fprintf(stdout, "%d errors\n", errs);
     }
 
+    if (info != MPI_INFO_NULL)
+        MPI_Info_free(&info);
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
     if (locbuf)

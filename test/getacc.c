@@ -75,7 +75,7 @@ static int run_test(int nop)
     MPI_Barrier(MPI_COMM_WORLD);
 
     /* need lock on local rank for accessing local window buffer. */
-    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
+    MPI_Win_lock_all(0, win);
     if (CTEST_double_diff(winbuf[0], sum_result * ITER)) {
         fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf (%.1lf * %d)\n", rank, 0,
                 winbuf[0], sum_result * ITER, sum_result, ITER);
@@ -85,7 +85,7 @@ static int run_test(int nop)
         fprintf(stderr, "[%d]winbuf[%d] %.1lf != %.1lf\n", rank, 1, winbuf[1], max_result);
         errs++;
     }
-    MPI_Win_unlock(rank, win);
+    MPI_Win_unlock_all(win);
 
     if (errs > 0) {
         fprintf(stderr, "[%d] checking failed\n", rank);
@@ -104,6 +104,8 @@ int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
     int i, errs = 0;
+    MPI_Info info = MPI_INFO_NULL;
+
     MPI_Init(&argc, &argv);
 
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -119,9 +121,13 @@ int main(int argc, char *argv[])
         locbuf[i] = 1.0 * i;
     }
 
+#ifdef TEST_EPOCHS_USED_LOCKALL
+    MPI_Info_create(&info);
+    MPI_Info_set(info, (char *) "epochs_used", (char *) "lockall");
+#endif
+
     /* size in byte */
-    MPI_Win_allocate(sizeof(double) * 2, sizeof(double), MPI_INFO_NULL,
-                     MPI_COMM_WORLD, &winbuf, &win);
+    MPI_Win_allocate(sizeof(double) * 2, sizeof(double), info, MPI_COMM_WORLD, &winbuf, &win);
 
     /*
      * P0: SUM{0:NOPS-1}, MAX{0:NOPS-1}
@@ -130,11 +136,11 @@ int main(int argc, char *argv[])
      */
 
     /* reset window */
-    MPI_Win_lock(MPI_LOCK_SHARED, rank, 0, win);
+    MPI_Win_lock_all(0, win);
     for (i = 0; i < 2; i++) {
         winbuf[i] = 0.0;
     }
-    MPI_Win_unlock(rank, win);
+    MPI_Win_unlock_all(win);
 
     max_result = locbuf[NUM_OPS * rank + NUM_OPS - 1];
     for (i = 0; i < NUM_OPS; i++) {
@@ -149,7 +155,8 @@ int main(int argc, char *argv[])
     }
 
   exit:
-
+    if (info != MPI_INFO_NULL)
+        MPI_Info_free(&info);
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
     if (locbuf)

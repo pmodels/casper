@@ -25,11 +25,11 @@ static void reset_win()
 {
     int i;
 
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, win);
+    MPI_Win_lock_all(0, win);
     for (i = 0; i < NUM_OPS; i++) {
         winbuf[i] = 0.0;
     }
-    MPI_Win_unlock(rank, win);
+    MPI_Win_unlock_all(win);
 }
 
 static void change_data(int nop, int x)
@@ -185,6 +185,7 @@ int main(int argc, char *argv[])
 {
     int size = NUM_OPS;
     int errs = 0;
+    MPI_Info info = MPI_INFO_NULL;
 
     MPI_Init(&argc, &argv);
 
@@ -195,9 +196,14 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Please run using at least 2 processes\n");
         goto exit;
     }
+
+#ifdef TEST_EPOCHS_USED_LOCKALL
+    MPI_Info_create(&info);
+    MPI_Info_set(info, (char *) "epochs_used", (char *) "lockall");
+#endif
+
     /* size in byte */
-    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), MPI_INFO_NULL,
-                     MPI_COMM_WORLD, &winbuf, &win);
+    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), info, MPI_COMM_WORLD, &winbuf, &win);
 
     reset_win();
     MPI_Barrier(MPI_COMM_WORLD);
@@ -205,17 +211,21 @@ int main(int argc, char *argv[])
     if (errs)
         goto exit;
 
+#ifndef TEST_EPOCHS_USED_LOCKALL
+    /* skip single lock test if checks with lockall hint */
     reset_win();
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test2(size);
     if (errs)
         goto exit;
+#endif
 
   exit:
     if (rank == 0) {
         fprintf(stdout, "%d errors\n", errs);
     }
-
+    if (info != MPI_INFO_NULL)
+        MPI_Info_free(&info);
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
 

@@ -8,12 +8,16 @@ LDADD = -L$(libdir) -lcasper
 
 noinst_PROGRAMS = \
 	get	\
+	get_lockall_epoch	\
 	put	\
+	put_lockall_epoch	\
 	put_l_seg	\
 	acc	\
+	acc_lockall_epoch	\
 	acc_flush_local	\
 	acclock	\
 	getacc	\
+	getacc_lockall_epoch	\
 	self_acclock	\
 	no_loadstore	\
 	no_check	\
@@ -31,6 +35,18 @@ noinst_PROGRAMS = \
 	finalize
 
 MPIEXEC=mpiexec
+
+get_lockall_epoch_SOURCES        = get.c
+get_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
+
+put_lockall_epoch_SOURCES        = put.c
+put_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
+
+acc_lockall_epoch_SOURCES        = acc.c
+acc_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
+
+getacc_lockall_epoch_SOURCES        = getacc.c
+getacc_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
 
 testing:
 	./runtest 
