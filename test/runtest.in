@@ -2,18 +2,86 @@
 
 path=$(pwd)
 
-if [ "x$MPIEXEC" = "x" ]; then
-    echo "MPIEXEC is undefined"
-    exit
+##########################################################
+# test configuration with default value
+
+# - mpiexec command
+test_mpiexec="mpiexec -np"
+
+# - test mode (s: single|b: batch)
+#   single: test user specified setting (np in MPIEXEC, ng in NG or default 1)
+#   batch: test multiple predefined sets of np & ng
+test_mode=s
+
+# - number of ghost processes (only used in single test mode)
+test_ng=1
+# - number of processes (only used in single test mode)
+test_np=4
+
+function print_usage()
+{
+    echo "Input Variables:"
+    echo "  MPIEXEC=<execution command>"
+    echo "  NP=<number of processes including both user and ghost processes, default 4>"
+    echo "  NG=<number of ghost processes, default 1>"
+    echo "  MODE=<testing mode, value batch|b|single|s, default s>"
+    echo "      BATCH mode (batch|b):   only MPIEXEC is valid input, NP and NG are ignored;"
+    echo "      SINGLE mode(single|s):  MPIEXEC, NP, NG are valid input"
+    echo "  Example 1: MPIEXEC=\"mpiexec -ppn 2 -np\" NP=4 NG=1,
+            executes all tests on two nodes with 1 user process and 1 ghost process on each node"
+    echo "  Example 2: MPIEXEC=\"srun -N 4 -n\" NP=8 NG=1 (on Cray supercomputer),
+            executes all tests on four nodes with 1 user process and 1 ghost process on each node"
+    echo "  Example 3: MPIEXEC=\"mpiexec -ppn 2 -np\" MODE=b,
+            executes all tests on two nodes, with predefined sets of NP and NG."
+}
+
+##########################################################
+# read input arguments
+
+case $1 in
+    -h | --help )    print_usage
+                    exit
+                    ;;
+esac
+
+if [ "x$MPIEXEC" != "x" ]; then
+    test_mpiexec="$MPIEXEC"
 fi
 
-first=1
+if [ "x$MODE" != "x" ]; then
+    case $MODE in
+        b | batch )     test_mode=b
+                        ;;
+        s | single )    test_mode=s
+                        ;;
+    esac
+fi
+
+if [ "$test_mode" = "s" ]; then
+    if [ "x$NP" != "x" ]; then
+        # overwrite mode if input is valid
+        if [ "$NP" -ge "2" ]; then
+            test_np=$NP
+        fi
+    fi
+
+    if [ "x$NG" != "x" ]; then
+        # overwrite mode if input is valid
+        if [ "$NG" -ge "1" ]; then
+            test_ng=$NG
+        fi
+    fi
+fi
+##########################################################
+# read testlist and initialize global varibales
 
 programs=
 exec_flags=
 num_progs=0
+num_failed=0
 
 # read from testlist
+first=1
 while read LINE
 do
     #skip the first commend line
@@ -39,55 +107,106 @@ do
     fi
 done < ./testlist
 
-# generic function to execute a test program
-# exec_program <np> <nh> <relative path of testfile>
+##########################################################
+# generic functions
+
+# - execute a test program
+#   exec_program <mpiexec> <relative path of testfile>
 function exec_program()
 {
-    np=$1
-    nh=$2
-    f=$3
-    export CSP_NG=$nh
-    echo "testing $f -np $np -nh $nh ..."
+    mpiexec=$1
+    f=$2
+    program="$path/$f"
+
+    echo "testing mpiexec=$mpiexec CSP_NG=$CSP_NG $f ..."
     exec 5>&1
-    output=$($MPIEXEC -np $np $path/$f | tee /dev/fd/5 )
+    output=$($mpiexec $program | tee /dev/fd/5 )
     rs="$(echo $output | grep "0 errors"  --count)"
     if [ $rs != 1 ];then
-        echo "test failed !"
-        echo "$MPIEXEC -np $np $path/$f"
-        exit
+        echo "test failed ! $mpiexec $program"
+        let num_failed+=1
     fi
     echo ""
 }
 
-# execute test programs
-i=0
-while [ $i -lt $num_progs ]
-do
-    f=${programs[$i]}
-    exec=${exec_flags[$i]}
+# - execute all test programs (CSP_NG must be set by caller)
+#   exec_all_programs <mpiexec>
+function exec_all_programs()
+{
+    mpiexec=$1
 
-    if [ "$exec" -eq "0" ]; then
-        echo "skip test $f"
-        let i+=1
-        continue
+    if [ "x$CSP_NG" = "x" ] || [ "$CSP_NG" -lt "1" ];then
+        echo "invalid CSP_NG=$CSP_NG !"
+        exit
     fi
 
+    i=0
+    while [ $i -lt $num_progs ]
+    do
+        f=${programs[$i]}
+        exec=${exec_flags[$i]}
+
+        if [ "$exec" -eq "0" ]; then
+            echo "skip test $f"
+            let i+=1
+            continue
+        fi
+
+        exec_program "$mpiexec" $f
+        let i+=1
+    done
+}
+
+##########################################################
+# execute test programs
+
+if [ "$test_mode" = "b" ];then
+    # User only provides MPIEXEC (execution command including all
+    # parameters in front of <np>)
+    # Example: MPIEXEC="mpiexec -f hostfile -np", or "srun -N 2 -n"
+
+    echo "#############################"
+    echo "# Casper Test in Batch Mode"
+    echo "#############################"
+
     np=4
-    nh=1
-    exec_program $np $nh $f
+    ng=1
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
 
     np=8
-    nh=1
-    exec_program $np $nh $f
+    ng=1
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
+
+    np=4
+    ng=2
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
 
     np=8
-    nh=2
-    exec_program $np $nh $f
+    ng=2
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
 
     np=10
-    nh=2
-    exec_program $np $nh $f
+    ng=2
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
+else
+    # User provides MPIEXEC, NP (or default 4) and NG (or default 1)
 
-    let i+=1
-done
-echo "all passed"
+    echo "#############################"
+    echo "# Casper Test in Single Mode"
+    echo "#############################"
+    echo ""
+
+    export CSP_NG=$test_ng
+    exec_all_programs "$test_mpiexec $test_np"
+fi
+
+if [ "$num_failed" -ge "1" ];then
+    echo "$num_failed tests failed"
+else
+    echo "all passed"
+fi
