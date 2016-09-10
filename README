@@ -68,12 +68,6 @@ Environment Variables
     Specify the number of ghost processes per node, 1 by default.
 
 2. Advanced Variables (Only specify them if you know what they mean)
-    CSP_LOCK_METHOD (rank|segment, default rank)
-    Specify the lock binding mode, rank-binding by default.
-
-    CSP_SEG_SIZE (integer)
-    Specify the segment size in segment-binding mode, 4Kbytes by default.
-
     CSP_RUMTIME_LOAD_OPT (random|op|byte, default random)
     Specify how to distribute operations when runtime load balancing enabled,
     random by default.

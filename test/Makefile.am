@@ -11,7 +11,6 @@ noinst_PROGRAMS = \
 	get_lockall_epoch	\
 	put	\
 	put_lockall_epoch	\
-	put_l_seg	\
 	acc	\
 	acc_lockall_epoch	\
 	acc_flush_local	\

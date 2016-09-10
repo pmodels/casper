@@ -39,7 +39,6 @@ libcasper_la_SOURCES += src/user/csp/ghost_size.c	\
                         src/user/rma/win_complete.c	\
                         src/user/rma/win_get_attr.c	\
                         src/user/rma/csp_get_ghost.c	\
-                        src/user/rma/csp_op_segment.c	\
                         src/user/rma/csp_bind_ghost.c	\
                         src/user/init/finalize.c \
                         src/user/init/init.c \

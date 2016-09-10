@@ -26,8 +26,6 @@ noinst_PROGRAMS = \
 	csp_static_load_async \
 	static_load_nop \
 	csp_static_load_nop \
-	static_load_nseg \
-	csp_static_load_nseg \
 	runtime_load_nop \
 	csp_runtime_load_nop \
 	runtime_load_opsize \
@@ -123,12 +121,6 @@ csp_static_load_nop_SOURCES= static_load_nop.c
 csp_static_load_nop_LDADD= -L$(libdir) -lcasper
 csp_static_load_nop_LDFLAGS= -Wl,-rpath -Wl,$(libdir)
 csp_static_load_nop_CFLAGS= -O2 -DENABLE_CSP
-
-static_load_nseg_CFLAGS= -O2
-csp_static_load_nseg_SOURCES= static_load_nseg.c
-csp_static_load_nseg_LDADD= -L$(libdir) -lcasper
-csp_static_load_nseg_LDFLAGS= -Wl,-rpath -Wl,$(libdir)
-csp_static_load_nseg_CFLAGS= -O2 -DENABLE_CSP
 
 runtime_load_nop_CFLAGS= -O2
 csp_runtime_load_nop_SOURCES= runtime_load_nop.c

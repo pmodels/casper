@@ -171,11 +171,6 @@ typedef enum {
 } CSP_load_lock_t;
 
 typedef enum {
-    CSP_LOCK_BINDING_RANK,
-    CSP_LOCK_BINDING_SEGMENT
-} CSP_lock_binding_t;
-
-typedef enum {
     CSP_ASYNC_CONFIG_ON = 0,
     CSP_ASYNC_CONFIG_OFF = 1
 } CSP_async_config_t;
@@ -259,32 +254,12 @@ typedef struct CSP_cmd_pkt {
  * Environment related definitions.
  * ====================================================================== */
 
-#define CSP_DEFAULT_SEG_SIZE 4096;
 #define CSP_DEFAULT_NG 1
 
 typedef struct CSP_env_param {
     int num_g;
-    int seg_size;               /* segment size in lock segment binding */
     CSP_load_opt_t load_opt;    /* runtime load balancing options */
     CSP_load_lock_t load_lock;  /* how to grant locks for runtime load balancing */
-
-    /* Options for lock permission controlling among multiple ghosts.
-     *
-     * Since RMA Ops to a given target may be distributed to different ghosts
-     * and locks will be guaranteed to be acquired only when an Op happens,
-     * two origins may access a target concurrently if their Ops are distributed
-     * to different ghosts.
-     *
-     *  Rank binding:
-     *      Statically specify single ghost for each target, thus real locks/Ops
-     *      to a given target will only be issued to the same ghost.
-     *
-     *  Segment binding:
-     *      Statically specify single ghost for each segment of shared memory,
-     *      thus real locks/Ops to a given byte will only be issued to the same
-     *      ghost. This method has additional overhead especially for derived
-     *      target datatype, but it is more fine-grained than Rank binding. */
-    CSP_lock_binding_t lock_binding;
 
     int verbose;                /* verbose level. print configuration information. */
     CSP_async_config_t async_config;

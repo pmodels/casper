@@ -84,16 +84,6 @@ static int initialize_env()
 
     memset(&CSP_ENV, 0, sizeof(CSP_ENV));
 
-    CSP_ENV.seg_size = CSP_DEFAULT_SEG_SIZE;
-    val = getenv("CSP_SEG_SIZE");
-    if (val && strlen(val)) {
-        CSP_ENV.seg_size = atoi(val);
-    }
-    if (CSP_ENV.seg_size <= 0) {
-        CSP_ERR_PRINT("Wrong CSP_SEG_SIZE %d\n", CSP_ENV.seg_size);
-        return -1;
-    }
-
     CSP_ENV.num_g = CSP_DEFAULT_NG;
     val = getenv("CSP_NG");
     if (val && strlen(val)) {
@@ -111,21 +101,6 @@ static int initialize_env()
         CSP_ENV.verbose = atoi(val);
         if (CSP_ENV.verbose < 0)
             CSP_ENV.verbose = 0;
-    }
-
-    CSP_ENV.lock_binding = CSP_LOCK_BINDING_RANK;
-    val = getenv("CSP_LOCK_METHOD");
-    if (val && strlen(val)) {
-        if (!strncmp(val, "rank", strlen("rank"))) {
-            CSP_ENV.lock_binding = CSP_LOCK_BINDING_RANK;
-        }
-        else if (!strncmp(val, "segment", strlen("segment"))) {
-            CSP_ENV.lock_binding = CSP_LOCK_BINDING_SEGMENT;
-        }
-        else {
-            CSP_ERR_PRINT("Unknown CSP_LOCK_METHOD %s\n", val);
-            return -1;
-        }
     }
 
     CSP_ENV.async_config = CSP_ASYNC_CONFIG_ON;
@@ -191,15 +166,8 @@ static int initialize_env()
                        "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
                        "    CSP_NG = %d \n"
-                       "    CSP_LOCK_METHOD = %s \n"
                        "    CSP_ASYNC_CONFIG = %s\n",
-                       CSP_ENV.num_g,
-                       (CSP_ENV.lock_binding == CSP_LOCK_BINDING_RANK) ? "rank" : "segment",
-                       (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
-
-        if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT) {
-            CSP_INFO_PRINT(1, "    CSP_SEG_SIZE = %d \n", CSP_ENV.seg_size);
-        }
+                       CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         CSP_INFO_PRINT(1, "Runtime Load Balancing Options:  \n"
