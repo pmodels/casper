@@ -460,11 +460,10 @@ static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int 
  * Other prototypes
  * ====================================================================== */
 
-static inline void CSP_cmd_init_fnc_pkt(CSP_cmd_fnc_pkt_t * pkt)
+static inline void CSP_cmd_init_fnc_pkt(CSP_cmd_t cmd_type, CSP_cmd_pkt_t * pkt)
 {
-    pkt->cmd_type = CSP_CMD_FNC;
-    pkt->fnc_cmd = CSP_CMD_FNC_NONE;
-    pkt->lock_flag = 0;
+    memset(pkt, 0, sizeof(CSP_cmd_pkt_t));
+    pkt->cmd_type = cmd_type;
 }
 
 extern int CSP_cmd_fnc_issue(CSP_cmd_pkt_t * pkt);

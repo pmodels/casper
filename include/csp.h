@@ -154,96 +154,9 @@ static inline void *CSP_calloc(int n, size_t size)
         }} while (0)
 
 
-/* ======================================================================
- * Command related definition.
- * ====================================================================== */
-
-#define CSP_CMD_TAG 9889        /* tag for command */
-#define CSP_CMD_PARAM_TAG 9890  /* tag for any later command parameters */
-
-typedef enum {
-    CSP_CMD_FNC,
-    CSP_CMD_LOCK
-} CSP_cmd_type;
-
-typedef enum {
-    CSP_CMD_FNC_NONE,
-    CSP_CMD_FNC_WIN_ALLOCATE,
-    CSP_CMD_FNC_WIN_FREE,
-    CSP_CMD_FNC_FINALIZE,
-    CSP_CMD_FNC_MAX
-} CSP_cmd_fnc;
-
-typedef enum {
-    CSP_CMD_LOCK_ACQUIRE,
-    CSP_CMD_LOCK_DISCARD,
-    CSP_CMD_LOCK_RELEASE,
-    CSP_CMD_LOCK_MAX
-} CSP_cmd_lock;
-
-typedef enum {
-    CSP_CMD_LOCK_STAT_NONE,
-    CSP_CMD_LOCK_STAT_SUSPENDED_L,
-    CSP_CMD_LOCK_STAT_SUSPENDED_H,
-    CSP_CMD_LOCK_STAT_ACQUIRED,
-    CSP_CMD_LOCK_STAT_MAX
-} CSP_cmd_lock_stat;
-
-typedef struct CSP_cmd_winalloc_pkt {
-    int user_local_root;
-    int user_nprocs;
-    int max_local_user_nprocs;
-    int epochs_used;
-    int is_u_world;
-    int info_npairs;
-} CSP_cmd_winalloc_pkt_t;
-
-typedef struct CSP_cmd_winfree_pkt {
-    int user_local_root;
-} CSP_cmd_winfree_pkt_t;
-
-typedef struct CSP_cmd_fnc_pkt {
-    CSP_cmd_type cmd_type;
-    CSP_cmd_fnc fnc_cmd;
-    int lock_flag;
-    union {
-        CSP_cmd_winalloc_pkt_t winalloc;
-        CSP_cmd_winfree_pkt_t winfree;
-    } extend;
-} CSP_cmd_fnc_pkt_t;
-
-typedef struct CSP_cmd_lock_acquire_extpkt {
-    int group_id;               /* global unique id of user communicator. For now, it is safe to use
-                                 * world rank of the lowest rank, since all blocking command must be issued
-                                 * after all user processes arrived, thus two communicators within the same
-                                 * global comm id must always issue command in sequential.*/
-} CSP_cmd_lock_acquire_extpkt_t;
-typedef CSP_cmd_lock_acquire_extpkt_t CSP_cmd_lock_discard_extpkt_t;
-typedef CSP_cmd_lock_acquire_extpkt_t CSP_cmd_lock_release_extpkt_t;
-
-typedef struct CSP_cmd_lock_pkt {
-    CSP_cmd_type cmd_type;
-    CSP_cmd_lock lock_cmd;
-    union {
-        CSP_cmd_lock_acquire_extpkt_t acquire;
-        CSP_cmd_lock_discard_extpkt_t discard;
-        CSP_cmd_lock_release_extpkt_t release;
-    } extend;
-} CSP_cmd_lock_pkt_t;
-
-typedef union CSP_cmd_pkt {
-    CSP_cmd_type cmd_type;
-    CSP_cmd_fnc_pkt_t fnc;
-    CSP_cmd_lock_pkt_t lock;
-} CSP_cmd_pkt_t;
-
-typedef struct CSP_cmd_lock_stat_pkt {
-    CSP_cmd_lock_stat stat;
-} CSP_cmd_lock_stat_pkt_t;
-
-/* ======================================================================
- * Window related definitions.
- * ====================================================================== */
+ /* ======================================================================
+  * Window related definitions.
+  * ====================================================================== */
 
 typedef enum {
     CSP_LOAD_OPT_STATIC,
@@ -273,6 +186,73 @@ typedef enum {
     CSP_EPOCH_PSCW = 4,
     CSP_EPOCH_FENCE = 8
 } CSP_epoch_type;
+
+
+/* ======================================================================
+ * Command related definition.
+ * ====================================================================== */
+
+#define CSP_CMD_TAG 9889        /* tag for command */
+#define CSP_CMD_PARAM_TAG 9890  /* tag for any later command parameters */
+
+typedef enum {
+    CSP_CMD_UNSET = 0,
+    CSP_CMD_FNC_WIN_ALLOCATE,
+    CSP_CMD_FNC_WIN_FREE,
+    CSP_CMD_FNC_FINALIZE,
+    CSP_CMD_LOCK_ACQUIRE,
+    CSP_CMD_LOCK_DISCARD,
+    CSP_CMD_LOCK_RELEASE,
+    CSP_CMD_LOCK_STAT_SYNC,
+    CSP_CMD_MAX
+} CSP_cmd_t;
+
+typedef enum {
+    CSP_CMD_LOCK_STAT_UNSET = 0,
+    CSP_CMD_LOCK_STAT_SUSPENDED_L,
+    CSP_CMD_LOCK_STAT_SUSPENDED_H,
+    CSP_CMD_LOCK_STAT_ACQUIRED,
+    CSP_CMD_LOCK_STAT_MAX
+} CSP_cmd_lock_stat;
+
+typedef struct CSP_cmd_winalloc_pkt {
+    int user_local_root;
+    int user_nprocs;
+    int max_local_user_nprocs;
+    CSP_epoch_type epochs_used;
+    int is_u_world;
+    int info_npairs;
+} CSP_cmd_fnc_winalloc_pkt_t;
+
+typedef struct CSP_cmd_winfree_pkt {
+    int user_local_root;
+} CSP_cmd_fnc_winfree_pkt_t;
+
+typedef struct CSP_cmd_lock_acquire_pkt {
+    int group_id;               /* global unique id of user communicator. For now, it is safe to use
+                                 * world rank of the lowest rank, since all blocking command must be issued
+                                 * after all user processes arrived, thus two communicators within the same
+                                 * global comm id must always issue command in sequential.*/
+} CSP_cmd_lock_acquire_pkt_t;
+
+typedef CSP_cmd_lock_acquire_pkt_t CSP_cmd_lock_discard_pkt_t;
+typedef CSP_cmd_lock_acquire_pkt_t CSP_cmd_lock_release_pkt_t;
+
+typedef struct CSP_cmd_lock_stat_sync_pkt {
+    CSP_cmd_lock_stat stat;
+} CSP_cmd_lock_stat_sync_pkt_t;
+
+typedef struct CSP_cmd_pkt {
+    CSP_cmd_t cmd_type;
+    union {
+        CSP_cmd_fnc_winalloc_pkt_t fnc_winalloc;
+        CSP_cmd_fnc_winfree_pkt_t fnc_winfree;
+        CSP_cmd_lock_acquire_pkt_t lock_acquire;
+        CSP_cmd_lock_discard_pkt_t lock_discard;
+        CSP_cmd_lock_release_pkt_t lock_release;
+        CSP_cmd_lock_stat_sync_pkt_t lock_stat_sync;
+    } u;
+} CSP_cmd_pkt_t;
 
 
 /* ======================================================================
@@ -333,6 +313,9 @@ typedef struct CSP_user_proc {
 
 typedef struct CSP_ghost_proc {
     MPI_Comm g_local_comm;      /* Includes all ghosts on local node. */
+    int is_finalized;           /* Flag to notify all ghosts to exit from progress engine.
+                                 * It is set to 1 in the finalize handler after all local
+                                 * users have arrived at finalize. */
 } CSP_ghost_proc;
 
 typedef struct CSP_proc_info {
@@ -381,6 +364,7 @@ static inline void CSP_reset_typed_proc(void)
     }
     else {
         CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
+        CSP_PROC.ghost.is_finalized = 0;
     }
 }
 

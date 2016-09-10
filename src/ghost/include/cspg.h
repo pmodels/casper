@@ -87,17 +87,26 @@ typedef struct CSPG_acquire_lock_req {
     CSP_cmd_lock_stat stat;
 } CSPG_cmd_lock_req_t;
 
-typedef int (*CSPG_cmd_fnc_handler_t) (CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
-typedef int (*CSPG_cmd_lock_handler_t) (CSP_cmd_lock_pkt_t * pkt, int user_local_rank);
+typedef int (*CSPG_cmd_root_handler_t) (CSP_cmd_pkt_t * pkt, int user_local_rank);
+typedef int (*CSPG_cmd_handler_t) (CSP_cmd_pkt_t * pkt);
 
-extern CSPG_cmd_fnc_handler_t fnc_cmd_handlers[CSP_CMD_FNC_MAX];
+extern int CSPG_win_allocate_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank);
+extern int CSPG_win_free_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank);
+extern int CSPG_finalize_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank);
 
-extern int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
-extern int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
-extern int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag);
+extern int CSPG_win_allocate_handler(CSP_cmd_pkt_t * pkt);
+extern int CSPG_win_free_handler(CSP_cmd_pkt_t * pkt);
+extern int CSPG_finalize_handler(CSP_cmd_pkt_t * pkt);
 
 extern void CSPG_cmd_init(void);
 extern void CSPG_cmd_destory(void);
 extern int CSPG_cmd_release_lock(void);
-extern int CSPG_cmd_recv(CSP_cmd_pkt_t * pkt);
+extern int CSPG_cmd_do_progress(void);
+
+static inline int CSPG_cmd_bcast(CSP_cmd_pkt_t * pkt)
+{
+    return PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0,
+                      CSP_PROC.ghost.g_local_comm);
+}
+
 #endif /* CSPG_H_ */

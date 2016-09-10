@@ -224,7 +224,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt.fnc.extend.winalloc;
+    CSP_cmd_fnc_winalloc_pkt_t *winalloc_pkt = &pkt.u.fnc_winalloc;
     CSP_info_keyval_t *info_keyvals = NULL;
     int user_local_rank = 0;
     int npairs = 0;
@@ -239,10 +239,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    CSP_cmd_init_fnc_pkt(&pkt.fnc);
-    pkt.fnc.fnc_cmd = CSP_CMD_FNC_WIN_ALLOCATE;
-    pkt.fnc.lock_flag = 1;
-
+    CSP_cmd_init_fnc_pkt(CSP_CMD_FNC_WIN_ALLOCATE, &pkt);
     winalloc_pkt->user_local_root = user_local_rank;
     winalloc_pkt->user_nprocs = user_nprocs;
     winalloc_pkt->epochs_used = ug_win->info_args.epochs_used;

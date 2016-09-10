@@ -8,18 +8,13 @@
 #include <stdlib.h>
 #include "cspg.h"
 
-#undef FUNCNAME
-#define FUNCNAME CSPG_win_free
-
-int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
+/* Common internal implementation of win_free handlers.*/
+static int win_free_impl(CSP_cmd_fnc_winfree_pkt_t * winfree_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPG_win *win = NULL;
     unsigned long csp_g_win_handle = 0UL;
-    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt->extend.winfree;
     int i;
-
-    (*exit_flag) = 0;
 
     /* Receive the handle of ghost win from local user root. */
     mpi_errno = PMPI_Recv(&csp_g_win_handle, 1, MPI_UNSIGNED_LONG,
@@ -100,6 +95,47 @@ int CSPG_win_free(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
     else {
         CSPG_DBG_PRINT(" no corresponding CASPER window\n");
     }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+int CSPG_win_free_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_cmd_fnc_winfree_pkt_t *winfree_pkt = &pkt->u.fnc_winfree;
+
+    /* broadcast to other local ghosts */
+    mpi_errno = CSPG_cmd_bcast(pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    mpi_errno = win_free_impl(winfree_pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    /* Release local lock after a locked command finished. */
+    mpi_errno = CSPG_cmd_release_lock();
+    return mpi_errno;
+
+  fn_fail:
+    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
+    PMPI_Abort(MPI_COMM_WORLD, 0);
+    goto fn_exit;
+}
+
+int CSPG_win_free_handler(CSP_cmd_pkt_t * pkt)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_cmd_fnc_winfree_pkt_t *winfree_pkt = &pkt->u.fnc_winfree;
+
+    mpi_errno = win_free_impl(winfree_pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
   fn_exit:
     return mpi_errno;

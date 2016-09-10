@@ -10,6 +10,28 @@
 
 static int finalize_cnt = 0;
 
+/* Common internal implementation of finalize handlers.*/
+static int finalize_impl(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    CSPG_DBG_PRINT(" All processes arrived finalize.\n");
+
+    CSPG_destroy_proc();
+
+    CSPG_DBG_PRINT(" PMPI_Finalize\n");
+    mpi_errno = PMPI_Finalize();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    CSP_PROC.ghost.is_finalized = 1;
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
 /* Destroy global ghost process object */
 int CSPG_destroy_proc(void)
 {
@@ -38,7 +60,7 @@ int CSPG_destroy_proc(void)
     return mpi_errno;
 }
 
-int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_flag)
+int CSPG_finalize_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
     int local_nprocs, local_user_nprocs;
@@ -52,18 +74,32 @@ int CSPG_finalize(CSP_cmd_fnc_pkt_t * pkt CSP_ATTRIBUTE((unused)), int *exit_fla
 
     /* wait till all local processes arrive finalize.
      * Because every ghost is shared by multiple local user processes.*/
-    if (finalize_cnt < local_user_nprocs) {
-        (*exit_flag) = 0;
+    if (finalize_cnt < local_user_nprocs)
         goto fn_exit;
-    }
 
-    CSPG_DBG_PRINT(" All processes arrived finalize.\n");
-    (*exit_flag) = 1;
+    /* broadcast to all local ghost */
+    mpi_errno = CSPG_cmd_bcast(pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
-    CSPG_destroy_proc();
+    mpi_errno = finalize_impl();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
-    CSPG_DBG_PRINT(" PMPI_Finalize\n");
-    mpi_errno = PMPI_Finalize();
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
+    PMPI_Abort(MPI_COMM_WORLD, 0);
+    goto fn_exit;
+}
+
+int CSPG_finalize_handler(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)))
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    mpi_errno = finalize_impl();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

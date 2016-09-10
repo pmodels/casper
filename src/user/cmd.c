@@ -15,8 +15,12 @@
     fflush(stdout); \
     } while (0)
 
-static const char *csp_cmd_lock_stat_name[CSP_CMD_LOCK_STAT_MAX] =
-    { "none", "suspended_l", "suspended_h", "acquired" };
+static const char *csp_cmd_lock_stat_name[CSP_CMD_LOCK_STAT_MAX] = {
+    "unset",
+    "suspended_l",
+    "suspended_h",
+    "acquired"
+};
 #else
 #define CSP_CMD_DBG_PRINT(str,...)
 #endif
@@ -28,31 +32,31 @@ static const char *csp_cmd_lock_stat_name[CSP_CMD_LOCK_STAT_MAX] =
 static inline int sync_lock_stat(CSP_cmd_lock_stat * lock_stat)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_cmd_lock_stat_pkt_t sync_pkt;
+    CSP_cmd_pkt_t pkt;
+    CSP_cmd_lock_stat_sync_pkt_t *locksync_pkt = &pkt.u.lock_stat_sync;
 
-    mpi_errno = PMPI_Recv((char *) &sync_pkt, sizeof(CSP_cmd_lock_stat_pkt_t),
+    mpi_errno = PMPI_Recv((char *) &pkt, sizeof(CSP_cmd_pkt_t),
                           MPI_CHAR, CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm,
                           MPI_STATUS_IGNORE);
     if (mpi_errno != MPI_SUCCESS)
         return mpi_errno;
 
-    CSP_CMD_DBG_PRINT(" \t sync LOCK STAT (%d -> %d[%s])\n", (*lock_stat), sync_pkt.stat,
-                      csp_cmd_lock_stat_name[sync_pkt.stat]);
+    CSP_CMD_DBG_PRINT(" \t sync LOCK STAT (%d -> %d[%s])\n", (*lock_stat),
+                      locksync_pkt->stat, csp_cmd_lock_stat_name[locksync_pkt->stat]);
 
-    (*lock_stat) = sync_pkt.stat;
+    (*lock_stat) = locksync_pkt->stat;
     return mpi_errno;
 }
 
 static inline int issue_lock_acquire_req(int group_id)
 {
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_lock_pkt_t *lock_pkt = &pkt.lock;
+    CSP_cmd_lock_acquire_pkt_t *lockacq_pkt = &pkt.u.lock_acquire;
 
-    lock_pkt->cmd_type = CSP_CMD_LOCK;
-    lock_pkt->lock_cmd = CSP_CMD_LOCK_ACQUIRE;
-    lock_pkt->extend.acquire.group_id = group_id;
+    pkt.cmd_type = CSP_CMD_LOCK_ACQUIRE;
+    lockacq_pkt->group_id = group_id;
 
-    CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (acquire, %d)\n", lock_pkt->lock_cmd, group_id);
+    CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (acquire, %d)\n", pkt.cmd_type, group_id);
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
                      CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
 }
@@ -60,13 +64,12 @@ static inline int issue_lock_acquire_req(int group_id)
 static inline int issue_lock_discard_req(int group_id)
 {
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_lock_pkt_t *lock_pkt = &pkt.lock;
+    CSP_cmd_lock_discard_pkt_t *lockdcd_pkt = &pkt.u.lock_discard;
 
-    lock_pkt->cmd_type = CSP_CMD_LOCK;
-    lock_pkt->lock_cmd = CSP_CMD_LOCK_DISCARD;
-    lock_pkt->extend.discard.group_id = group_id;
+    pkt.cmd_type = CSP_CMD_LOCK_DISCARD;
+    lockdcd_pkt->group_id = group_id;
 
-    CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (discard, %d)\n", lock_pkt->lock_cmd, group_id);
+    CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (discard, %d)\n", pkt.cmd_type, group_id);
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
                      CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
 }
@@ -74,13 +77,12 @@ static inline int issue_lock_discard_req(int group_id)
 static inline int issue_lock_release_req(int group_id)
 {
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_lock_pkt_t *lock_pkt = &pkt.lock;
+    CSP_cmd_lock_release_pkt_t *lockrls_pkt = &pkt.u.lock_release;
 
-    lock_pkt->cmd_type = CSP_CMD_LOCK;
-    lock_pkt->lock_cmd = CSP_CMD_LOCK_RELEASE;
-    lock_pkt->extend.release.group_id = group_id;
+    pkt.cmd_type = CSP_CMD_LOCK_RELEASE;
+    lockrls_pkt->group_id = group_id;
 
-    CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (release, %d)\n", lock_pkt->lock_cmd, group_id);
+    CSP_CMD_DBG_PRINT(" \t send LOCK CMD %d (release, %d)\n", pkt.cmd_type, group_id);
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
                      CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
 }
@@ -91,7 +93,7 @@ int CSP_cmd_fnc_issue(CSP_cmd_pkt_t * pkt)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    CSP_CMD_DBG_PRINT(" send CMD FNC %d to local ghost %d\n", pkt->fnc.fnc_cmd,
+    CSP_CMD_DBG_PRINT(" send CMD FNC %d to local ghost %d\n", pkt->cmd_type,
                       CSP_PROC.user.g_lranks[0]);
     mpi_errno = PMPI_Send((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
                           CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm);
@@ -114,7 +116,7 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
     int all_lock_acquired = 0;
     int user_root_rank = -1;
 
-    CSP_cmd_lock_stat lock_stat = CSP_CMD_LOCK_STAT_NONE;
+    CSP_cmd_lock_stat lock_stat = CSP_CMD_LOCK_STAT_UNSET;
     PMPI_Comm_rank(user_root_comm, &user_root_rank);
 
     /* Get group id (the first root's world rank). */
@@ -127,7 +129,7 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
         int min_lock_stats[2];
         int my_lock_stats[2];
 
-        if (lock_stat == CSP_CMD_LOCK_STAT_NONE) {
+        if (lock_stat == CSP_CMD_LOCK_STAT_UNSET) {
             /* only initial, discarded, released locks need issue lock request. */
             mpi_errno = issue_lock_acquire_req(group_id);
             if (mpi_errno != MPI_SUCCESS)
@@ -185,7 +187,7 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
                         mpi_errno = sync_lock_stat(&lock_stat);
                         if (mpi_errno != MPI_SUCCESS)
                             goto fn_fail;
-                    } while (lock_stat != CSP_CMD_LOCK_STAT_NONE);
+                    } while (lock_stat != CSP_CMD_LOCK_STAT_UNSET);
                 }
 
                 /* wait till the first root got lock */

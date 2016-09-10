@@ -157,7 +157,7 @@ static int issue_ghost_cmd(CSP_win * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_winfree_pkt_t *winfree_pkt = &pkt.fnc.extend.winfree;
+    CSP_cmd_fnc_winfree_pkt_t *winfree_pkt = &pkt.u.fnc_winfree;
     MPI_Request *reqs = NULL;
     MPI_Status *stats = NULL;
     int i, user_local_rank = 0;
@@ -177,10 +177,7 @@ static int issue_ghost_cmd(CSP_win * ug_win)
         goto fn_fail;
 
     /* send command to root ghost. */
-    CSP_cmd_init_fnc_pkt(&pkt.fnc);
-    pkt.fnc.fnc_cmd = CSP_CMD_FNC_WIN_FREE;
-    pkt.fnc.lock_flag = 1;
-
+    CSP_cmd_init_fnc_pkt(CSP_CMD_FNC_WIN_FREE, &pkt);
     winfree_pkt->user_local_root = user_local_rank;
 
     mpi_errno = CSP_cmd_fnc_issue(&pkt);

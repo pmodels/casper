@@ -27,7 +27,7 @@ static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win * win
                      CSP_PROC.local_comm);
 }
 
-static int init_ghost_win(CSP_cmd_winalloc_pkt_t * winalloc_pkt, CSPG_win * win,
+static int init_ghost_win(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win * win,
                           MPI_Info * user_info)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -317,7 +317,8 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win
     goto fn_exit;
 }
 
-int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
+/* Common internal implementation of win_allocate handlers.*/
+static int win_allocate_impl(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_ug_rank, local_ug_nprocs;
@@ -325,11 +326,8 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
     int ug_nprocs, ug_rank;
     CSPG_win *win = NULL;
     MPI_Info user_info = MPI_INFO_NULL;
-    CSP_cmd_winalloc_pkt_t *winalloc_pkt = &pkt->extend.winalloc;
 
     win = CSP_calloc(1, sizeof(CSPG_win));
-
-    (*exit_flag) = 0;
 
     /* Every ghost initialize ghost window by using received parameters. */
     mpi_errno = init_ghost_win(winalloc_pkt, win, &user_info);
@@ -390,19 +388,56 @@ int CSPG_win_allocate(CSP_cmd_fnc_pkt_t * pkt, int *exit_flag)
   fn_exit:
     if (user_info && user_info != MPI_INFO_NULL)
         PMPI_Info_free(&user_info);
-
     return mpi_errno;
 
   fn_fail:
-    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
     /* cannot release global comm/win/group */
-
     if (win->ug_wins)
         free(win->ug_wins);
     if (win)
         free(win);
+    goto fn_exit;
+}
 
+int CSPG_win_allocate_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_cmd_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
+
+    /* broadcast to other local ghosts */
+    mpi_errno = CSPG_cmd_bcast(pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    mpi_errno = win_allocate_impl(winalloc_pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    /* Release local lock after a locked command finished. */
+    mpi_errno = CSPG_cmd_release_lock();
+    return mpi_errno;
+
+  fn_fail:
+    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
     PMPI_Abort(MPI_COMM_WORLD, 0);
+    goto fn_exit;
+}
 
+int CSPG_win_allocate_handler(CSP_cmd_pkt_t * pkt)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_cmd_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
+
+    mpi_errno = win_allocate_impl(winalloc_pkt);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
+    PMPI_Abort(MPI_COMM_WORLD, 0);
     goto fn_exit;
 }
