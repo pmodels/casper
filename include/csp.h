@@ -163,29 +163,29 @@ typedef enum {
     CSP_LOAD_OPT_RANDOM,
     CSP_LOAD_OPT_COUNTING,
     CSP_LOAD_BYTE_COUNTING
-} CSP_load_opt;
+} CSP_load_opt_t;
 
 typedef enum {
     CSP_LOAD_LOCK_NATURE,
     CSP_LOAD_LOCK_FORCE
-} CSP_load_lock;
+} CSP_load_lock_t;
 
 typedef enum {
     CSP_LOCK_BINDING_RANK,
     CSP_LOCK_BINDING_SEGMENT
-} CSP_lock_binding;
+} CSP_lock_binding_t;
 
 typedef enum {
     CSP_ASYNC_CONFIG_ON = 0,
     CSP_ASYNC_CONFIG_OFF = 1
-} CSP_async_config;
+} CSP_async_config_t;
 
 typedef enum {
     CSP_EPOCH_LOCK_ALL = 1,
     CSP_EPOCH_LOCK = 2,
     CSP_EPOCH_PSCW = 4,
     CSP_EPOCH_FENCE = 8
-} CSP_epoch_type;
+} CSP_epoch_type_t;
 
 
 /* ======================================================================
@@ -219,7 +219,7 @@ typedef struct CSP_cmd_winalloc_pkt {
     int user_local_root;
     int user_nprocs;
     int max_local_user_nprocs;
-    CSP_epoch_type epochs_used;
+    CSP_epoch_type_t epochs_used;
     int is_u_world;
     int info_npairs;
 } CSP_cmd_fnc_winalloc_pkt_t;
@@ -265,8 +265,8 @@ typedef struct CSP_cmd_pkt {
 typedef struct CSP_env_param {
     int num_g;
     int seg_size;               /* segment size in lock segment binding */
-    CSP_load_opt load_opt;      /* runtime load balancing options */
-    CSP_load_lock load_lock;    /* how to grant locks for runtime load balancing */
+    CSP_load_opt_t load_opt;    /* runtime load balancing options */
+    CSP_load_lock_t load_lock;  /* how to grant locks for runtime load balancing */
 
     /* Options for lock permission controlling among multiple ghosts.
      *
@@ -284,11 +284,11 @@ typedef struct CSP_env_param {
      *      thus real locks/Ops to a given byte will only be issued to the same
      *      ghost. This method has additional overhead especially for derived
      *      target datatype, but it is more fine-grained than Rank binding. */
-    CSP_lock_binding lock_binding;
+    CSP_lock_binding_t lock_binding;
 
     int verbose;                /* verbose level. print configuration information. */
-    CSP_async_config async_config;
-} CSP_env_param;
+    CSP_async_config_t async_config;
+} CSP_env_param_t;
 
 
 /* ======================================================================
@@ -298,7 +298,7 @@ typedef enum {
     CSP_PROC_INVALID,
     CSP_PROC_USER,
     CSP_PROC_GHOST
-} CSP_proc_type;
+} CSP_proc_type_t;
 
 typedef struct CSP_user_proc {
     int *g_lranks;
@@ -309,18 +309,18 @@ typedef struct CSP_user_proc {
 
     MPI_Comm u_local_comm;      /* Includes all users on local node. */
     MPI_Comm ur_comm;           /* Includes the first user(root) on every node. */
-} CSP_user_proc;
+} CSP_user_proc_t;
 
 typedef struct CSP_ghost_proc {
     MPI_Comm g_local_comm;      /* Includes all ghosts on local node. */
     int is_finalized;           /* Flag to notify all ghosts to exit from progress engine.
                                  * It is set to 1 in the finalize handler after all local
                                  * users have arrived at finalize. */
-} CSP_ghost_proc;
+} CSP_ghost_proc_t;
 
-typedef struct CSP_proc_info {
+typedef struct CSP_proc {
     /* Common */
-    CSP_proc_type proc_type;
+    CSP_proc_type_t proc_type;
 
     int node_id;
     int num_nodes;
@@ -331,12 +331,12 @@ typedef struct CSP_proc_info {
 
     /* User/Ghost-specific */
     union {
-        CSP_user_proc user;
-        CSP_ghost_proc ghost;
+        CSP_user_proc_t user;
+        CSP_ghost_proc_t ghost;
     };
-} CSP_proc;
+} CSP_proc_t;
 
-extern CSP_proc CSP_PROC;
+extern CSP_proc_t CSP_PROC;
 
 #define CSP_IS_USER (CSP_PROC.proc_type == CSP_PROC_USER)
 #define CSP_IS_GHOST (CSP_PROC.proc_type == CSP_PROC_GHOST)
@@ -372,8 +372,8 @@ static inline void CSP_reset_typed_proc(void)
  * Global variables and prototypes.
  * ====================================================================== */
 
-extern CSP_env_param CSP_ENV;
-extern CSP_proc CSP_PROC;
+extern CSP_env_param_t CSP_ENV;
+extern CSP_proc_t CSP_PROC;
 extern MPI_Comm CSP_COMM_USER_WORLD;
 
 extern int CSPG_init(void);

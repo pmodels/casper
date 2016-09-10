@@ -9,7 +9,7 @@
 #include "cspu.h"
 #include "cspu_rma_sync.h"
 
-static int CSP_fence_flush_all(CSP_win * ug_win)
+static int CSP_fence_flush_all(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -46,7 +46,7 @@ static int CSP_fence_flush_all(CSP_win * ug_win)
 
 int MPI_Win_fence(int assert, MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
 
     CSP_DBG_PRINT_FCNAME();

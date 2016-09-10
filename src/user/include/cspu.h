@@ -20,33 +20,33 @@ typedef enum {
     CSP_MAIN_LOCK_RESET,
     CSP_MAIN_LOCK_OP_ISSUED,
     CSP_MAIN_LOCK_GRANTED
-} CSP_main_lock_stat;
+} CSP_main_lock_stat_t;
 
 typedef enum {
     CSP_TARGET_NO_EPOCH,
     CSP_TARGET_EPOCH_LOCK,
     CSP_TARGET_EPOCH_PSCW
-} CSP_target_epoch_stat;
+} CSP_target_epoch_stat_t;
 
 typedef enum {
     CSP_WIN_NO_EPOCH,
     CSP_WIN_EPOCH_FENCE,
     CSP_WIN_EPOCH_LOCK_ALL,
     CSP_WIN_EPOCH_PER_TARGET
-} CSP_win_epoch_stat;
+} CSP_win_epoch_stat_t;
 
 typedef enum {
     CSP_WIN_NO_EXP_EPOCH,
     CSP_WIN_EXP_EPOCH_FENCE,
     CSP_WIN_EXP_EPOCH_PSCW
-} CSP_win_exp_epoch_stat;
+} CSP_win_exp_epoch_stat_t;
 
-struct CSP_win_info_args {
+typedef struct CSP_win_info_args {
     unsigned short no_local_load_store;
     int epochs_used;
-    CSP_async_config async_config;
+    CSP_async_config_t async_config;
     char win_name[MPI_MAX_OBJECT_NAME + 1];
-};
+} CSP_win_info_args_t;
 
 typedef struct CSP_op_segment {
     void *origin_addr;
@@ -60,7 +60,7 @@ typedef struct CSP_op_segment {
     int target_dtsize;
     MPI_Datatype target_datatype;
 
-} CSP_op_segment;
+} CSP_op_segment_t;
 
 typedef struct CSP_win_target_seg {
     MPI_Aint base_offset;
@@ -70,9 +70,9 @@ typedef struct CSP_win_target_seg {
     MPI_Win ug_win;
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    CSP_main_lock_stat main_lock_stat;
+    CSP_main_lock_stat_t main_lock_stat;
 #endif
-} CSP_win_target_seg;
+} CSP_win_target_seg_t;
 
 typedef struct CSP_win_target {
     MPI_Win ug_win;             /* Do not free the window, it is freed in ug_wins */
@@ -93,12 +93,12 @@ typedef struct CSP_win_target {
     MPI_Aint post_flg_offset;   /* flag for post-start synchronization. allocated in main ghost. */
 
     /* Only contain 1 segment in rank binding */
-    CSP_win_target_seg *segs;
+    CSP_win_target_seg_t *segs;
     int num_segs;
 
-    CSP_target_epoch_stat epoch_stat;   /* indicate which access epoch is opened for the target. */
+    CSP_target_epoch_stat_t epoch_stat; /* indicate which access epoch is opened for the target. */
 
-} CSP_win_target;
+} CSP_win_target_t;
 
 typedef struct CSP_win {
     /* communicator including local process and ghosts */
@@ -128,12 +128,12 @@ typedef struct CSP_win {
     int num_nodes;
     int node_id;
 
-    CSP_win_epoch_stat epoch_stat;      /* indicate which access epoch is opened. Thus operations
+    CSP_win_epoch_stat_t epoch_stat;    /* indicate which access epoch is opened. Thus operations
                                          * can send to the correct window. Note that only
                                          * change from PER_TARGET to NO_EPOCH when both lock counter
                                          * and start counter are equal to 0, otherwise should check
                                          * per-target epoch status. */
-    CSP_win_exp_epoch_stat exp_epoch_stat;      /* indicate which exposure epoch is opened.
+    CSP_win_exp_epoch_stat_t exp_epoch_stat;    /* indicate which exposure epoch is opened.
                                                  * For now only post-wait/test uses it to avoid duplicate receive.*/
     int lock_counter;
     int start_counter;
@@ -148,7 +148,7 @@ typedef struct CSP_win {
 
     void *base;
     MPI_Win win;
-    CSP_win_target *targets;
+    CSP_win_target_t *targets;
 
     unsigned long *g_win_handles;
 
@@ -156,7 +156,7 @@ typedef struct CSP_win {
     MPI_Aint grant_lock_g_offset;       /* Hidden byte for granting lock on Ghost0 */
 #endif
 
-    struct CSP_win_info_args info_args;
+    CSP_win_info_args_t info_args;
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     int prev_g_off;
@@ -167,7 +167,7 @@ typedef struct CSP_win {
     /* constant flavor attribute to override real flavor when user queries. */
     int create_flavor;
 
-} CSP_win;
+} CSP_win_t;
 
 /* ======================================================================
  * Window cache related routine.
@@ -267,7 +267,8 @@ extern const char *CSP_win_epoch_stat_name[4];
 }
 
 /* Return name of current epoch status (for debug).*/
-static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target * target, CSP_win * ug_win)
+static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target_t * target,
+                                                         CSP_win_t * ug_win)
 {
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
         return CSP_target_epoch_stat_name[target->epoch_stat];
@@ -320,7 +321,7 @@ static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target * target
         CSP_DBG_PRINT("[load_opt_byte] increment ghost %d\n", g_rank_in_ug); \
     }
 
-static inline int CSP_win_grant_lock(int target_rank, int target_seg_off, CSP_win * ug_win)
+static inline int CSP_win_grant_lock(int target_rank, int target_seg_off, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int main_g_off = ug_win->targets[target_rank].segs[target_seg_off].main_g_off;
@@ -340,7 +341,7 @@ static inline int CSP_win_grant_lock(int target_rank, int target_seg_off, CSP_wi
 }
 
 static inline void CSP_target_get_ghost_opload_by_random(int target_rank, int is_order_required,
-                                                         CSP_win * ug_win,
+                                                         CSP_win_t * ug_win,
                                                          int *target_g_rank_in_ug,
                                                          int *target_g_rank_idx,
                                                          MPI_Aint * target_g_offset)
@@ -359,10 +360,10 @@ static inline void CSP_target_get_ghost_opload_by_random(int target_rank, int is
 }
 
 extern void CSP_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
-                                              CSP_win * ug_win, int *target_g_rank_in_ug,
+                                              CSP_win_t * ug_win, int *target_g_rank_in_ug,
                                               int *target_g_rank_idx, MPI_Aint * target_g_offset);
 extern void CSP_target_get_ghost_opload_by_byte(int target_rank, int is_order_required,
-                                                int size, CSP_win * ug_win,
+                                                int size, CSP_win_t * ug_win,
                                                 int *target_g_rank_in_ug,
                                                 int *target_g_rank_idx, MPI_Aint * target_g_offset);
 
@@ -371,7 +372,7 @@ extern void CSP_target_get_ghost_opload_by_byte(int target_rank, int is_order_re
  */
 static inline int CSP_target_get_ghost(int target_rank, int target_seg_off,
                                        int is_order_required,
-                                       int size, CSP_win * ug_win,
+                                       int size, CSP_win_t * ug_win,
                                        int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -441,7 +442,7 @@ static inline int CSP_target_get_ghost(int target_rank, int target_seg_off,
  * Get ghost that is statically bound with the target.
  */
 static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int is_order_required CSP_ATTRIBUTE((unused)),      /* arguments used only in dynamic load */
-                                       int size CSP_ATTRIBUTE((unused)), CSP_win * ug_win,
+                                       int size CSP_ATTRIBUTE((unused)), CSP_win_t * ug_win,
                                        int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -473,18 +474,19 @@ extern int CSP_op_segments_decode(const void *origin_addr, int origin_count,
                                   MPI_Datatype origin_datatype,
                                   int target_rank, MPI_Aint target_disp,
                                   int target_count, MPI_Datatype target_datatype,
-                                  CSP_win * ug_win, CSP_op_segment ** decoded_ops_ptr,
+                                  CSP_win_t * ug_win, CSP_op_segment_t ** decoded_ops_ptr,
                                   int *num_segs);
 extern int CSP_op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
                                                  MPI_Datatype origin_datatype,
                                                  int target_rank, MPI_Aint target_disp,
                                                  int target_count, MPI_Datatype target_datatype,
-                                                 CSP_win * ug_win,
-                                                 CSP_op_segment ** decoded_ops_ptr, int *num_segs);
-extern void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr);
+                                                 CSP_win_t * ug_win,
+                                                 CSP_op_segment_t ** decoded_ops_ptr,
+                                                 int *num_segs);
+extern void CSP_op_segments_destroy(CSP_op_segment_t ** decoded_ops_ptr);
 
-extern int CSP_win_bind_ghosts(CSP_win * ug_win);
+extern int CSP_win_bind_ghosts(CSP_win_t * ug_win);
 
-extern int CSP_win_release(CSP_win * ug_win);
+extern int CSP_win_release(CSP_win_t * ug_win);
 
 #endif /* CSPU_H_ */

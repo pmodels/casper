@@ -11,7 +11,7 @@
 /**
  * Release all window internal resources maintained by CASPER.
  */
-int CSP_win_release(CSP_win * ug_win)
+int CSP_win_release(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i;
@@ -153,7 +153,7 @@ int CSP_win_release(CSP_win * ug_win)
     goto fn_exit;
 }
 
-static int issue_ghost_cmd(CSP_win * ug_win)
+static int issue_ghost_cmd(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
@@ -214,7 +214,7 @@ static int issue_ghost_cmd(CSP_win * ug_win)
 int MPI_Win_free(MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
 
     CSP_DBG_PRINT_FCNAME();

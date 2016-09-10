@@ -13,14 +13,14 @@
 
 #include <ctype.h>
 
-/* String of CSP_target_epoch_stat enum (for debug). */
+/* String of CSP_target_epoch_stat_t enum (for debug). */
 const char *CSP_target_epoch_stat_name[4] = {
     "NO_EPOCH",
     "LOCK",
     "PSCW"
 };
 
-/* String of CSP_win_epoch_stat enum (for debug). */
+/* String of CSP_win_epoch_stat_t enum (for debug). */
 const char *CSP_win_epoch_stat_name[4] = {
     "NO_EPOCH",
     "FENCE",
@@ -28,7 +28,7 @@ const char *CSP_win_epoch_stat_name[4] = {
     "PER_TARGET"
 };
 
-static int read_win_info(MPI_Info info, CSP_win * ug_win)
+static int read_win_info(MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -220,7 +220,7 @@ static int bcast_ghost_cmd_params(void *params, size_t size)
     goto fn_exit;
 }
 
-static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
+static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
@@ -274,7 +274,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win * ug_win)
     goto fn_exit;
 }
 
-static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
+static int gather_ranks(CSP_win_t * win, int *num_ghosts, int *gp_ranks_in_world,
                         int *unique_gp_ranks_in_world)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -326,7 +326,7 @@ static int gather_ranks(CSP_win * win, int *num_ghosts, int *gp_ranks_in_world,
 
 
 
-static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
+static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win_t * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs, user_rank, world_nprocs;
@@ -375,7 +375,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win * win)
     goto fn_exit;
 }
 
-static int create_communicators(CSP_win * ug_win)
+static int create_communicators(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *cmd_params = NULL;
@@ -528,7 +528,7 @@ static int create_communicators(CSP_win * ug_win)
     goto fn_exit;
 }
 
-static int gather_base_offsets(CSP_win * ug_win)
+static int gather_base_offsets(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint tmp_u_offsets;
@@ -602,8 +602,8 @@ static int gather_base_offsets(CSP_win * ug_win)
 
 /* Allocate shared window with local GHOSTs and USERs.
  * Return the size of whole shared memory buffer across processes, and
- * the shared window is stored as a CSP_win struct member.*/
-static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win * ug_win)
+ * the shared window is stored as a CSP_win_t struct member.*/
+static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Info shared_info = MPI_INFO_NULL;
@@ -653,7 +653,7 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
     goto fn_exit;
 }
 
-static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win * ug_win)
+static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, j;
@@ -701,7 +701,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     int mpi_errno = MPI_SUCCESS;
     int ug_rank, ug_nprocs, user_nprocs, user_rank, user_world_rank, world_rank,
         user_local_rank, user_local_nprocs, ug_local_rank, ug_local_nprocs;
-    CSP_win *ug_win = NULL;
+    CSP_win_t *ug_win = NULL;
     int i;
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
@@ -709,7 +709,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     CSP_DBG_PRINT_FCNAME();
 
-    ug_win = CSP_calloc(1, sizeof(CSP_win));
+    ug_win = CSP_calloc(1, sizeof(CSP_win_t));
 
     /* If user specifies comm_world directly, use user comm_world instead;
      * else this communicator directly, because it should be created from user comm_world */
@@ -776,7 +776,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_world_rank);
 
     ug_win->g_ranks_in_ug = CSP_calloc(CSP_ENV.num_g * ug_win->num_nodes, sizeof(MPI_Aint));
-    ug_win->targets = CSP_calloc(user_nprocs, sizeof(CSP_win_target));
+    ug_win->targets = CSP_calloc(user_nprocs, sizeof(CSP_win_target_t));
     for (i = 0; i < user_nprocs; i++) {
         ug_win->targets[i].base_g_offsets = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Aint));
         ug_win->targets[i].g_ranks_in_ug = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Aint));

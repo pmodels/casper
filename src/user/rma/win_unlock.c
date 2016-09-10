@@ -12,10 +12,10 @@
 
 /* Unlock ghost processes for a given target.
  * It is called by both WIN_LOCK and WIN_LOCK_ALL (only lock-exist mode). */
-int CSP_win_target_unlock(int target_rank, CSP_win * ug_win)
+int CSP_win_target_unlock(int target_rank, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
     int k;
     int user_rank;
 
@@ -49,8 +49,8 @@ int CSP_win_target_unlock(int target_rank, CSP_win * ug_win)
 
 int MPI_Win_unlock(int target_rank, MPI_Win win)
 {
-    CSP_win *ug_win;
-    CSP_win_target *target;
+    CSP_win_t *ug_win;
+    CSP_win_target_t *target;
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
 

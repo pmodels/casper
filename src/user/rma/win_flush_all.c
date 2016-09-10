@@ -11,7 +11,7 @@
 
 /* Flush all ghost processes on global window.
  * It is called by FENCE/COMPLETE, or UNLOCK_ALL/FLUSH_ALL (only no-Lock mode).*/
-int CSP_win_global_flush_all(CSP_win * ug_win)
+int CSP_win_global_flush_all(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i CSP_ATTRIBUTE((unused));
@@ -48,7 +48,7 @@ int CSP_win_global_flush_all(CSP_win * ug_win)
 
 int MPI_Win_flush_all(MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs;
     int i;

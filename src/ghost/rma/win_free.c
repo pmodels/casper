@@ -12,7 +12,7 @@
 static int win_free_impl(CSP_cmd_fnc_winfree_pkt_t * winfree_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSPG_win *win = NULL;
+    CSPG_win_t *win = NULL;
     unsigned long csp_g_win_handle = 0UL;
     int i;
 
@@ -24,7 +24,7 @@ static int win_free_impl(CSP_cmd_fnc_winfree_pkt_t * winfree_pkt)
         goto fn_fail;
     CSPG_DBG_PRINT(" Received window handler 0x%lx\n", csp_g_win_handle);
 
-    win = (CSPG_win *) csp_g_win_handle;
+    win = (CSPG_win_t *) csp_g_win_handle;
     if (!win) {
         CSPG_ERR_PRINT(" Wrong window handler 0x%lx, not exist\n", csp_g_win_handle);
         mpi_errno = -1;

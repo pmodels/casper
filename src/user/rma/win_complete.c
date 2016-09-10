@@ -9,7 +9,7 @@
 #include "cspu.h"
 #include "cspu_rma_sync.h"
 
-static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win * ug_win)
+static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_rank;
@@ -59,7 +59,7 @@ static int CSP_send_pscw_complete_msg(int start_grp_size, CSP_win * ug_win)
 
 int MPI_Win_complete(MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
     int i;

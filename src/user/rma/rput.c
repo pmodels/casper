@@ -12,11 +12,11 @@
 static int CSP_rput_shared_impl(const void *origin_addr, int origin_count,
                                 MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
                                 int target_count, MPI_Datatype target_datatype,
-                                CSP_win * ug_win, MPI_Request * request)
+                                CSP_win_t * ug_win, MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Win *win_ptr = NULL;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     target = &(ug_win->targets[target_rank]);
     CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
@@ -37,13 +37,13 @@ static int CSP_rput_shared_impl(const void *origin_addr, int origin_count,
 static int CSP_rput_segment_impl(const void *origin_addr, int origin_count,
                                  MPI_Datatype origin_datatype, int target_rank,
                                  MPI_Aint target_disp, int target_count,
-                                 MPI_Datatype target_datatype, CSP_win * ug_win,
+                                 MPI_Datatype target_datatype, CSP_win_t * ug_win,
                                  MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0, i;
-    CSP_op_segment *decoded_ops = NULL;
-    CSP_win_target *target = NULL;
+    CSP_op_segment_t *decoded_ops = NULL;
+    CSP_win_target_t *target = NULL;
 
     target = &(ug_win->targets[target_rank]);
 
@@ -105,11 +105,11 @@ static int CSP_rput_segment_impl(const void *origin_addr, int origin_count,
 static inline int CSP_proc_null_rput_impl(const void *origin_addr, int origin_count,
                                           MPI_Datatype origin_datatype, int target_rank,
                                           MPI_Aint target_disp, int target_count,
-                                          MPI_Datatype target_datatype, CSP_win * ug_win,
+                                          MPI_Datatype target_datatype, CSP_win_t * ug_win,
                                           MPI_Request * request)
 {
     MPI_Win *win_ptr = NULL;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     target = &(ug_win->targets[target_rank]);
 
@@ -124,12 +124,12 @@ static inline int CSP_proc_null_rput_impl(const void *origin_addr, int origin_co
 static int CSP_rput_impl(const void *origin_addr, int origin_count,
                          MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
                          int target_count, MPI_Datatype target_datatype,
-                         CSP_win * ug_win, MPI_Request * request)
+                         CSP_win_t * ug_win, MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     if (target_rank == MPI_PROC_NULL) {
         mpi_errno = CSP_proc_null_rput_impl(origin_addr, origin_count,
@@ -219,7 +219,7 @@ int MPI_Rput(const void *origin_addr, int origin_count,
              int target_count, MPI_Datatype target_datatype, MPI_Win win, MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
 
     CSP_DBG_PRINT_FCNAME();
 

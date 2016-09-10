@@ -11,10 +11,10 @@
 
 /* Flush ghost process for a given target.
  * It is called by FLUSH (all modes), and FLUSH_ALL (only lock-exist mode). */
-int CSP_win_target_flush(int target_rank, CSP_win * ug_win)
+int CSP_win_target_flush(int target_rank, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
     MPI_Win *win_ptr = NULL;
     int user_rank;
     int j;
@@ -84,8 +84,8 @@ int CSP_win_target_flush(int target_rank, CSP_win * ug_win)
 
 int MPI_Win_flush(int target_rank, MPI_Win win)
 {
-    CSP_win *ug_win;
-    CSP_win_target *target;
+    CSP_win_t *ug_win;
+    CSP_win_target_t *target;
     int mpi_errno = MPI_SUCCESS;
 
     CSP_DBG_PRINT_FCNAME();

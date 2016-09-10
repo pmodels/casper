@@ -10,17 +10,17 @@
 
 static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
                                          MPI_Datatype datatype, int target_rank,
-                                         MPI_Aint target_disp, MPI_Op op, CSP_win * ug_win)
+                                         MPI_Aint target_disp, MPI_Op op, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0;
-    CSP_op_segment *decoded_ops = NULL;
+    CSP_op_segment_t *decoded_ops = NULL;
     int target_g_rank_in_ug = -1;
     MPI_Aint target_g_offset = 0;
     MPI_Aint ug_target_disp = 0;
     int seg_off = 0;
     MPI_Win seg_ug_win;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     target = &(ug_win->targets[target_rank]);
 
@@ -74,12 +74,12 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
 
 static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
                                  MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
-                                 MPI_Op op, CSP_win * ug_win)
+                                 MPI_Op op, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
     if (target_rank == MPI_PROC_NULL)
@@ -154,7 +154,7 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
                      MPI_Op op, MPI_Win win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
 
     CSP_DBG_PRINT_FCNAME();
 

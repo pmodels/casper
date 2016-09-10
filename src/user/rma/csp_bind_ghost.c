@@ -10,7 +10,7 @@
 #include <memory.h>
 #include "cspu.h"
 
-static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
+static int bind_by_segments(int n_targets, int *local_targets, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint seg_size, t_size, sum_size, size_per_ghost, assigned_size, max_t_size;
@@ -49,7 +49,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
     while (assigned_size < sum_size && i < n_targets) {
         if (t_size == 0) {
             ug_win->targets[t_rank].num_segs = t_num_segs;
-            ug_win->targets[t_rank].segs = CSP_calloc(t_num_segs, sizeof(CSP_win_target_seg));
+            ug_win->targets[t_rank].segs = CSP_calloc(t_num_segs, sizeof(CSP_win_target_seg_t));
 
             MPI_Aint prev_seg_base = 0, prev_seg_size = 0;
             for (j = 0; j < t_num_segs; j++) {
@@ -118,7 +118,7 @@ static int bind_by_segments(int n_targets, int *local_targets, CSP_win * ug_win)
     return mpi_errno;
 }
 
-static int bind_by_ranks(int n_targets, int *local_targets, CSP_win * ug_win)
+static int bind_by_ranks(int n_targets, int *local_targets, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, g_off, t_rank, user_nprocs;
@@ -143,7 +143,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_win * ug_win)
 
         t_rank = local_targets[i];
         ug_win->targets[t_rank].num_segs = 1;
-        ug_win->targets[t_rank].segs = CSP_calloc(1, sizeof(CSP_win_target_seg));
+        ug_win->targets[t_rank].segs = CSP_calloc(1, sizeof(CSP_win_target_seg_t));
         ug_win->targets[t_rank].segs[0].base_offset = 0;
         ug_win->targets[t_rank].segs[0].size = ug_win->targets[i].size;
         ug_win->targets[t_rank].segs[0].main_g_off = g_off;
@@ -160,7 +160,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_win * ug_win)
  * Bind every target in the window with single ghost process to
  * guarantee lock permission, accumulate ordering and atomicity.
  */
-int CSP_win_bind_ghosts(CSP_win * ug_win)
+int CSP_win_bind_ghosts(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_nprocs;

@@ -11,17 +11,17 @@
 static int CSP_compare_and_swap_segment_impl(const void *origin_addr, const void *compare_addr,
                                              void *result_addr, MPI_Datatype datatype,
                                              int target_rank, MPI_Aint target_disp,
-                                             CSP_win * ug_win)
+                                             CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0;
-    CSP_op_segment *decoded_ops = NULL;
+    CSP_op_segment_t *decoded_ops = NULL;
     int target_g_rank_in_ug = -1;
     MPI_Aint target_g_offset = 0;
     MPI_Aint ug_target_disp = 0;
     int seg_off = 0;
     MPI_Win seg_ug_win;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     target = &(ug_win->targets[target_rank]);
 
@@ -75,12 +75,12 @@ static int CSP_compare_and_swap_segment_impl(const void *origin_addr, const void
 
 static int CSP_compare_and_swap_impl(const void *origin_addr, const void *compare_addr,
                                      void *result_addr, MPI_Datatype datatype, int target_rank,
-                                     MPI_Aint target_disp, CSP_win * ug_win)
+                                     MPI_Aint target_disp, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
     int rank;
-    CSP_win_target *target = NULL;
+    CSP_win_target_t *target = NULL;
 
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
@@ -154,7 +154,7 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
                          MPI_Aint target_disp, MPI_Win win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
 
     CSP_DBG_PRINT_FCNAME();
 

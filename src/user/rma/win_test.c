@@ -11,7 +11,7 @@
 
 int MPI_Win_test(MPI_Win win, int *flag)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 

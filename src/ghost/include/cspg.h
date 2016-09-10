@@ -50,9 +50,9 @@
  * Window related definitions.
  * ====================================================================== */
 
-struct CSPG_win_info_args {
+typedef struct CSPG_win_info_args {
     int epochs_used;
-};
+} CSPG_win_info_args_t;
 
 typedef struct CSPG_win {
     MPI_Comm local_ug_comm;     /* including local user and ghost processes */
@@ -73,9 +73,9 @@ typedef struct CSPG_win {
 
     MPI_Win global_win;
 
-    struct CSPG_win_info_args info_args;
+    CSPG_win_info_args_t info_args;
     unsigned long csp_g_win_handle;
-} CSPG_win;
+} CSPG_win_t;
 
 
 /* ======================================================================

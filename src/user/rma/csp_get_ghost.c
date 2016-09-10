@@ -10,7 +10,7 @@
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
 void CSP_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
-                                       CSP_win * ug_win, int *target_g_rank_in_ug,
+                                       CSP_win_t * ug_win, int *target_g_rank_in_ug,
                                        int *target_g_rank_idx, MPI_Aint * target_g_offset)
 {
     int idx, min_count, g_rank, min_idx;
@@ -42,7 +42,7 @@ void CSP_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
 }
 
 void CSP_target_get_ghost_opload_by_byte(int target_rank, int is_order_required, int size,
-                                         CSP_win * ug_win, int *target_g_rank_in_ug,
+                                         CSP_win_t * ug_win, int *target_g_rank_in_ug,
                                          int *target_g_rank_idx, MPI_Aint * target_g_offset)
 {
     int idx, min_count, g_rank, min_idx;

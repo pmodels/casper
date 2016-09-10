@@ -17,7 +17,7 @@ char wait_flg;
 /* Receive complete-wait synchronization messages from origin group.
  * WIN_WAIT calls it with blocking=true; WIN_TEST calls it with blocking=false
  * and a flag pointer. */
-int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking, int *flag)
+int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int blocking, int *flag)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -87,7 +87,7 @@ int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win * ug_win, int blocking
 
 int MPI_Win_wait(MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 

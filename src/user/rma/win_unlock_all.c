@@ -11,7 +11,7 @@
 
 int MPI_Win_unlock_all(MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs;
     int i;

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
+static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_rank;
@@ -74,7 +74,7 @@ static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win * ug_win)
     goto fn_exit;
 }
 
-static int fill_ranks_in_win_grp(CSP_win * ug_win)
+static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *ranks_in_post_grp = NULL;
@@ -106,7 +106,7 @@ static int fill_ranks_in_win_grp(CSP_win * ug_win)
 
 int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 

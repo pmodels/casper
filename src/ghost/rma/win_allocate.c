@@ -14,20 +14,20 @@
 #define FUNCNAME CSPG_win_allocate
 
 /* Receive parameters from user root via local communicator (blocking call). */
-static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win * win)
+static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
     return PMPI_Recv(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
                      CSP_PROC.local_comm, MPI_STATUS_IGNORE);
 }
 
 /* Send parameters to user root via local communicator (blocking call). */
-static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win * win)
+static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
     return PMPI_Send(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
                      CSP_PROC.local_comm);
 }
 
-static int init_ghost_win(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win * win,
+static int init_ghost_win(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win_t * win,
                           MPI_Info * user_info)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -70,7 +70,7 @@ static int init_ghost_win(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win * 
 }
 
 static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_ghosts,
-                          int *gp_ranks_in_world, CSPG_win * win)
+                          int *gp_ranks_in_world, CSPG_win_t * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int world_nprocs;
@@ -121,7 +121,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     goto fn_exit;
 }
 
-static int create_communicators(CSPG_win * win)
+static int create_communicators(CSPG_win_t * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *cmd_params = NULL;
@@ -197,8 +197,8 @@ static int create_communicators(CSPG_win * win)
 
 /* Allocate shared window with local GHOSTs and USERs.
  * Return the size of whole shared memory buffer across processes, and
- * the shared window is stored as a CSPG_win struct member.*/
-static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win * win)
+ * the shared window is stored as a CSPG_win_t struct member.*/
+static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t * win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint csp_buf_size = CSP_GP_SHARED_SG_SIZE;
@@ -294,7 +294,7 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win * w
     goto fn_exit;
 }
 
-static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win * win)
+static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win_t * win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i;
@@ -324,10 +324,10 @@ static int win_allocate_impl(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt)
     int local_ug_rank, local_ug_nprocs;
     MPI_Aint size = 0;
     int ug_nprocs, ug_rank;
-    CSPG_win *win = NULL;
+    CSPG_win_t *win = NULL;
     MPI_Info user_info = MPI_INFO_NULL;
 
-    win = CSP_calloc(1, sizeof(CSPG_win));
+    win = CSP_calloc(1, sizeof(CSPG_win_t));
 
     /* Every ghost initialize ghost window by using received parameters. */
     mpi_errno = init_ghost_win(winalloc_pkt, win, &user_info);

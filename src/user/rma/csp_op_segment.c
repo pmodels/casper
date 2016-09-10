@@ -9,7 +9,7 @@
 #include <mpi.h>
 #include "cspu.h"
 
-void CSP_op_segments_destroy(CSP_op_segment ** decoded_ops_ptr)
+void CSP_op_segments_destroy(CSP_op_segment_t ** decoded_ops_ptr)
 {
     if (*decoded_ops_ptr) {
         free(*decoded_ops_ptr);
@@ -20,13 +20,13 @@ int CSP_op_segments_decode_basic_datatype(const void *origin_addr,
                                           int origin_count CSP_ATTRIBUTE((unused)),
                                           MPI_Datatype origin_datatype, int target_rank,
                                           MPI_Aint target_disp, int target_count,
-                                          MPI_Datatype target_datatype, CSP_win * ug_win,
-                                          CSP_op_segment ** decoded_ops_ptr, int *num_segs)
+                                          MPI_Datatype target_datatype, CSP_win_t * ug_win,
+                                          CSP_op_segment_t ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
     int o_type_size, t_type_size;
     MPI_Aint target_base_off, target_data_size;
-    CSP_op_segment *decoded_ops = NULL;
+    CSP_op_segment_t *decoded_ops = NULL;
     MPI_Aint dt_size = 0, op_sg_size = 0, op_sg_base = 0, sg_base = 0, sg_size = 0;
     int sg_off = 0, op_sg_off = 0;
 
@@ -47,7 +47,7 @@ int CSP_op_segments_decode_basic_datatype(const void *origin_addr,
         return -1;
     }
 
-    decoded_ops = CSP_calloc(ug_win->targets[target_rank].num_segs, sizeof(CSP_op_segment));
+    decoded_ops = CSP_calloc(ug_win->targets[target_rank].num_segs, sizeof(CSP_op_segment_t));
     if (decoded_ops == NULL)
         goto fn_fail;
 
@@ -102,7 +102,7 @@ int CSP_op_segments_decode(const void *origin_addr, int origin_count,
                            MPI_Datatype origin_datatype,
                            int target_rank, MPI_Aint target_disp,
                            int target_count, MPI_Datatype target_datatype,
-                           CSP_win * ug_win, CSP_op_segment ** decoded_ops_ptr, int *num_segs)
+                           CSP_win_t * ug_win, CSP_op_segment_t ** decoded_ops_ptr, int *num_segs)
 {
     int mpi_errno = MPI_SUCCESS;
     int o_combiner = 0, o_num_integers = 0, o_num_datatypes = 0, o_num_addresses = 0;

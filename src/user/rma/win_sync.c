@@ -10,7 +10,7 @@
 
 int MPI_Win_sync(MPI_Win win)
 {
-    CSP_win *ug_win;
+    CSP_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank = 0, user_nprocs = 0;
     int i;
@@ -52,7 +52,7 @@ int MPI_Win_sync(MPI_Win win)
     /* For window that may contain locks, we should sync on all per-target windows
      * that are involved in opened lock epoch.*/
     else if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
-        CSP_win_target *target = NULL;
+        CSP_win_target_t *target = NULL;
         int synced CSP_ATTRIBUTE((unused)) = 0;
         PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 

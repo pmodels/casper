@@ -9,10 +9,10 @@
 #include "csp.h"
 
 /* Global environment setting */
-CSP_env_param CSP_ENV;
+CSP_env_param_t CSP_ENV;
 
 /* Global process information object */
-CSP_proc CSP_PROC;
+CSP_proc_t CSP_PROC;
 
 /* User world communicator, including all users in the world */
 MPI_Comm CSP_COMM_USER_WORLD = MPI_COMM_NULL;
