@@ -9,7 +9,7 @@
 #include "cspu.h"
 #include "cspu_rma_sync.h"
 
-static int CSP_fence_flush_all(CSP_win_t * ug_win)
+static int fence_flush_all(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
@@ -89,7 +89,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
     if ((assert & MPI_MODE_NOPRECEDE) == 0) {
-        mpi_errno = CSP_fence_flush_all(ug_win);
+        mpi_errno = fence_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

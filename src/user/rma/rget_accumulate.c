@@ -8,13 +8,13 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static inline int CSP_proc_null_rget_accumualte_impl(const void *origin_addr, int origin_count,
-                                                     MPI_Datatype origin_datatype,
-                                                     void *result_addr, int result_count,
-                                                     MPI_Datatype result_datatype, int target_rank,
-                                                     MPI_Aint target_disp, int target_count,
-                                                     MPI_Datatype target_datatype, MPI_Op op,
-                                                     CSP_win_t * ug_win, MPI_Request * request)
+static inline int rget_accumualte_proc_null_impl(const void *origin_addr, int origin_count,
+                                                 MPI_Datatype origin_datatype,
+                                                 void *result_addr, int result_count,
+                                                 MPI_Datatype result_datatype, int target_rank,
+                                                 MPI_Aint target_disp, int target_count,
+                                                 MPI_Datatype target_datatype, MPI_Op op,
+                                                 CSP_win_t * ug_win, MPI_Request * request)
 {
     MPI_Win *win_ptr = NULL;
     CSP_win_target_t *target = NULL;
@@ -29,12 +29,12 @@ static inline int CSP_proc_null_rget_accumualte_impl(const void *origin_addr, in
                                 target_datatype, op, *win_ptr, request);
 }
 
-static int CSP_rget_accumulate_impl(const void *origin_addr, int origin_count,
-                                    MPI_Datatype origin_datatype, void *result_addr,
-                                    int result_count, MPI_Datatype result_datatype,
-                                    int target_rank, MPI_Aint target_disp, int target_count,
-                                    MPI_Datatype target_datatype, MPI_Op op,
-                                    CSP_win_t * ug_win, MPI_Request * request)
+static int rget_accumulate_impl(const void *origin_addr, int origin_count,
+                                MPI_Datatype origin_datatype, void *result_addr,
+                                int result_count, MPI_Datatype result_datatype,
+                                int target_rank, MPI_Aint target_disp, int target_count,
+                                MPI_Datatype target_datatype, MPI_Op op,
+                                CSP_win_t * ug_win, MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
@@ -42,10 +42,10 @@ static int CSP_rget_accumulate_impl(const void *origin_addr, int origin_count,
     CSP_win_target_t *target = NULL;
 
     if (target_rank == MPI_PROC_NULL) {
-        mpi_errno = CSP_proc_null_rget_accumualte_impl(origin_addr, origin_count, origin_datatype,
-                                                       result_addr, result_count, result_datatype,
-                                                       target_rank, target_disp, target_count,
-                                                       target_datatype, op, ug_win, request);
+        mpi_errno = rget_accumualte_proc_null_impl(origin_addr, origin_count, origin_datatype,
+                                                   result_addr, result_count, result_datatype,
+                                                   target_rank, target_disp, target_count,
+                                                   target_datatype, op, ug_win, request);
         goto fn_exit;
     }
 
@@ -122,10 +122,10 @@ int MPI_Rget_accumulate(const void *origin_addr, int origin_count, MPI_Datatype 
 
     if (ug_win) {
         /* casper window */
-        mpi_errno = CSP_rget_accumulate_impl(origin_addr, origin_count, origin_datatype,
-                                             result_addr, result_count, result_datatype,
-                                             target_rank, target_disp, target_count,
-                                             target_datatype, op, ug_win, request);
+        mpi_errno = rget_accumulate_impl(origin_addr, origin_count, origin_datatype,
+                                         result_addr, result_count, result_datatype,
+                                         target_rank, target_disp, target_count,
+                                         target_datatype, op, ug_win, request);
     }
     else {
         /* normal window */

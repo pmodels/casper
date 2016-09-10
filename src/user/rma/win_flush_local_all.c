@@ -9,7 +9,7 @@
 #include "cspu.h"
 #include "cspu_rma_sync.h"
 
-static int CSP_win_global_flush_local_all(CSP_win_t * ug_win)
+static int win_global_flush_local_all(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i CSP_ATTRIBUTE((unused));
@@ -79,7 +79,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
 
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, single window is shared by multiple targets. */
-        mpi_errno = CSP_win_global_flush_local_all(ug_win);
+        mpi_errno = win_global_flush_local_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

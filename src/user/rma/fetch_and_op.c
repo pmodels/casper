@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
-                                         MPI_Datatype datatype, int target_rank,
-                                         MPI_Aint target_disp, MPI_Op op, CSP_win_t * ug_win)
+static int fetch_and_op_segment_impl(const void *origin_addr, void *result_addr,
+                                     MPI_Datatype datatype, int target_rank,
+                                     MPI_Aint target_disp, MPI_Op op, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0;
@@ -72,9 +72,9 @@ static int CSP_fetch_and_op_segment_impl(const void *origin_addr, void *result_a
 }
 
 
-static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
-                                 MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
-                                 MPI_Op op, CSP_win_t * ug_win)
+static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
+                             MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
+                             MPI_Op op, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
@@ -104,8 +104,8 @@ static int CSP_fetch_and_op_impl(const void *origin_addr, void *result_addr,
     if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
         target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
                                  target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
-        mpi_errno = CSP_fetch_and_op_segment_impl(origin_addr, result_addr,
-                                                  datatype, target_rank, target_disp, op, ug_win);
+        mpi_errno = fetch_and_op_segment_impl(origin_addr, result_addr,
+                                              datatype, target_rank, target_disp, op, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -162,8 +162,8 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
 
     if (ug_win) {
         /* casper window */
-        mpi_errno = CSP_fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
-                                          target_disp, op, ug_win);
+        mpi_errno = fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
+                                      target_disp, op, ug_win);
     }
     else {
         /* normal window */

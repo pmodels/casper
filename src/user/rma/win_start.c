@@ -38,7 +38,7 @@ static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
     goto fn_exit;
 }
 
-static int CSP_wait_pscw_post_msg(int start_grp_size, CSP_win_t * ug_win)
+static int wait_pscw_post_msg(int start_grp_size, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -171,7 +171,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
-        mpi_errno = CSP_wait_pscw_post_msg(start_grp_size, ug_win);
+        mpi_errno = wait_pscw_post_msg(start_grp_size, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

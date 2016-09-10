@@ -76,7 +76,7 @@ static inline int setup_common_info(void)
 }
 
 /* Initialize environment setting */
-static int CSP_initialize_env()
+static int initialize_env()
 {
     char *val;
     int mpi_errno = MPI_SUCCESS;
@@ -215,7 +215,7 @@ static int CSP_initialize_env()
 }
 
 /* Initialize global communicator objects. */
-static int CSP_initialize_proc(void)
+static int initialize_proc(void)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Comm tmp_local_comm = MPI_COMM_NULL, tmp_ur_comm = MPI_COMM_NULL;
@@ -339,12 +339,12 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     PMPI_Comm_rank(MPI_COMM_WORLD, &CSP_PROC.wrank);
 
     /* Initialize environment setting */
-    mpi_errno = CSP_initialize_env();
+    mpi_errno = initialize_env();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* Initialize global process object */
-    mpi_errno = CSP_initialize_proc();
+    mpi_errno = initialize_proc();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

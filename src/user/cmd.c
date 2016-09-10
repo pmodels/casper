@@ -15,7 +15,7 @@
     fflush(stdout); \
     } while (0)
 
-static const char *csp_cmd_lock_status_name[CSP_CMD_LOCK_STATUS_MAX] = {
+static const char *cmd_lock_status_name[CSP_CMD_LOCK_STATUS_MAX] = {
     "unset",
     "suspended_l",
     "suspended_h",
@@ -42,7 +42,7 @@ static inline int sync_lock_status(CSP_cmd_lock_status_t * lock_status)
         return mpi_errno;
 
     CSP_CMD_DBG_PRINT(" \t sync LOCK STAT (%d -> %d[%s])\n", (*lock_status),
-                      locksync_pkt->status, csp_cmd_lock_status_name[locksync_pkt->status]);
+                      locksync_pkt->status, cmd_lock_status_name[locksync_pkt->status]);
 
     (*lock_status) = locksync_pkt->status;
     return mpi_errno;
@@ -150,7 +150,7 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSP_CMD_DBG_PRINT(" \t all-reduced LOCK status min(stat %d [%s], root %d)\n",
-                          min_lock_stats[0], csp_cmd_lock_status_name[min_lock_stats[0]],
+                          min_lock_stats[0], cmd_lock_status_name[min_lock_stats[0]],
                           min_lock_stats[1]);
 
         /* when the smallest group_id is equal to group_id + np, all other roots got its lock. */

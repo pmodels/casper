@@ -9,10 +9,10 @@
 #include "cspu.h"
 
 #ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
-static int CSP_get_shared_impl(void *origin_addr, int origin_count,
-                               MPI_Datatype origin_datatype, int target_rank,
-                               MPI_Aint target_disp, int target_count,
-                               MPI_Datatype target_datatype, CSP_win_t * ug_win)
+static int get_shared_impl(void *origin_addr, int origin_count,
+                           MPI_Datatype origin_datatype, int target_rank,
+                           MPI_Aint target_disp, int target_count,
+                           MPI_Datatype target_datatype, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Win *win_ptr = NULL;
@@ -34,10 +34,10 @@ static int CSP_get_shared_impl(void *origin_addr, int origin_count,
 }
 #endif
 
-static int CSP_get_segment_impl(const void *origin_addr, int origin_count,
-                                MPI_Datatype origin_datatype,
-                                int target_rank, MPI_Aint target_disp,
-                                int target_count, MPI_Datatype target_datatype, CSP_win_t * ug_win)
+static int get_segment_impl(const void *origin_addr, int origin_count,
+                            MPI_Datatype origin_datatype,
+                            int target_rank, MPI_Aint target_disp,
+                            int target_count, MPI_Datatype target_datatype, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0, i;
@@ -96,10 +96,10 @@ static int CSP_get_segment_impl(const void *origin_addr, int origin_count,
     goto fn_exit;
 }
 
-static int CSP_get_impl(void *origin_addr, int origin_count,
-                        MPI_Datatype origin_datatype,
-                        int target_rank, MPI_Aint target_disp,
-                        int target_count, MPI_Datatype target_datatype, CSP_win_t * ug_win)
+static int get_impl(void *origin_addr, int origin_count,
+                    MPI_Datatype origin_datatype,
+                    int target_rank, MPI_Aint target_disp,
+                    int target_count, MPI_Datatype target_datatype, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
@@ -119,9 +119,9 @@ static int CSP_get_impl(void *origin_addr, int origin_count,
 
 #ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
     if (target_rank == rank && ug_win->is_self_locked) {
-        mpi_errno = CSP_get_shared_impl(origin_addr, origin_count,
-                                        origin_datatype, target_rank, target_disp, target_count,
-                                        target_datatype, ug_win);
+        mpi_errno = get_shared_impl(origin_addr, origin_count,
+                                    origin_datatype, target_rank, target_disp, target_count,
+                                    target_datatype, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -134,9 +134,9 @@ static int CSP_get_impl(void *origin_addr, int origin_count,
         if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
             target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
                                      target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
-            mpi_errno = CSP_get_segment_impl(origin_addr, origin_count,
-                                             origin_datatype, target_rank, target_disp,
-                                             target_count, target_datatype, ug_win);
+            mpi_errno = get_segment_impl(origin_addr, origin_count,
+                                         origin_datatype, target_rank, target_disp,
+                                         target_count, target_datatype, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 return mpi_errno;
         }
@@ -200,8 +200,8 @@ int MPI_Get(void *origin_addr, int origin_count,
 
     if (ug_win) {
         /* casper window */
-        mpi_errno = CSP_get_impl(origin_addr, origin_count, origin_datatype,
-                                 target_rank, target_disp, target_count, target_datatype, ug_win);
+        mpi_errno = get_impl(origin_addr, origin_count, origin_datatype,
+                             target_rank, target_disp, target_count, target_datatype, ug_win);
     }
     else {
         /* normal window */

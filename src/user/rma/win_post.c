@@ -8,7 +8,37 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
+static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int *ranks_in_post_grp = NULL;
+    int i, post_grp_size;
+
+    mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    ranks_in_post_grp = CSP_calloc(post_grp_size, sizeof(int));
+    for (i = 0; i < post_grp_size; i++) {
+        ranks_in_post_grp[i] = i;
+    }
+
+    mpi_errno = PMPI_Group_translate_ranks(ug_win->post_group, post_grp_size,
+                                           ranks_in_post_grp, ug_win->user_group,
+                                           ug_win->post_ranks_in_win_group);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    if (ranks_in_post_grp)
+        free(ranks_in_post_grp);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+static int send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_rank;
@@ -74,36 +104,6 @@ static int CSP_send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
     goto fn_exit;
 }
 
-static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int *ranks_in_post_grp = NULL;
-    int i, post_grp_size;
-
-    mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    ranks_in_post_grp = CSP_calloc(post_grp_size, sizeof(int));
-    for (i = 0; i < post_grp_size; i++) {
-        ranks_in_post_grp[i] = i;
-    }
-
-    mpi_errno = PMPI_Group_translate_ranks(ug_win->post_group, post_grp_size,
-                                           ranks_in_post_grp, ug_win->user_group,
-                                           ug_win->post_ranks_in_win_group);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-  fn_exit:
-    if (ranks_in_post_grp)
-        free(ranks_in_post_grp);
-    return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
-}
-
 int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 {
     CSP_win_t *ug_win;
@@ -161,7 +161,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
-        mpi_errno = CSP_send_pscw_post_msg(post_grp_size, ug_win);
+        mpi_errno = send_pscw_post_msg(post_grp_size, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

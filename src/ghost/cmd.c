@@ -16,9 +16,9 @@
     fflush(stdout); \
     } while (0)
 
-static const char *csp_cmd_lock_status_name[CSP_CMD_LOCK_STATUS_MAX] =
+static const char *cmd_lock_status_name[CSP_CMD_LOCK_STATUS_MAX] =
     { "none", "suspended_l", "suspended_h", "acquired" };
-static const char *csp_cmd_name[CSP_CMD_MAX] = {
+static const char *cmd_name[CSP_CMD_MAX] = {
     "unset",
     "win_allocate",
     "win_free",
@@ -34,11 +34,11 @@ static const char *csp_cmd_name[CSP_CMD_MAX] = {
 
 /* Command handlers on root ghosts.
  * The handler is called when received a command from the user process.*/
-static CSPG_cmd_root_handler_t CSPG_cmd_root_handlers[CSP_CMD_MAX] = { NULL };
+static CSPG_cmd_root_handler_t cmd_root_handlers[CSP_CMD_MAX] = { NULL };
 
 /* Command handlers on children ghosts.
  * The handler is called when received a command broadcasted from the root ghost. */
-static CSPG_cmd_handler_t CSPG_cmd_handlers[CSP_CMD_MAX] = { NULL };
+static CSPG_cmd_handler_t cmd_handlers[CSP_CMD_MAX] = { NULL };
 
 static CSP_slist_t susped_lock_reqs_list;
 static CSPG_cmd_lock_req_t *granted_lock_req = NULL;
@@ -59,7 +59,7 @@ static inline int sync_lock_status(CSPG_cmd_lock_req_t * req)
 
     locksync_pkt->status = req->status;
     CSPG_CMD_DBG_PRINT(" \t sync CMD ACK %d [%s] to local user %d\n",
-                       locksync_pkt->status, csp_cmd_lock_status_name[locksync_pkt->status],
+                       locksync_pkt->status, cmd_lock_status_name[locksync_pkt->status],
                        req->user_local_rank);
 
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
@@ -137,7 +137,7 @@ static int grant_next_lock_req(void)
     goto fn_exit;
 }
 
-static int CSPG_cmd_acquire_lock_handler(CSP_cmd_pkt_t * pkt, int user_local_rank)
+static int cmd_lock_acquire_handler(CSP_cmd_pkt_t * pkt, int user_local_rank)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPG_cmd_lock_req_t *req = NULL;
@@ -174,8 +174,8 @@ static int CSPG_cmd_acquire_lock_handler(CSP_cmd_pkt_t * pkt, int user_local_ran
     goto fn_exit;
 }
 
-static int CSPG_cmd_release_lock_handler(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)),
-                                         int user_local_rank)
+static int cmd_lock_release_handler(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)),
+                                    int user_local_rank)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPG_cmd_lock_req_t *rels_req = NULL;
@@ -203,7 +203,7 @@ static int CSPG_cmd_release_lock_handler(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unus
     goto fn_exit;
 }
 
-static int CSPG_cmd_discard_lock_handler(CSP_cmd_pkt_t * pkt, int user_local_rank)
+static int cmd_lock_discard_handler(CSP_cmd_pkt_t * pkt, int user_local_rank)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPG_cmd_lock_req_t *disc_req = NULL;
@@ -212,7 +212,7 @@ static int CSPG_cmd_discard_lock_handler(CSP_cmd_pkt_t * pkt, int user_local_ran
 
     /* If lock is just granted before receiving discard message, release it. */
     if (granted_lock_req && user_local_rank == granted_lock_req->user_local_rank)
-        return CSPG_cmd_release_lock_handler(pkt, user_local_rank);
+        return cmd_lock_release_handler(pkt, user_local_rank);
 
     /* Remove from suspended list. */
     search_req.user_local_rank = user_local_rank;
@@ -259,14 +259,14 @@ int CSPG_cmd_do_progress(void)
 
             /* skip undefined command */
             if (pkt.cmd_type <= CSP_CMD_UNSET || pkt.cmd_type >= CSP_CMD_MAX ||
-                !CSPG_cmd_root_handlers[pkt.cmd_type]) {
+                !cmd_root_handlers[pkt.cmd_type]) {
                 CSPG_CMD_DBG_PRINT(" Received undefined CMD %d\n", (int) (pkt.cmd_type));
                 continue;
             }
 
             CSPG_CMD_DBG_PRINT(" ghost 0 received CMD %d [%s] from %d\n",
-                               (int) (pkt.cmd_type), csp_cmd_name[pkt.cmd_type], stat.MPI_SOURCE);
-            mpi_errno = CSPG_cmd_root_handlers[pkt.cmd_type] (&pkt, stat.MPI_SOURCE);
+                               (int) (pkt.cmd_type), cmd_name[pkt.cmd_type], stat.MPI_SOURCE);
+            mpi_errno = cmd_root_handlers[pkt.cmd_type] (&pkt, stat.MPI_SOURCE);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
@@ -280,14 +280,14 @@ int CSPG_cmd_do_progress(void)
 
             /* skip undefined internal command */
             if (pkt.cmd_type <= CSP_CMD_UNSET || pkt.cmd_type >= CSP_CMD_MAX ||
-                !CSPG_cmd_handlers[pkt.cmd_type]) {
+                !cmd_handlers[pkt.cmd_type]) {
                 CSPG_CMD_DBG_PRINT(" Received undefined CMD %d\n", (int) (pkt.cmd_type));
                 continue;
             }
 
             CSPG_CMD_DBG_PRINT(" all ghosts received CMD %d [%s]\n", (int) pkt.cmd_type,
-                               csp_cmd_name[pkt.cmd_type]);
-            mpi_errno = CSPG_cmd_handlers[pkt.cmd_type] (&pkt);
+                               cmd_name[pkt.cmd_type]);
+            mpi_errno = cmd_handlers[pkt.cmd_type] (&pkt);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -345,17 +345,17 @@ int CSPG_cmd_release_lock(void)
 void CSPG_cmd_init(void)
 {
     CSPG_CMD_DBG_PRINT(" ghost start\n");
-    CSPG_cmd_root_handlers[CSP_CMD_FNC_WIN_ALLOCATE] = CSPG_win_allocate_root_handler;
-    CSPG_cmd_root_handlers[CSP_CMD_FNC_WIN_FREE] = CSPG_win_free_root_handler;
-    CSPG_cmd_root_handlers[CSP_CMD_FNC_FINALIZE] = CSPG_finalize_root_handler;
+    cmd_root_handlers[CSP_CMD_FNC_WIN_ALLOCATE] = CSPG_win_allocate_root_handler;
+    cmd_root_handlers[CSP_CMD_FNC_WIN_FREE] = CSPG_win_free_root_handler;
+    cmd_root_handlers[CSP_CMD_FNC_FINALIZE] = CSPG_finalize_root_handler;
 
-    CSPG_cmd_root_handlers[CSP_CMD_LOCK_ACQUIRE] = CSPG_cmd_acquire_lock_handler;
-    CSPG_cmd_root_handlers[CSP_CMD_LOCK_DISCARD] = CSPG_cmd_discard_lock_handler;
-    CSPG_cmd_root_handlers[CSP_CMD_LOCK_RELEASE] = CSPG_cmd_release_lock_handler;
+    cmd_root_handlers[CSP_CMD_LOCK_ACQUIRE] = cmd_lock_acquire_handler;
+    cmd_root_handlers[CSP_CMD_LOCK_DISCARD] = cmd_lock_discard_handler;
+    cmd_root_handlers[CSP_CMD_LOCK_RELEASE] = cmd_lock_release_handler;
 
-    CSPG_cmd_handlers[CSP_CMD_FNC_WIN_ALLOCATE] = CSPG_win_allocate_handler;
-    CSPG_cmd_handlers[CSP_CMD_FNC_WIN_FREE] = CSPG_win_free_handler;
-    CSPG_cmd_handlers[CSP_CMD_FNC_FINALIZE] = CSPG_finalize_handler;
+    cmd_handlers[CSP_CMD_FNC_WIN_ALLOCATE] = CSPG_win_allocate_handler;
+    cmd_handlers[CSP_CMD_FNC_WIN_FREE] = CSPG_win_free_handler;
+    cmd_handlers[CSP_CMD_FNC_FINALIZE] = CSPG_finalize_handler;
 
     CSP_slist_init(CSPG_SLIST_ORDER_ASC, lock_req_compare_fnc, &susped_lock_reqs_list);
 }

@@ -8,10 +8,9 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int CSP_compare_and_swap_segment_impl(const void *origin_addr, const void *compare_addr,
-                                             void *result_addr, MPI_Datatype datatype,
-                                             int target_rank, MPI_Aint target_disp,
-                                             CSP_win_t * ug_win)
+static int compare_and_swap_segment_impl(const void *origin_addr, const void *compare_addr,
+                                         void *result_addr, MPI_Datatype datatype,
+                                         int target_rank, MPI_Aint target_disp, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0;
@@ -73,9 +72,9 @@ static int CSP_compare_and_swap_segment_impl(const void *origin_addr, const void
 }
 
 
-static int CSP_compare_and_swap_impl(const void *origin_addr, const void *compare_addr,
-                                     void *result_addr, MPI_Datatype datatype, int target_rank,
-                                     MPI_Aint target_disp, CSP_win_t * ug_win)
+static int compare_and_swap_impl(const void *origin_addr, const void *compare_addr,
+                                 void *result_addr, MPI_Datatype datatype, int target_rank,
+                                 MPI_Aint target_disp, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
@@ -104,8 +103,8 @@ static int CSP_compare_and_swap_impl(const void *origin_addr, const void *compar
     if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
         target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
                                  target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
-        mpi_errno = CSP_compare_and_swap_segment_impl(origin_addr, compare_addr, result_addr,
-                                                      datatype, target_rank, target_disp, ug_win);
+        mpi_errno = compare_and_swap_segment_impl(origin_addr, compare_addr, result_addr,
+                                                  datatype, target_rank, target_disp, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -162,8 +161,8 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
 
     if (ug_win) {
         /* casper window */
-        mpi_errno = CSP_compare_and_swap_impl(origin_addr, compare_addr, result_addr,
-                                              datatype, target_rank, target_disp, ug_win);
+        mpi_errno = compare_and_swap_impl(origin_addr, compare_addr, result_addr,
+                                          datatype, target_rank, target_disp, ug_win);
     }
     else {
         /* normal window */

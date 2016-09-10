@@ -8,11 +8,11 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int CSP_raccumulate_segment_impl(const void *origin_addr, int origin_count,
-                                        MPI_Datatype origin_datatype, int target_rank,
-                                        MPI_Aint target_disp,
-                                        int target_count, MPI_Datatype target_datatype,
-                                        MPI_Op op, CSP_win_t * ug_win, MPI_Request * request)
+static int raccumulate_segment_impl(const void *origin_addr, int origin_count,
+                                    MPI_Datatype origin_datatype, int target_rank,
+                                    MPI_Aint target_disp,
+                                    int target_count, MPI_Datatype target_datatype,
+                                    MPI_Op op, CSP_win_t * ug_win, MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
     int num_segs = 0, i;
@@ -76,12 +76,11 @@ static int CSP_raccumulate_segment_impl(const void *origin_addr, int origin_coun
     goto fn_exit;
 }
 
-static inline int CSP_proc_null_raccumualte_impl(const void *origin_addr, int origin_count,
-                                                 MPI_Datatype origin_datatype,
-                                                 int target_rank, MPI_Aint target_disp,
-                                                 int target_count, MPI_Datatype target_datatype,
-                                                 MPI_Op op, CSP_win_t * ug_win,
-                                                 MPI_Request * request)
+static inline int raccumualte_proc_null_impl(const void *origin_addr, int origin_count,
+                                             MPI_Datatype origin_datatype,
+                                             int target_rank, MPI_Aint target_disp,
+                                             int target_count, MPI_Datatype target_datatype,
+                                             MPI_Op op, CSP_win_t * ug_win, MPI_Request * request)
 {
     MPI_Win *win_ptr = NULL;
     CSP_win_target_t *target = NULL;
@@ -97,11 +96,11 @@ static inline int CSP_proc_null_raccumualte_impl(const void *origin_addr, int or
                             target_datatype, op, *win_ptr, request);
 }
 
-static int CSP_raccumulate_impl(const void *origin_addr, int origin_count,
-                                MPI_Datatype origin_datatype,
-                                int target_rank, MPI_Aint target_disp, int target_count,
-                                MPI_Datatype target_datatype, MPI_Op op,
-                                CSP_win_t * ug_win, MPI_Request * request)
+static int raccumulate_impl(const void *origin_addr, int origin_count,
+                            MPI_Datatype origin_datatype,
+                            int target_rank, MPI_Aint target_disp, int target_count,
+                            MPI_Datatype target_datatype, MPI_Op op,
+                            CSP_win_t * ug_win, MPI_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
@@ -109,10 +108,9 @@ static int CSP_raccumulate_impl(const void *origin_addr, int origin_count,
     CSP_win_target_t *target = NULL;
 
     if (target_rank == MPI_PROC_NULL) {
-        mpi_errno = CSP_proc_null_raccumualte_impl(origin_addr, origin_count,
-                                                   origin_datatype, target_rank, target_disp,
-                                                   target_count, target_datatype, op,
-                                                   ug_win, request);
+        mpi_errno = raccumualte_proc_null_impl(origin_addr, origin_count,
+                                               origin_datatype, target_rank, target_disp,
+                                               target_count, target_datatype, op, ug_win, request);
         goto fn_exit;
     }
 
@@ -131,10 +129,9 @@ static int CSP_raccumulate_impl(const void *origin_addr, int origin_count,
     if (CSP_ENV.lock_binding == CSP_LOCK_BINDING_SEGMENT &&
         target->num_segs > 1 && (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL ||
                                  target->epoch_stat == CSP_TARGET_EPOCH_LOCK)) {
-        mpi_errno = CSP_raccumulate_segment_impl(origin_addr, origin_count,
-                                                 origin_datatype, target_rank, target_disp,
-                                                 target_count, target_datatype, op,
-                                                 ug_win, request);
+        mpi_errno = raccumulate_segment_impl(origin_addr, origin_count,
+                                             origin_datatype, target_rank, target_disp,
+                                             target_count, target_datatype, op, ug_win, request);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
@@ -195,9 +192,9 @@ int MPI_Raccumulate(const void *origin_addr, int origin_count,
 
     if (ug_win) {
         /* casper window */
-        mpi_errno = CSP_raccumulate_impl(origin_addr, origin_count,
-                                         origin_datatype, target_rank, target_disp, target_count,
-                                         target_datatype, op, ug_win, request);
+        mpi_errno = raccumulate_impl(origin_addr, origin_count,
+                                     origin_datatype, target_rank, target_disp, target_count,
+                                     target_datatype, op, ug_win, request);
     }
     else {
         /* normal window */
