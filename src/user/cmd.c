@@ -15,7 +15,7 @@
     fflush(stdout); \
     } while (0)
 
-static const char *csp_cmd_lock_stat_name[CSP_CMD_LOCK_STAT_MAX] = {
+static const char *csp_cmd_lock_status_name[CSP_CMD_LOCK_STATUS_MAX] = {
     "unset",
     "suspended_l",
     "suspended_h",
@@ -29,11 +29,11 @@ static const char *csp_cmd_lock_stat_name[CSP_CMD_LOCK_STAT_MAX] = {
  * Internal lock related functions.
  * ====================================================================== */
 
-static inline int sync_lock_stat(CSP_cmd_lock_stat * lock_stat)
+static inline int sync_lock_status(CSP_cmd_lock_status_t * lock_status)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_lock_stat_sync_pkt_t *locksync_pkt = &pkt.u.lock_stat_sync;
+    CSP_cmd_lock_status_sync_pkt_t *locksync_pkt = &pkt.u.lock_status_sync;
 
     mpi_errno = PMPI_Recv((char *) &pkt, sizeof(CSP_cmd_pkt_t),
                           MPI_CHAR, CSP_PROC.user.g_lranks[0], CSP_CMD_TAG, CSP_PROC.local_comm,
@@ -41,10 +41,10 @@ static inline int sync_lock_stat(CSP_cmd_lock_stat * lock_stat)
     if (mpi_errno != MPI_SUCCESS)
         return mpi_errno;
 
-    CSP_CMD_DBG_PRINT(" \t sync LOCK STAT (%d -> %d[%s])\n", (*lock_stat),
-                      locksync_pkt->stat, csp_cmd_lock_stat_name[locksync_pkt->stat]);
+    CSP_CMD_DBG_PRINT(" \t sync LOCK STAT (%d -> %d[%s])\n", (*lock_status),
+                      locksync_pkt->status, csp_cmd_lock_status_name[locksync_pkt->status]);
 
-    (*lock_stat) = locksync_pkt->stat;
+    (*lock_status) = locksync_pkt->status;
     return mpi_errno;
 }
 
@@ -116,7 +116,7 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
     int all_lock_acquired = 0;
     int user_root_rank = -1;
 
-    CSP_cmd_lock_stat lock_stat = CSP_CMD_LOCK_STAT_UNSET;
+    CSP_cmd_lock_status_t lock_status = CSP_CMD_LOCK_STATUS_UNSET;
     PMPI_Comm_rank(user_root_comm, &user_root_rank);
 
     /* Get group id (the first root's world rank). */
@@ -129,51 +129,51 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
         int min_lock_stats[2];
         int my_lock_stats[2];
 
-        if (lock_stat == CSP_CMD_LOCK_STAT_UNSET) {
+        if (lock_status == CSP_CMD_LOCK_STATUS_UNSET) {
             /* only initial, discarded, released locks need issue lock request. */
             mpi_errno = issue_lock_acquire_req(group_id);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        if (lock_stat != CSP_CMD_LOCK_STAT_ACQUIRED) {
+        if (lock_status != CSP_CMD_LOCK_STATUS_ACQUIRED) {
             /* new state can be acquired, suspended_l, suspended_h. */
-            mpi_errno = sync_lock_stat(&lock_stat);
+            mpi_errno = sync_lock_status(&lock_status);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
 
-        my_lock_stats[0] = lock_stat;   /* suspended_l < suspended_h < acquired */
+        my_lock_stats[0] = lock_status; /* suspended_l < suspended_h < acquired */
         my_lock_stats[1] = user_root_rank;
         mpi_errno = PMPI_Allreduce(my_lock_stats, min_lock_stats, 1, MPI_2INT, MPI_MINLOC,
                                    user_root_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
         CSP_CMD_DBG_PRINT(" \t all-reduced LOCK status min(stat %d [%s], root %d)\n",
-                          min_lock_stats[0], csp_cmd_lock_stat_name[min_lock_stats[0]],
+                          min_lock_stats[0], csp_cmd_lock_status_name[min_lock_stats[0]],
                           min_lock_stats[1]);
 
         /* when the smallest group_id is equal to group_id + np, all other roots got its lock. */
-        all_lock_acquired = (min_lock_stats[0] == CSP_CMD_LOCK_STAT_ACQUIRED) ? 1 : 0;
+        all_lock_acquired = (min_lock_stats[0] == CSP_CMD_LOCK_STATUS_ACQUIRED) ? 1 : 0;
         if (!all_lock_acquired) {
             char bc_byte;
             int lowest_priority = min_lock_stats[0];
             int lowest_p_root = min_lock_stats[1];
 
-            if (lowest_priority == CSP_CMD_LOCK_STAT_SUSPENDED_L) {
+            if (lowest_priority == CSP_CMD_LOCK_STATUS_SUSPENDED_L) {
                 /* only one of the lowest priority root wait for a lock */
                 if (user_root_rank == lowest_p_root) {
                     /* my lock is suspended with low priority now,
                      * wait till all higher priority groups finished work. */
                     do {
-                        mpi_errno = sync_lock_stat(&lock_stat);
+                        mpi_errno = sync_lock_status(&lock_status);
                         if (mpi_errno != MPI_SUCCESS)
                             goto fn_fail;
-                    } while (lock_stat != CSP_CMD_LOCK_STAT_ACQUIRED);
+                    } while (lock_status != CSP_CMD_LOCK_STATUS_ACQUIRED);
                 }
                 /* all other roots give up its lock and wait for the first root */
                 else {
-                    if (lock_stat == CSP_CMD_LOCK_STAT_ACQUIRED) {
+                    if (lock_status == CSP_CMD_LOCK_STATUS_ACQUIRED) {
                         mpi_errno = issue_lock_release_req(group_id);
                     }
                     else {
@@ -184,10 +184,10 @@ int CSP_cmd_acquire_lock(MPI_Comm user_root_comm)
 
                     /* drop any SYNC received before the discarded ACK (none). */
                     do {
-                        mpi_errno = sync_lock_stat(&lock_stat);
+                        mpi_errno = sync_lock_status(&lock_status);
                         if (mpi_errno != MPI_SUCCESS)
                             goto fn_fail;
-                    } while (lock_stat != CSP_CMD_LOCK_STAT_UNSET);
+                    } while (lock_status != CSP_CMD_LOCK_STATUS_UNSET);
                 }
 
                 /* wait till the first root got lock */

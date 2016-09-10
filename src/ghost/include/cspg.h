@@ -84,7 +84,7 @@ typedef struct CSPG_win {
 typedef struct CSPG_acquire_lock_req {
     int group_id;
     int user_local_rank;
-    CSP_cmd_lock_stat stat;
+    CSP_cmd_lock_status_t status;
 } CSPG_cmd_lock_req_t;
 
 typedef int (*CSPG_cmd_root_handler_t) (CSP_cmd_pkt_t * pkt, int user_local_rank);

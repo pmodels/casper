@@ -16,7 +16,7 @@
     fflush(stdout); \
     } while (0)
 
-static const char *csp_cmd_lock_stat_name[CSP_CMD_LOCK_STAT_MAX] =
+static const char *csp_cmd_lock_status_name[CSP_CMD_LOCK_STATUS_MAX] =
     { "none", "suspended_l", "suspended_h", "acquired" };
 static const char *csp_cmd_name[CSP_CMD_MAX] = {
     "unset",
@@ -26,7 +26,7 @@ static const char *csp_cmd_name[CSP_CMD_MAX] = {
     "lock_acquire",
     "lock_discard",
     "lock_release",
-    "lock_stat_sync"
+    "lock_status_sync"
 };
 #else
 #define CSPG_CMD_DBG_PRINT(str,...)
@@ -52,14 +52,14 @@ static int lock_req_compare_fnc(void *ubuf1, void *ubuf2)
     return req1->group_id - req2->group_id;
 }
 
-static inline int sync_lock_stat(CSPG_cmd_lock_req_t * req)
+static inline int sync_lock_status(CSPG_cmd_lock_req_t * req)
 {
     CSP_cmd_pkt_t pkt;
-    CSP_cmd_lock_stat_sync_pkt_t *locksync_pkt = &pkt.u.lock_stat_sync;
+    CSP_cmd_lock_status_sync_pkt_t *locksync_pkt = &pkt.u.lock_status_sync;
 
-    locksync_pkt->stat = req->stat;
+    locksync_pkt->status = req->status;
     CSPG_CMD_DBG_PRINT(" \t sync CMD ACK %d [%s] to local user %d\n",
-                       locksync_pkt->stat, csp_cmd_lock_stat_name[locksync_pkt->stat],
+                       locksync_pkt->status, csp_cmd_lock_status_name[locksync_pkt->status],
                        req->user_local_rank);
 
     return PMPI_Send((char *) &pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR,
@@ -70,31 +70,31 @@ static inline int suspend_lock_req(CSPG_cmd_lock_req_t * req)
 {
     CSPG_assert(granted_lock_req != NULL);
     if (req->group_id < granted_lock_req->group_id) {
-        req->stat = CSP_CMD_LOCK_STAT_SUSPENDED_H;
+        req->status = CSP_CMD_LOCK_STATUS_SUSPENDED_H;
     }
     else {
-        req->stat = CSP_CMD_LOCK_STAT_SUSPENDED_L;
+        req->status = CSP_CMD_LOCK_STATUS_SUSPENDED_L;
     }
 
     CSPG_CMD_DBG_PRINT(" \t suspend lock req %p (%d, %d, %s)\n", req,
                        req->group_id, req->user_local_rank,
-                       (req->stat == CSP_CMD_LOCK_STAT_SUSPENDED_H) ? "H" : "L");
+                       (req->status == CSP_CMD_LOCK_STATUS_SUSPENDED_H) ? "H" : "L");
 
     /* Insert the new one in suspended list */
     if ((CSP_slist_insert(req, &susped_lock_reqs_list)) != 0)
         return MPI_ERR_OTHER;
 
-    return sync_lock_stat(req);
+    return sync_lock_status(req);
 }
 
 static inline int grant_lock_req(CSPG_cmd_lock_req_t * req)
 {
-    req->stat = CSP_CMD_LOCK_STAT_ACQUIRED;
+    req->status = CSP_CMD_LOCK_STATUS_ACQUIRED;
     granted_lock_req = req;
 
     CSPG_CMD_DBG_PRINT(" \t grant lock req %p (%d, %d)\n", req, req->group_id,
                        req->user_local_rank);
-    return sync_lock_stat(req);
+    return sync_lock_status(req);
 }
 
 static int grant_next_lock_req(void)
@@ -114,15 +114,15 @@ static int grant_next_lock_req(void)
         e = susped_lock_reqs_list.head;
         while (e) {
             CSPG_cmd_lock_req_t *req = (CSPG_cmd_lock_req_t *) e->ubuf;
-            CSP_cmd_lock_stat old_stat = req->stat;
+            CSP_cmd_lock_status_t old_status = req->status;
 
             /* all high priority requests must be in front of any low priority
              * requests in sorted list. */
-            if (old_stat == CSP_CMD_LOCK_STAT_SUSPENDED_L)
+            if (old_status == CSP_CMD_LOCK_STATUS_SUSPENDED_L)
                 break;
 
-            req->stat = CSP_CMD_LOCK_STAT_SUSPENDED_L;
-            mpi_errno = sync_lock_stat(req);
+            req->status = CSP_CMD_LOCK_STATUS_SUSPENDED_L;
+            mpi_errno = sync_lock_status(req);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
 
@@ -189,8 +189,8 @@ static int CSPG_cmd_release_lock_handler(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unus
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    rels_req->stat = CSP_CMD_LOCK_STAT_UNSET;
-    mpi_errno = sync_lock_stat(rels_req);
+    rels_req->status = CSP_CMD_LOCK_STATUS_UNSET;
+    mpi_errno = sync_lock_status(rels_req);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -220,8 +220,8 @@ static int CSPG_cmd_discard_lock_handler(CSP_cmd_pkt_t * pkt, int user_local_ran
     disc_req = CSP_slist_remove(&search_req, &susped_lock_reqs_list);
     CSPG_assert(disc_req != NULL);
 
-    disc_req->stat = CSP_CMD_LOCK_STAT_UNSET;
-    mpi_errno = sync_lock_stat(disc_req);
+    disc_req->status = CSP_CMD_LOCK_STATUS_UNSET;
+    mpi_errno = sync_lock_status(disc_req);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

@@ -203,17 +203,17 @@ typedef enum {
     CSP_CMD_LOCK_ACQUIRE,
     CSP_CMD_LOCK_DISCARD,
     CSP_CMD_LOCK_RELEASE,
-    CSP_CMD_LOCK_STAT_SYNC,
+    CSP_CMD_LOCK_STATUS_SYNC,
     CSP_CMD_MAX
 } CSP_cmd_t;
 
 typedef enum {
-    CSP_CMD_LOCK_STAT_UNSET = 0,
-    CSP_CMD_LOCK_STAT_SUSPENDED_L,
-    CSP_CMD_LOCK_STAT_SUSPENDED_H,
-    CSP_CMD_LOCK_STAT_ACQUIRED,
-    CSP_CMD_LOCK_STAT_MAX
-} CSP_cmd_lock_stat;
+    CSP_CMD_LOCK_STATUS_UNSET = 0,
+    CSP_CMD_LOCK_STATUS_SUSPENDED_L,
+    CSP_CMD_LOCK_STATUS_SUSPENDED_H,
+    CSP_CMD_LOCK_STATUS_ACQUIRED,
+    CSP_CMD_LOCK_STATUS_MAX
+} CSP_cmd_lock_status_t;
 
 typedef struct CSP_cmd_winalloc_pkt {
     int user_local_root;
@@ -238,9 +238,9 @@ typedef struct CSP_cmd_lock_acquire_pkt {
 typedef CSP_cmd_lock_acquire_pkt_t CSP_cmd_lock_discard_pkt_t;
 typedef CSP_cmd_lock_acquire_pkt_t CSP_cmd_lock_release_pkt_t;
 
-typedef struct CSP_cmd_lock_stat_sync_pkt {
-    CSP_cmd_lock_stat stat;
-} CSP_cmd_lock_stat_sync_pkt_t;
+typedef struct CSP_cmd_lock_status_sync_pkt {
+    CSP_cmd_lock_status_t status;
+} CSP_cmd_lock_status_sync_pkt_t;
 
 typedef struct CSP_cmd_pkt {
     CSP_cmd_t cmd_type;
@@ -250,7 +250,7 @@ typedef struct CSP_cmd_pkt {
         CSP_cmd_lock_acquire_pkt_t lock_acquire;
         CSP_cmd_lock_discard_pkt_t lock_discard;
         CSP_cmd_lock_release_pkt_t lock_release;
-        CSP_cmd_lock_stat_sync_pkt_t lock_stat_sync;
+        CSP_cmd_lock_status_sync_pkt_t lock_status_sync;
     } u;
 } CSP_cmd_pkt_t;
 
