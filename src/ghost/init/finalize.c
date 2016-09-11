@@ -37,20 +37,20 @@ int CSPG_destroy_proc(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    /* common objects */
-    if (CSP_PROC.local_comm != MPI_COMM_NULL) {
+    /* common objects. */
+    if (CSP_PROC.local_comm && CSP_PROC.local_comm != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_PROC.local_comm\n");
         PMPI_Comm_free(&CSP_PROC.local_comm);
     }
 
-    if (CSP_PROC.wgroup != MPI_GROUP_NULL)
+    if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL)
         PMPI_Group_free(&CSP_PROC.wgroup);
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
 
     /* ghost-specific objects */
-    if (CSP_PROC.ghost.g_local_comm != MPI_COMM_NULL) {
+    if (CSP_PROC.ghost.g_local_comm && CSP_PROC.ghost.g_local_comm != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_PROC.ghost.g_local_comm\n");
         PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm);
     }

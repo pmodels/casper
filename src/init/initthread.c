@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "csp.h"
 
 /* Global environment setting */
@@ -230,14 +231,14 @@ static int initialize_proc(void)
 
     PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank);
 
+    /* Statically set the lowest ranks on every node as ghosts */
+    CSP_PROC.proc_type = (local_rank < CSP_ENV.num_g) ? CSP_PROC_GHOST : CSP_PROC_USER;
+
     /* Check if user specifies valid number of ghosts */
     if (check_valid_ghosts()) {
         mpi_errno = MPI_ERR_OTHER;
         goto fn_fail;
     }
-
-    /* Statically set the lowest ranks on every node as ghosts */
-    CSP_PROC.proc_type = (local_rank < CSP_ENV.num_g) ? CSP_PROC_GHOST : CSP_PROC_USER;
 
     /* Reset user/ghost global object */
     CSP_reset_typed_proc();
@@ -335,6 +336,9 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
+
+    /* Initialize global variables */
+    memset(&CSP_PROC, 0, sizeof(CSP_proc_t));
 
     PMPI_Comm_rank(MPI_COMM_WORLD, &CSP_PROC.wrank);
 
