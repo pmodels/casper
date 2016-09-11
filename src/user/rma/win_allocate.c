@@ -656,7 +656,7 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
 static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int i, j;
+    int i;
     int user_rank, user_nprocs;
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
@@ -679,13 +679,6 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSP_
         win_off = ug_win->targets[i].local_user_rank % ug_win->num_ug_wins;
         ug_win->targets[i].ug_win = ug_win->ug_wins[win_off];
         CSP_DBG_PRINT("\t\t .ug_win=0x%x (win_off %d)\n", ug_win->targets[i].ug_win, win_off);
-
-        /* windows of each segment, used in OPs */
-        for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            ug_win->targets[i].segs[j].ug_win = ug_win->targets[i].ug_win;
-            CSP_DBG_PRINT("\t\t .seg[%d].ug_win=0x%x (win_off %d)\n",
-                          j, ug_win->targets[i].segs[j].ug_win, win_off);
-        }
     }
 
   fn_exit:

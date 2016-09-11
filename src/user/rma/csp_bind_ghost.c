@@ -34,11 +34,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_win_t * ug_win)
         CSP_assert(g_off <= CSP_ENV.num_g);
 
         t_rank = local_targets[i];
-        ug_win->targets[t_rank].num_segs = 1;
-        ug_win->targets[t_rank].segs = CSP_calloc(1, sizeof(CSP_win_target_seg_t));
-        ug_win->targets[t_rank].segs[0].base_offset = 0;
-        ug_win->targets[t_rank].segs[0].size = ug_win->targets[i].size;
-        ug_win->targets[t_rank].segs[0].main_g_off = g_off;
+        ug_win->targets[t_rank].main_g_off = g_off;
 
         /* next target */
         i++;
@@ -80,16 +76,11 @@ int CSP_win_bind_ghosts(CSP_win_t * ug_win)
 #ifdef CSP_DEBUG
     int j;
     for (i = 0; i < user_nprocs; i++) {
-        CSP_DBG_PRINT("\t target[%d] .num_segs %d\n", i, ug_win->targets[i].num_segs);
+        CSP_DBG_PRINT("\t target[%d]\n", i);
         for (j = 0; j < CSP_ENV.num_g; j++) {
-            CSP_DBG_PRINT("\t\t .g_rank[%d] %d, offset[%d] 0x%lx \n",
+            CSP_DBG_PRINT("\t\t .g_rank[%d] %d, offset[%d] 0x%lx, .main_g_off=%d \n",
                           j, ug_win->targets[i].g_ranks_in_ug[j],
-                          j, ug_win->targets[i].base_g_offsets[j]);
-        }
-        for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            CSP_DBG_PRINT("\t\t .seg[%d].main_g_off=%d, base_offset=0x%lx, size=0x%x\n",
-                          j, ug_win->targets[i].segs[j].main_g_off,
-                          ug_win->targets[i].segs[j].base_offset, ug_win->targets[i].segs[j].size);
+                          j, ug_win->targets[i].base_g_offsets[j], ug_win->targets[i].main_g_off);
         }
     }
 #endif

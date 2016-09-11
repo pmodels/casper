@@ -16,14 +16,14 @@ int CSP_win_target_lock(int lock_type, int assert, int target_rank, CSP_win_t * 
     int mpi_errno = MPI_SUCCESS;
     CSP_win_target_t *target = NULL;
     int user_rank;
-    int k, j;
+    int k;
 
     target = &(ug_win->targets[target_rank]);
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     /* Lock every ghost on every window for each target.
      * Because a ghost may be used on any window of this process for runtime
-     * load balancing whether it is bound to that segment or not. */
+     * load balancing. */
     for (k = 0; k < CSP_ENV.num_g; k++) {
         int target_g_rank_in_ug = 0;
         int g_lock_type = MPI_LOCK_SHARED;
@@ -33,12 +33,9 @@ int CSP_win_target_lock(int lock_type, int assert, int target_rank, CSP_win_t * 
          * shared & nocheck lock. Otherwise deadlock may happen in binding-free stage,
          * if MPI implementation always acquires remote lock in lock call even if no
          * operation issued on that target. */
-        for (j = 0; j < target->num_segs; j++) {
-            if (target->segs[j].main_g_off == k) {
-                g_lock_type = lock_type;
-                g_assert = assert;
-                break;
-            }
+        if (target->main_g_off == k) {
+            g_lock_type = lock_type;
+            g_assert = assert;
         }
 
         target_g_rank_in_ug = target->g_ranks_in_ug[k];
@@ -158,11 +155,8 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 #endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    int j;
-    for (j = 0; j < target->num_segs; j++) {
-        target->segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
-        CSP_reset_target_opload(target_rank, ug_win);
-    }
+    target->main_lock_stat = CSP_MAIN_LOCK_RESET;
+    CSP_reset_target_opload(target_rank, ug_win);
 #endif
 
 

@@ -107,18 +107,15 @@ int MPI_Win_flush_all(MPI_Win win)
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    int j;
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            /* Lock of main ghost is granted, we can start load balancing from the next flush/unlock.
-             * Note that only target which was issued operations to is guaranteed to be granted. */
-            if (ug_win->targets[i].segs[j].main_lock_stat == CSP_MAIN_LOCK_OP_ISSUED) {
-                ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-                CSP_DBG_PRINT(" main lock (rank %d, seg %d) granted\n", i, j);
-            }
-
-            CSP_reset_target_opload(i, ug_win);
+        /* Lock of main ghost is granted, we can start load balancing from the next flush/unlock.
+         * Note that only target which was issued operations to is guaranteed to be granted. */
+        if (ug_win->targets[i].main_lock_stat == CSP_MAIN_LOCK_OP_ISSUED) {
+            ug_win->targets[i].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
+            CSP_DBG_PRINT(" main lock (rank %d) granted\n", i);
         }
+
+        CSP_reset_target_opload(i, ug_win);
     }
 #endif
 

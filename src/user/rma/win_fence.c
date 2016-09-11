@@ -13,6 +13,7 @@ static int fence_flush_all(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank, user_nprocs;
+    int i CSP_ATTRIBUTE((unused));
 
     CSP_DBG_PRINT_FCNAME();
 
@@ -25,15 +26,12 @@ static int fence_flush_all(CSP_win_t * ug_win)
         goto fn_fail;
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    int i, j;
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            /* Runtime load balancing is allowed in fence epoch because
-             * 1. fence is a global collective call, all targets already "exposed" their epoch.
-             * 2. no conflicting lock/lockall on fence window. */
-            ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
-            CSP_reset_target_opload(i, ug_win);
-        }
+        /* Runtime load balancing is allowed in fence epoch because
+         * 1. fence is a global collective call, all targets already "exposed" their epoch.
+         * 2. no conflicting lock/lockall on fence window. */
+        ug_win->targets[i].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
+        CSP_reset_target_opload(i, ug_win);
     }
 #endif
 

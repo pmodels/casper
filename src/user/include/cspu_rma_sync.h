@@ -38,39 +38,38 @@ extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int
 static inline int CSP_win_grant_local_lock(int target_rank, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int user_rank, j;
+    int user_rank;
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
-    /* force lock all the main ghosts for each segment */
-    for (j = 0; j < ug_win->targets[target_rank].num_segs; j++) {
-        int main_g_off = ug_win->targets[target_rank].segs[j].main_g_off;
+    /* force lock the main ghost */
+    {
+        int main_g_off = ug_win->targets[target_rank].main_g_off;
         int target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[main_g_off];
 
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
         CSP_GRANT_LOCK_DATATYPE buf[1];
         mpi_errno = PMPI_Get(buf, 1, CSP_GRANT_LOCK_MPI_DATATYPE, target_g_rank_in_ug,
                              ug_win->grant_lock_g_offset, 1, CSP_GRANT_LOCK_MPI_DATATYPE,
-                             ug_win->targets[target_rank].segs[j].ug_win);
+                             ug_win->targets[target_rank].ug_win);
 #else
         /* Simply get 1 byte from start, it does not affect the result of other updates */
         char buf[1];
         mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_g_rank_in_ug, 0,
-                             1, MPI_CHAR, ug_win->targets[user_rank].segs[j].ug_win);
+                             1, MPI_CHAR, ug_win->targets[user_rank].ug_win);
 #endif
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        mpi_errno = PMPI_Win_flush(target_g_rank_in_ug,
-                                   ug_win->targets[target_rank].segs[j].ug_win);
+        mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[target_rank].ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        ug_win->targets[target_rank].segs[j].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
+        ug_win->targets[target_rank].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
 #endif
-        CSP_DBG_PRINT(" grant local lock(ghost(%d), ug_wins 0x%x) seg %d\n",
-                      target_g_rank_in_ug, ug_win->targets[target_rank].segs[j].ug_win, j);
+        CSP_DBG_PRINT(" grant local lock(ghost(%d), ug_wins 0x%x)\n",
+                      target_g_rank_in_ug, ug_win->targets[target_rank].ug_win);
     }
 
   fn_exit:

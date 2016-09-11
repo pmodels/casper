@@ -55,8 +55,6 @@
 #define CSP_GRANT_LOCK_MPI_DATATYPE MPI_CHAR
 #endif
 
-#define CSP_SEGMENT_UNIT 16
-
 #define CSP_PSCW_CW_TAG 900
 #define CSP_PSCW_PS_TAG 901
 

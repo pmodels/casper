@@ -37,14 +37,14 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
     MPI_Aint target_g_offset = 0;
     MPI_Win *win_ptr = NULL;
 
-    CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
+    CSP_target_get_epoch_win(target, ug_win, win_ptr);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
         PMPI_Type_size(datatype, &data_size);
     }
 #endif
-    mpi_errno = CSP_target_get_ghost(target_rank, 0, 1, data_size, ug_win,
+    mpi_errno = CSP_target_get_ghost(target_rank, 1, data_size, ug_win,
                                      &target_g_rank_in_ug, &target_g_offset);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;

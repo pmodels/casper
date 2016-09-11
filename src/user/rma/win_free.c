@@ -130,8 +130,6 @@ int CSP_win_release(CSP_win_t * ug_win)
                 free(ug_win->targets[i].base_g_offsets);
             if (ug_win->targets[i].g_ranks_in_ug)
                 free(ug_win->targets[i].g_ranks_in_ug);
-            if (ug_win->targets[i].segs)
-                free(ug_win->targets[i].segs);
         }
         free(ug_win->targets);
     }

@@ -19,7 +19,7 @@ static int put_shared_impl(const void *origin_addr, int origin_count,
     CSP_win_target_t *target = NULL;
 
     target = &(ug_win->targets[target_rank]);
-    CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
+    CSP_target_get_epoch_win(target, ug_win, win_ptr);
 
     /* Issue operation to the target through local shared window, because shared
      * communication is fully handled by local process.
@@ -73,7 +73,7 @@ static int put_impl(const void *origin_addr, int origin_count,
         MPI_Aint target_g_offset = 0;
         MPI_Win *win_ptr = NULL;
 
-        CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
+        CSP_target_get_epoch_win(target, ug_win, win_ptr);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
@@ -81,7 +81,7 @@ static int put_impl(const void *origin_addr, int origin_count,
             data_size *= origin_count;
         }
 #endif
-        mpi_errno = CSP_target_get_ghost(target_rank, 0, 0, data_size, ug_win,
+        mpi_errno = CSP_target_get_ghost(target_rank, 0, data_size, ug_win,
                                          &target_g_rank_in_ug, &target_g_offset);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

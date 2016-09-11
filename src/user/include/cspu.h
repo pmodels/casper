@@ -48,32 +48,6 @@ typedef struct CSP_win_info_args {
     char win_name[MPI_MAX_OBJECT_NAME + 1];
 } CSP_win_info_args_t;
 
-typedef struct CSP_op_segment {
-    void *origin_addr;
-    int origin_count;
-    MPI_Datatype origin_datatype;
-
-    int target_rank;
-    int target_seg_off;
-    MPI_Aint target_disp;
-    int target_count;
-    int target_dtsize;
-    MPI_Datatype target_datatype;
-
-} CSP_op_segment_t;
-
-typedef struct CSP_win_target_seg {
-    MPI_Aint base_offset;
-    int size;
-
-    int main_g_off;
-    MPI_Win ug_win;
-
-#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    CSP_main_lock_stat_t main_lock_stat;
-#endif
-} CSP_win_target_seg_t;
-
 typedef struct CSP_win_target {
     MPI_Win ug_win;             /* Do not free the window, it is freed in ug_wins */
     int disp_unit;
@@ -92,10 +66,10 @@ typedef struct CSP_win_target {
     MPI_Aint wait_counter_offset;       /* counter for complete-wait synchronization. allocated in main ghost. */
     MPI_Aint post_flg_offset;   /* flag for post-start synchronization. allocated in main ghost. */
 
-    /* Only contain 1 segment in rank binding */
-    CSP_win_target_seg_t *segs;
-    int num_segs;
-
+    int main_g_off;
+#if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
+    CSP_main_lock_stat_t main_lock_stat;
+#endif
     CSP_target_epoch_stat_t epoch_stat; /* indicate which access epoch is opened for the target. */
 
 } CSP_win_target_t;
@@ -223,14 +197,14 @@ extern const char *CSP_win_epoch_stat_name[4];
 
 /* Get appropriate window for the target on the current epoch.
  * The epoch status can be per-target (pscw, lock), or global (fence, lockall). */
-#define CSP_target_get_epoch_win(seg, target, ug_win, win_ptr) { \
+#define CSP_target_get_epoch_win(target, ug_win, win_ptr) { \
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {    \
         switch (target->epoch_stat) {   \
             case CSP_TARGET_EPOCH_PSCW:    \
                 win_ptr = &ug_win->global_win;   \
                 break;  \
             case CSP_TARGET_EPOCH_LOCK:    \
-                win_ptr = &target->segs[seg].ug_win;   \
+                win_ptr = &target->ug_win;   \
                 break;  \
             case CSP_TARGET_NO_EPOCH:   \
                 win_ptr = NULL; \
@@ -243,7 +217,7 @@ extern const char *CSP_win_epoch_stat_name[4];
                 break;  \
             case CSP_WIN_EPOCH_LOCK_ALL:    \
                 if (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) {  \
-                    win_ptr = &target->segs[seg].ug_win;   \
+                    win_ptr = &target->ug_win;   \
                 } else {    \
                     win_ptr = &ug_win->global_win;   \
                 }   \
@@ -321,20 +295,19 @@ static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target_t * targ
         CSP_DBG_PRINT("[load_opt_byte] increment ghost %d\n", g_rank_in_ug); \
     }
 
-static inline int CSP_win_grant_lock(int target_rank, int target_seg_off, CSP_win_t * ug_win)
+static inline int CSP_win_grant_lock(int target_rank, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    int main_g_off = ug_win->targets[target_rank].segs[target_seg_off].main_g_off;
+    int main_g_off = ug_win->targets[target_rank].main_g_off;
 
     mpi_errno = PMPI_Win_flush(ug_win->targets[target_rank].g_ranks_in_ug[main_g_off],
-                               ug_win->targets[target_rank].segs[target_seg_off].ug_win);
+                               ug_win->targets[target_rank].ug_win);
     if (mpi_errno == MPI_SUCCESS) {
-        ug_win->targets[target_rank].segs[target_seg_off].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
+        ug_win->targets[target_rank].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
 
-        CSP_DBG_PRINT("grant lock(Ghost(%d), ug_wins 0x%x) for target %d seg %d\n",
+        CSP_DBG_PRINT("grant lock(Ghost(%d), ug_wins 0x%x) for target %d\n",
                       ug_win->targets[target_rank].g_ranks_in_ug[main_g_off],
-                      ug_win->targets[target_rank].segs[target_seg_off].ug_win,
-                      target_rank, target_seg_off);
+                      ug_win->targets[target_rank].ug_win, target_rank);
     }
 
     return mpi_errno;
@@ -370,45 +343,42 @@ extern void CSP_target_get_ghost_opload_by_byte(int target_rank, int is_order_re
 /**
  * Get ghost with dynamic load balancing.
  */
-static inline int CSP_target_get_ghost(int target_rank, int target_seg_off,
-                                       int is_order_required,
+static inline int CSP_target_get_ghost(int target_rank, int is_order_required,
                                        int size, CSP_win_t * ug_win,
                                        int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;
-    int main_g_off = ug_win->targets[target_rank].segs[target_seg_off].main_g_off;
+    int main_g_off = ug_win->targets[target_rank].main_g_off;
     int g_idx = 0;
 
     /* Force lock when the first operation is issued. Note that nocheck epoch
      * does not need it because no conflicting lock.*/
     if (CSP_ENV.load_lock == CSP_LOAD_LOCK_FORCE &&
         !(ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
-        ug_win->targets[target_rank].segs[target_seg_off].main_lock_stat ==
-        CSP_MAIN_LOCK_OP_ISSUED) {
-        mpi_errno = CSP_win_grant_lock(target_rank, target_seg_off, ug_win);
+        ug_win->targets[target_rank].main_lock_stat == CSP_MAIN_LOCK_OP_ISSUED) {
+        mpi_errno = CSP_win_grant_lock(target_rank, ug_win);
         if (mpi_errno != MPI_SUCCESS)
             return mpi_errno;
     }
 
     /* Upgrade main lock status of target if it is the first operation of that target. */
-    if (ug_win->targets[target_rank].segs[target_seg_off].main_lock_stat == CSP_MAIN_LOCK_RESET) {
-        ug_win->targets[target_rank].segs[target_seg_off].main_lock_stat = CSP_MAIN_LOCK_OP_ISSUED;
+    if (ug_win->targets[target_rank].main_lock_stat == CSP_MAIN_LOCK_RESET) {
+        ug_win->targets[target_rank].main_lock_stat = CSP_MAIN_LOCK_OP_ISSUED;
     }
 
     /* If lock has not been granted yet, we can only use the main ghost.
      * Accumulate operations have to be always sent to main ghost in order to
      * guarantee atomicity and ordering.*/
     if ((!(ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
-         ug_win->targets[target_rank].segs[target_seg_off].main_lock_stat !=
-         CSP_MAIN_LOCK_GRANTED) || is_order_required) {
+         ug_win->targets[target_rank].main_lock_stat != CSP_MAIN_LOCK_GRANTED) ||
+        is_order_required) {
         /* Both serial async and byte tracking options specify the first ghost as
          * the main ghost of that user process.*/
         *target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[main_g_off];
         *target_g_offset = ug_win->targets[target_rank].base_g_offsets[main_g_off];
         CSP_DBG_PRINT("[load_opt] use main ghost %d, off 0x%lx for target %d "
-                      "seg %d (main h off %d)\n",
-                      *target_g_rank_in_ug, *target_g_offset, target_rank,
-                      target_seg_off, main_g_off);
+                      "(main h off %d)\n",
+                      *target_g_rank_in_ug, *target_g_offset, target_rank, main_g_off);
 
         /* Need increase counters */
         if (CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) {
@@ -441,17 +411,17 @@ static inline int CSP_target_get_ghost(int target_rank, int target_seg_off,
 /**
  * Get ghost that is statically bound with the target.
  */
-static inline int CSP_target_get_ghost(int target_rank, int target_seg_off, int is_order_required CSP_ATTRIBUTE((unused)),      /* arguments used only in dynamic load */
+static inline int CSP_target_get_ghost(int target_rank, int is_order_required CSP_ATTRIBUTE((unused)),  /* arguments used only in dynamic load */
                                        int size CSP_ATTRIBUTE((unused)), CSP_win_t * ug_win,
                                        int *target_g_rank_in_ug, MPI_Aint * target_g_offset)
 {
     int mpi_errno = MPI_SUCCESS;
-    int main_g_off = ug_win->targets[target_rank].segs[target_seg_off].main_g_off;
+    int main_g_off = ug_win->targets[target_rank].main_g_off;
 
     *target_g_rank_in_ug = ug_win->targets[target_rank].g_ranks_in_ug[main_g_off];
     *target_g_offset = ug_win->targets[target_rank].base_g_offsets[main_g_off];
-    CSP_DBG_PRINT("[opt_non] use main ghost %d, off 0x%lx for target %d seg %d\n",
-                  *target_g_rank_in_ug, *target_g_offset, target_rank, target_seg_off);
+    CSP_DBG_PRINT("[opt_non] use main ghost %d, off 0x%lx for target %d\n",
+                  *target_g_rank_in_ug, *target_g_offset, target_rank);
     return mpi_errno;
 }
 #endif
@@ -470,23 +440,7 @@ static inline void CSP_cmd_init_fnc_pkt(CSP_cmd_t cmd_type, CSP_cmd_pkt_t * pkt)
 extern int CSP_cmd_fnc_issue(CSP_cmd_pkt_t * pkt);
 extern int CSP_cmd_acquire_lock(MPI_Comm user_root_comm);
 
-extern int CSP_op_segments_decode(const void *origin_addr, int origin_count,
-                                  MPI_Datatype origin_datatype,
-                                  int target_rank, MPI_Aint target_disp,
-                                  int target_count, MPI_Datatype target_datatype,
-                                  CSP_win_t * ug_win, CSP_op_segment_t ** decoded_ops_ptr,
-                                  int *num_segs);
-extern int CSP_op_segments_decode_basic_datatype(const void *origin_addr, int origin_count,
-                                                 MPI_Datatype origin_datatype,
-                                                 int target_rank, MPI_Aint target_disp,
-                                                 int target_count, MPI_Datatype target_datatype,
-                                                 CSP_win_t * ug_win,
-                                                 CSP_op_segment_t ** decoded_ops_ptr,
-                                                 int *num_segs);
-extern void CSP_op_segments_destroy(CSP_op_segment_t ** decoded_ops_ptr);
-
 extern int CSP_win_bind_ghosts(CSP_win_t * ug_win);
-
 extern int CSP_win_release(CSP_win_t * ug_win);
 
 #endif /* CSPU_H_ */

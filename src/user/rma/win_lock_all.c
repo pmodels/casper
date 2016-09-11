@@ -94,12 +94,9 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    int j;
     for (i = 0; i < user_nprocs; i++) {
-        for (j = 0; j < ug_win->targets[i].num_segs; j++) {
-            ug_win->targets[i].segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
-            CSP_reset_target_opload(i, ug_win);
-        }
+        ug_win->targets[i].main_lock_stat = CSP_MAIN_LOCK_RESET;
+        CSP_reset_target_opload(i, ug_win);
     }
 #endif
 

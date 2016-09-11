@@ -108,10 +108,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-    int j;
-    for (j = 0; j < target->num_segs; j++) {
-        target->segs[j].main_lock_stat = CSP_MAIN_LOCK_RESET;
-    }
+    target->main_lock_stat = CSP_MAIN_LOCK_RESET;
 #endif
 
     if (user_rank == target_rank)

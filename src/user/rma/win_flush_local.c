@@ -17,37 +17,34 @@ int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
     CSP_win_target_t *target = NULL;
     MPI_Win *win_ptr = NULL;
     int user_rank;
-    int j;
+    int main_g_off CSP_ATTRIBUTE((unused)), target_g_rank_in_ug CSP_ATTRIBUTE((unused));
+    int k CSP_ATTRIBUTE((unused));
 
     target = &(ug_win->targets[target_rank]);
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     /* Get global window or a target window for no-lock mode or
      * lock-exist mode respectively. */
-    CSP_target_get_epoch_win(0, target, ug_win, win_ptr);
+    CSP_target_get_epoch_win(target, ug_win, win_ptr);
     CSP_assert(win_ptr != NULL);
 
 #if !defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     /* RMA operations are only issued to the main ghost, so we only flush it. */
     /* TODO: track op issuing, only flush the ghosts which received ops. */
-    for (j = 0; j < target->num_segs; j++) {
-        int main_g_off = target->segs[j].main_g_off;
-        int target_g_rank_in_ug = target->g_ranks_in_ug[main_g_off];
+    main_g_off = target->main_g_off;
+    target_g_rank_in_ug = target->g_ranks_in_ug[main_g_off];
 
-        CSP_DBG_PRINT(" flush_local(ghost(%d), %s 0x%x), instead of target rank %d seg %d\n",
-                      target_g_rank_in_ug, CSP_get_win_type(*win_ptr, ug_win), *win_ptr,
-                      target_rank, j);
+    CSP_DBG_PRINT(" flush_local(ghost(%d), %s 0x%x), instead of target rank %d\n",
+                  target_g_rank_in_ug, CSP_get_win_type(*win_ptr, ug_win), *win_ptr, target_rank);
 
-        mpi_errno = PMPI_Win_flush_local(target_g_rank_in_ug, *win_ptr);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-    }
+    mpi_errno = PMPI_Win_flush_local(target_g_rank_in_ug, *win_ptr);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 #else
     /* RMA operations may be distributed to all ghosts, so we should
      * flush all ghosts on all windows. */
-    int k;
     for (k = 0; k < CSP_ENV.num_g; k++) {
-        int target_g_rank_in_ug = target->g_ranks_in_ug[k];
+        target_g_rank_in_ug = target->g_ranks_in_ug[k];
 
         CSP_DBG_PRINT(" flush(ghost(%d), %s 0x%x), instead of target rank %d\n",
                       target_g_rank_in_ug, CSP_get_win_type(*win_ptr, ug_win), *win_ptr,
