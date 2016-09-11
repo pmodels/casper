@@ -8,8 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cspg.h"
-#include "cwp.h"
-#include "slist.h"
 
 /* Multi-objects lock (MLOCK) component on ghost processes */
 

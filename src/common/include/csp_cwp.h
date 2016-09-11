@@ -7,7 +7,7 @@
 #define CSP_CWP_H_
 
 #include "csp.h"
-#include "mlock.h"
+#include "csp_mlock.h"
 
 /* ======================================================================
  * Command wire protocol (CWP) common definition (packet, tags).

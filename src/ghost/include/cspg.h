@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include "csp.h"
+#include "csp_util.h"
+#include "csp_cwp.h"
+#include "csp_mlock.h"
 
 /* ======================================================================
  * Casper ghost debugging/error/assert MACROs.

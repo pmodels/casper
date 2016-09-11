@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cspg.h"
-#include "info.h"
 
 #undef FUNCNAME
 #define FUNCNAME CSPG_win_allocate

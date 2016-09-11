@@ -14,6 +14,8 @@
 #include <string.h>
 #include <mpi.h>
 #include <casperconf.h>
+#include "info.h"
+#include "slist.h"
 
 /* ======================================================================
  * Generic MACROs and inline functions.

@@ -15,7 +15,7 @@
 #include <string.h>
 #include <mpi.h>
 #include <casperconf.h>
-#include "util.h"
+#include "csp_util.h"
 
 /* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 

@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "util.h"
+#include "csp_util.h"
 #include "info.h"
 
 #ifdef INFO_DEBUG

@@ -10,8 +10,9 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include "csp.h"
-#include "cwp.h"
-#include "mlock.h"
+#include "csp_util.h"
+#include "csp_cwp.h"
+#include "csp_mlock.h"
 
 /* ======================================================================
  * Casper user structures.

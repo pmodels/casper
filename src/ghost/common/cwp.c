@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cspg.h"
-#include "cwp.h"
 
 /* Command wire protocol (CWP) component on ghost processes */
 

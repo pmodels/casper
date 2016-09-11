@@ -9,7 +9,6 @@
 #include <string.h>
 #include <memory.h>
 #include "cspu.h"
-#include "info.h"
 
 #include <ctype.h>
 
