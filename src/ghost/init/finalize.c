@@ -60,7 +60,7 @@ int CSPG_destroy_proc(void)
     return mpi_errno;
 }
 
-int CSPG_finalize_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
+int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
     int local_nprocs, local_user_nprocs;
@@ -78,7 +78,7 @@ int CSPG_finalize_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTR
         goto fn_exit;
 
     /* broadcast to all local ghost */
-    mpi_errno = CSPG_cmd_bcast(pkt);
+    mpi_errno = CSPG_cwp_bcast(pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -95,7 +95,7 @@ int CSPG_finalize_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTR
     goto fn_exit;
 }
 
-int CSPG_finalize_handler(CSP_cmd_pkt_t * pkt CSP_ATTRIBUTE((unused)))
+int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
 

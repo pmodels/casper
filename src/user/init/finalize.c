@@ -10,12 +10,12 @@
 
 static inline int issue_ghost_cmd(void)
 {
-    CSP_cmd_pkt_t pkt;
+    CSP_cwp_pkt_t pkt;
 
-    CSP_cmd_init_fnc_pkt(CSP_CMD_FNC_FINALIZE, &pkt);
+    CSP_cwp_init_pkt(CSP_CWP_FNC_FINALIZE, &pkt);
 
     /* send command to ghosts. */
-    return CSP_cmd_fnc_issue(&pkt);
+    return CSPU_cwp_fnc_issue(&pkt);
 }
 
 /* Destroy global user process object */

@@ -164,7 +164,7 @@ static int gather_ghost_cmd_params(void *params, size_t size)
     for (i = 0; i < CSP_ENV.num_g; i++) {
         offset = i * size;
         mpi_errno = PMPI_Irecv(((char *) params + offset), size, MPI_CHAR, i,
-                               CSP_CMD_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
+                               CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -200,7 +200,7 @@ static int bcast_ghost_cmd_params(void *params, size_t size)
     /* ghosts are always start from rank 0 on local communicator. */
     for (i = 0; i < CSP_ENV.num_g; i++) {
         mpi_errno =
-            PMPI_Isend(params, size, MPI_CHAR, i, CSP_CMD_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
+            PMPI_Isend(params, size, MPI_CHAR, i, CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -223,8 +223,8 @@ static int bcast_ghost_cmd_params(void *params, size_t size)
 static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_cmd_pkt_t pkt;
-    CSP_cmd_fnc_winalloc_pkt_t *winalloc_pkt = &pkt.u.fnc_winalloc;
+    CSP_cwp_pkt_t pkt;
+    CSP_cwp_fnc_winalloc_pkt_t *winalloc_pkt = &pkt.u.fnc_winalloc;
     CSP_info_keyval_t *info_keyvals = NULL;
     int user_local_rank = 0;
     int npairs = 0;
@@ -235,11 +235,11 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win_t * ug_win)
      * barrier(user_root_comm). */
 
     /* Lock ghost processes on all nodes. */
-    mpi_errno = CSP_cmd_acquire_lock(ug_win->user_root_comm);
+    mpi_errno = CSPU_mlock_acquire(ug_win->user_root_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    CSP_cmd_init_fnc_pkt(CSP_CMD_FNC_WIN_ALLOCATE, &pkt);
+    CSP_cwp_init_pkt(CSP_CWP_FNC_WIN_ALLOCATE, &pkt);
     winalloc_pkt->user_local_root = user_local_rank;
     winalloc_pkt->user_nprocs = user_nprocs;
     winalloc_pkt->epochs_used = ug_win->info_args.epochs_used;
@@ -253,7 +253,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win_t * ug_win)
     winalloc_pkt->info_npairs = npairs;
 
     /* Only send start request to root ghost. */
-    mpi_errno = CSP_cmd_fnc_issue(&pkt);
+    mpi_errno = CSPU_cwp_fnc_issue(&pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

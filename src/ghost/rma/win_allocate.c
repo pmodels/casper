@@ -16,18 +16,18 @@
 /* Receive parameters from user root via local communicator (blocking call). */
 static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
-    return PMPI_Recv(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
+    return PMPI_Recv(params, size, MPI_CHAR, win->user_local_root, CSP_CWP_PARAM_TAG,
                      CSP_PROC.local_comm, MPI_STATUS_IGNORE);
 }
 
 /* Send parameters to user root via local communicator (blocking call). */
 static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
-    return PMPI_Send(params, size, MPI_CHAR, win->user_local_root, CSP_CMD_PARAM_TAG,
+    return PMPI_Send(params, size, MPI_CHAR, win->user_local_root, CSP_CWP_PARAM_TAG,
                      CSP_PROC.local_comm);
 }
 
-static int init_ghost_win(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win_t * win,
+static int init_ghost_win(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win_t * win,
                           MPI_Info * user_info)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -318,7 +318,7 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win_t * w
 }
 
 /* Common internal implementation of win_allocate handlers.*/
-static int win_allocate_impl(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt)
+static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_ug_rank, local_ug_nprocs;
@@ -399,13 +399,14 @@ static int win_allocate_impl(CSP_cmd_fnc_winalloc_pkt_t * winalloc_pkt)
     goto fn_exit;
 }
 
-int CSPG_win_allocate_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
+int CSPG_win_allocate_cwp_root_handler(CSP_cwp_pkt_t * pkt,
+                                       int user_local_rank CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_cmd_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
+    CSP_cwp_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
 
     /* broadcast to other local ghosts */
-    mpi_errno = CSPG_cmd_bcast(pkt);
+    mpi_errno = CSPG_cwp_bcast(pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -415,7 +416,7 @@ int CSPG_win_allocate_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_
 
   fn_exit:
     /* Release local lock after a locked command finished. */
-    mpi_errno = CSPG_cmd_release_lock();
+    mpi_errno = CSPG_mlock_release();
     return mpi_errno;
 
   fn_fail:
@@ -424,10 +425,10 @@ int CSPG_win_allocate_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank CSP_
     goto fn_exit;
 }
 
-int CSPG_win_allocate_handler(CSP_cmd_pkt_t * pkt)
+int CSPG_win_allocate_cwp_handler(CSP_cwp_pkt_t * pkt)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_cmd_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
+    CSP_cwp_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
 
     mpi_errno = win_allocate_impl(winalloc_pkt);
     if (mpi_errno != MPI_SUCCESS)

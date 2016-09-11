@@ -154,8 +154,8 @@ int CSP_win_release(CSP_win_t * ug_win)
 static int issue_ghost_cmd(CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_cmd_pkt_t pkt;
-    CSP_cmd_fnc_winfree_pkt_t *winfree_pkt = &pkt.u.fnc_winfree;
+    CSP_cwp_pkt_t pkt;
+    CSP_cwp_fnc_winfree_pkt_t *winfree_pkt = &pkt.u.fnc_winfree;
     MPI_Request *reqs = NULL;
     MPI_Status *stats = NULL;
     int i, user_local_rank = 0;
@@ -170,15 +170,15 @@ static int issue_ghost_cmd(CSP_win_t * ug_win)
         goto fn_fail;
 
     /* Lock ghost processes on all nodes. */
-    mpi_errno = CSP_cmd_acquire_lock(ug_win->user_root_comm);
+    mpi_errno = CSPU_mlock_acquire(ug_win->user_root_comm);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     /* send command to root ghost. */
-    CSP_cmd_init_fnc_pkt(CSP_CMD_FNC_WIN_FREE, &pkt);
+    CSP_cwp_init_pkt(CSP_CWP_FNC_WIN_FREE, &pkt);
     winfree_pkt->user_local_root = user_local_rank;
 
-    mpi_errno = CSP_cmd_fnc_issue(&pkt);
+    mpi_errno = CSPU_cwp_fnc_issue(&pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -187,7 +187,7 @@ static int issue_ghost_cmd(CSP_win_t * ug_win)
      * so that only global communicator can be used here.*/
     for (i = 0; i < CSP_ENV.num_g; i++) {
         mpi_errno = PMPI_Isend(&ug_win->g_win_handles[i], 1, MPI_UNSIGNED_LONG,
-                               CSP_PROC.user.g_lranks[i], CSP_CMD_PARAM_TAG, CSP_PROC.local_comm,
+                               CSP_PROC.user.g_lranks[i], CSP_CWP_PARAM_TAG, CSP_PROC.local_comm,
                                &reqs[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

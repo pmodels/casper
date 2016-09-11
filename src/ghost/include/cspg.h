@@ -79,34 +79,43 @@ typedef struct CSPG_win {
 
 
 /* ======================================================================
- * Command related definition.
+ * CWP related definition (ghost side).
  * ====================================================================== */
-typedef struct CSPG_acquire_lock_req {
-    int group_id;
-    int user_local_rank;
-    CSP_cmd_lock_status_t status;
-} CSPG_cmd_lock_req_t;
 
-typedef int (*CSPG_cmd_root_handler_t) (CSP_cmd_pkt_t * pkt, int user_local_rank);
-typedef int (*CSPG_cmd_handler_t) (CSP_cmd_pkt_t * pkt);
+typedef int (*CSPG_cwp_root_handler_t) (CSP_cwp_pkt_t * pkt, int user_local_rank);
+typedef int (*CSPG_cwp_handler_t) (CSP_cwp_pkt_t * pkt);
 
-extern int CSPG_win_allocate_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank);
-extern int CSPG_win_free_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank);
-extern int CSPG_finalize_root_handler(CSP_cmd_pkt_t * pkt, int user_local_rank);
+extern void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t handler_fnc);
+extern void CSPG_cwp_register_handler(CSP_cwp_t cmd_type, CSPG_cwp_handler_t handler_fnc);
 
-extern int CSPG_win_allocate_handler(CSP_cmd_pkt_t * pkt);
-extern int CSPG_win_free_handler(CSP_cmd_pkt_t * pkt);
-extern int CSPG_finalize_handler(CSP_cmd_pkt_t * pkt);
+extern int CSPG_win_allocate_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
+extern int CSPG_win_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
+extern int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
 
-extern void CSPG_cmd_init(void);
-extern void CSPG_cmd_destory(void);
-extern int CSPG_cmd_release_lock(void);
-extern int CSPG_cmd_do_progress(void);
+extern int CSPG_win_allocate_cwp_handler(CSP_cwp_pkt_t * pkt);
+extern int CSPG_win_free_cwp_handler(CSP_cwp_pkt_t * pkt);
+extern int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt);
 
-static inline int CSPG_cmd_bcast(CSP_cmd_pkt_t * pkt)
+extern int CSPG_cwp_do_progress(void);
+
+static inline int CSPG_cwp_bcast(CSP_cwp_pkt_t * pkt)
 {
-    return PMPI_Bcast((char *) pkt, sizeof(CSP_cmd_pkt_t), MPI_CHAR, 0,
+    return PMPI_Bcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
                       CSP_PROC.ghost.g_local_comm);
 }
+
+/* ======================================================================
+ * MLOCK related definition (ghost side).
+ * ====================================================================== */
+
+typedef struct CSPG_mlock_req {
+    int group_id;
+    int user_local_rank;
+    CSP_mlock_status_t status;
+} CSPG_mlock_req_t;
+
+extern void CSPG_mlock_init(void);
+extern void CSPG_mlock_destory(void);
+extern int CSPG_mlock_release(void);
 
 #endif /* CSPG_H_ */

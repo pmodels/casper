@@ -37,6 +37,17 @@ int CSPG_setup_proc(void)
     return MPI_SUCCESS;
 }
 
+static void register_cwp_handlers(void)
+{
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_WIN_ALLOCATE, CSPG_win_allocate_cwp_root_handler);
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_WIN_FREE, CSPG_win_free_cwp_root_handler);
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_FINALIZE, CSPG_finalize_cwp_root_handler);
+
+    CSPG_cwp_register_handler(CSP_CWP_FNC_WIN_ALLOCATE, CSPG_win_allocate_cwp_handler);
+    CSPG_cwp_register_handler(CSP_CWP_FNC_WIN_FREE, CSPG_win_free_cwp_handler);
+    CSPG_cwp_register_handler(CSP_CWP_FNC_FINALIZE, CSPG_finalize_cwp_handler);
+}
+
 int CSPG_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -44,7 +55,10 @@ int CSPG_init(void)
     char err_string[MPI_MAX_ERROR_STRING];
 
     CSPG_DBG_PRINT(" main start\n");
-    CSPG_cmd_init();
+
+    CSPG_mlock_init();
+
+    register_cwp_handlers();
 
     /* Disable MPI automatic error messages. */
     mpi_errno = PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
@@ -52,14 +66,14 @@ int CSPG_init(void)
         goto fn_fail;
 
     /* Keep polling progress until finalize done */
-    mpi_errno = CSPG_cmd_do_progress();
+    mpi_errno = CSPG_cwp_do_progress();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     CSPG_DBG_PRINT(" main done\n");
 
   fn_exit:
-    CSPG_cmd_destory();
+    CSPG_mlock_destory();
     return mpi_errno;
 
   fn_fail:
