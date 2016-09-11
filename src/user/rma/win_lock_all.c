@@ -30,6 +30,9 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
+        ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
+
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * We do not require closed FENCE epoch, because we don't know whether

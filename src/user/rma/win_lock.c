@@ -108,6 +108,9 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
     CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK));
 
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
+        ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
+
     target = &(ug_win->targets[target_rank]);
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 

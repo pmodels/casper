@@ -106,6 +106,9 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
+    if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
+        ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
+
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
         CSP_DBG_PRINT("Start empty group\n");
