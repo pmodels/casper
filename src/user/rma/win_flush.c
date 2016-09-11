@@ -86,6 +86,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 {
     CSP_win_t *ug_win;
     CSP_win_target_t *target;
+    MPI_Win *win_ptr CSP_ATTRIBUTE((unused)) = NULL;
     int mpi_errno = MPI_SUCCESS;
 
     CSP_DBG_PRINT_FCNAME();
@@ -120,9 +121,14 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 #endif
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
-    CSP_DBG_PRINT(" flush_all(ug_win 0x%x), instead of target rank %d\n",
-                  target->ug_win, target_rank);
-    mpi_errno = PMPI_Win_flush_all(target->ug_win);
+    /* Get global window or a target window for no-lock mode or
+     * lock-exist mode respectively. */
+    CSP_target_get_epoch_win(target, ug_win, win_ptr);
+    CSP_assert(win_ptr != NULL);
+
+    CSP_DBG_PRINT(" flush_all(%s 0x%x), instead of target rank %d\n",
+                  CSP_get_win_type(*win_ptr, ug_win), *win_ptr, target_rank);
+    mpi_errno = PMPI_Win_flush_all(*win_ptr);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #else
