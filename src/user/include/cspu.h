@@ -150,49 +150,58 @@ typedef struct CSP_win {
  * Window cache related routine.
  * ====================================================================== */
 
-#define CSP_define_win_cache int UG_WIN_HANDLE_KEY = MPI_KEYVAL_INVALID
+#define CSP_DEFINE_WIN_CACHE int UG_WIN_HANDLE_KEY = MPI_KEYVAL_INVALID
 extern int UG_WIN_HANDLE_KEY;
 
-#define CSP_init_win_cache() {    \
-    mpi_errno = PMPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, \
-            MPI_WIN_NULL_DELETE_FN, &UG_WIN_HANDLE_KEY, (void *) 0);    \
-    if (mpi_errno != 0) \
-        goto fn_fail;   \
+static inline int CSP_init_win_cache(void)
+{
+    return PMPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN,
+                                  &UG_WIN_HANDLE_KEY, (void *) 0);
 }
 
-#define CSP_destroy_win_cache() {    \
-    if (UG_WIN_HANDLE_KEY != MPI_KEYVAL_INVALID) {  \
-        mpi_errno = PMPI_Win_free_keyval(&UG_WIN_HANDLE_KEY);    \
-        if (mpi_errno != MPI_SUCCESS){  \
-            CSP_ERR_PRINT("Free UG_WIN_HANDLE_KEY %p\n", &UG_WIN_HANDLE_KEY);   \
-        }   /*Do not jump to fn_fail, because it is also used in fn_fail processing */ \
-    }   \
+static inline int CSP_destroy_win_cache(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+    if (UG_WIN_HANDLE_KEY != MPI_KEYVAL_INVALID) {
+        mpi_errno = PMPI_Win_free_keyval(&UG_WIN_HANDLE_KEY);
+        if (mpi_errno != MPI_SUCCESS)
+            CSP_ERR_PRINT("Cannot free UG_WIN_HANDLE_KEY %p\n", &UG_WIN_HANDLE_KEY);
+    }
+    return mpi_errno;
 }
 
-#define CSP_fetch_ug_win_from_cache(win, ug_win) { \
-    int fetch_ug_win_flag = 0;   \
-    mpi_errno = PMPI_Win_get_attr(win, UG_WIN_HANDLE_KEY, &ug_win, &fetch_ug_win_flag);   \
-    if (!fetch_ug_win_flag || mpi_errno != MPI_SUCCESS){  \
-        CSP_DBG_PRINT("Cannot fetch ug_win from win 0x%x\n", win);   \
-        ug_win = NULL; \
-    }   \
+static inline int CSP_fetch_ug_win_from_cache(MPI_Win win, CSP_win_t ** ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int fetch_ug_win_flag = 0;
+
+    mpi_errno = PMPI_Win_get_attr(win, UG_WIN_HANDLE_KEY, ug_win, &fetch_ug_win_flag);
+    if (!fetch_ug_win_flag || mpi_errno != MPI_SUCCESS) {
+        CSP_DBG_PRINT("Cannot fetch ug_win from win 0x%x\n", win);
+        (*ug_win) = NULL;
+    }
+    return mpi_errno;
 }
 
-#define CSP_cache_ug_win(win, ug_win) { \
-    mpi_errno = PMPI_Win_set_attr(win, UG_WIN_HANDLE_KEY, ug_win);  \
-    if (mpi_errno != MPI_SUCCESS){  \
-        CSP_ERR_PRINT("Cannot cache ug_win %p for win 0x%x\n", ug_win, win);   \
-        goto fn_fail;   \
-    }   \
-    CSP_DBG_PRINT("cache ug_win %p into win 0x%x \n", ug_win, win);  \
+static inline int CSP_cache_ug_win(MPI_Win win, CSP_win_t * ug_win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    mpi_errno = PMPI_Win_set_attr(win, UG_WIN_HANDLE_KEY, ug_win);
+    if (mpi_errno != MPI_SUCCESS) {
+        CSP_ERR_PRINT("Cannot cache ug_win %p for win 0x%x\n", ug_win, win);
+        return mpi_errno;
+    }
+    CSP_DBG_PRINT("cache ug_win %p into win 0x%x \n", ug_win, win);
+    return mpi_errno;
 }
 
-#define CSP_remove_ug_win_from_cache(win)  {\
-    mpi_errno = PMPI_Win_delete_attr(win, UG_WIN_HANDLE_KEY);   \
-    if (mpi_errno != MPI_SUCCESS){  \
-        CSP_ERR_PRINT("Cannot remove ug_win cache for win 0x%x\n", win);   \
-        goto fn_fail;   \
-    }   \
+static inline int CSP_remove_ug_win_from_cache(MPI_Win win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    mpi_errno = PMPI_Win_delete_attr(win, UG_WIN_HANDLE_KEY);
+    if (mpi_errno != MPI_SUCCESS)
+        CSP_ERR_PRINT("Cannot remove ug_win cache for win 0x%x\n", win);
+    return mpi_errno;
 }
 
 extern const char *CSP_target_epoch_stat_name[4];       /* for debug */
@@ -200,7 +209,7 @@ extern const char *CSP_win_epoch_stat_name[4];
 
 /* Get appropriate window for the target on the current epoch.
  * The epoch status can be per-target (pscw, lock), or global (fence, lockall). */
-#define CSP_target_get_epoch_win(target, ug_win, win_ptr) { \
+#define CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr) { \
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {    \
         switch (target->epoch_stat) {   \
             case CSP_TARGET_EPOCH_PSCW:    \
@@ -234,7 +243,7 @@ extern const char *CSP_win_epoch_stat_name[4];
 }
 
 /* Check access epoch status per operation.*/
-#define CSP_target_check_epoch_per_op(target, ug_win) {   \
+#define CSP_TARGET_CHECK_EPOCH_PER_OP(target, ug_win) {   \
     if (ug_win->epoch_stat == CSP_WIN_NO_EPOCH && target->epoch_stat == CSP_TARGET_NO_EPOCH) {  \
         CSP_ERR_PRINT("Wrong synchronization call! "    \
                 "No opening epoch in %s\n", __FUNCTION__);  \
@@ -243,17 +252,11 @@ extern const char *CSP_win_epoch_stat_name[4];
     }   \
 }
 
-/* Return name of current epoch status (for debug).*/
-static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target_t * target,
-                                                         CSP_win_t * ug_win)
-{
-    if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
-        return CSP_target_epoch_stat_name[target->epoch_stat];
-    }
-    else {
-        return CSP_win_epoch_stat_name[ug_win->epoch_stat];
-    }
-}
+/* Get name of current epoch status (for debug).*/
+#define CSP_TARGET_GET_EPOCH_STAT_NAME(target, ug_win)          \
+        ((ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) ?     \
+            CSP_target_epoch_stat_name[target->epoch_stat] :    \
+            CSP_win_epoch_stat_name[ug_win->epoch_stat])
 
 
 /* ======================================================================
@@ -261,42 +264,48 @@ static inline const char *CSP_target_get_epoch_stat_name(CSP_win_target_t * targ
  * ====================================================================== */
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-#define CSP_reset_target_opload_op_counting(target_rank, ug_win) {  \
-        int g_off, g_rank;  \
-        for (g_off = 0; g_off < CSP_ENV.num_g; g_off++) {    \
-            g_rank = ug_win->targets[target_rank].g_ranks_in_ug[g_off]; \
-            ug_win->g_ops_counts[g_rank] = 0;    \
-        }   \
-        CSP_DBG_PRINT("[load_opt_op] reset target %d op counting \n", target_rank); \
+static inline void CSP_reset_target_opload_op_counting(int target_rank, CSP_win_t * ug_win)
+{
+    int g_off, g_rank;
+    for (g_off = 0; g_off < CSP_ENV.num_g; g_off++) {
+        g_rank = ug_win->targets[target_rank].g_ranks_in_ug[g_off];
+        ug_win->g_ops_counts[g_rank] = 0;
     }
+    CSP_DBG_PRINT("[load_opt_op] reset target %d op counting \n", target_rank);
+}
 
-#define CSP_reset_target_opload_bytes_counting(target_rank, ug_win) {  \
-        int g_off, g_rank;  \
-        for (g_off = 0; g_off < CSP_ENV.num_g; g_off++) {    \
-            g_rank = ug_win->targets[target_rank].g_ranks_in_ug[g_off]; \
-            ug_win->g_bytes_counts[g_rank] = 0;    \
-        }   \
-        CSP_DBG_PRINT("[load_opt_byte] reset target %d byte counting \n", target_rank); \
+static inline void CSP_reset_target_opload_bytes_counting(int target_rank, CSP_win_t * ug_win)
+{
+    int g_off, g_rank;
+    for (g_off = 0; g_off < CSP_ENV.num_g; g_off++) {
+        g_rank = ug_win->targets[target_rank].g_ranks_in_ug[g_off];
+        ug_win->g_bytes_counts[g_rank] = 0;
     }
+    CSP_DBG_PRINT("[load_opt_byte] reset target %d byte counting \n", target_rank);
+}
 
-#define CSP_reset_target_opload(target_rank, ug_win) { \
-        if (CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING){ \
-            CSP_reset_target_opload_op_counting(target_rank, ug_win) ; \
-        } else if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING){  \
-            CSP_reset_target_opload_bytes_counting(target_rank, ug_win) ; \
-        }   \
+static inline void CSP_reset_target_opload(int target_rank, CSP_win_t * ug_win)
+{
+    if (CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) {
+        CSP_reset_target_opload_op_counting(target_rank, ug_win);
     }
-
-
-#define CSP_inc_target_opload_op_counting(g_rank_in_ug, ug_win) {  \
-        ug_win->g_ops_counts[g_rank_in_ug]++;   \
-        CSP_DBG_PRINT("[load_opt_op] increment ghost %d\n", g_rank_in_ug); \
+    else if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
+        CSP_reset_target_opload_bytes_counting(target_rank, ug_win);
     }
+}
 
-#define CSP_inc_target_opload_bytes_counting(g_rank_in_ug, size, ug_win) {  \
-        ug_win->g_bytes_counts[g_rank_in_ug] += size;   \
-        CSP_DBG_PRINT("[load_opt_byte] increment ghost %d\n", g_rank_in_ug); \
-    }
+static inline void CSP_inc_target_opload_op_counting(int g_rank_in_ug, CSP_win_t * ug_win)
+{
+    ug_win->g_ops_counts[g_rank_in_ug]++;
+    CSP_DBG_PRINT("[load_opt_op] increment ghost %d\n", g_rank_in_ug);
+}
+
+static inline void CSP_inc_target_opload_bytes_counting(int g_rank_in_ug, int size,
+                                                        CSP_win_t * ug_win)
+{
+    ug_win->g_bytes_counts[g_rank_in_ug] += size;
+    CSP_DBG_PRINT("[load_opt_byte] increment ghost %d\n", g_rank_in_ug);
+}
 
 static inline int CSP_win_grant_lock(int target_rank, CSP_win_t * ug_win)
 {

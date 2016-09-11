@@ -42,7 +42,7 @@ int CSP_win_target_lock(int lock_type, int assert, int target_rank, CSP_win_t * 
 
         CSP_DBG_PRINT(" lock(ghost(%d), ug_win 0x%x, lock=%s, assert=%s), instead of "
                       "target rank %d\n", target_g_rank_in_ug, target->ug_win,
-                      CSP_get_lock_type_name(g_lock_type), CSP_get_assert_name(g_assert),
+                      CSP_GET_LOCK_TYPE_NAME(g_lock_type), CSP_GET_ASSERT_NAME(g_assert),
                       target_rank);
         mpi_errno = PMPI_Win_lock(g_lock_type, target_g_rank_in_ug, g_assert, target->ug_win);
         if (mpi_errno != MPI_SUCCESS)
@@ -91,7 +91,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -103,7 +103,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK));
 
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
@@ -132,7 +132,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         goto fn_fail;
     }
 
-    CSP_assert(user_rank != target_rank || ug_win->is_self_locked == 0);
+    CSP_ASSERT(user_rank != target_rank || ug_win->is_self_locked == 0);
 #endif
 
     target->remote_lock_assert = assert;

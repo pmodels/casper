@@ -18,7 +18,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -27,7 +27,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
     /* casper window starts */
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
@@ -46,8 +46,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         mpi_errno = -1;
         goto fn_fail;
     }
-    CSP_assert(ug_win->is_self_locked == 0);
-    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
+    CSP_ASSERT(ug_win->is_self_locked == 0);
+    CSP_ASSERT(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 #endif
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);

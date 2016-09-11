@@ -46,8 +46,8 @@ void *CSP_slist_dequeue(CSP_slist_t * slist)
     /* removing the last one */
     if (elem == slist->tail) {
         slist->tail = NULL;
-        CSP_assert(slist->head == NULL);
-        CSP_assert(slist->count == 0);
+        CSP_ASSERT(slist->head == NULL);
+        CSP_ASSERT(slist->count == 0);
     }
 
     ubuf = elem->ubuf;
@@ -76,7 +76,7 @@ void *CSP_slist_remove(void *search_ubuf, CSP_slist_t * slist)
         }
         if (e == slist->head) {
             slist->head = e->next;
-            CSP_assert(pe == NULL);
+            CSP_ASSERT(pe == NULL);
         }
         if (e == slist->tail) {
             slist->tail = pe;
@@ -154,7 +154,7 @@ int CSP_slist_insert(void *ubuf, CSP_slist_t * slist)
 
     /* insert at head */
     if (pe == NULL) {
-        CSP_assert(e == slist->head);
+        CSP_ASSERT(e == slist->head);
         slist->head = new_e;
         new_e->next = e;
     }

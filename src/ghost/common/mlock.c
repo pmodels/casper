@@ -52,7 +52,7 @@ static inline int mlock_sync_status(CSPG_mlock_req_t * req)
 
 static inline int mlock_suspend_req(CSPG_mlock_req_t * req)
 {
-    CSPG_assert(mlock_granted_req != NULL);
+    CSP_ASSERT(mlock_granted_req != NULL);
     if (req->group_id < mlock_granted_req->group_id) {
         req->status = CSP_MLOCK_STATUS_SUSPENDED_H;
     }
@@ -164,7 +164,7 @@ static int mlock_release_cwp_handler(CSP_cwp_pkt_t * pkt CSP_ATTRIBUTE((unused))
     int mpi_errno = MPI_SUCCESS;
     CSPG_mlock_req_t *rels_req = NULL;
 
-    CSPG_assert(mlock_granted_req != NULL && mlock_granted_req->user_local_rank == user_local_rank);
+    CSP_ASSERT(mlock_granted_req != NULL && mlock_granted_req->user_local_rank == user_local_rank);
 
     rels_req = mlock_granted_req;
     mlock_granted_req = NULL;
@@ -202,7 +202,7 @@ static int mlock_discard_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
     search_req.user_local_rank = user_local_rank;
     search_req.group_id = lockdcd_pkt->group_id;
     disc_req = CSP_slist_remove(&search_req, &mlock_susped_reqs_list);
-    CSPG_assert(disc_req != NULL);
+    CSP_ASSERT(disc_req != NULL);
 
     disc_req->status = CSP_MLOCK_STATUS_UNSET;
     mpi_errno = mlock_sync_status(disc_req);

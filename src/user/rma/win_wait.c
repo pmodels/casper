@@ -61,7 +61,7 @@ int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int blocki
             goto fn_fail;
     }
     else {
-        CSP_assert(flag != NULL);
+        CSP_ASSERT(flag != NULL);
         mpi_errno = PMPI_Testall(remote_cnt, ug_win->wait_reqs, flag, stats);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -93,14 +93,14 @@ int MPI_Win_wait(MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_wait(win);
     }
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     /* Check exposure epoch status.
      * Note that this is not only a user-friendly check, but also
@@ -119,7 +119,7 @@ int MPI_Win_wait(MPI_Win win)
     mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSP_assert(post_grp_size > 0);
+    CSP_ASSERT(post_grp_size > 0);
 
     CSP_DBG_PRINT("Wait group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 

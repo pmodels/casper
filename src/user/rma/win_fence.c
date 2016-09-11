@@ -49,14 +49,14 @@ int MPI_Win_fence(int assert, MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_fence(assert, win);
     }
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE));
 
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
@@ -84,8 +84,8 @@ int MPI_Win_fence(int assert, MPI_Win win)
         goto fn_fail;
     }
 
-    CSP_assert(ug_win->is_self_locked == 0);
-    CSP_assert(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
+    CSP_ASSERT(ug_win->is_self_locked == 0);
+    CSP_ASSERT(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 #endif
 
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */

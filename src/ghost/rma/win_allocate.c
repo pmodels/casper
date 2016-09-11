@@ -86,7 +86,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
 
     /* -Create ug communicator including all USER processes and Ghost processes. */
     num_ug_ranks = user_nprocs + num_ghosts;
-    CSPG_assert(num_ug_ranks <= world_nprocs);
+    CSP_ASSERT(num_ug_ranks <= world_nprocs);
     memcpy(ug_ranks_in_world, gp_ranks_in_world, num_ghosts * sizeof(int));
     memcpy(&ug_ranks_in_world[num_ghosts], user_ranks_in_world, user_nprocs * sizeof(int));
 
@@ -215,7 +215,7 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
      *  for sync. */
     if (local_ug_rank == 0) {
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-        csp_buf_size = CSP_max(csp_buf_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
+        csp_buf_size = CSP_MAX(csp_buf_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
 #endif
     }
 

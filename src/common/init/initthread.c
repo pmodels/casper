@@ -263,14 +263,14 @@ static int initialize_proc(void)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSP_print_proc();
+        CSP_DBG_PRINT_PROC();
     }
     else {
         mpi_errno = CSPG_setup_proc();
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSPG_print_proc();
+        CSP_DBG_PRINT_PROC();
     }
 
   fn_exit:

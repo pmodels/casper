@@ -97,14 +97,14 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_start(group, assert, win);
     }
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
@@ -163,7 +163,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
                 break;
             }
 
-            CSP_assert(user_rank != target_rank || ug_win->is_self_locked == 0);
+            CSP_ASSERT(user_rank != target_rank || ug_win->is_self_locked == 0);
         }
         if (err) {
             mpi_errno = -1;

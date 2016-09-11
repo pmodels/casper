@@ -308,7 +308,7 @@ static int gather_ranks(CSP_win_t * win, int *num_ghosts, int *gp_ranks_in_world
                 unique_gp_ranks_in_world[tmp_num_ghosts++] = gp_rank;
                 gp_bitmap[gp_rank] = 1;
 
-                CSP_assert(tmp_num_ghosts <= CSP_PROC.num_nodes * CSP_ENV.num_g);
+                CSP_ASSERT(tmp_num_ghosts <= CSP_PROC.num_nodes * CSP_ENV.num_g);
             }
         }
     }
@@ -348,7 +348,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSP_win_t * wi
         ug_ranks_in_world[num_ug_ranks++] = win->targets[i].world_rank;
     }
 
-    CSP_assert(num_ug_ranks <= world_nprocs);
+    CSP_ASSERT(num_ug_ranks <= world_nprocs);
 
     PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &win->ug_group);
     mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, win->ug_group, 0, &win->ug_comm);
@@ -552,7 +552,7 @@ static int gather_base_offsets(CSP_win_t * ug_win)
      * for sync. */
     root_g_size = CSP_GP_SHARED_SG_SIZE;
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
-    root_g_size = CSP_max(root_g_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
+    root_g_size = CSP_MAX(root_g_size, sizeof(CSP_GRANT_LOCK_DATATYPE));
 #endif
 
     /* Calculate my offset on the local shared buffer.
@@ -798,7 +798,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         ug_win->targets[i].local_user_nprocs = (int) tmp_gather_buf[7 * i + 6];
 
         /* Calculate the maximum number of processes per node */
-        ug_win->max_local_user_nprocs = CSP_max(ug_win->max_local_user_nprocs,
+        ug_win->max_local_user_nprocs = CSP_MAX(ug_win->max_local_user_nprocs,
                                                 ug_win->targets[i].local_user_nprocs);
     }
 
@@ -910,7 +910,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
             goto fn_fail;
     }
 
-    CSP_cache_ug_win(ug_win->win, ug_win);
+    mpi_errno = CSP_cache_ug_win(ug_win->win, ug_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
   fn_exit:
     if (tmp_gather_buf)

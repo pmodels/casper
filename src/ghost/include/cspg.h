@@ -42,12 +42,6 @@
 #define CSPG_WARN_PRINT(str, ...) {}
 #endif
 
-#define CSPG_assert(EXPR) do { if (CSP_unlikely(!(EXPR))){ \
-            CSPG_ERR_PRINT("  assert fail in [%s:%d]: \"%s\"\n", \
-                           __FILE__, __LINE__, #EXPR); \
-            PMPI_Abort(MPI_COMM_WORLD, -1); \
-        }} while (0)
-
 
 /* ======================================================================
  * Window related definitions.

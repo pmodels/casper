@@ -242,14 +242,16 @@ extern int CSPG_destroy_proc(void);
 
 #ifdef CSP_DEBUG
 extern void CSP_print_proc(void);
+#define CSP_DBG_PRINT_PROC CSP_print_proc
 #else
-#define CSP_print_proc(void) do {} while (0);
+#define CSP_DBG_PRINT_PROC(void)
 #endif
 
 #ifdef CSPG_DEBUG
 extern void CSPG_print_proc(void);
+#define CSP_DBG_PRINT_PROC CSPG_print_proc
 #else
-#define CSPG_print_proc(void) do {} while (0);
+#define CSP_DBG_PRINT_PROC(void)
 #endif
 
 #endif /* CSP_H_ */

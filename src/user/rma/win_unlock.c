@@ -56,7 +56,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -68,7 +68,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK));
 
     target = &(ug_win->targets[target_rank]);
 
@@ -119,7 +119,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 
     /* Reset global epoch status. */
     ug_win->lock_counter--;
-    CSP_assert(ug_win->lock_counter >= 0);
+    CSP_ASSERT(ug_win->lock_counter >= 0);
     if (ug_win->start_counter == 0 && ug_win->lock_counter == 0) {
         CSP_DBG_PRINT("all per-target epoch are cleared !\n");
         ug_win->epoch_stat = CSP_WIN_NO_EPOCH;

@@ -24,7 +24,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     target = &(ug_win->targets[target_rank]);
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
-    CSP_target_check_epoch_per_op(target, ug_win);
+    CSP_TARGET_CHECK_EPOCH_PER_OP(target, ug_win);
 #endif
 
     /* Should not do local RMA in accumulate because of atomicity issue */
@@ -36,7 +36,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     MPI_Aint target_g_offset = 0;
     MPI_Win *win_ptr = NULL;
 
-    CSP_target_get_epoch_win(target, ug_win, win_ptr);
+    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
@@ -57,7 +57,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     CSP_DBG_PRINT("CASPER Compare_and_swap to (ghost %d, win 0x%x [%s]) instead of "
                   "target %d, 0x%lx(0x%lx + %d * %ld)\n",
                   target_g_rank_in_ug, *win_ptr,
-                  CSP_target_get_epoch_stat_name(target, ug_win),
+                  CSP_TARGET_GET_EPOCH_STAT_NAME(target, ug_win),
                   target_rank, ug_target_disp, target_g_offset, target->disp_unit, target_disp);
 
   fn_exit:
@@ -76,7 +76,7 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win) {
         /* casper window */

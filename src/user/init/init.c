@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-CSP_define_win_cache;
+CSP_DEFINE_WIN_CACHE;
 
 #ifdef CSP_DEBUG
 void CSP_print_proc(void)
@@ -16,7 +16,7 @@ void CSP_print_proc(void)
     int local_user_rank, local_user_nprocs;
     int i, j;
 
-    CSP_assert(CSP_IS_USER);
+    CSP_ASSERT(CSP_IS_USER);
 
     PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -139,7 +139,7 @@ int CSP_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    CSP_init_win_cache();
+    mpi_errno = CSP_init_win_cache();
 
   fn_exit:
     return mpi_errno;

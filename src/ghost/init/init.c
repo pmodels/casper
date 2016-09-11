@@ -14,7 +14,7 @@ void CSPG_print_proc(void)
     int rank, nprocs, local_rank, local_nprocs;
     int local_ghost_rank, local_ghost_nprocs;
 
-    CSP_assert(CSP_IS_GHOST);
+    CSP_ASSERT(CSP_IS_GHOST);
 
     PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);

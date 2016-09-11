@@ -27,9 +27,9 @@ extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int
                                       int *flag);
 
 
-#define CSP_get_lock_type_name(lock_type) (lock_type == MPI_LOCK_SHARED ? "SHARED" : "EXCLUSIVE")
-#define CSP_get_assert_name(assert) (assert & MPI_MODE_NOCHECK ? "NOCHECK" : (assert == 0 ? "none" : "other"))
-#define CSP_get_win_type(win, ug_win) ((win) == ug_win->global_win ? "global_win" : "ug_wins")
+#define CSP_GET_LOCK_TYPE_NAME(lock_type) (lock_type == MPI_LOCK_SHARED ? "SHARED" : "EXCLUSIVE")
+#define CSP_GET_ASSERT_NAME(assert) (assert & MPI_MODE_NOCHECK ? "NOCHECK" : (assert == 0 ? "none" : "other"))
+#define CSP_GET_WIN_TYPE(win, ug_win) ((win) == ug_win->global_win ? "global_win" : "ug_wins")
 
 /* ======================================================================
  * local synchronization
@@ -93,7 +93,7 @@ static inline int CSP_win_lock_self(CSP_win_t * ug_win)
     int user_rank;
     MPI_Win lock_win = MPI_WIN_NULL;
 
-    CSP_assert(ug_win->is_self_locked == 0);
+    CSP_ASSERT(ug_win->is_self_locked == 0);
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
@@ -121,7 +121,7 @@ static inline int CSP_win_unlock_self(CSP_win_t * ug_win)
     int user_rank;
     MPI_Win lock_win = MPI_WIN_NULL;
 
-    CSP_assert(ug_win->is_self_locked == 1);
+    CSP_ASSERT(ug_win->is_self_locked == 1);
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
@@ -148,13 +148,13 @@ static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
     int user_rank;
     MPI_Win *win_ptr = NULL;
 
-    CSP_assert(ug_win->is_self_locked == 1);
+    CSP_ASSERT(ug_win->is_self_locked == 1);
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
 
-    CSP_target_get_epoch_win(target, ug_win, win_ptr);
-    CSP_assert(win_ptr != NULL);
+    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
+    CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
     mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, *win_ptr);
@@ -174,13 +174,13 @@ static inline int CSP_win_flush_local_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unu
     int user_rank;
     MPI_Win *win_ptr = NULL;
 
-    CSP_assert(ug_win->is_self_locked == 1);
+    CSP_ASSERT(ug_win->is_self_locked == 1);
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
 
-    CSP_target_get_epoch_win(target, ug_win, win_ptr);
-    CSP_assert(win_ptr != NULL);
+    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
+    CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush_local self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
     mpi_errno = PMPI_Win_flush_local(ug_win->my_rank_in_ug_comm, *win_ptr);

@@ -66,14 +66,14 @@ int MPI_Win_complete(MPI_Win win)
 
     CSP_DBG_PRINT_FCNAME();
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_complete(win);
     }
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     if (ug_win->start_group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
@@ -84,7 +84,7 @@ int MPI_Win_complete(MPI_Win win)
     mpi_errno = PMPI_Group_size(ug_win->start_group, &start_grp_size);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
-    CSP_assert(start_grp_size > 0);
+    CSP_ASSERT(start_grp_size > 0);
 
     CSP_DBG_PRINT("Complete group 0x%x, size %d\n", ug_win->start_group, start_grp_size);
 
@@ -130,7 +130,7 @@ int MPI_Win_complete(MPI_Win win)
 
     /* Reset global epoch status. */
     ug_win->start_counter--;
-    CSP_assert(ug_win->start_counter >= 0);
+    CSP_ASSERT(ug_win->start_counter >= 0);
     if (ug_win->start_counter == 0 && ug_win->lock_counter == 0) {
         CSP_DBG_PRINT("all per-target epoch are cleared !\n");
         ug_win->epoch_stat = CSP_WIN_NO_EPOCH;

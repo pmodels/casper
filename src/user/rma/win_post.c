@@ -110,14 +110,14 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
-    CSP_fetch_ug_win_from_cache(win, ug_win);
+    CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_post(group, assert, win);
     }
 
-    CSP_assert((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
+    CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check exposure epoch status.

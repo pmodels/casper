@@ -31,7 +31,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_win_t * ug_win)
             g_off++;
             np = np_per_ghost + ((g_off == CSP_ENV.num_g - 1) ? (n_targets % CSP_ENV.num_g) : 0);
         }
-        CSP_assert(g_off <= CSP_ENV.num_g);
+        CSP_ASSERT(g_off <= CSP_ENV.num_g);
 
         t_rank = local_targets[i];
         ug_win->targets[t_rank].main_g_off = g_off;
