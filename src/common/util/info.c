@@ -7,8 +7,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "csp.h"
+#include "util.h"
 #include "info.h"
+
+#ifdef INFO_DEBUG
+#define INFO_DBG_PRINT(str,...) do { \
+    fprintf(stdout, "[CSP] %s: "str, __FUNCTION__, ## __VA_ARGS__); \
+    fflush(stdout); \
+    } while (0)
+
+#else
+#define INFO_DBG_PRINT(str,...)
+#endif
 
 /**
  * Deserialize an MPI_Info object to an array of key-value pairs.
@@ -46,8 +56,8 @@ int CSP_info_deserialize(MPI_Info info, CSP_info_keyval_t ** keyvals, int *npair
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSP_DBG_PRINT("deserialize info:    [%d/%d]%s:%s\n", i, nkeys,
-                      tmp_keyvals[i].key, tmp_keyvals[i].value);
+        INFO_DBG_PRINT("deserialize info:    [%d/%d]%s:%s\n", i, nkeys,
+                       tmp_keyvals[i].key, tmp_keyvals[i].value);
     }
 
   fn_exit:
@@ -86,8 +96,8 @@ int CSP_info_serialize(CSP_info_keyval_t * keyvals, int npairs, MPI_Info * info)
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
-        CSP_DBG_PRINT("serialize info:    [%d/%d]%s:%s\n", i, npairs,
-                      keyvals[i].key, keyvals[i].value);
+        INFO_DBG_PRINT("serialize info:    [%d/%d]%s:%s\n", i, npairs,
+                       keyvals[i].key, keyvals[i].value);
     }
 
   fn_exit:

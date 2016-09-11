@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cspg.h"
-#include "list.h"
+#include "slist.h"
 
 #ifdef CSPG_CMD_DEBUG
 #define CSPG_CMD_DBG_PRINT(str,...) do { \

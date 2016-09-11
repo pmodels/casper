@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "csp.h"
-#include "list.h"
+#include "util.h"
+#include "slist.h"
 
 /* Initialize a sorted list with user specified order and compare function.
  * Elements will be inserted in the specified order, and always removed from the
