@@ -33,7 +33,7 @@ int CSP_win_global_flush_all(CSP_win_t * ug_win)
     }
 
     if (ug_win->is_self_locked) {
-        mpi_errno = CSP_win_flush_self(ug_win, 1 /*global_win */);
+        mpi_errno = CSP_win_flush_self(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

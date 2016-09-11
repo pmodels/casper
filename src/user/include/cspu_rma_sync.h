@@ -141,26 +141,24 @@ static inline int CSP_win_unlock_self(CSP_win_t * ug_win)
 /* Flush the local process.
  * It is called in all flush{all}-included operations.
  * Note that the actual flush is only issued when local PUT/GET optimization is enabled. */
-static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)),
-                                     int global_win_flag CSP_ATTRIBUTE((unused)))
+static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
 #if defined(CSP_ENABLE_LOCAL_RMA_OP_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
     CSP_win_target_t *target;
     int user_rank;
-    MPI_Win flush_win = MPI_WIN_NULL;
+    MPI_Win *win_ptr = NULL;
 
     CSP_assert(ug_win->is_self_locked == 1);
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
 
-    flush_win = target->ug_win;
-    if (global_win_flag)
-        flush_win = ug_win->global_win;
+    CSP_target_get_epoch_win(target, ug_win, win_ptr);
+    CSP_assert(win_ptr != NULL);
 
-    CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, flush_win);
-    mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, flush_win);
+    CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
+    mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, *win_ptr);
 #endif
     return mpi_errno;
 }
@@ -169,26 +167,24 @@ static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)),
 /* Locally flush the local process.
  * It is called in all flush_local{all}-included operations.
  * Note that the actual flush_local is only issued when local PUT/GET optimization is enabled. */
-static inline int CSP_win_flush_local_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)),
-                                           int global_win_flag CSP_ATTRIBUTE((unused)))
+static inline int CSP_win_flush_local_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
 #if defined(CSP_ENABLE_LOCAL_RMA_OP_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
     CSP_win_target_t *target;
     int user_rank;
-    MPI_Win flush_win = MPI_WIN_NULL;
+    MPI_Win *win_ptr = NULL;
 
     CSP_assert(ug_win->is_self_locked == 1);
 
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
 
-    flush_win = target->ug_win;
-    if (global_win_flag)
-        flush_win = ug_win->global_win;
+    CSP_target_get_epoch_win(target, ug_win, win_ptr);
+    CSP_assert(win_ptr != NULL);
 
-    CSP_DBG_PRINT(" flush_local self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, flush_win);
-    mpi_errno = PMPI_Win_flush_local(ug_win->my_rank_in_ug_comm, flush_win);
+    CSP_DBG_PRINT(" flush_local self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
+    mpi_errno = PMPI_Win_flush_local(ug_win->my_rank_in_ug_comm, *win_ptr);
 #endif
     return mpi_errno;
 }
