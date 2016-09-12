@@ -90,8 +90,7 @@ int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_
     return mpi_errno;
 
   fn_fail:
-    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
-    PMPI_Abort(MPI_COMM_WORLD, 0);
+    /* Error is handled in CSPG_main. */
     goto fn_exit;
 }
 
@@ -107,7 +106,6 @@ int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt CSP_ATTRIBUTE((unused)))
     return mpi_errno;
 
   fn_fail:
-    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
-    PMPI_Abort(MPI_COMM_WORLD, 0);
+    /* Error is handled in CSPG_main. */
     goto fn_exit;
 }

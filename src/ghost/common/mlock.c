@@ -272,7 +272,7 @@ void CSPG_mlock_destory(void)
     CSPG_mlock_req_t *req = NULL;
 
     if (mlock_req_cnt > 0) {
-        CSPG_WARN_PRINT("%d requests are not freed !\n", mlock_req_cnt);
+        CSPG_DBG_PRINT("%d requests are not freed !\n", mlock_req_cnt);
 
         /* Release all existing lock requests */
         while (CSP_slist_count(&mlock_susped_reqs_list) > 0) {

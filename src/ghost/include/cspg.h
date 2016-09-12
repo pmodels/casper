@@ -11,37 +11,21 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include "csp.h"
-#include "csp_util.h"
 #include "csp_cwp.h"
 #include "csp_mlock.h"
 
 /* ======================================================================
- * Casper ghost debugging/error/assert MACROs.
+ * Ghost error and internal debugging MACRO.
  * ====================================================================== */
 
 #ifdef CSPG_DEBUG
-#define CSPG_DBG_PRINT(str, ...) do { \
-    fprintf(stdout, "[CSPG][%d-%d]"str, CSP_PROC.node_id, CSP_PROC.wrank,   \
-            ## __VA_ARGS__); fflush(stdout); \
+#define CSPG_DBG_PRINT(str, ...) do {                                                    \
+    fprintf(stdout, "[CSPG][%d] %s: "str, CSP_PROC.wrank, __FUNCTION__, ## __VA_ARGS__); \
+    fflush(stdout);                                                                      \
     } while (0)
 #else
 #define CSPG_DBG_PRINT(str, ...) {}
 #endif
-
-#define CSPG_ERR_PRINT(str,...) do { \
-    fprintf(stderr, "[CSPG][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
-    fflush(stdout); \
-    } while (0)
-
-#ifdef CSPG_WARN
-#define CSPG_WARN_PRINT(str,...) do { \
-    fprintf(stderr, "[CSPG][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
-    fflush(stdout); \
-    } while (0)
-#else
-#define CSPG_WARN_PRINT(str, ...) {}
-#endif
-
 
 /* ======================================================================
  * Window related definitions.

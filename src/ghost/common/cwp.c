@@ -114,7 +114,7 @@ int CSPG_cwp_do_progress(void)
 void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t handler_fnc)
 {
     if (cmd_type <= CSP_CWP_UNSET || cmd_type >= CSP_CWP_MAX) {
-        CSPG_WARN_PRINT("register incorrect root handler, cmd_type=%d\n", cmd_type);
+        CSPG_DBG_PRINT("register incorrect root handler, cmd_type=%d\n", cmd_type);
     }
     else {
         cwp_root_handlers[cmd_type] = handler_fnc;
@@ -124,7 +124,7 @@ void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t 
 void CSPG_cwp_register_handler(CSP_cwp_t cmd_type, CSPG_cwp_handler_t handler_fnc)
 {
     if (cmd_type <= CSP_CWP_UNSET || cmd_type >= CSP_CWP_MAX) {
-        CSPG_WARN_PRINT("register incorrect handler, cmd_type=%d\n", cmd_type);
+        CSPG_DBG_PRINT("register incorrect handler, cmd_type=%d\n", cmd_type);
     }
     else {
         cwp_handlers[cmd_type] = handler_fnc;

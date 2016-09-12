@@ -125,7 +125,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
     if (ug_win->exp_epoch_stat == CSP_WIN_EXP_EPOCH_PSCW) {
-        CSP_ERR_PRINT("Wrong synchronization call! "
+        CSP_err_print("Wrong synchronization call! "
                       "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;

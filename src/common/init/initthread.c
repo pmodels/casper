@@ -31,13 +31,13 @@ static inline int check_valid_ghosts(void)
     PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
 
     if (local_nprocs < 2) {
-        CSP_ERR_PRINT("Can not create shared memory region, %d process in "
+        CSP_err_print("Can not create shared memory region, %d process in "
                       "MPI_COMM_TYPE_SHARED subcommunicator.\n", local_nprocs);
         err_flag++;
     }
 
     if (CSP_ENV.num_g < 1 || CSP_ENV.num_g >= local_nprocs) {
-        CSP_ERR_PRINT("Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
+        CSP_err_print("Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
                       CSP_ENV.num_g, local_nprocs);
         err_flag++;
     }
@@ -90,18 +90,21 @@ static int initialize_env()
         CSP_ENV.num_g = atoi(val);
     }
     if (CSP_ENV.num_g <= 0) {
-        CSP_ERR_PRINT("Wrong CSP_NG %d\n", CSP_ENV.num_g);
+        CSP_err_print("Wrong CSP_NG %d\n", CSP_ENV.num_g);
         return -1;
     }
 
-    CSP_ENV.verbose = 0;
+    CSP_ENV.verbose = CSP_MSG_VBS_UNSET;
     val = getenv("CSP_VERBOSE");
     if (val && strlen(val)) {
+        int vbs = atoi(val);
+
         /* VERBOSE level */
-        CSP_ENV.verbose = atoi(val);
-        if (CSP_ENV.verbose < 0)
-            CSP_ENV.verbose = 0;
+        if (vbs > CSP_MSG_VBS_UNSET)
+            CSP_ENV.verbose = vbs;
     }
+
+    CSP_msg_init(CSP_ENV.verbose);
 
     CSP_ENV.async_config = CSP_ASYNC_CONFIG_ON;
     val = getenv("CSP_ASYNC_CONFIG");
@@ -113,7 +116,7 @@ static int initialize_env()
             CSP_ENV.async_config = CSP_ASYNC_CONFIG_OFF;
         }
         else {
-            CSP_ERR_PRINT("Unknown CSP_ASYNC_CONFIG %s\n", val);
+            CSP_err_print("Unknown CSP_ASYNC_CONFIG %s\n", val);
             return -1;
         }
     }
@@ -133,7 +136,7 @@ static int initialize_env()
             CSP_ENV.load_opt = CSP_LOAD_BYTE_COUNTING;
         }
         else {
-            CSP_ERR_PRINT("Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
+            CSP_err_print("Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
             return -1;
         }
     }
@@ -148,7 +151,7 @@ static int initialize_env()
             CSP_ENV.load_lock = CSP_LOAD_LOCK_FORCE;
         }
         else {
-            CSP_ERR_PRINT("Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
+            CSP_err_print("Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
             return -1;
         }
     }
@@ -157,8 +160,8 @@ static int initialize_env()
     CSP_ENV.load_lock = CSP_LOAD_LOCK_NATURE;
 #endif
 
-    if (CSP_ENV.verbose && CSP_PROC.wrank == 0) {
-        CSP_INFO_PRINT(1, "CASPER Configuration:  \n"
+    if (CSP_PROC.wrank == 0) {
+        CSP_info_print(CSP_MSG_VBS_INFO_GLOBAL, "CASPER Configuration:  \n"
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
                        "    EPOCH_STAT_CHECK (enabled) \n"
 #endif
@@ -170,15 +173,14 @@ static int initialize_env()
                        CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        CSP_INFO_PRINT(1, "Runtime Load Balancing Options:  \n"
+        CSP_info_print(CSP_MSG_VBS_INFO_GLOBAL, "Runtime Load Balancing Options:  \n"
                        "    CSP_RUMTIME_LOAD_OPT = %s \n"
                        "    CSP_RUNTIME_LOAD_LOCK = %s \n",
                        (CSP_ENV.load_opt == CSP_LOAD_OPT_RANDOM) ? "random" :
                        ((CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) ? "op" : "byte"),
                        (CSP_ENV.load_lock == CSP_LOAD_LOCK_NATURE) ? "nature" : "force");
 #endif
-        CSP_INFO_PRINT(1, "\n");
-        fflush(stdout);
+        CSP_info_print(CSP_MSG_VBS_INFO_GLOBAL, "\n");
     }
     return mpi_errno;
 }
@@ -290,8 +292,6 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    CSP_DBG_PRINT_FCNAME();
-
     if (required == 0 && provided == NULL) {
         /* default init */
         mpi_errno = PMPI_Init(argc, argv);
@@ -345,7 +345,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         CSPG_destroy_proc();
     }
 
-    PMPI_Abort(MPI_COMM_WORLD, 0);
+    CSP_ERR_ABORT();
 
     goto fn_exit;
     /* --END ERROR HANDLING-- */

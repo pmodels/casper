@@ -26,12 +26,12 @@ static int win_free_impl(CSP_cwp_fnc_winfree_pkt_t * winfree_pkt)
 
     win = (CSPG_win_t *) csp_g_win_handle;
     if (!win) {
-        CSPG_ERR_PRINT(" Wrong window handler 0x%lx, not exist\n", csp_g_win_handle);
+        CSP_err_print(" Wrong window handler 0x%lx, not exist\n", csp_g_win_handle);
         mpi_errno = -1;
         goto fn_fail;
     }
     if (win->csp_g_win_handle != csp_g_win_handle) {
-        CSPG_ERR_PRINT(" Wrong window handler 0x%lx, not match\n", csp_g_win_handle);
+        CSP_err_print(" Wrong window handler 0x%lx, not match\n", csp_g_win_handle);
         mpi_errno = -1;
         goto fn_fail;
     }
@@ -123,8 +123,7 @@ int CSPG_win_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_
     return mpi_errno;
 
   fn_fail:
-    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
-    PMPI_Abort(MPI_COMM_WORLD, 0);
+    /* Error is handled in CSPG_main. */
     goto fn_exit;
 }
 
@@ -141,7 +140,6 @@ int CSPG_win_free_cwp_handler(CSP_cwp_pkt_t * pkt)
     return mpi_errno;
 
   fn_fail:
-    CSPG_ERR_PRINT("error happened in %s, abort\n", __FUNCTION__);
-    PMPI_Abort(MPI_COMM_WORLD, 0);
+    /* Error is handled in CSPG_main. */
     goto fn_exit;
 }

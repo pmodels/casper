@@ -79,7 +79,7 @@ int CSPG_init(void)
   fn_fail:
     PMPI_Error_class(mpi_errno, &err_class);
     PMPI_Error_string(mpi_errno, err_string, &errstr_len);
-    CSPG_ERR_PRINT("MPI reports error code %d, error class %d\n%s",
-                   mpi_errno, err_class, err_string);
+    CSP_err_print("MPI reports error code %d, error class %d\n%s",
+                  mpi_errno, err_class, err_string);
     goto fn_exit;
 }

@@ -89,8 +89,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
 
-    CSP_DBG_PRINT_FCNAME();
-
     CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
@@ -116,7 +114,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) {
-        CSP_ERR_PRINT("Wrong synchronization call! "
+        CSP_err_print("Wrong synchronization call! "
                       "Previous LOCK_ALL epoch is still open in %s\n", __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;
@@ -124,7 +122,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 
     /* Check per-target access epoch status. */
     if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET && target->epoch_stat != CSP_TARGET_NO_EPOCH) {
-        CSP_ERR_PRINT("Wrong synchronization call! "
+        CSP_err_print("Wrong synchronization call! "
                       "Previous %s epoch on target %d is still open in %s\n",
                       target->epoch_stat == CSP_TARGET_EPOCH_LOCK ? "LOCK" : "PSCW",
                       target_rank, __FUNCTION__);

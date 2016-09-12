@@ -16,8 +16,6 @@ int MPI_Win_unlock_all(MPI_Win win)
     int user_nprocs;
     int i;
 
-    CSP_DBG_PRINT_FCNAME();
-
     CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
@@ -34,7 +32,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     /* Check access epoch status.
      * The current epoch must be lock_all.*/
     if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
-        CSP_ERR_PRINT("Wrong synchronization call! "
+        CSP_err_print("Wrong synchronization call! "
                       "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;

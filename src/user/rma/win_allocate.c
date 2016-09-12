@@ -30,6 +30,9 @@ const char *CSP_win_epoch_stat_name[4] = {
 static int read_win_info(MPI_Info info, CSP_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
+    int user_rank = -1;
+
+    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     ug_win->info_args.no_local_load_store = 0;
     ug_win->info_args.epochs_used = CSP_EPOCH_LOCK_ALL | CSP_EPOCH_LOCK |
@@ -120,23 +123,18 @@ static int read_win_info(MPI_Info info, CSP_win_t * ug_win)
                   ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "pscw" : ""),
                   ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "fence" : ""));
 
-    if (CSP_ENV.verbose) {
-        int user_rank = -1;
-        PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-        if (user_rank == 0) {
-            CSP_INFO_PRINT(2, "CASPER Window: %s \n"
-                           "    no_local_load_store = %s\n"
-                           "    epochs_used = %s%s%s%s\n"
-                           "    async_config = %s\n\n",
-                           ug_win->info_args.win_name,
-                           (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
-                           ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
-                           ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ? "|lock" : ""),
-                           ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "|pscw" : ""),
-                           ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "|fence" : ""),
-                           ((ug_win->info_args.async_config ==
-                             CSP_ASYNC_CONFIG_ON) ? "on" : "off"));
-        }
+    if (user_rank == 0) {
+        CSP_info_print(CSP_MSG_VBS_INFO_WIN, "CASPER Window: %s \n"
+                       "    no_local_load_store = %s\n"
+                       "    epochs_used = %s%s%s%s\n"
+                       "    async_config = %s\n\n",
+                       ug_win->info_args.win_name,
+                       (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
+                       ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                       ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ? "|lock" : ""),
+                       ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "|pscw" : ""),
+                       ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "|fence" : ""),
+                       ((ug_win->info_args.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off"));
     }
 
   fn_exit:
@@ -698,8 +696,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
     int tmp_bcast_buf[2];
-
-    CSP_DBG_PRINT_FCNAME();
 
     ug_win = CSP_calloc(1, sizeof(CSP_win_t));
 

@@ -215,8 +215,6 @@ int MPI_Win_free(MPI_Win * win)
     CSP_win_t *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
 
-    CSP_DBG_PRINT_FCNAME();
-
     CSP_fetch_ug_win_from_cache(*win, &ug_win);
 
     if (ug_win == NULL) {

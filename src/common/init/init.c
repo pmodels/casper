@@ -12,7 +12,5 @@ int MPI_Init(int *argc, char ***argv)
 {
     CSP_reset_proc();   /* reset before any debug message */
 
-    CSP_DBG_PRINT_FCNAME();
-
     return MPI_Init_thread(argc, argv, 0, NULL);
 }

@@ -78,8 +78,6 @@ int MPI_Finalize(void)
 
     PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &user_local_rank);
 
-    CSP_DBG_PRINT_FCNAME();
-
     /* notify ghost processes to finalize */
     mpi_errno = issue_ghost_cmd();
     if (mpi_errno != MPI_SUCCESS)

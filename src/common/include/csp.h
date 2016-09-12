@@ -16,6 +16,7 @@
 #include <mpi.h>
 #include <casperconf.h>
 #include "csp_util.h"
+#include "csp_msg.h"
 
 /* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 
@@ -65,42 +66,22 @@
 
 
 /* ======================================================================
- * Casper debugging/info/warning/error MACROs.
+ * Internal debugging MACROs.
  * ====================================================================== */
 
 #ifdef CSP_DEBUG
 #define CSP_DBG_PRINT(str,...) do { \
-    fprintf(stdout, "[CSP][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
+    fprintf(stdout, "[CSP][%d] %s:"str, CSP_PROC.wrank, __FUNCTION__, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 #else
 #define CSP_DBG_PRINT(str,...) {}
 #endif
 
-/* #define WARN */
-#ifdef CSP_WARN
-#define CSP_WARN_PRINT(str,...) do { \
-    fprintf(stdout, "[CSP][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
-    fflush(stdout); \
-    } while (0)
-#else
-#define CSP_WARN_PRINT(str,...) {}
-#endif
-
-#define CSP_INFO_PRINT(level, str, ...) do { \
-    if (CSP_ENV.verbose > 0 && CSP_ENV.verbose >= level) { \
-        fprintf(stdout, str, ## __VA_ARGS__); \
-        fflush(stdout); \
-    }   \
-    } while (0)
-
-#define CSP_DBG_PRINT_FCNAME() CSP_DBG_PRINT("in %s\n", __FUNCTION__)
-#define CSP_ERR_PRINT(str,...) do { \
-    fprintf(stderr, "[CSP][%d]"str, CSP_PROC.wrank, ## __VA_ARGS__); \
-    fflush(stdout); \
-    } while (0)
-
-
+#define CSP_ERR_ABORT()  {                                                     \
+    CSP_err_print("Unexpected error in %s, abort\n", __FUNCTION__);            \
+    PMPI_Abort(MPI_COMM_WORLD, -1);                                             \
+}
  /* ======================================================================
   * Window related definitions.
   * ====================================================================== */
@@ -141,7 +122,7 @@ typedef struct CSP_env_param {
     CSP_load_opt_t load_opt;    /* runtime load balancing options */
     CSP_load_lock_t load_lock;  /* how to grant locks for runtime load balancing */
 
-    int verbose;                /* verbose level. print configuration information. */
+    CSP_msg_verbose_t verbose;  /* verbose level. print configuration information. */
     CSP_async_config_t async_config;
 } CSP_env_param_t;
 
@@ -239,19 +220,5 @@ extern int CSP_destroy_proc(void);
 
 extern int CSPG_setup_proc(void);
 extern int CSPG_destroy_proc(void);
-
-#ifdef CSP_DEBUG
-extern void CSP_print_proc(void);
-#define CSP_DBG_PRINT_PROC CSP_print_proc
-#else
-#define CSP_DBG_PRINT_PROC(void)
-#endif
-
-#ifdef CSPG_DEBUG
-extern void CSPG_print_proc(void);
-#define CSP_DBG_PRINT_PROC CSPG_print_proc
-#else
-#define CSP_DBG_PRINT_PROC(void)
-#endif
 
 #endif /* CSP_H_ */

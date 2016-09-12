@@ -105,8 +105,6 @@ int MPI_Rget_accumulate(const void *origin_addr, int origin_count, MPI_Datatype 
     int mpi_errno = MPI_SUCCESS;
     CSP_win_t *ug_win;
 
-    CSP_DBG_PRINT_FCNAME();
-
     CSP_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win) {
