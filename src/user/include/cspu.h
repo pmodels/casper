@@ -13,6 +13,7 @@
 #include "csp_util.h"
 #include "csp_cwp.h"
 #include "csp_mlock.h"
+#include "cspu_cwp.h"
 
 /* ======================================================================
  * Casper user structures.
@@ -443,7 +444,6 @@ static inline int CSP_target_get_ghost(int target_rank, int is_order_required CS
  * Other prototypes
  * ====================================================================== */
 
-extern int CSPU_cwp_fnc_issue(CSP_cwp_pkt_t * pkt);
 extern int CSPU_mlock_acquire(MPI_Comm user_root_comm);
 
 extern int CSP_win_bind_ghosts(CSP_win_t * ug_win);

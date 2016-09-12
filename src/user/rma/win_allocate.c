@@ -250,7 +250,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSP_win_t * ug_win)
     winalloc_pkt->info_npairs = npairs;
 
     /* Only send start request to root ghost. */
-    mpi_errno = CSPU_cwp_fnc_issue(&pkt);
+    mpi_errno = CSPU_cwp_issue(&pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

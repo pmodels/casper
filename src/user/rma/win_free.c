@@ -178,7 +178,7 @@ static int issue_ghost_cmd(CSP_win_t * ug_win)
     CSP_cwp_init_pkt(CSP_CWP_FNC_WIN_FREE, &pkt);
     winfree_pkt->user_local_root = user_local_rank;
 
-    mpi_errno = CSPU_cwp_fnc_issue(&pkt);
+    mpi_errno = CSPU_cwp_issue(&pkt);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

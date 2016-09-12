@@ -1,13 +1,10 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * (C) 2014 by Argonne National Laboratory.
+ * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include "csp.h"
-#include "cspu.h"
+#ifndef CSPU_CWP_H_
+#define CSPU_CWP_H_
 
 /* Command wire protocol (CWP) component on user processes */
 
@@ -21,15 +18,17 @@
 #define CSPU_CWP_DBG_PRINT(str,...)
 #endif
 
-/* Issue a function command to the local ghost processes (blocking call).
+/* Issue a command to the local ghost processes (blocking call).
  * It is usually called by only the local user root process, except finalize. */
-int CSPU_cwp_fnc_issue(CSP_cwp_pkt_t * pkt)
+static inline int CSPU_cwp_issue(CSP_cwp_pkt_t * pkt)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    CSPU_CWP_DBG_PRINT(" send CMD FNC %d to local ghost %d\n", pkt->cmd_type,
+    CSPU_CWP_DBG_PRINT(" send CMD %d to local ghost %d\n", pkt->cmd_type,
                        CSP_PROC.user.g_lranks[0]);
     mpi_errno = PMPI_Send((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
                           CSP_PROC.user.g_lranks[0], CSP_CWP_TAG, CSP_PROC.local_comm);
     return mpi_errno;
 }
+
+#endif /* CSPU_CWP_H_ */

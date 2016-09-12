@@ -57,8 +57,7 @@ static inline int mlock_issue_acquire_req(int group_id)
     lockacq_pkt->group_id = group_id;
 
     CSPU_MLOCK_DBG_PRINT(" \t send LOCK CMD %d (acquire, %d)\n", pkt.cmd_type, group_id);
-    return PMPI_Send((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                     CSP_PROC.user.g_lranks[0], CSP_CWP_TAG, CSP_PROC.local_comm);
+    return CSPU_cwp_issue(&pkt);
 }
 
 static inline int mlock_issue_discard_req(int group_id)
@@ -70,8 +69,7 @@ static inline int mlock_issue_discard_req(int group_id)
     lockdcd_pkt->group_id = group_id;
 
     CSPU_MLOCK_DBG_PRINT(" \t send LOCK CMD %d (discard, %d)\n", pkt.cmd_type, group_id);
-    return PMPI_Send((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                     CSP_PROC.user.g_lranks[0], CSP_CWP_TAG, CSP_PROC.local_comm);
+    return CSPU_cwp_issue(&pkt);
 }
 
 static inline int mlock_issue_release_req(int group_id)
@@ -83,8 +81,7 @@ static inline int mlock_issue_release_req(int group_id)
     lockrls_pkt->group_id = group_id;
 
     CSPU_MLOCK_DBG_PRINT(" \t send LOCK CMD %d (release, %d)\n", pkt.cmd_type, group_id);
-    return PMPI_Send((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                     CSP_PROC.user.g_lranks[0], CSP_CWP_TAG, CSP_PROC.local_comm);
+    return CSPU_cwp_issue(&pkt);
 }
 
 /* Lock ghost processes for the next function command (blocking collective call).

@@ -3,5 +3,4 @@
 #
 
 
-libcasper_la_SOURCES += src/user/common/cwp.c			\
-                        src/user/common/mlock.c
+libcasper_la_SOURCES += src/user/common/mlock.c
