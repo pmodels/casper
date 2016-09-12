@@ -19,18 +19,23 @@ static inline int issue_ghost_cmd(void)
 }
 
 /* Destroy global user process object */
-int CSP_destroy_proc(void)
+static int destroy_proc(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
     /* common objects */
     if (CSP_PROC.local_comm && CSP_PROC.local_comm != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_PROC.local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.local_comm);
+        mpi_errno = PMPI_Comm_free(&CSP_PROC.local_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
-    if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_PROC.wgroup);
+    if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL) {
+        mpi_errno = PMPI_Group_free(&CSP_PROC.wgroup);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
@@ -38,17 +43,23 @@ int CSP_destroy_proc(void)
     /* user-specific objects */
     if (CSP_COMM_USER_WORLD && CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
-        PMPI_Comm_free(&CSP_COMM_USER_WORLD);
+        mpi_errno = PMPI_Comm_free(&CSP_COMM_USER_WORLD);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     if (CSP_PROC.user.u_local_comm && CSP_PROC.user.u_local_comm != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_PROC.user.u_local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.user.u_local_comm);
+        mpi_errno = PMPI_Comm_free(&CSP_PROC.user.u_local_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     if (CSP_PROC.user.ur_comm && CSP_PROC.user.ur_comm != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_PROC.user.ur_comm\n");
-        PMPI_Comm_free(&CSP_PROC.user.ur_comm);
+        mpi_errno = PMPI_Comm_free(&CSP_PROC.user.ur_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     if (CSP_PROC.user.g_lranks)
@@ -68,7 +79,30 @@ int CSP_destroy_proc(void)
     CSP_PROC.user.g_wranks_per_user = NULL;
     CSP_PROC.user.g_wranks_unique = NULL;
 
+  fn_exit:
     return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+int CSP_global_finalize(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    mpi_errno = destroy_proc();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    mpi_errno = CSP_destroy_win_cache();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
 }
 
 int MPI_Finalize(void)
@@ -83,9 +117,9 @@ int MPI_Finalize(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    CSP_destroy_proc();
-
-    CSP_destroy_win_cache();
+    mpi_errno = CSP_global_finalize();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
     mpi_errno = PMPI_Finalize();
     if (mpi_errno != MPI_SUCCESS)

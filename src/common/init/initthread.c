@@ -260,21 +260,6 @@ static int initialize_proc(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    if (CSP_IS_USER) {
-        mpi_errno = CSP_setup_proc();
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        CSP_DBG_PRINT_PROC();
-    }
-    else {
-        mpi_errno = CSPG_setup_proc();
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-
-        CSP_DBG_PRINT_PROC();
-    }
-
   fn_exit:
     /* Free unused communicators */
     if (tmp_comm != MPI_COMM_NULL)
@@ -320,15 +305,20 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* User processes */
     if (CSP_IS_USER) {
         /* Other user-specific initialization */
-        mpi_errno = CSP_init();
+        mpi_errno = CSP_global_init();
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
-    /* Ghost processes */
     else {
-        /* Start ghost routine */
-        CSPG_init();
+        /* Other ghost-specific initialization */
+        mpi_errno = CSPG_global_init();
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+
+        /* Start ghost main routine */
+        CSPG_main();
         exit(0);
     }
 
@@ -339,10 +329,10 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     /* --BEGIN ERROR HANDLING-- */
 
     if (CSP_IS_USER) {
-        CSP_destroy_proc();
+        CSP_global_finalize();
     }
     else {
-        CSPG_destroy_proc();
+        CSPG_global_finalize();
     }
 
     CSP_ERR_ABORT();

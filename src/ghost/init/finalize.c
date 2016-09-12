@@ -17,7 +17,7 @@ static int finalize_impl(void)
 
     CSPG_DBG_PRINT(" All processes arrived finalize.\n");
 
-    CSPG_destroy_proc();
+    CSPG_global_finalize();
 
     CSPG_DBG_PRINT(" PMPI_Finalize\n");
     mpi_errno = PMPI_Finalize();
@@ -33,18 +33,23 @@ static int finalize_impl(void)
 }
 
 /* Destroy global ghost process object */
-int CSPG_destroy_proc(void)
+static int destroy_proc(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
     /* common objects. */
     if (CSP_PROC.local_comm && CSP_PROC.local_comm != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_PROC.local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.local_comm);
+        mpi_errno = PMPI_Comm_free(&CSP_PROC.local_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
-    if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL)
-        PMPI_Group_free(&CSP_PROC.wgroup);
+    if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL) {
+        mpi_errno = PMPI_Group_free(&CSP_PROC.wgroup);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
+    }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
@@ -52,12 +57,31 @@ int CSPG_destroy_proc(void)
     /* ghost-specific objects */
     if (CSP_PROC.ghost.g_local_comm && CSP_PROC.ghost.g_local_comm != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_PROC.ghost.g_local_comm\n");
-        PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm);
+        mpi_errno = PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
 
     CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
 
+  fn_exit:
     return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+int CSPG_global_finalize(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    CSPG_mlock_destory();
+
+    mpi_errno = destroy_proc();
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
 
 int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))

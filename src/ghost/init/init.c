@@ -9,7 +9,7 @@
 #include "cspg.h"
 
 #ifdef CSPG_DEBUG
-void CSPG_print_proc(void)
+static void dbg_print_proc(void)
 {
     int rank, nprocs, local_rank, local_nprocs;
     int local_ghost_rank, local_ghost_nprocs;
@@ -32,9 +32,11 @@ void CSPG_print_proc(void)
 #endif
 
 /* Setup global ghost-specific information. */
-int CSPG_setup_proc(void)
+static void setup_proc(void)
 {
-    return MPI_SUCCESS;
+#ifdef CSPG_DEBUG
+    dbg_print_proc();
+#endif
 }
 
 static void register_cwp_handlers(void)
@@ -48,38 +50,24 @@ static void register_cwp_handlers(void)
     CSPG_cwp_register_handler(CSP_CWP_FNC_FINALIZE, CSPG_finalize_cwp_handler);
 }
 
-int CSPG_init(void)
+int CSPG_global_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
-    int err_class = 0, errstr_len = 0;
-    char err_string[MPI_MAX_ERROR_STRING];
 
-    CSPG_DBG_PRINT(" main start\n");
-
-    CSPG_mlock_init();
-
+    /* Initialization */
+    setup_proc();
     register_cwp_handlers();
+    CSPG_mlock_init();
 
     /* Disable MPI automatic error messages. */
     mpi_errno = PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Keep polling progress until finalize done */
-    mpi_errno = CSPG_cwp_do_progress();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    CSPG_DBG_PRINT(" main done\n");
-
   fn_exit:
-    CSPG_mlock_destory();
     return mpi_errno;
 
   fn_fail:
-    PMPI_Error_class(mpi_errno, &err_class);
-    PMPI_Error_string(mpi_errno, err_string, &errstr_len);
-    CSP_err_print("MPI reports error code %d, error class %d\n%s",
-                  mpi_errno, err_class, err_string);
+    /* Do not release global objects, they are released at MPI_Init_thread. */
     goto fn_exit;
 }

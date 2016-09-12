@@ -20,7 +20,7 @@
 
 #ifdef CSPG_DEBUG
 #define CSPG_DBG_PRINT(str, ...) do {                                                    \
-    fprintf(stdout, "[CSPG][%d] %s: "str, CSP_PROC.wrank, __FUNCTION__, ## __VA_ARGS__); \
+    fprintf(stdout, "[CSPG][%d] "str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout);                                                                      \
     } while (0)
 #else

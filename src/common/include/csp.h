@@ -71,7 +71,7 @@
 
 #ifdef CSP_DEBUG
 #define CSP_DBG_PRINT(str,...) do { \
-    fprintf(stdout, "[CSP][%d] %s:"str, CSP_PROC.wrank, __FUNCTION__, ## __VA_ARGS__); \
+    fprintf(stdout, "[CSP][%d] "str, CSP_PROC.wrank, ## __VA_ARGS__); \
     fflush(stdout); \
     } while (0)
 #else
@@ -212,13 +212,11 @@ extern CSP_env_param_t CSP_ENV;
 extern CSP_proc_t CSP_PROC;
 extern MPI_Comm CSP_COMM_USER_WORLD;
 
-extern int CSPG_init(void);
-extern int CSP_init(void);
+extern int CSP_global_init(void);
+extern int CSPG_global_init(void);
+extern int CSPG_main(void);
 
-extern int CSP_setup_proc(void);
-extern int CSP_destroy_proc(void);
-
-extern int CSPG_setup_proc(void);
-extern int CSPG_destroy_proc(void);
+extern int CSP_global_finalize(void);
+extern int CSPG_global_finalize(void);
 
 #endif /* CSP_H_ */

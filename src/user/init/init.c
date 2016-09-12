@@ -10,7 +10,7 @@
 CSP_DEFINE_WIN_CACHE;
 
 #ifdef CSP_DEBUG
-void CSP_print_proc(void)
+static void dbg_print_proc(void)
 {
     int rank, nprocs, local_rank, local_nprocs, user_rank, user_nprocs;
     int local_user_rank, local_user_nprocs;
@@ -60,7 +60,7 @@ void CSP_print_proc(void)
 #endif
 
 /* Setup global user-specific information. */
-int CSP_setup_proc(void)
+static int setup_proc(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int *tmp_gather_buf = NULL;
@@ -119,6 +119,10 @@ int CSP_setup_proc(void)
         }
     }
 
+#ifdef CSP_DEBUG
+    dbg_print_proc();
+#endif
+
   fn_exit:
     if (user_world_group != MPI_GROUP_NULL)
         PMPI_Group_free(&user_world_group);
@@ -135,14 +139,21 @@ int CSP_setup_proc(void)
     goto fn_exit;
 }
 
-int CSP_init(void)
+int CSP_global_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
+    mpi_errno = setup_proc();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     mpi_errno = CSP_init_win_cache();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
 
   fn_exit:
     return mpi_errno;
   fn_fail:
+    /* Do not release global objects, they are released at MPI_Init_thread. */
     goto fn_exit;
 }
