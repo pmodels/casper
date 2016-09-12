@@ -68,6 +68,18 @@ typedef int (*CSPG_cwp_handler_t) (CSP_cwp_pkt_t * pkt);
 
 extern void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t handler_fnc);
 extern void CSPG_cwp_register_handler(CSP_cwp_t cmd_type, CSPG_cwp_handler_t handler_fnc);
+extern int CSPG_cwp_do_progress(void);
+extern void CSPG_cwp_terminate(void);
+
+static inline int CSPG_cwp_bcast(CSP_cwp_pkt_t * pkt)
+{
+    return PMPI_Bcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
+                      CSP_PROC.ghost.g_local_comm);
+}
+
+/* ======================================================================
+ * CWP handler functions.
+ * ====================================================================== */
 
 extern int CSPG_win_allocate_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
 extern int CSPG_win_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
@@ -77,23 +89,9 @@ extern int CSPG_win_allocate_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_win_free_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt);
 
-extern int CSPG_cwp_do_progress(void);
-
-static inline int CSPG_cwp_bcast(CSP_cwp_pkt_t * pkt)
-{
-    return PMPI_Bcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
-                      CSP_PROC.ghost.g_local_comm);
-}
-
 /* ======================================================================
  * MLOCK related definition (ghost side).
  * ====================================================================== */
-
-typedef struct CSPG_mlock_req {
-    int group_id;
-    int user_local_rank;
-    CSP_mlock_status_t status;
-} CSPG_mlock_req_t;
 
 extern void CSPG_mlock_init(void);
 extern void CSPG_mlock_destory(void);

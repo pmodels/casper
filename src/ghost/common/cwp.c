@@ -35,10 +35,37 @@ static const char *cwp_cmd_name[CSP_CWP_MAX] = {
  * The handler is called when received a command from the user process.*/
 static CSPG_cwp_root_handler_t cwp_root_handlers[CSP_CWP_MAX] = { NULL };
 
-/* Command handlers on children ghosts.
+/* Command handlers on other ghosts.
  * The handler is called when received a command broadcasted from the root ghost. */
 static CSPG_cwp_handler_t cwp_handlers[CSP_CWP_MAX] = { NULL };
 
+/* Internal flag to notify the ghost process to exit from CWP progress engine.
+ * The finalize handler calls `CSPG_cwp_terminate` to set it to 1 after all local
+ * users have sent finalize command. The progress engine checks this flag to exit
+ * from loop.*/
+static int cwp_terminate_flag = 0;
+
+/* Register root handler functions for user issued commands. */
+void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t handler_fnc)
+{
+    if (cmd_type <= CSP_CWP_UNSET || cmd_type >= CSP_CWP_MAX) {
+        CSPG_DBG_PRINT("register incorrect root handler, cmd_type=%d\n", cmd_type);
+    }
+    else {
+        cwp_root_handlers[cmd_type] = handler_fnc;
+    }
+}
+
+/* Register handler functions for root broadcasted commands. */
+void CSPG_cwp_register_handler(CSP_cwp_t cmd_type, CSPG_cwp_handler_t handler_fnc)
+{
+    if (cmd_type <= CSP_CWP_UNSET || cmd_type >= CSP_CWP_MAX) {
+        CSPG_DBG_PRINT("register incorrect handler, cmd_type=%d\n", cmd_type);
+    }
+    else {
+        cwp_handlers[cmd_type] = handler_fnc;
+    }
+}
 
 /* Receive command from any local user process (blocking call),
  * and process it in the corresponding command handler.
@@ -98,8 +125,8 @@ int CSPG_cwp_do_progress(void)
                 goto fn_fail;
         }
 
-        /* Exit after finalize is called. */
-        if (CSP_PROC.ghost.is_finalized) {
+        /* Terminate after received notification from finalize handler. */
+        if (cwp_terminate_flag) {
             CSPG_CWP_DBG_PRINT(" exit from progress engine\n");
             goto fn_exit;
         }
@@ -111,22 +138,8 @@ int CSPG_cwp_do_progress(void)
     goto fn_exit;
 }
 
-void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t handler_fnc)
+/* Notify the CWP progress engine to terminate. */
+void CSPG_cwp_terminate(void)
 {
-    if (cmd_type <= CSP_CWP_UNSET || cmd_type >= CSP_CWP_MAX) {
-        CSPG_DBG_PRINT("register incorrect root handler, cmd_type=%d\n", cmd_type);
-    }
-    else {
-        cwp_root_handlers[cmd_type] = handler_fnc;
-    }
-}
-
-void CSPG_cwp_register_handler(CSP_cwp_t cmd_type, CSPG_cwp_handler_t handler_fnc)
-{
-    if (cmd_type <= CSP_CWP_UNSET || cmd_type >= CSP_CWP_MAX) {
-        CSPG_DBG_PRINT("register incorrect handler, cmd_type=%d\n", cmd_type);
-    }
-    else {
-        cwp_handlers[cmd_type] = handler_fnc;
-    }
+    cwp_terminate_flag = 1;
 }

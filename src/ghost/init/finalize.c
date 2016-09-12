@@ -24,7 +24,7 @@ static int finalize_impl(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    CSP_PROC.ghost.is_finalized = 1;
+    CSPG_cwp_terminate();
 
   fn_exit:
     return mpi_errno;

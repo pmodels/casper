@@ -149,9 +149,6 @@ typedef struct CSP_user_proc {
 
 typedef struct CSP_ghost_proc {
     MPI_Comm g_local_comm;      /* Includes all ghosts on local node. */
-    int is_finalized;           /* Flag to notify all ghosts to exit from progress engine.
-                                 * It is set to 1 in the finalize handler after all local
-                                 * users have arrived at finalize. */
 } CSP_ghost_proc_t;
 
 typedef struct CSP_proc {
@@ -200,7 +197,6 @@ static inline void CSP_reset_typed_proc(void)
     }
     else {
         CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
-        CSP_PROC.ghost.is_finalized = 0;
     }
 }
 

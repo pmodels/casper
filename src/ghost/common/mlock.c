@@ -22,6 +22,12 @@ static const char *mlock_status_name[CSP_MLOCK_STATUS_MAX] =
 #define CSPG_MLOCK_DBG_PRINT(str,...)
 #endif
 
+typedef struct CSPG_mlock_req {
+    int group_id;
+    int user_local_rank;
+    CSP_mlock_status_t status;
+} CSPG_mlock_req_t;
+
 static CSP_slist_t mlock_susped_reqs_list;
 static CSPG_mlock_req_t *mlock_granted_req = NULL;
 static int mlock_req_cnt = 0;   /* counter to tracking unreleased lock requests. */
