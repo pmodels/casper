@@ -16,12 +16,10 @@ int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    /* Also set error handler for the real MPI_COMM_WORLD.
-     * Because MPI standard says:
-     * MPI calls that are not related to any objects are considered to be
-     * attached to the communicator MPI_COMM_WORLD. */
-    if (comm == CSP_COMM_USER_WORLD) {
-        mpi_errno = PMPI_Errhandler_set(MPI_COMM_WORLD, errhandler);
+    /* Set error handler for both MPI_COMM_WORLD and COMM_USER_WORLD if
+     * input comm is MPI_COMM_WORLD (See description in comm_set_errhandler). */
+    if (comm == MPI_COMM_WORLD) {
+        mpi_errno = PMPI_Errhandler_set(CSP_COMM_USER_WORLD, errhandler);
     }
 
   fn_exit:
