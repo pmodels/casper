@@ -8,10 +8,6 @@ TRAVIS_ROOT="$1"
 MPI_IMPL="$2"
 
 # Environment variables
-export CFLAGS="-std=c99"
-#export MPICH_CC=$CC
-export MPICC=mpicc
-
 case "$os" in
     Darwin)
         ;;
@@ -36,8 +32,9 @@ esac
 
 # Configure and build
 ./autogen.sh
-./configure --disable-static
+./configure CC=mpicc CFLAGS="-std=c99" --disable-static
 
 # Run unit tests
 export CSP_VERBOSE=1
-make check
+make V=1
+make V=1 check
