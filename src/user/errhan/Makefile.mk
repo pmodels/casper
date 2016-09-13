@@ -3,4 +3,5 @@
 #
 
 libcasper_la_SOURCES += src/user/errhan/comm_set_errhandler.c \
-                        src/user/errhan/errhandler_set.c
+                        src/user/errhan/errhandler_set.c      \
+                        src/user/errhan/win_set_errhandler.c
