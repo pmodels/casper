@@ -18,7 +18,8 @@ int MPI_Win_create(void *base, MPI_Aint size, int disp_unit, MPI_Info info,
 
     mpi_errno = PMPI_Win_create(base, size, disp_unit, info, comm, win);
 
-    CSP_warn_print("called MPI_Win_create, no asynchronous progress on win 0x%x\n", *win);
+    CSP_msg_print(CSP_MSG_WARN, "called MPI_Win_create, no asynchronous progress on win 0x%x\n",
+                  *win);
 
     return mpi_errno;
 }

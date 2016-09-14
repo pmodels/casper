@@ -10,45 +10,42 @@
 #include <stdarg.h>
 #include "csp_msg.h"
 
-static CSP_msg_verbose_t verbose = CSP_MSG_VBS_UNSET;
+#define MSG_FPRINTF(file, prefix, list, format) do {    \
+        fprintf(file, prefix);                          \
+        va_start(list, format);                         \
+        vfprintf(file, format, list);                   \
+        va_end(list);                                   \
+        fflush(file);                                   \
+} while (0);
+
+static CSP_msg_verbose_t verbose = CSP_MSG_OFF;
 
 void CSP_msg_init(CSP_msg_verbose_t vbs)
 {
     verbose = vbs;
 }
 
-void CSP_info_print(CSP_msg_verbose_t vbs, const char format[], ...)
+void CSP_msg_print(CSP_msg_verbose_t vbs, const char format[], ...)
 {
     va_list list;
 
-    if (verbose > CSP_MSG_VBS_UNSET && verbose >= vbs) {
-        va_start(list, format);
-        vprintf(format, list);
-        va_end(list);
-        fflush(stdout);
-    }
-}
-
-void CSP_err_print(const char format[], ...)
-{
-    va_list list;
-
-    fprintf(stderr, "[CSP-ERROR]");
-    va_start(list, format);
-    vfprintf(stderr, format, list);
-    va_end(list);
-    fflush(stderr);
-}
-
-void CSP_warn_print(const char format[], ...)
-{
-    va_list list;
-
-    if (verbose >= CSP_MSG_VBS_WARN) {
-        fprintf(stderr, "[CSP-WARN]");
-        va_start(list, format);
-        vfprintf(stderr, format, list);
-        va_end(list);
-        fflush(stderr);
+    if (verbose & vbs) {
+        switch (vbs) {
+        case CSP_MSG_ERROR:
+            MSG_FPRINTF(stderr, "[CSP ERR] ", list, format);
+            break;
+        case CSP_MSG_WARN:
+            MSG_FPRINTF(stderr, "[CSP WARN] ", list, format);
+            break;
+        case CSP_MSG_CONFIG_GLOBAL:
+        case CSP_MSG_CONFIG_WIN:
+            MSG_FPRINTF(stdout, "", list, format);
+            break;
+        case CSP_MSG_INFO:
+            MSG_FPRINTF(stdout, "[CSP INFO] ", list, format);
+            break;
+        default:
+            break;
+        }
     }
 }

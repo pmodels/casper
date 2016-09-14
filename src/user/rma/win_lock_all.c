@@ -37,7 +37,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
      * the previous FENCE is closed or not.*/
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL
         || ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
-        CSP_err_print("Wrong synchronization call! "
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "Previous %s epoch is still open in %s\n",
                       (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
                       __FUNCTION__);

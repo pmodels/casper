@@ -172,7 +172,7 @@ static inline int CSPU_destroy_win_cache(void)
     if (UG_WIN_HANDLE_KEY != MPI_KEYVAL_INVALID) {
         mpi_errno = PMPI_Win_free_keyval(&UG_WIN_HANDLE_KEY);
         if (mpi_errno != MPI_SUCCESS)
-            CSP_err_print("Cannot free UG_WIN_HANDLE_KEY %p\n", &UG_WIN_HANDLE_KEY);
+            CSP_DBG_PRINT("Cannot free UG_WIN_HANDLE_KEY %p\n", &UG_WIN_HANDLE_KEY);
     }
     return mpi_errno;
 }
@@ -195,7 +195,7 @@ static inline int CSPU_cache_ug_win(MPI_Win win, CSPU_win_t * ug_win)
     int mpi_errno = MPI_SUCCESS;
     mpi_errno = PMPI_Win_set_attr(win, UG_WIN_HANDLE_KEY, ug_win);
     if (mpi_errno != MPI_SUCCESS) {
-        CSP_err_print("Cannot cache ug_win %p for win 0x%x\n", ug_win, win);
+        CSP_DBG_PRINT("Cannot cache ug_win %p for win 0x%x\n", ug_win, win);
         return mpi_errno;
     }
     CSP_DBG_PRINT("cache ug_win %p into win 0x%x \n", ug_win, win);
@@ -207,7 +207,7 @@ static inline int CSPU_remove_ug_win_from_cache(MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     mpi_errno = PMPI_Win_delete_attr(win, UG_WIN_HANDLE_KEY);
     if (mpi_errno != MPI_SUCCESS)
-        CSP_err_print("Cannot remove ug_win cache for win 0x%x\n", win);
+        CSP_DBG_PRINT("Cannot remove ug_win cache for win 0x%x\n", win);
     return mpi_errno;
 }
 
@@ -252,8 +252,8 @@ extern const char *CSPU_win_epoch_stat_name[4];
 /* Check access epoch status per operation.*/
 #define CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win) {   \
     if (ug_win->epoch_stat == CSPU_WIN_NO_EPOCH && target->epoch_stat == CSPU_TARGET_NO_EPOCH) {  \
-        CSP_err_print("Wrong synchronization call! "    \
-                "No opening epoch in %s\n", __FUNCTION__);  \
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "    \
+                      "No opening epoch in %s\n", __FUNCTION__);       \
         mpi_errno = -1; \
         goto fn_fail;   \
     }   \

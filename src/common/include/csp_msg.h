@@ -12,20 +12,22 @@
 
 /* ======================================================================
  * Message output (INFO/WARNING/ERROR).
- * Error messages are always printed. Info and warning messages are printed
- * only when user initialized appropriate verbose.
+ * User controls message verbosity by setting environment variable.
+ * The verbosity can be a combination of following message types:
+ * stderr: ERROR, WARN;
+ * stdout: CONFIG_GLOBAL, CONFIG_WIN, INFO.
  * ====================================================================== */
 
 typedef enum {
-    CSP_MSG_VBS_UNSET = 0,
-    CSP_MSG_VBS_INFO_GLOBAL = 1,
-    CSP_MSG_VBS_INFO_WIN = 2,
-    CSP_MSG_VBS_WARN = 3
+    CSP_MSG_OFF = 0,
+    CSP_MSG_ERROR = 1,  /* error */
+    CSP_MSG_WARN = 2,   /* warning */
+    CSP_MSG_CONFIG_GLOBAL = 4,  /* global configuration */
+    CSP_MSG_CONFIG_WIN = 8,     /* window configuration */
+    CSP_MSG_INFO = 16   /* any other information */
 } CSP_msg_verbose_t;
 
 extern void CSP_msg_init(CSP_msg_verbose_t vbs);
-extern void CSP_info_print(CSP_msg_verbose_t vbs, const char format[], ...);
-extern void CSP_warn_print(const char format[], ...);
-extern void CSP_err_print(const char format[], ...);
+extern void CSP_msg_print(CSP_msg_verbose_t vbs, const char format[], ...);
 
 #endif /* CSP_MSG_H_ */

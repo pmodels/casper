@@ -90,7 +90,7 @@ int MPI_Win_complete(MPI_Win win)
     /* Check access epoch status.
      * The current epoch must be pscw on all involved targets.*/
     if (ug_win->epoch_stat != CSPU_WIN_EPOCH_PER_TARGET) {
-        CSP_err_print("Wrong synchronization call! "
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "No opening per-target epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;
@@ -99,7 +99,7 @@ int MPI_Win_complete(MPI_Win win)
         for (i = 0; i < start_grp_size; i++) {
             int target_rank = ug_win->start_ranks_in_win_group[i];
             if (ug_win->targets[target_rank].epoch_stat != CSPU_TARGET_EPOCH_PSCW) {
-                CSP_err_print("Wrong synchronization call! "
+                CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                               "No opening PSCW epoch on target %d in %s\n", target_rank,
                               __FUNCTION__);
                 mpi_errno = -1;

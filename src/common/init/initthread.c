@@ -31,13 +31,13 @@ static inline int check_valid_ghosts(void)
     PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
 
     if (local_nprocs < 2) {
-        CSP_err_print("Can not create shared memory region, %d process in "
+        CSP_msg_print(CSP_MSG_ERROR, "Can not create shared memory region, %d process in "
                       "MPI_COMM_TYPE_SHARED subcommunicator.\n", local_nprocs);
         err_flag++;
     }
 
     if (CSP_ENV.num_g < 1 || CSP_ENV.num_g >= local_nprocs) {
-        CSP_err_print("Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
                       CSP_ENV.num_g, local_nprocs);
         err_flag++;
     }
@@ -90,18 +90,43 @@ static int initialize_env()
         CSP_ENV.num_g = atoi(val);
     }
     if (CSP_ENV.num_g <= 0) {
-        CSP_err_print("Wrong CSP_NG %d\n", CSP_ENV.num_g);
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong CSP_NG %d\n", CSP_ENV.num_g);
         return -1;
     }
 
-    CSP_ENV.verbose = CSP_MSG_VBS_UNSET;
+    /* VERBOSE level */
+    CSP_ENV.verbose = CSP_MSG_OFF;
     val = getenv("CSP_VERBOSE");
     if (val && strlen(val)) {
-        int vbs = atoi(val);
+        char *vbs = NULL;
 
-        /* VERBOSE level */
-        if (vbs > CSP_MSG_VBS_UNSET)
-            CSP_ENV.verbose = vbs;
+        vbs = strtok(val, ",|;");
+        while (vbs != NULL) {
+            if (!strncmp(vbs, "err", strlen("err"))) {
+                CSP_ENV.verbose |= CSP_MSG_ERROR;
+            }
+            else if (!strncmp(vbs, "warn", strlen("warn"))) {
+                CSP_ENV.verbose |= CSP_MSG_WARN;
+            }
+            else if (!strncmp(vbs, "conf_g", strlen("conf_g"))) {
+                CSP_ENV.verbose |= CSP_MSG_CONFIG_GLOBAL;
+            }
+            else if (!strncmp(vbs, "conf_win", strlen("conf_win"))) {
+                CSP_ENV.verbose |= CSP_MSG_CONFIG_WIN;
+            }
+            else if (!strncmp(vbs, "info", strlen("info"))) {
+                CSP_ENV.verbose |= CSP_MSG_INFO;
+            }
+            vbs = strtok(NULL, ",|;");
+        }
+
+        /* Also check shortcut for most useful verbosity */
+        if (CSP_ENV.verbose == CSP_MSG_OFF) {
+            if (!strncmp(val, "1", strlen("1")) ||
+                !strncmp(val, "y", strlen("y")) || !strncmp(val, "Y", strlen("Y"))) {
+                CSP_ENV.verbose = CSP_MSG_ERROR | CSP_MSG_CONFIG_GLOBAL;
+            }
+        }
     }
 
     CSP_msg_init(CSP_ENV.verbose);
@@ -116,7 +141,7 @@ static int initialize_env()
             CSP_ENV.async_config = CSP_ASYNC_CONFIG_OFF;
         }
         else {
-            CSP_err_print("Unknown CSP_ASYNC_CONFIG %s\n", val);
+            CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_ASYNC_CONFIG %s\n", val);
             return -1;
         }
     }
@@ -136,7 +161,7 @@ static int initialize_env()
             CSP_ENV.load_opt = CSP_LOAD_BYTE_COUNTING;
         }
         else {
-            CSP_err_print("Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
+            CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
             return -1;
         }
     }
@@ -151,7 +176,7 @@ static int initialize_env()
             CSP_ENV.load_lock = CSP_LOAD_LOCK_FORCE;
         }
         else {
-            CSP_err_print("Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
+            CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
             return -1;
         }
     }
@@ -161,26 +186,32 @@ static int initialize_env()
 #endif
 
     if (CSP_PROC.wrank == 0) {
-        CSP_info_print(CSP_MSG_VBS_INFO_GLOBAL, "CASPER Configuration:  \n"
+        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "CASPER Configuration:  \n"
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
-                       "    EPOCH_STAT_CHECK (enabled) \n"
+                      "    EPOCH_STAT_CHECK (enabled) \n"
 #endif
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-                       "    RUMTIME_LOAD_OPT (enabled) \n"
+                      "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
-                       "    CSP_NG = %d \n"
-                       "    CSP_ASYNC_CONFIG = %s\n",
-                       CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
+                      "    VERBOSE          = %s|%s|%s|%s|%s\n"
+                      "    CSP_NG           = %d\n"
+                      "    CSP_ASYNC_CONFIG = %s\n",
+                      (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
+                      (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
+                      (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
+                      (CSP_ENV.verbose & CSP_MSG_CONFIG_WIN) ? "conf_win" : "",
+                      (CSP_ENV.verbose & CSP_MSG_INFO) ? "info" : "",
+                      CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        CSP_info_print(CSP_MSG_VBS_INFO_GLOBAL, "Runtime Load Balancing Options:  \n"
-                       "    CSP_RUMTIME_LOAD_OPT = %s \n"
-                       "    CSP_RUNTIME_LOAD_LOCK = %s \n",
-                       (CSP_ENV.load_opt == CSP_LOAD_OPT_RANDOM) ? "random" :
-                       ((CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) ? "op" : "byte"),
-                       (CSP_ENV.load_lock == CSP_LOAD_LOCK_NATURE) ? "nature" : "force");
+        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "Runtime Load Balancing Options:  \n"
+                      "    CSP_RUMTIME_LOAD_OPT = %s \n"
+                      "    CSP_RUNTIME_LOAD_LOCK = %s \n",
+                      (CSP_ENV.load_opt == CSP_LOAD_OPT_RANDOM) ? "random" :
+                      ((CSP_ENV.load_opt == CSP_LOAD_OPT_COUNTING) ? "op" : "byte"),
+                      (CSP_ENV.load_lock == CSP_LOAD_LOCK_NATURE) ? "nature" : "force");
 #endif
-        CSP_info_print(CSP_MSG_VBS_INFO_GLOBAL, "\n");
+        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "\n");
     }
     return mpi_errno;
 }

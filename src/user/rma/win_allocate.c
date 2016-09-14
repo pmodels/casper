@@ -124,17 +124,17 @@ static int read_win_info(MPI_Info info, CSPU_win_t * ug_win)
                   ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "fence" : ""));
 
     if (user_rank == 0) {
-        CSP_info_print(CSP_MSG_VBS_INFO_WIN, "CASPER Window: %s \n"
-                       "    no_local_load_store = %s\n"
-                       "    epochs_used = %s%s%s%s\n"
-                       "    async_config = %s\n\n",
-                       ug_win->info_args.win_name,
-                       (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
-                       ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
-                       ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ? "|lock" : ""),
-                       ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "|pscw" : ""),
-                       ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "|fence" : ""),
-                       ((ug_win->info_args.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off"));
+        CSP_msg_print(CSP_MSG_CONFIG_WIN, "CASPER Window: %s \n"
+                      "    no_local_load_store = %s\n"
+                      "    epochs_used = %s%s%s%s\n"
+                      "    async_config = %s\n\n",
+                      ug_win->info_args.win_name,
+                      (ug_win->info_args.no_local_load_store ? "TRUE" : " FALSE"),
+                      ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL) ? "lockall" : ""),
+                      ((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ? "|lock" : ""),
+                      ((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ? "|pscw" : ""),
+                      ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ? "|fence" : ""),
+                      ((ug_win->info_args.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off"));
     }
 
   fn_exit:

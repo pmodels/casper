@@ -63,7 +63,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
      * the previous FENCE is closed or not.*/
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL
         || ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
-        CSP_err_print("Wrong synchronization call! "
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "Previous %s epoch is still open in %s\n",
                       (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
                       __FUNCTION__);
@@ -74,7 +74,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
     /* Check exposure epoch status.
      * The current epoch can be none or FENCE.*/
     if (ug_win->exp_epoch_stat == CSPU_WIN_EXP_EPOCH_PSCW) {
-        CSP_err_print("Wrong synchronization call! "
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;

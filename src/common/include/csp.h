@@ -75,8 +75,9 @@
 #define CSP_DBG_PRINT(str,...) {}
 #endif
 
-#define CSP_ERR_ABORT()  {                                                     \
-    CSP_err_print("Unexpected error in %s, abort\n", __FUNCTION__);            \
+#define CSP_ERR_ABORT()  {                                                      \
+    CSP_msg_print(CSP_MSG_ERROR, "Unexpected error in %s, abort\n",             \
+                  __FUNCTION__);                                                \
     PMPI_Abort(MPI_COMM_WORLD, -1);                                             \
 }
  /* ======================================================================
