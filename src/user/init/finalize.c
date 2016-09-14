@@ -86,7 +86,7 @@ static int destroy_proc(void)
     goto fn_exit;
 }
 
-int CSP_global_finalize(void)
+int CSPU_global_finalize(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -94,7 +94,7 @@ int CSP_global_finalize(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = CSP_destroy_win_cache();
+    mpi_errno = CSPU_destroy_win_cache();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -117,7 +117,7 @@ int MPI_Finalize(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = CSP_global_finalize();
+    mpi_errno = CSPU_global_finalize();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

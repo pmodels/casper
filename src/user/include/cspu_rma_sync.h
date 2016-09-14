@@ -13,29 +13,29 @@
 
 /* This header file includes all generic routines used in RMA synchronization. */
 
-extern int CSP_win_target_lock(int lock_type, int assert, int target_rank, CSP_win_t * ug_win);
-extern int CSP_win_target_flush(int target_rank, CSP_win_t * ug_win);
-extern int CSP_win_target_unlock(int target_rank, CSP_win_t * ug_win);
-extern int CSP_win_global_flush_all(CSP_win_t * ug_win);
-extern int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win);
+extern int CSPU_win_target_lock(int lock_type, int assert, int target_rank, CSPU_win_t * ug_win);
+extern int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win);
+extern int CSPU_win_target_unlock(int target_rank, CSPU_win_t * ug_win);
+extern int CSPU_win_global_flush_all(CSPU_win_t * ug_win);
+extern int CSPU_win_target_flush_local(int target_rank, CSPU_win_t * ug_win);
 
 /* Receive buffer for receiving complete-wait sync message.
  * We don't need its value, so just use a global char variable to ensure
  * receive buffer is always allocated.*/
-extern char wait_flg;
-extern int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int blocking,
-                                      int *flag);
+extern char CSPU_pscw_wait_flg;
+extern int CSPU_recv_pscw_complete_msg(int post_grp_size, CSPU_win_t * ug_win, int blocking,
+                                       int *flag);
 
 
-#define CSP_GET_LOCK_TYPE_NAME(lock_type) (lock_type == MPI_LOCK_SHARED ? "SHARED" : "EXCLUSIVE")
-#define CSP_GET_ASSERT_NAME(assert) (assert & MPI_MODE_NOCHECK ? "NOCHECK" : (assert == 0 ? "none" : "other"))
-#define CSP_GET_WIN_TYPE(win, ug_win) ((win) == ug_win->global_win ? "global_win" : "ug_wins")
+#define CSPU_GET_LOCK_TYPE_NAME(lock_type) (lock_type == MPI_LOCK_SHARED ? "SHARED" : "EXCLUSIVE")
+#define CSPU_GET_ASSERT_NAME(assert) (assert & MPI_MODE_NOCHECK ? "NOCHECK" : (assert == 0 ? "none" : "other"))
+#define CSPU_GET_WIN_TYPE(win, ug_win) ((win) == ug_win->global_win ? "global_win" : "ug_wins")
 
 /* ======================================================================
  * local synchronization
  * ====================================================================== */
 
-static inline int CSP_win_grant_local_lock(int target_rank, CSP_win_t * ug_win)
+static inline int CSPU_win_grant_local_lock(int target_rank, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -66,7 +66,7 @@ static inline int CSP_win_grant_local_lock(int target_rank, CSP_win_t * ug_win)
             goto fn_fail;
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        ug_win->targets[target_rank].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
+        ug_win->targets[target_rank].main_lock_stat = CSPU_MAIN_LOCK_GRANTED;
 #endif
         CSP_DBG_PRINT(" grant local lock(ghost(%d), ug_wins 0x%x)\n",
                       target_g_rank_in_ug, ug_win->targets[target_rank].ug_win);
@@ -84,12 +84,12 @@ static inline int CSP_win_grant_local_lock(int target_rank, CSP_win_t * ug_win)
  * It is called by both WIN_LOCK and WIN_LOCK_ALL (lock-exist mode).
  * Note that self lock is required for memory consistency, thus it must be
  * issued even if local PUT/GET optimization is disabled.*/
-static inline int CSP_win_lock_self(CSP_win_t * ug_win)
+static inline int CSPU_win_lock_self(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
 
 #if !defined(CSP_ENABLE_SYNC_ALL_OPT)
-    CSP_win_target_t *target;
+    CSPU_win_target_t *target;
     int user_rank;
     MPI_Win lock_win = MPI_WIN_NULL;
 
@@ -112,12 +112,12 @@ static inline int CSP_win_lock_self(CSP_win_t * ug_win)
 
 /* Unlock self process on lock window.
  * It is called by both WIN_UNLOCK and WIN_UNLOCK_ALL (lock-exist mode). */
-static inline int CSP_win_unlock_self(CSP_win_t * ug_win)
+static inline int CSPU_win_unlock_self(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
 
 #if !defined(CSP_ENABLE_SYNC_ALL_OPT)
-    CSP_win_target_t *target;
+    CSPU_win_target_t *target;
     int user_rank;
     MPI_Win lock_win = MPI_WIN_NULL;
 
@@ -140,11 +140,11 @@ static inline int CSP_win_unlock_self(CSP_win_t * ug_win)
 /* Flush the local process.
  * It is called in all flush{all}-included operations.
  * Note that the actual flush is only issued when local PUT/GET optimization is enabled. */
-static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
+static inline int CSPU_win_flush_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
 #if defined(CSP_ENABLE_LOCAL_RMA_OP_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
-    CSP_win_target_t *target;
+    CSPU_win_target_t *target;
     int user_rank;
     MPI_Win *win_ptr = NULL;
 
@@ -153,7 +153,7 @@ static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
 
-    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
+    CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
     CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
@@ -166,11 +166,11 @@ static inline int CSP_win_flush_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
 /* Locally flush the local process.
  * It is called in all flush_local{all}-included operations.
  * Note that the actual flush_local is only issued when local PUT/GET optimization is enabled. */
-static inline int CSP_win_flush_local_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unused)))
+static inline int CSPU_win_flush_local_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
 #if defined(CSP_ENABLE_LOCAL_RMA_OP_OPT) && !defined(CSP_ENABLE_SYNC_ALL_OPT)
-    CSP_win_target_t *target;
+    CSPU_win_target_t *target;
     int user_rank;
     MPI_Win *win_ptr = NULL;
 
@@ -179,7 +179,7 @@ static inline int CSP_win_flush_local_self(CSP_win_t * ug_win CSP_ATTRIBUTE((unu
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     target = &(ug_win->targets[user_rank]);
 
-    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
+    CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
     CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush_local self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);

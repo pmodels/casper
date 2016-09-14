@@ -10,12 +10,12 @@
 
 int MPI_Win_sync(MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_rank = 0, user_nprocs = 0;
     int i;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -31,7 +31,7 @@ int MPI_Win_sync(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
         /* Check access epoch status.
          * The current epoch must be lock_all.*/
-        if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
+        if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
             CSP_err_print("Wrong synchronization call! "
                           "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
             mpi_errno = -1;
@@ -44,25 +44,25 @@ int MPI_Win_sync(MPI_Win win)
             goto fn_fail;
 
         CSP_DBG_PRINT(" win sync on %s single win 0x%x\n",
-                      CSP_win_epoch_stat_name[ug_win->epoch_stat], ug_win->global_win);
+                      CSPU_win_epoch_stat_name[ug_win->epoch_stat], ug_win->global_win);
     }
 
     /* For window that may contain locks, we should sync on all per-target windows
      * that are involved in opened lock epoch.*/
-    else if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
-        CSP_win_target_t *target = NULL;
+    else if (ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
+        CSPU_win_target_t *target = NULL;
         int synced CSP_ATTRIBUTE((unused)) = 0;
         PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
         for (i = 0; i < user_nprocs; i++) {
             target = &ug_win->targets[i];
-            if (target->epoch_stat == CSP_TARGET_EPOCH_LOCK) {
+            if (target->epoch_stat == CSPU_TARGET_EPOCH_LOCK) {
                 mpi_errno = PMPI_Win_sync(target->ug_win);
                 if (mpi_errno != MPI_SUCCESS)
                     goto fn_fail;
 
                 CSP_DBG_PRINT(" win sync on %s target %d, win 0x%x\n",
-                              CSP_target_epoch_stat_name[target->epoch_stat], i, target->ug_win);
+                              CSPU_target_epoch_stat_name[target->epoch_stat], i, target->ug_win);
                 synced = 1;
             }
         }

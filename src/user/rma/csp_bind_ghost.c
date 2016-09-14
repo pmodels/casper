@@ -10,7 +10,7 @@
 #include <memory.h>
 #include "cspu.h"
 
-static int bind_by_ranks(int n_targets, int *local_targets, CSP_win_t * ug_win)
+static int bind_by_ranks(int n_targets, int *local_targets, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, g_off, t_rank, user_nprocs;
@@ -48,7 +48,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSP_win_t * ug_win)
  * Bind every target in the window with single ghost process to
  * guarantee lock permission, accumulate ordering and atomicity.
  */
-int CSP_win_bind_ghosts(CSP_win_t * ug_win)
+int CSPU_win_bind_ghosts(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_nprocs;

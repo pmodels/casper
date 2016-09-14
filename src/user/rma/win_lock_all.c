@@ -11,12 +11,12 @@
 
 int MPI_Win_lock_all(int assert, MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs;
     int i;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -28,18 +28,18 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
-    if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
+    if (ug_win->epoch_stat == CSPU_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
 
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
-    if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL
-        || ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
+    if (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL
+        || ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
         CSP_err_print("Wrong synchronization call! "
                       "Previous %s epoch is still open in %s\n",
-                      (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
+                      (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
                       __FUNCTION__);
         mpi_errno = -1;
         goto fn_fail;
@@ -84,7 +84,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
         ug_win->is_self_locked = 1;
 #else
         for (i = 0; i < user_nprocs; i++) {
-            mpi_errno = CSP_win_target_lock(MPI_LOCK_SHARED, assert, i, ug_win);
+            mpi_errno = CSPU_win_target_lock(MPI_LOCK_SHARED, assert, i, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -93,14 +93,14 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     for (i = 0; i < user_nprocs; i++) {
-        ug_win->targets[i].main_lock_stat = CSP_MAIN_LOCK_RESET;
-        CSP_reset_target_opload(i, ug_win);
+        ug_win->targets[i].main_lock_stat = CSPU_MAIN_LOCK_RESET;
+        CSPU_reset_target_opload(i, ug_win);
     }
 #endif
 
     /* Indicate epoch status.
      * Later operations will be redirected to single window.*/
-    ug_win->epoch_stat = CSP_WIN_EPOCH_LOCK_ALL;
+    ug_win->epoch_stat = CSPU_WIN_EPOCH_LOCK_ALL;
 
   fn_exit:
     return mpi_errno;

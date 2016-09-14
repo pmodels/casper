@@ -307,7 +307,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
     if (CSP_IS_USER) {
         /* Other user-specific initialization */
-        mpi_errno = CSP_global_init();
+        mpi_errno = CSPU_global_init();
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -329,7 +329,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     /* --BEGIN ERROR HANDLING-- */
 
     if (CSP_IS_USER) {
-        CSP_global_finalize();
+        CSPU_global_finalize();
     }
     else {
         CSPG_global_finalize();

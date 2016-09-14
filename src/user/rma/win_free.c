@@ -11,7 +11,7 @@
 /**
  * Release all window internal resources maintained by CASPER.
  */
-int CSP_win_release(CSP_win_t * ug_win)
+int CSPU_win_release(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i;
@@ -151,7 +151,7 @@ int CSP_win_release(CSP_win_t * ug_win)
     goto fn_exit;
 }
 
-static int issue_ghost_cmd(CSP_win_t * ug_win)
+static int issue_ghost_cmd(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cwp_pkt_t pkt;
@@ -212,10 +212,10 @@ static int issue_ghost_cmd(CSP_win_t * ug_win)
 int MPI_Win_free(MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
 
-    CSP_fetch_ug_win_from_cache(*win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(*win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -251,7 +251,7 @@ int MPI_Win_free(MPI_Win * win)
     }
 
     CSP_DBG_PRINT("\t free window cache\n");
-    CSP_remove_ug_win_from_cache(*win);
+    CSPU_remove_ug_win_from_cache(*win);
 
     /* Free PSCW arrays in case use does not call complete/wait. */
     if (ug_win->start_ranks_in_win_group)
@@ -262,7 +262,7 @@ int MPI_Win_free(MPI_Win * win)
         free(ug_win->wait_reqs);
 
     /* Free all window resources. */
-    mpi_errno = CSP_win_release(ug_win);
+    mpi_errno = CSPU_win_release(ug_win);
 
   fn_exit:
     return mpi_errno;

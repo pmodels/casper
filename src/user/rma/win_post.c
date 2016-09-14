@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
+static int fill_ranks_in_win_grp(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *ranks_in_post_grp = NULL;
@@ -38,7 +38,7 @@ static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
     goto fn_exit;
 }
 
-static int send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
+static int send_pscw_post_msg(int post_grp_size, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_rank;
@@ -66,7 +66,7 @@ static int send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
             continue;
 
         mpi_errno = PMPI_Isend(&post_flg, 1, MPI_CHAR, origin_rank,
-                               CSP_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
+                               CSPU_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -75,8 +75,8 @@ static int send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
 
 #ifdef CSP_ENABLE_EAGER_PSCW_SYNC
         /* Eager receive for complete sync. Later wait/test on these requests. */
-        mpi_errno = PMPI_Irecv(&wait_flg, 1, MPI_CHAR, origin_rank,
-                               CSP_PSCW_CW_TAG, ug_win->user_comm,
+        mpi_errno = PMPI_Irecv(&CSPU_pscw_wait_flg, 1, MPI_CHAR, origin_rank,
+                               CSPU_PSCW_CW_TAG, ug_win->user_comm,
                                &(ug_win->wait_reqs[remote_cnt]));
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
@@ -106,11 +106,11 @@ static int send_pscw_post_msg(int post_grp_size, CSP_win_t * ug_win)
 
 int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -124,7 +124,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
      * The current epoch can be none or FENCE.
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
-    if (ug_win->exp_epoch_stat == CSP_WIN_EXP_EPOCH_PSCW) {
+    if (ug_win->exp_epoch_stat == CSPU_WIN_EXP_EPOCH_PSCW) {
         CSP_err_print("Wrong synchronization call! "
                       "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -174,7 +174,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
         goto fn_fail;
 
     /* Indicate exposure epoch status. */
-    ug_win->exp_epoch_stat = CSP_WIN_EXP_EPOCH_PSCW;
+    ug_win->exp_epoch_stat = CSPU_WIN_EXP_EPOCH_PSCW;
 
     CSP_DBG_PRINT("Post done\n");
 

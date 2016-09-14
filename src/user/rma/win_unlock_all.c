@@ -11,12 +11,12 @@
 
 int MPI_Win_unlock_all(MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs;
     int i;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -31,7 +31,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * The current epoch must be lock_all.*/
-    if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
+    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
         CSP_err_print("Wrong synchronization call! "
                       "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -51,7 +51,7 @@ int MPI_Win_unlock_all(MPI_Win win)
          * in win_free. We only need flush_all here.*/
 
         CSP_DBG_PRINT(" unlock_all(global_win 0x%x) (no actual unlock call)\n", ug_win->global_win);
-        mpi_errno = CSP_win_global_flush_all(ug_win);
+        mpi_errno = CSPU_win_global_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -73,7 +73,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 
 #else
         for (i = 0; i < user_nprocs; i++) {
-            mpi_errno = CSP_win_target_unlock(i, ug_win);
+            mpi_errno = CSPU_win_target_unlock(i, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -82,14 +82,14 @@ int MPI_Win_unlock_all(MPI_Win win)
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     for (i = 0; i < user_nprocs; i++) {
-        ug_win->targets[i].main_lock_stat = CSP_MAIN_LOCK_RESET;
+        ug_win->targets[i].main_lock_stat = CSPU_MAIN_LOCK_RESET;
     }
 #endif
 
     ug_win->is_self_locked = 0;
 
     /* Reset epoch status. */
-    ug_win->epoch_stat = CSP_WIN_NO_EPOCH;
+    ug_win->epoch_stat = CSPU_WIN_NO_EPOCH;
 
   fn_exit:
     return mpi_errno;

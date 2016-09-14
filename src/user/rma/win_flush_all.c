@@ -11,7 +11,7 @@
 
 /* Flush all ghost processes on global window.
  * It is called by FENCE/COMPLETE, or UNLOCK_ALL/FLUSH_ALL (only no-Lock mode).*/
-int CSP_win_global_flush_all(CSP_win_t * ug_win)
+int CSPU_win_global_flush_all(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i CSP_ATTRIBUTE((unused));
@@ -33,7 +33,7 @@ int CSP_win_global_flush_all(CSP_win_t * ug_win)
     }
 
     if (ug_win->is_self_locked) {
-        mpi_errno = CSP_win_flush_self(ug_win);
+        mpi_errno = CSPU_win_flush_self(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -48,12 +48,12 @@ int CSP_win_global_flush_all(CSP_win_t * ug_win)
 
 int MPI_Win_flush_all(MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs;
     int i;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -68,7 +68,7 @@ int MPI_Win_flush_all(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * The current epoch must be lock_all.*/
-    if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
+    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
         CSP_err_print("Wrong synchronization call! "
                       "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -81,7 +81,7 @@ int MPI_Win_flush_all(MPI_Win win)
 
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, single window is shared by multiple targets. */
-        mpi_errno = CSP_win_global_flush_all(ug_win);
+        mpi_errno = CSPU_win_global_flush_all(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -97,7 +97,7 @@ int MPI_Win_flush_all(MPI_Win win)
         }
 #else
         for (i = 0; i < user_nprocs; i++) {
-            mpi_errno = CSP_win_target_flush(i, ug_win);
+            mpi_errno = CSPU_win_target_flush(i, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }
@@ -108,12 +108,12 @@ int MPI_Win_flush_all(MPI_Win win)
     for (i = 0; i < user_nprocs; i++) {
         /* Lock of main ghost is granted, we can start load balancing from the next flush/unlock.
          * Note that only target which was issued operations to is guaranteed to be granted. */
-        if (ug_win->targets[i].main_lock_stat == CSP_MAIN_LOCK_OP_ISSUED) {
-            ug_win->targets[i].main_lock_stat = CSP_MAIN_LOCK_GRANTED;
+        if (ug_win->targets[i].main_lock_stat == CSPU_MAIN_LOCK_OP_ISSUED) {
+            ug_win->targets[i].main_lock_stat = CSPU_MAIN_LOCK_GRANTED;
             CSP_DBG_PRINT(" main lock (rank %d) granted\n", i);
         }
 
-        CSP_reset_target_opload(i, ug_win);
+        CSPU_reset_target_opload(i, ug_win);
     }
 #endif
 

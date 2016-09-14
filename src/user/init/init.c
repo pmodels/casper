@@ -139,7 +139,7 @@ static int setup_proc(void)
     goto fn_exit;
 }
 
-int CSP_global_init(void)
+int CSPU_global_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -147,7 +147,7 @@ int CSP_global_init(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-    mpi_errno = CSP_init_win_cache();
+    mpi_errno = CSPU_init_win_cache();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

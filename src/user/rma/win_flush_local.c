@@ -11,10 +11,10 @@
 
 /* Locally flush ghost process for a given target.
  * It is called by FLUSH_LOCAL (all modes), and FLUSH_LOCAL_ALL (only lock-exist mode). */
-int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
+int CSPU_win_target_flush_local(int target_rank, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_win_target_t *target = NULL;
+    CSPU_win_target_t *target = NULL;
     MPI_Win *win_ptr = NULL;
     int user_rank;
     int main_g_off CSP_ATTRIBUTE((unused)), target_g_rank_in_ug CSP_ATTRIBUTE((unused));
@@ -25,7 +25,7 @@ int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
 
     /* Get global window or a target window for no-lock mode or
      * lock-exist mode respectively. */
-    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
+    CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
     CSP_ASSERT(win_ptr != NULL);
 
 #if !defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
@@ -35,7 +35,7 @@ int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
     target_g_rank_in_ug = target->g_ranks_in_ug[main_g_off];
 
     CSP_DBG_PRINT(" flush_local(ghost(%d), %s 0x%x), instead of target rank %d\n",
-                  target_g_rank_in_ug, CSP_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
+                  target_g_rank_in_ug, CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
 
     mpi_errno = PMPI_Win_flush_local(target_g_rank_in_ug, *win_ptr);
     if (mpi_errno != MPI_SUCCESS)
@@ -47,7 +47,7 @@ int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
         target_g_rank_in_ug = target->g_ranks_in_ug[k];
 
         CSP_DBG_PRINT(" flush(ghost(%d), %s 0x%x), instead of target rank %d\n",
-                      target_g_rank_in_ug, CSP_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr,
+                      target_g_rank_in_ug, CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr,
                       target_rank);
 
         mpi_errno = PMPI_Win_flush_local(target_g_rank_in_ug, *win_ptr);
@@ -57,7 +57,7 @@ int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
 #endif /*end of CSP_ENABLE_RUNTIME_LOAD_OPT */
 
     if (user_rank == target_rank && ug_win->is_self_locked) {
-        mpi_errno = CSP_win_flush_local_self(ug_win);
+        mpi_errno = CSPU_win_flush_local_self(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -71,12 +71,12 @@ int CSP_win_target_flush_local(int target_rank, CSP_win_t * ug_win)
 
 int MPI_Win_flush_local(int target_rank, MPI_Win win)
 {
-    CSP_win_t *ug_win;
-    CSP_win_target_t *target;
+    CSPU_win_t *ug_win;
+    CSPU_win_target_t *target;
     MPI_Win *win_ptr CSP_ATTRIBUTE((unused)) = NULL;
     int mpi_errno = MPI_SUCCESS;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_flush_local(target_rank, win);
@@ -94,8 +94,8 @@ int MPI_Win_flush_local(int target_rank, MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * The current epoch must be lock_all or lock.*/
-    if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL &&
-        (target->epoch_stat != CSP_TARGET_EPOCH_LOCK)) {
+    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL &&
+        (target->epoch_stat != CSPU_TARGET_EPOCH_LOCK)) {
         CSP_err_print("Wrong synchronization call! "
                       "No opening LOCK_ALL or LOCK epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -106,16 +106,16 @@ int MPI_Win_flush_local(int target_rank, MPI_Win win)
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
     /* Get global window or a target window for no-lock mode or
      * lock-exist mode respectively. */
-    CSP_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
+    CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
     CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush_local_all(%s 0x%x), instead of target rank %d\n",
-                  CSP_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
+                  CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
     mpi_errno = PMPI_Win_flush_local_all(*win_ptr);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #else
-    mpi_errno = CSP_win_target_flush_local(target_rank, ug_win);
+    mpi_errno = CSPU_win_target_flush_local(target_rank, ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 #endif

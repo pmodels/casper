@@ -12,12 +12,12 @@
 /* Receive buffer for receiving complete-wait sync message.
  * We don't need its value, so just use a global char variable to ensure
  * receive buffer is always allocated.*/
-char wait_flg;
+char CSPU_pscw_wait_flg;
 
 /* Receive complete-wait synchronization messages from origin group.
  * WIN_WAIT calls it with blocking=true; WIN_TEST calls it with blocking=false
  * and a flag pointer. */
-int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int blocking, int *flag)
+int CSPU_recv_pscw_complete_msg(int post_grp_size, CSPU_win_t * ug_win, int blocking, int *flag)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -45,7 +45,7 @@ int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int blocki
 
         /* If receive is not issued yet, issue now. Otherwise just wait. */
         if (new_issue) {
-            mpi_errno = PMPI_Irecv(&wait_flg, 1, MPI_CHAR, origin_rank, CSP_PSCW_CW_TAG,
+            mpi_errno = PMPI_Irecv(&CSPU_pscw_wait_flg, 1, MPI_CHAR, origin_rank, CSPU_PSCW_CW_TAG,
                                    ug_win->user_comm, &(ug_win->wait_reqs[remote_cnt]));
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
@@ -87,11 +87,11 @@ int CSP_recv_pscw_complete_msg(int post_grp_size, CSP_win_t * ug_win, int blocki
 
 int MPI_Win_wait(MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -103,7 +103,7 @@ int MPI_Win_wait(MPI_Win win)
     /* Check exposure epoch status.
      * Note that this is not only a user-friendly check, but also
      * used to avoid extra sync messages in wait/test.*/
-    if (ug_win->exp_epoch_stat != CSP_WIN_EXP_EPOCH_PSCW) {
+    if (ug_win->exp_epoch_stat != CSPU_WIN_EXP_EPOCH_PSCW) {
         CSP_DBG_PRINT("No pscw exposure epoch\n");
         return mpi_errno;
     }
@@ -122,7 +122,7 @@ int MPI_Win_wait(MPI_Win win)
     CSP_DBG_PRINT("Wait group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 
     /* Wait for the completion on all origin processes */
-    mpi_errno = CSP_recv_pscw_complete_msg(post_grp_size, ug_win, 1 /*blocking */ , NULL);
+    mpi_errno = CSPU_recv_pscw_complete_msg(post_grp_size, ug_win, 1 /*blocking */ , NULL);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -133,7 +133,7 @@ int MPI_Win_wait(MPI_Win win)
 
     /* Reset exposure status.
      * All later wait/test will return immediately.*/
-    ug_win->exp_epoch_stat = CSP_WIN_NO_EXP_EPOCH;
+    ug_win->exp_epoch_stat = CSPU_WIN_NO_EXP_EPOCH;
 
     CSP_DBG_PRINT("Wait done\n");
 

@@ -11,11 +11,11 @@
 
 int MPI_Win_test(MPI_Win win, int *flag)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -27,7 +27,7 @@ int MPI_Win_test(MPI_Win win, int *flag)
     /* Check exposure epoch status.
      * Note that this is not only a user-friendly check, but also
      * used to avoid extra sync messages in wait/test.*/
-    if (ug_win->exp_epoch_stat != CSP_WIN_EXP_EPOCH_PSCW) {
+    if (ug_win->exp_epoch_stat != CSPU_WIN_EXP_EPOCH_PSCW) {
         CSP_DBG_PRINT("No pscw exposure epoch\n");
         return mpi_errno;
     }
@@ -46,7 +46,7 @@ int MPI_Win_test(MPI_Win win, int *flag)
     CSP_DBG_PRINT("Test group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 
     /* Test the completion on all origin processes */
-    mpi_errno = CSP_recv_pscw_complete_msg(post_grp_size, ug_win, 0 /*non-blocking */ , flag);
+    mpi_errno = CSPU_recv_pscw_complete_msg(post_grp_size, ug_win, 0 /*non-blocking */ , flag);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -58,7 +58,7 @@ int MPI_Win_test(MPI_Win win, int *flag)
     if ((*flag)) {
         /* Reset exposure status if all sync messages are received.
          * All later wait/test will return immediately. */
-        ug_win->exp_epoch_stat = CSP_WIN_NO_EXP_EPOCH;
+        ug_win->exp_epoch_stat = CSPU_WIN_NO_EXP_EPOCH;
     }
 
     CSP_DBG_PRINT("Test done\n");

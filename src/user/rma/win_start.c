@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
+static int fill_ranks_in_win_grp(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int *ranks_in_start_grp = NULL;
@@ -38,7 +38,7 @@ static int fill_ranks_in_win_grp(CSP_win_t * ug_win)
     goto fn_exit;
 }
 
-static int wait_pscw_post_msg(int start_grp_size, CSP_win_t * ug_win)
+static int wait_pscw_post_msg(int start_grp_size, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
@@ -63,7 +63,7 @@ static int wait_pscw_post_msg(int start_grp_size, CSP_win_t * ug_win)
             continue;
 
         mpi_errno = PMPI_Irecv(&post_flg, 1, MPI_CHAR, target_rank,
-                               CSP_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
+                               CSPU_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -89,13 +89,13 @@ static int wait_pscw_post_msg(int start_grp_size, CSP_win_t * ug_win)
 
 int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
     int i;
     int user_rank;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -104,7 +104,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
-    if (ug_win->epoch_stat == CSP_WIN_EPOCH_FENCE)
+    if (ug_win->epoch_stat == CSPU_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
 
     if (group == MPI_GROUP_NULL) {
@@ -140,7 +140,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     /* Check access epoch status.
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
-    if (ug_win->epoch_stat == CSP_WIN_EPOCH_LOCK_ALL) {
+    if (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL) {
         CSP_err_print("Wrong synchronization call! "
                       "Previous LOCK_ALL epoch is still open in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -148,15 +148,15 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     }
 
     /* Check per-target access epoch status. */
-    if (ug_win->epoch_stat == CSP_WIN_EPOCH_PER_TARGET) {
+    if (ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
         int err = 0;
         for (i = 0; i < start_grp_size; i++) {
             int target_rank = ug_win->start_ranks_in_win_group[i];
-            if (ug_win->targets[target_rank].epoch_stat != CSP_TARGET_NO_EPOCH) {
+            if (ug_win->targets[target_rank].epoch_stat != CSPU_TARGET_NO_EPOCH) {
                 CSP_err_print("Wrong synchronization call! "
                               "Previous %s epoch on target %d is still open in %s\n",
                               ug_win->targets[target_rank].epoch_stat ==
-                              CSP_TARGET_EPOCH_LOCK ? "LOCK" : "PSCW", target_rank, __FUNCTION__);
+                              CSPU_TARGET_EPOCH_LOCK ? "LOCK" : "PSCW", target_rank, __FUNCTION__);
                 err = 1;
                 break;
             }
@@ -193,9 +193,9 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
      * Later operations will be redirected to global_win for these targets.*/
     for (i = 0; i < start_grp_size; i++) {
         int target_rank = ug_win->start_ranks_in_win_group[i];
-        ug_win->targets[target_rank].epoch_stat = CSP_TARGET_EPOCH_PSCW;
+        ug_win->targets[target_rank].epoch_stat = CSPU_TARGET_EPOCH_PSCW;
     }
-    ug_win->epoch_stat = CSP_WIN_EPOCH_PER_TARGET;
+    ug_win->epoch_stat = CSPU_WIN_EPOCH_PER_TARGET;
     ug_win->start_counter++;
 
     CSP_DBG_PRINT("Start done\n");

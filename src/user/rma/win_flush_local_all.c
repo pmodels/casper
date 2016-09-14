@@ -9,7 +9,7 @@
 #include "cspu.h"
 #include "cspu_rma_sync.h"
 
-static int win_global_flush_local_all(CSP_win_t * ug_win)
+static int win_global_flush_local_all(CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i CSP_ATTRIBUTE((unused));
@@ -31,7 +31,7 @@ static int win_global_flush_local_all(CSP_win_t * ug_win)
     }
 
     if (ug_win->is_self_locked) {
-        mpi_errno = CSP_win_flush_local_self(ug_win);
+        mpi_errno = CSPU_win_flush_local_self(ug_win);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
@@ -46,12 +46,12 @@ static int win_global_flush_local_all(CSP_win_t * ug_win)
 
 int MPI_Win_flush_local_all(MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int user_nprocs;
     int i CSP_ATTRIBUTE((unused));
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
     if (ug_win == NULL) {
         /* normal window */
         return PMPI_Win_flush_local_all(win);
@@ -64,7 +64,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * The current epoch must be lock_all.*/
-    if (ug_win->epoch_stat != CSP_WIN_EPOCH_LOCK_ALL) {
+    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
         CSP_err_print("Wrong synchronization call! "
                       "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -92,7 +92,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
         }
 #else
         for (i = 0; i < user_nprocs; i++) {
-            mpi_errno = CSP_win_target_flush_local(i, ug_win);
+            mpi_errno = CSPU_win_target_flush_local(i, ug_win);
             if (mpi_errno != MPI_SUCCESS)
                 goto fn_fail;
         }

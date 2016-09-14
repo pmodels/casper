@@ -9,9 +9,9 @@
 #include "cspu.h"
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-void CSP_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
-                                       CSP_win_t * ug_win, int *target_g_rank_in_ug,
-                                       int *target_g_rank_idx, MPI_Aint * target_g_offset)
+void CSPU_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
+                                        CSPU_win_t * ug_win, int *target_g_rank_in_ug,
+                                        int *target_g_rank_idx, MPI_Aint * target_g_offset)
 {
     int idx, min_count, g_rank, min_idx;
 
@@ -36,14 +36,14 @@ void CSP_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
                   *target_g_rank_in_ug, *target_g_offset, target_rank);
 
     /* Count the number of operations issued to every ghost */
-    CSP_inc_target_opload_op_counting(*target_g_rank_in_ug, ug_win);
+    CSPU_inc_target_opload_op_counting(*target_g_rank_in_ug, ug_win);
 
     return;
 }
 
-void CSP_target_get_ghost_opload_by_byte(int target_rank, int is_order_required, int size,
-                                         CSP_win_t * ug_win, int *target_g_rank_in_ug,
-                                         int *target_g_rank_idx, MPI_Aint * target_g_offset)
+void CSPU_target_get_ghost_opload_by_byte(int target_rank, int is_order_required, int size,
+                                          CSPU_win_t * ug_win, int *target_g_rank_in_ug,
+                                          int *target_g_rank_idx, MPI_Aint * target_g_offset)
 {
     int idx, min_count, g_rank, min_idx;
 
@@ -68,7 +68,7 @@ void CSP_target_get_ghost_opload_by_byte(int target_rank, int is_order_required,
                   *target_g_rank_in_ug, *target_g_offset, target_rank);
 
     /* Count the number of operations issued to every ghost */
-    CSP_inc_target_opload_bytes_counting(*target_g_rank_in_ug, size, ug_win);
+    CSPU_inc_target_opload_bytes_counting(*target_g_rank_in_ug, size, ug_win);
 
     return;
 }

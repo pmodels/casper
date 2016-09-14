@@ -57,9 +57,6 @@
 #define CSP_GRANT_LOCK_MPI_DATATYPE MPI_CHAR
 #endif
 
-#define CSP_PSCW_CW_TAG 900
-#define CSP_PSCW_PS_TAG 901
-
 /* Using non-zero segment size as the workaround for shared window
  * overlapping problem. */
 #define CSP_GP_SHARED_SG_SIZE 0
@@ -208,11 +205,11 @@ extern CSP_env_param_t CSP_ENV;
 extern CSP_proc_t CSP_PROC;
 extern MPI_Comm CSP_COMM_USER_WORLD;
 
-extern int CSP_global_init(void);
+extern int CSPU_global_init(void);
 extern int CSPG_global_init(void);
 extern int CSPG_main(void);
 
-extern int CSP_global_finalize(void);
+extern int CSPU_global_finalize(void);
 extern int CSPG_global_finalize(void);
 
 #endif /* CSP_H_ */

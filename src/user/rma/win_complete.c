@@ -9,7 +9,7 @@
 #include "cspu.h"
 #include "cspu_rma_sync.h"
 
-static int send_pscw_complete_msg(int start_grp_size, CSP_win_t * ug_win)
+static int send_pscw_complete_msg(int start_grp_size, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, user_rank;
@@ -33,7 +33,7 @@ static int send_pscw_complete_msg(int start_grp_size, CSP_win_t * ug_win)
             continue;
 
         mpi_errno = PMPI_Isend(&comp_flg, 1, MPI_CHAR, target_rank,
-                               CSP_PSCW_CW_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
+                               CSPU_PSCW_CW_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
@@ -59,12 +59,12 @@ static int send_pscw_complete_msg(int start_grp_size, CSP_win_t * ug_win)
 
 int MPI_Win_complete(MPI_Win win)
 {
-    CSP_win_t *ug_win;
+    CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int start_grp_size = 0;
     int i;
 
-    CSP_fetch_ug_win_from_cache(win, &ug_win);
+    CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
@@ -89,7 +89,7 @@ int MPI_Win_complete(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * The current epoch must be pscw on all involved targets.*/
-    if (ug_win->epoch_stat != CSP_WIN_EPOCH_PER_TARGET) {
+    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_PER_TARGET) {
         CSP_err_print("Wrong synchronization call! "
                       "No opening per-target epoch in %s\n", __FUNCTION__);
         mpi_errno = -1;
@@ -98,7 +98,7 @@ int MPI_Win_complete(MPI_Win win)
     else {
         for (i = 0; i < start_grp_size; i++) {
             int target_rank = ug_win->start_ranks_in_win_group[i];
-            if (ug_win->targets[target_rank].epoch_stat != CSP_TARGET_EPOCH_PSCW) {
+            if (ug_win->targets[target_rank].epoch_stat != CSPU_TARGET_EPOCH_PSCW) {
                 CSP_err_print("Wrong synchronization call! "
                               "No opening PSCW epoch on target %d in %s\n", target_rank,
                               __FUNCTION__);
@@ -110,7 +110,7 @@ int MPI_Win_complete(MPI_Win win)
 #endif
 
     /* Flush ghosts to finish the sequence of locally issued RMA operations. */
-    mpi_errno = CSP_win_global_flush_all(ug_win);
+    mpi_errno = CSPU_win_global_flush_all(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
@@ -123,7 +123,7 @@ int MPI_Win_complete(MPI_Win win)
     /* Reset per-target epoch status. */
     for (i = 0; i < start_grp_size; i++) {
         int target_rank = ug_win->start_ranks_in_win_group[i];
-        ug_win->targets[target_rank].epoch_stat = CSP_TARGET_NO_EPOCH;
+        ug_win->targets[target_rank].epoch_stat = CSPU_TARGET_NO_EPOCH;
     }
 
     /* Reset global epoch status. */
@@ -131,7 +131,7 @@ int MPI_Win_complete(MPI_Win win)
     CSP_ASSERT(ug_win->start_counter >= 0);
     if (ug_win->start_counter == 0 && ug_win->lock_counter == 0) {
         CSP_DBG_PRINT("all per-target epoch are cleared !\n");
-        ug_win->epoch_stat = CSP_WIN_NO_EPOCH;
+        ug_win->epoch_stat = CSPU_WIN_NO_EPOCH;
     }
 
     CSP_DBG_PRINT("Complete done\n");
