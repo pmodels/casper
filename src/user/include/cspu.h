@@ -270,7 +270,7 @@ extern const char *CSPU_win_epoch_stat_name[4];
 
 /* Get appropriate window for the target on the current epoch.
  * The epoch status can be per-target (pscw, lock), or global (fence, lockall). */
-#define CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr) { \
+#define CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr) do {  \
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {    \
         switch (target->epoch_stat) {   \
             case CSPU_TARGET_EPOCH_PSCW:    \
@@ -301,17 +301,17 @@ extern const char *CSPU_win_epoch_stat_name[4];
                 break;  \
         }   \
     }   \
-}
+} while (0)
 
 /* Check access epoch status per operation.*/
-#define CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win) {   \
+#define CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win) do {   \
     if (ug_win->epoch_stat == CSPU_WIN_NO_EPOCH && target->epoch_stat == CSPU_TARGET_NO_EPOCH) {  \
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "    \
                       "No opening epoch in %s\n", __FUNCTION__);       \
         mpi_errno = MPI_ERR_RMA_SYNC;                                  \
         goto fn_fail;                                                  \
     }   \
-}
+} while (0)
 
 /* Get name of current epoch status (for debug).*/
 #define CSPU_TARGET_GET_EPOCH_STAT_NAME(target, ug_win)          \

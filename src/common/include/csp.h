@@ -73,10 +73,10 @@
     fflush(stdout); \
     } while (0)
 #else
-#define CSP_DBG_PRINT(str,...) {}
+#define CSP_DBG_PRINT(str,...) do {} while (0)
 #endif
 
-#define CSP_ERROR_ABORT(mpi_errno)  {                                           \
+#define CSP_ERROR_ABORT(mpi_errno)  do {                                        \
     int errstr_len = 0;                                                         \
     char err_string[MPI_MAX_ERROR_STRING];                                      \
     PMPI_Error_string(mpi_errno, err_string, &errstr_len);                      \
@@ -86,7 +86,7 @@
                   ,CSP_PROC.wrank, mpi_errno, err_string                        \
                   ,CSP_PROC.wrank, __FUNCTION__);                               \
     PMPI_Abort(MPI_COMM_WORLD, -1);                                             \
-}
+} while (0)
  /* ======================================================================
   * Window related definitions.
   * ====================================================================== */

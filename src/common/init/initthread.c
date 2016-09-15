@@ -18,10 +18,10 @@ CSP_proc_t CSP_PROC;
 /* User world communicator, including all users in the world */
 MPI_Comm CSP_COMM_USER_WORLD = MPI_COMM_NULL;
 
-#define CSP_SET_GLOBAL_COMM(gcomm, comm)   {        \
+#define CSP_SET_GLOBAL_COMM(gcomm, comm)   do {     \
     gcomm = comm;                                   \
     comm = MPI_COMM_NULL;   /* avoid local free */  \
-    }
+} while (0)
 
 static inline int check_valid_ghosts(void)
 {

@@ -15,7 +15,7 @@
     } while (0)
 
 #else
-#define CSPU_CWP_DBG_PRINT(str,...)
+#define CSPU_CWP_DBG_PRINT(str,...) do { } while (0)
 #endif
 
 /* Issue a command to the local ghost processes (blocking call).

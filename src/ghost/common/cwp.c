@@ -28,7 +28,7 @@ static const char *cwp_cmd_name[CSP_CWP_MAX] = {
     "lock_status_sync"
 };
 #else
-#define CSPG_CWP_DBG_PRINT(str,...)
+#define CSPG_CWP_DBG_PRINT(str,...) do { } while (0)
 #endif
 
 /* Command handlers on root ghosts.

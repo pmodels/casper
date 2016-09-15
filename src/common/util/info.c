@@ -17,7 +17,7 @@
     } while (0)
 
 #else
-#define INFO_DBG_PRINT(str,...)
+#define INFO_DBG_PRINT(str,...) do { } while (0)
 #endif
 
 /**

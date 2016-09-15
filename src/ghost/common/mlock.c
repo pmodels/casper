@@ -19,7 +19,7 @@
 static const char *mlock_status_name[CSP_MLOCK_STATUS_MAX] =
     { "none", "suspended_l", "suspended_h", "acquired" };
 #else
-#define CSPG_MLOCK_DBG_PRINT(str,...)
+#define CSPG_MLOCK_DBG_PRINT(str,...) do { } while (0)
 #endif
 
 typedef struct CSPG_mlock_req {

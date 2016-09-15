@@ -24,7 +24,7 @@
     fflush(stdout);                                                                      \
     } while (0)
 #else
-#define CSPG_DBG_PRINT(str, ...) {}
+#define CSPG_DBG_PRINT(str, ...) do { } while (0)
 #endif
 
 /* ======================================================================

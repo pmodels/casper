@@ -9,9 +9,6 @@
 #include <string.h>
 #include "cspg.h"
 
-#undef FUNCNAME
-#define FUNCNAME CSPG_win_allocate
-
 /* Receive parameters from user root via local communicator (blocking call). */
 static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
