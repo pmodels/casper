@@ -17,6 +17,7 @@
 #include <casperconf.h>
 #include "csp_util.h"
 #include "csp_msg.h"
+#include "csp_error.h"
 
 /* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 
@@ -63,7 +64,7 @@
 
 
 /* ======================================================================
- * Internal debugging MACROs.
+ * Internal debugging MACRO.
  * ====================================================================== */
 
 #ifdef CSP_DEBUG
@@ -75,9 +76,15 @@
 #define CSP_DBG_PRINT(str,...) {}
 #endif
 
-#define CSP_ERR_ABORT()  {                                                      \
-    CSP_msg_print(CSP_MSG_ERROR, "Unexpected error in %s, abort\n",             \
-                  __FUNCTION__);                                                \
+#define CSP_ERROR_ABORT(mpi_errno)  {                                           \
+    int errstr_len = 0;                                                         \
+    char err_string[MPI_MAX_ERROR_STRING];                                      \
+    PMPI_Error_string(mpi_errno, err_string, &errstr_len);                      \
+    CSP_msg_print(CSP_MSG_ERROR,                                                \
+                  "Rank %d reported Error code %d, %s\n"                        \
+                  "--------- Rank %d aborted at %s.\n"                          \
+                  ,CSP_PROC.wrank, mpi_errno, err_string                        \
+                  ,CSP_PROC.wrank, __FUNCTION__);                               \
     PMPI_Abort(MPI_COMM_WORLD, -1);                                             \
 }
  /* ======================================================================

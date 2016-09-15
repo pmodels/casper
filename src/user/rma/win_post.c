@@ -127,7 +127,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     if (ug_win->exp_epoch_stat == CSPU_WIN_EXP_EPOCH_PSCW) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
-        mpi_errno = -1;
+        mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
 #endif
@@ -187,5 +187,6 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     ug_win->post_group = MPI_GROUP_NULL;
     ug_win->post_ranks_in_win_group = NULL;
 
+    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }

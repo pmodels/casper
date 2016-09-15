@@ -116,7 +116,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "Previous LOCK_ALL epoch is still open in %s\n", __FUNCTION__);
-        mpi_errno = -1;
+        mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
 
@@ -127,7 +127,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
                       "Previous %s epoch on target %d is still open in %s\n",
                       target->epoch_stat == CSPU_TARGET_EPOCH_LOCK ? "LOCK" : "PSCW", target_rank,
                       __FUNCTION__);
-        mpi_errno = -1;
+        mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
 
@@ -169,5 +169,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     return mpi_errno;
 
   fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }

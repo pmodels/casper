@@ -27,12 +27,12 @@ static int win_free_impl(CSP_cwp_fnc_winfree_pkt_t * winfree_pkt)
     win = (CSPG_win_t *) csp_g_win_handle;
     if (!win) {
         CSP_msg_print(CSP_MSG_ERROR, " Wrong window handler 0x%lx, not exist\n", csp_g_win_handle);
-        mpi_errno = -1;
+        mpi_errno = CSP_get_error_code(CSP_ERR_INTERN);
         goto fn_fail;
     }
     if (win->csp_g_win_handle != csp_g_win_handle) {
         CSP_msg_print(CSP_MSG_ERROR, " Wrong window handler 0x%lx, not match\n", csp_g_win_handle);
-        mpi_errno = -1;
+        mpi_errno = CSP_get_error_code(CSP_ERR_INTERN);
         goto fn_fail;
     }
 

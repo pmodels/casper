@@ -77,22 +77,12 @@ static inline int setup_common_info(void)
 }
 
 /* Initialize environment setting */
-static int initialize_env()
+static int initialize_env(void)
 {
     char *val;
     int mpi_errno = MPI_SUCCESS;
 
     memset(&CSP_ENV, 0, sizeof(CSP_ENV));
-
-    CSP_ENV.num_g = CSP_DEFAULT_NG;
-    val = getenv("CSP_NG");
-    if (val && strlen(val)) {
-        CSP_ENV.num_g = atoi(val);
-    }
-    if (CSP_ENV.num_g <= 0) {
-        CSP_msg_print(CSP_MSG_ERROR, "Wrong CSP_NG %d\n", CSP_ENV.num_g);
-        return -1;
-    }
 
     /* VERBOSE level */
     CSP_ENV.verbose = CSP_MSG_OFF;
@@ -131,6 +121,16 @@ static int initialize_env()
 
     CSP_msg_init(CSP_ENV.verbose);
 
+    CSP_ENV.num_g = CSP_DEFAULT_NG;
+    val = getenv("CSP_NG");
+    if (val && strlen(val)) {
+        CSP_ENV.num_g = atoi(val);
+    }
+    if (CSP_ENV.num_g <= 0) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong CSP_NG %d\n", CSP_ENV.num_g);
+        return CSP_get_error_code(CSP_ERR_NG);
+    }
+
     CSP_ENV.async_config = CSP_ASYNC_CONFIG_ON;
     val = getenv("CSP_ASYNC_CONFIG");
     if (val && strlen(val)) {
@@ -142,7 +142,7 @@ static int initialize_env()
         }
         else {
             CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_ASYNC_CONFIG %s\n", val);
-            return -1;
+            return CSP_get_error_code(CSP_ERR_ENV);
         }
     }
 
@@ -162,7 +162,7 @@ static int initialize_env()
         }
         else {
             CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_RUMTIME_LOAD_OPT %s\n", val);
-            return -1;
+            return CSP_get_error_code(CSP_ERR_ENV);
         }
     }
 
@@ -177,7 +177,7 @@ static int initialize_env()
         }
         else {
             CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_RUNTIME_LOAD_LOCK %s\n", val);
-            return -1;
+            return CSP_get_error_code(CSP_ERR_ENV);
         }
     }
 #else
@@ -193,7 +193,7 @@ static int initialize_env()
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
                       "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
-                      "    VERBOSE          = %s|%s|%s|%s|%s\n"
+                      "    CSP_VERBOSE          = %s|%s|%s|%s|%s\n"
                       "    CSP_NG           = %d\n"
                       "    CSP_ASYNC_CONFIG = %s\n",
                       (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
@@ -237,7 +237,7 @@ static int initialize_proc(void)
 
     /* Check if user specifies valid number of ghosts */
     if (check_valid_ghosts()) {
-        mpi_errno = MPI_ERR_OTHER;
+        mpi_errno = CSP_get_error_code(CSP_ERR_NG);
         goto fn_fail;
     }
 
@@ -326,6 +326,10 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
     PMPI_Comm_rank(MPI_COMM_WORLD, &CSP_PROC.wrank);
 
+    mpi_errno = CSP_error_init();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
     /* Initialize environment setting */
     mpi_errno = initialize_env();
     if (mpi_errno != MPI_SUCCESS)
@@ -366,7 +370,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         CSPG_global_finalize();
     }
 
-    CSP_ERR_ABORT();
+    CSP_ERROR_ABORT(mpi_errno);
 
     goto fn_exit;
     /* --END ERROR HANDLING-- */

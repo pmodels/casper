@@ -211,8 +211,19 @@ static inline int CSPU_remove_ug_win_from_cache(MPI_Win win)
     return mpi_errno;
 }
 
+/* ======================================================================
+ * Window related generic routines.
+ * ====================================================================== */
+
 extern const char *CSPU_target_epoch_stat_name[4];      /* for debug */
 extern const char *CSPU_win_epoch_stat_name[4];
+
+/* Pass CASPER internal error into user-specified window error handler.
+ * - If MPI_ERRORS_ARE_FATAL, MPI does abort internally.
+ * - If MPI_ERRORS_RETURN, the caller should return error.
+ * - If others, call the handler. But the handler may change return error,
+ *   which we cannot get (FIXME).*/
+#define CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno)   PMPI_Win_call_errhandler(ug_win->win, (*mpi_errno))
 
 /* Get appropriate window for the target on the current epoch.
  * The epoch status can be per-target (pscw, lock), or global (fence, lockall). */
@@ -254,8 +265,8 @@ extern const char *CSPU_win_epoch_stat_name[4];
     if (ug_win->epoch_stat == CSPU_WIN_NO_EPOCH && target->epoch_stat == CSPU_TARGET_NO_EPOCH) {  \
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "    \
                       "No opening epoch in %s\n", __FUNCTION__);       \
-        mpi_errno = -1; \
-        goto fn_fail;   \
+        mpi_errno = MPI_ERR_RMA_SYNC;                                  \
+        goto fn_fail;                                                  \
     }   \
 }
 

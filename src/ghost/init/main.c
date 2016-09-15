@@ -12,8 +12,6 @@
 int CSPG_main(void)
 {
     int mpi_errno = MPI_SUCCESS;
-    int err_class = 0, errstr_len = 0;
-    char err_string[MPI_MAX_ERROR_STRING];
 
     CSPG_DBG_PRINT(" main start\n");
 
@@ -28,10 +26,6 @@ int CSPG_main(void)
     return mpi_errno;
 
   fn_fail:
-    PMPI_Error_class(mpi_errno, &err_class);
-    PMPI_Error_string(mpi_errno, err_string, &errstr_len);
-    CSP_msg_print(CSP_MSG_ERROR, "MPI reports error code %d, error class %d\n%s",
-                  mpi_errno, err_class, err_string);
-    CSP_ERR_ABORT();
+    CSP_ERROR_ABORT(mpi_errno);
     goto fn_exit;
 }

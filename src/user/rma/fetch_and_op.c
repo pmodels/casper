@@ -65,6 +65,7 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
     return mpi_errno;
 
   fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
 

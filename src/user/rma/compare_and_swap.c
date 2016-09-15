@@ -64,6 +64,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     return mpi_errno;
 
   fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
 

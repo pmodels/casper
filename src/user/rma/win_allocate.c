@@ -930,5 +930,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     *win = MPI_WIN_NULL;
     *base_pp = NULL;
 
+    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }

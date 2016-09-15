@@ -76,7 +76,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     if (ug_win->epoch_stat != CSPU_WIN_EPOCH_PER_TARGET) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "No opening per-target epoch in %s\n", __FUNCTION__);
-        mpi_errno = -1;
+        mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
 
@@ -84,7 +84,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     if (target->epoch_stat != CSPU_TARGET_EPOCH_LOCK) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
                       "No opening LOCK epoch on target %d in %s\n", target_rank, __FUNCTION__);
-        mpi_errno = -1;
+        mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
 #endif
@@ -127,5 +127,6 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     return mpi_errno;
 
   fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
