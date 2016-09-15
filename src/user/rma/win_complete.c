@@ -73,6 +73,17 @@ int MPI_Win_complete(MPI_Win win)
 
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
+#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+    /* Check access epoch status.
+     * The current epoch must be pscw on all involved targets.*/
+    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_PER_TARGET) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
+                      "No opening PSCW access epoch in %s\n", __FUNCTION__);
+        mpi_errno = MPI_ERR_RMA_SYNC;
+        goto fn_fail;
+    }
+#endif
+
     if (ug_win->start_group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
         CSP_DBG_PRINT("Complete empty group\n");
@@ -89,22 +100,14 @@ int MPI_Win_complete(MPI_Win win)
 #ifdef CSP_ENABLE_EPOCH_STAT_CHECK
     /* Check access epoch status.
      * The current epoch must be pscw on all involved targets.*/
-    if (ug_win->epoch_stat != CSPU_WIN_EPOCH_PER_TARGET) {
-        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
-                      "No opening per-target epoch in %s\n", __FUNCTION__);
-        mpi_errno = MPI_ERR_RMA_SYNC;
-        goto fn_fail;
-    }
-    else {
-        for (i = 0; i < start_grp_size; i++) {
-            int target_rank = ug_win->start_ranks_in_win_group[i];
-            if (ug_win->targets[target_rank].epoch_stat != CSPU_TARGET_EPOCH_PSCW) {
-                CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
-                              "No opening PSCW epoch on target %d in %s\n", target_rank,
-                              __FUNCTION__);
-                mpi_errno = MPI_ERR_RMA_SYNC;
-                goto fn_fail;
-            }
+    for (i = 0; i < start_grp_size; i++) {
+        int target_rank = ug_win->start_ranks_in_win_group[i];
+        if (ug_win->targets[target_rank].epoch_stat != CSPU_TARGET_EPOCH_PSCW) {
+            CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
+                          "No opening PSCW access epoch on target %d in %s\n",
+                          target_rank, __FUNCTION__);
+            mpi_errno = MPI_ERR_RMA_SYNC;
+            goto fn_fail;
         }
     }
 #endif

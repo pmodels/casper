@@ -35,12 +35,10 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     /* Check access epoch status.
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
-    if (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL
-        || ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
+    if (ug_win->epoch_stat != CSPU_WIN_NO_EPOCH && ug_win->epoch_stat != CSPU_WIN_EPOCH_FENCE) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
-                      "Previous %s epoch is still open in %s\n",
-                      (ug_win->epoch_stat == CSPU_WIN_EPOCH_LOCK_ALL) ? "LOCK_ALL" : "PER_TARGET",
-                      __FUNCTION__);
+                      "Previous %s access epoch is still open in %s\n",
+                      CSPU_WIN_GET_EPOCH_STAT_NAME(ug_win), __FUNCTION__);
         mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }

@@ -33,7 +33,7 @@ int MPI_Win_sync(MPI_Win win)
          * The current epoch must be lock_all.*/
         if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
             CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
-                          "No opening LOCK_ALL epoch in %s\n", __FUNCTION__);
+                          "No opening LOCK_ALL access epoch in %s\n", __FUNCTION__);
             mpi_errno = MPI_ERR_RMA_SYNC;
             goto fn_fail;
         }
@@ -44,7 +44,7 @@ int MPI_Win_sync(MPI_Win win)
             goto fn_fail;
 
         CSP_DBG_PRINT(" win sync on %s single win 0x%x\n",
-                      CSPU_win_epoch_stat_name[ug_win->epoch_stat], ug_win->global_win);
+                      CSPU_WIN_GET_EPOCH_STAT_NAME(ug_win), ug_win->global_win);
     }
 
     /* For window that may contain locks, we should sync on all per-target windows
@@ -72,7 +72,7 @@ int MPI_Win_sync(MPI_Win win)
          * At least one target must be locked.*/
         if (synced == 0) {
             CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
-                          "No opening LOCK epoch in %s\n", __FUNCTION__);
+                          "No opening LOCK access epoch in %s\n", __FUNCTION__);
             mpi_errno = MPI_ERR_RMA_SYNC;
             goto fn_fail;
         }

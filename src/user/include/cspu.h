@@ -307,18 +307,21 @@ extern const char *CSPU_win_epoch_stat_name[4];
 #define CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win) do {   \
     if (ug_win->epoch_stat == CSPU_WIN_NO_EPOCH && target->epoch_stat == CSPU_TARGET_NO_EPOCH) {  \
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "    \
-                      "No opening epoch in %s\n", __FUNCTION__);       \
+                      "No opening access epoch in %s\n", __FUNCTION__);       \
         mpi_errno = MPI_ERR_RMA_SYNC;                                  \
         goto fn_fail;                                                  \
     }   \
 } while (0)
 
-/* Get name of current epoch status (for debug).*/
+/* Get name of current epoch status on target (for debug).*/
 #define CSPU_TARGET_GET_EPOCH_STAT_NAME(target, ug_win)          \
         ((ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) ?     \
             CSPU_target_epoch_stat_name[target->epoch_stat] :    \
             CSPU_win_epoch_stat_name[ug_win->epoch_stat])
 
+/* Get name of current epoch status on window (for debug and error message).
+ * PER-TARGET includes PSCW and LOCK.*/
+#define CSPU_WIN_GET_EPOCH_STAT_NAME(ug_win) (CSPU_win_epoch_stat_name[ug_win->epoch_stat])
 
 /* ======================================================================
  * Runtime load balancing related routine.

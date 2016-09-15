@@ -99,7 +99,7 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL &&
         (target->epoch_stat != CSPU_TARGET_EPOCH_LOCK)) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
-                      "No opening LOCK_ALL or LOCK epoch in %s\n", __FUNCTION__);
+                      "No opening LOCK_ALL or LOCK access epoch in %s\n", __FUNCTION__);
         mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
