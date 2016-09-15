@@ -104,8 +104,10 @@ int MPI_Win_wait(MPI_Win win)
      * Note that this is not only a user-friendly check, but also
      * used to avoid extra sync messages in wait/test.*/
     if (ug_win->exp_epoch_stat != CSPU_WIN_EXP_EPOCH_PSCW) {
-        CSP_DBG_PRINT("No pscw exposure epoch\n");
-        return mpi_errno;
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
+                      "No opening PSCW exposure epoch in %s\n", __FUNCTION__);
+        mpi_errno = MPI_ERR_RMA_SYNC;
+        goto fn_fail;
     }
 
     if (ug_win->post_group == MPI_GROUP_NULL) {
