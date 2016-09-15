@@ -187,6 +187,6 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     ug_win->post_group = MPI_GROUP_NULL;
     ug_win->post_ranks_in_win_group = NULL;
 
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
+    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
     goto fn_exit;
 }

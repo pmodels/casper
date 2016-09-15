@@ -635,6 +635,9 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
         goto fn_fail;
     CSP_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, ug_win->base);
 
+    /* Reset error handler for all internal windows. */
+    CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->local_ug_win);
+
     /* Gather user offsets on corresponding ghost processes */
     mpi_errno = gather_base_offsets(ug_win);
     if (mpi_errno != MPI_SUCCESS)
@@ -666,6 +669,9 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
                                     ug_win->ug_comm, &ug_win->ug_wins[i]);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        /* Reset error handler for all internal windows. */
+        CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->ug_wins[i]);
     }
 
     for (i = 0; i < user_nprocs; i++) {
@@ -866,6 +872,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
+        /* Reset error handler for all internal windows. */
+        CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->global_win);
+
         CSP_DBG_PRINT("[%d] Created global window 0x%x\n", user_rank, ug_win->global_win);
 
         /* Since all processes must be in win_allocate, we do not need worry
@@ -930,6 +939,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     *win = MPI_WIN_NULL;
     *base_pp = NULL;
 
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
+    CSPU_COMM_ERROR_RETURN(user_comm, &mpi_errno);
     goto fn_exit;
 }

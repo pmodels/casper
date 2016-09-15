@@ -64,7 +64,6 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
 
@@ -81,12 +80,19 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
         /* casper window */
         mpi_errno = compare_and_swap_impl(origin_addr, compare_addr, result_addr,
                                           datatype, target_rank, target_disp, ug_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
     else {
         /* normal window */
-        mpi_errno = PMPI_Compare_and_swap(origin_addr, compare_addr, result_addr,
-                                          datatype, target_rank, target_disp, win);
+        return PMPI_Compare_and_swap(origin_addr, compare_addr, result_addr,
+                                     datatype, target_rank, target_disp, win);
     }
 
+  fn_exit:
     return mpi_errno;
+
+  fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    goto fn_exit;
 }

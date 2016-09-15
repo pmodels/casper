@@ -77,6 +77,6 @@ int MPI_Win_test(MPI_Win win, int *flag)
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
+    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
     goto fn_exit;
 }

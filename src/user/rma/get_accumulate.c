@@ -69,7 +69,6 @@ static int get_accumulate_impl(const void *origin_addr, int origin_count,
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
 
@@ -89,14 +88,21 @@ int MPI_Get_accumulate(const void *origin_addr, int origin_count, MPI_Datatype o
                                         result_addr, result_count, result_datatype,
                                         target_rank, target_disp, target_count,
                                         target_datatype, op, ug_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
     else {
         /* normal window */
-        mpi_errno = PMPI_Get_accumulate(origin_addr, origin_count, origin_datatype,
-                                        result_addr, result_count, result_datatype,
-                                        target_rank, target_disp, target_count,
-                                        target_datatype, op, win);
+        return PMPI_Get_accumulate(origin_addr, origin_count, origin_datatype,
+                                   result_addr, result_count, result_datatype,
+                                   target_rank, target_disp, target_count,
+                                   target_datatype, op, win);
     }
 
+  fn_exit:
     return mpi_errno;
+
+  fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    goto fn_exit;
 }

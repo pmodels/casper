@@ -65,7 +65,6 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
 
@@ -82,12 +81,19 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
         /* casper window */
         mpi_errno = fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
                                       target_disp, op, ug_win);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
     else {
         /* normal window */
-        mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_rank,
-                                      target_disp, op, win);
+        return PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_rank,
+                                 target_disp, op, win);
     }
 
+  fn_exit:
     return mpi_errno;
+
+  fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    goto fn_exit;
 }

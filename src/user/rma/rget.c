@@ -130,7 +130,6 @@ static int rget_impl(void *origin_addr, int origin_count,
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno);
     goto fn_exit;
 }
 
@@ -148,13 +147,19 @@ int MPI_Rget(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
         mpi_errno = rget_impl(origin_addr, origin_count, origin_datatype,
                               target_rank, target_disp, target_count, target_datatype,
                               ug_win, request);
+        if (mpi_errno != MPI_SUCCESS)
+            goto fn_fail;
     }
     else {
         /* normal window */
-        mpi_errno = PMPI_Rget(origin_addr, origin_count, origin_datatype,
-                              target_rank, target_disp, target_count, target_datatype, win,
-                              request);
+        return PMPI_Rget(origin_addr, origin_count, origin_datatype,
+                         target_rank, target_disp, target_count, target_datatype, win, request);
     }
 
+  fn_exit:
     return mpi_errno;
+
+  fn_fail:
+    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    goto fn_exit;
 }
