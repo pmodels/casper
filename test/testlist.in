@@ -22,4 +22,5 @@ win_create_acc
 init_thread_acc
 epoch_type
 win_allocate_info
+win_errhan
 finalize

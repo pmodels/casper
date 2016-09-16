@@ -31,6 +31,7 @@ noinst_PROGRAMS = \
 	epoch_type	\
 	epoch_type_assert	\
 	win_allocate_info	\
+	win_errhan			\
 	finalize
 
 MPIEXEC=mpiexec
