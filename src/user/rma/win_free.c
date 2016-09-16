@@ -229,6 +229,28 @@ int MPI_Win_free(MPI_Win * win)
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
     PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs);
 
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
+    /* Check access epoch status.
+     * We do not require closed FENCE epoch, because we don't know whether
+     * the previous FENCE is closed or not.*/
+    if (ug_win->epoch_stat != CSPU_WIN_NO_EPOCH && ug_win->epoch_stat != CSPU_WIN_EPOCH_FENCE) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
+                      "Previous %s access epoch is still open in %s\n",
+                      CSPU_WIN_GET_EPOCH_STAT_NAME(ug_win), __FUNCTION__);
+        mpi_errno = MPI_ERR_RMA_SYNC;
+        goto fn_fail;
+    }
+
+    /* Check exposure epoch status.
+     * The current epoch can be none or FENCE.*/
+    if (ug_win->exp_epoch_stat == CSPU_WIN_EXP_EPOCH_PSCW) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "
+                      "Previous PSCW exposure epoch is still open in %s\n", __FUNCTION__);
+        mpi_errno = MPI_ERR_RMA_SYNC;
+        goto fn_fail;
+    }
+#endif
+
     /* First unlock global window */
     if ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ||
         (ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ||
