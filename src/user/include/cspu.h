@@ -227,9 +227,22 @@ typedef struct CSPU_win {
         goto fn_fail;                                                  \
     }   \
 } while (0)
+
+/* Check RMA operation target displacement.
+ * Because we changed it at operation redirection, it would be more user-friendly
+ * if we check invalid displacement value here rather than in MPI.*/
+#define CSPU_TARGET_CHECK_OP_DISP(target_disp, target) do {                       \
+        if (target_disp < 0 || target_disp * target->disp_unit > target->size) {  \
+            CSP_msg_print(CSP_MSG_ERROR, "Wrong target displacement(%ld) in %s\n",\
+                          target_disp, __FUNCTION__);                             \
+            mpi_errno = MPI_ERR_DISP;                                             \
+            goto fn_fail;                                                         \
+        }   \
+    } while (0)
 #else
 #define CSPU_TARGET_CHECK_RANK(target_rank, ug_win) do {} while (0)
 #define CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win) do {} while (0)
+#define CSPU_TARGET_CHECK_OP_DISP(target_disp, target) do {} while (0)
 #endif
 
 /* ======================================================================

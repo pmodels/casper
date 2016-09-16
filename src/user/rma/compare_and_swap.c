@@ -26,6 +26,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     target = &(ug_win->targets[target_rank]);
 
     CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
+    CSPU_TARGET_CHECK_OP_DISP(target_disp, target);
 
     /* Should not do local RMA in accumulate because of atomicity issue */
 

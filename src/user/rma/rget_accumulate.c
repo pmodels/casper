@@ -55,6 +55,7 @@ static int rget_accumulate_impl(const void *origin_addr, int origin_count,
     target = &(ug_win->targets[target_rank]);
 
     CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
+    CSPU_TARGET_CHECK_OP_DISP(target_disp, target);
 
     /* Redirect operation to ghost process.
      * (See discussion of optimization for intra-node operations in csp.h.) */

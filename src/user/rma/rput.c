@@ -77,6 +77,7 @@ static int rput_impl(const void *origin_addr, int origin_count,
     target = &(ug_win->targets[target_rank]);
 
     CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
+    CSPU_TARGET_CHECK_OP_DISP(target_disp, target);
 
 #ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
     if (target_rank == rank && ug_win->is_self_locked) {
