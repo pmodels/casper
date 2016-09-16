@@ -61,7 +61,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.
      * The current epoch must be lock_all.*/
     if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
@@ -70,9 +70,9 @@ int MPI_Win_flush_local_all(MPI_Win win)
         mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
-    CSP_ASSERT(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
 #endif
 
+    CSP_ASSERT(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {

@@ -28,7 +28,7 @@ int MPI_Win_sync(MPI_Win win)
 
     /* For no-lock window, just sync on single window. */
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
         /* Check access epoch status.
          * The current epoch must be lock_all.*/
         if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL) {
@@ -67,7 +67,7 @@ int MPI_Win_sync(MPI_Win win)
             }
         }
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
         /* Check access epoch status.
          * At least one target must be locked.*/
         if (synced == 0) {

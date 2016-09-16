@@ -91,9 +91,11 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
+    CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
+
     target = &(ug_win->targets[target_rank]);
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.
      * The current epoch must be lock_all or lock.*/
     if (ug_win->epoch_stat != CSPU_WIN_EPOCH_LOCK_ALL &&

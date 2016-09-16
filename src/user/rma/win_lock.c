@@ -106,10 +106,12 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
 
+    CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
+
     target = &(ug_win->targets[target_rank]);
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.
      * We do not require closed FENCE epoch, because we don't know whether
      * the previous FENCE is closed or not.*/
@@ -129,9 +131,9 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         mpi_errno = MPI_ERR_RMA_SYNC;
         goto fn_fail;
     }
+#endif
 
     CSP_ASSERT(user_rank != target_rank || ug_win->is_self_locked == 0);
-#endif
 
     target->remote_lock_assert = assert;
     CSP_DBG_PRINT(" lock(%d), MPI_MODE_NOCHECK %d(assert %d)\n", target_rank,

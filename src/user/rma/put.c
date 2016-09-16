@@ -48,12 +48,12 @@ static int put_impl(const void *origin_addr, int origin_count,
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
+    CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
+
     PMPI_Comm_rank(ug_win->user_comm, &rank);
     target = &(ug_win->targets[target_rank]);
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
-    CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win);
-#endif
+    CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
 
 #ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT
     if (target_rank == rank && ug_win->is_self_locked) {

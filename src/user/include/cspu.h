@@ -154,7 +154,7 @@ typedef struct CSPU_win {
 } CSPU_win_t;
 
 /* ======================================================================
- * Error handling routine.
+ * Error handling/checking routines.
  * ====================================================================== */
 
 /* Handle window-related CASPER internal error by user-specified window error handler.
@@ -199,12 +199,41 @@ typedef struct CSPU_win {
 #define CSPU_COMM_ERROR_RETURN(comm, mpi_errno_ptr)   do {                       \
     /* Do not update mpi_errno_ptr's value. */                                   \
     /* Pointer input only emphasizes mpi_errno is an inout parameter  */         \
-    PMPI_Win_call_errhandler(comm, *(mpi_errno_ptr));                            \
+    PMPI_Comm_call_errhandler(comm, *(mpi_errno_ptr));                            \
 } while (0)
 
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
+/* Check valid target rank in operation and synchronization calls.
+ * This check is required because invalid rank can result in segment fault in CASPER. */
+#define CSPU_TARGET_CHECK_RANK(target_rank, ug_win) do {                            \
+    int user_nprocs = 0;                                                            \
+    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);                                \
+    if ((target_rank) < MPI_PROC_NULL || (target_rank) >= user_nprocs) {            \
+        CSP_msg_print(CSP_MSG_ERROR, "Invalid target rank %d in %s!\n",             \
+                      (target_rank), __FUNCTION__);                                 \
+        mpi_errno = MPI_ERR_RANK;                                                   \
+        goto fn_fail;                                                               \
+    }                                                                               \
+} while (0)
+
+/* Check access epoch status per operation.
+ * This check is required because CASPER changed the synchronization model and
+ * consequently MPI implementation cannot correctly detect RMA synchronize error.*/
+#define CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win) do {   \
+    if (ug_win->epoch_stat == CSPU_WIN_NO_EPOCH && target->epoch_stat == CSPU_TARGET_NO_EPOCH) {  \
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "    \
+                      "No opening access epoch in %s\n", __FUNCTION__);       \
+        mpi_errno = MPI_ERR_RMA_SYNC;                                  \
+        goto fn_fail;                                                  \
+    }   \
+} while (0)
+#else
+#define CSPU_TARGET_CHECK_RANK(target_rank, ug_win) do {} while (0)
+#define CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win) do {} while (0)
+#endif
 
 /* ======================================================================
- * Window cache related routine.
+ * Window cache related routines.
  * ====================================================================== */
 
 #define CSP_DEFINE_WIN_CACHE int UG_WIN_HANDLE_KEY = MPI_KEYVAL_INVALID
@@ -300,16 +329,6 @@ extern const char *CSPU_win_epoch_stat_name[4];
                 win_ptr = NULL; \
                 break;  \
         }   \
-    }   \
-} while (0)
-
-/* Check access epoch status per operation.*/
-#define CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win) do {   \
-    if (ug_win->epoch_stat == CSPU_WIN_NO_EPOCH && target->epoch_stat == CSPU_TARGET_NO_EPOCH) {  \
-        CSP_msg_print(CSP_MSG_ERROR, "Wrong synchronization call! "    \
-                      "No opening access epoch in %s\n", __FUNCTION__);       \
-        mpi_errno = MPI_ERR_RMA_SYNC;                                  \
-        goto fn_fail;                                                  \
     }   \
 } while (0)
 

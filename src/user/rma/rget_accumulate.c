@@ -49,12 +49,12 @@ static int rget_accumulate_impl(const void *origin_addr, int origin_count,
         goto fn_exit;
     }
 
+    CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
+
     PMPI_Comm_rank(ug_win->user_comm, &rank);
     target = &(ug_win->targets[target_rank]);
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
-    CSPU_TARGET_CHECK_EPOCH_PER_OP(target, ug_win);
-#endif
+    CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
 
     /* Redirect operation to ghost process.
      * (See discussion of optimization for intra-node operations in csp.h.) */

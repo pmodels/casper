@@ -49,14 +49,17 @@ if test "$enable_runtime_load" = "yes"; then
    AC_DEFINE(CSP_ENABLE_RUNTIME_LOAD_OPT,1,[Define if enable runtime load balancing])
 fi
 
-# Epoch statuc check
-AC_ARG_ENABLE(epochstat-check, AC_HELP_STRING([--disable-epochstat-check],[Disable epoch status check for better performance]),
-                 [ enable_epochstat_check=$enableval ],
-                 [ enable_epochstat_check=yes ])
-AC_MSG_CHECKING(epoch status checking support)
-AC_MSG_RESULT($enable_epochstat_check)
-if test "$enable_epochstat_check" = "yes"; then
-   AC_DEFINE(CSP_ENABLE_EPOCH_STAT_CHECK,1,[Define if disable epoch status check])
+# RMA error check
+AC_ARG_ENABLE(rmaerr-check, AC_HELP_STRING([--disable-rmaerr-check],
+                 [Disable RMA error check for better performance (no by default).
+                 If the RMA error check is disabled in Casper, the behavior of 
+                 Error Handling becomes undefined.]),
+                 [ enable_rmaerr_check=$enableval ],
+                 [ enable_rmaerr_check=yes ])
+AC_MSG_CHECKING(RMA error checking support)
+AC_MSG_RESULT($enable_rmaerr_check)
+if test "$enable_rmaerr_check" = "yes"; then
+   AC_DEFINE(CSP_ENABLE_RMA_ERR_CHECK,1,[Define if enable RMA error check])
 fi
 
 # check for attribute support

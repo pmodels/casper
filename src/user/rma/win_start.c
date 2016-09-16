@@ -107,7 +107,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_FENCE)
         ug_win->is_self_locked = 0;     /* because we cannot reset it in previous FENCE. */
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.
      * Unlike Lock, PSCW access epoch cannot overlap with any other access epoch
      * including lock to disjoint target, so we pass only when it is NO_EPOCH or FENCE.
@@ -118,9 +118,12 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
                       "Previous %s access epoch is still open in %s\n",
                       CSPU_WIN_GET_EPOCH_STAT_NAME(ug_win), __FUNCTION__);
         mpi_errno = MPI_ERR_RMA_SYNC;
-        goto fn_fail;
+        goto fn_sync_err;
     }
 #endif
+
+    /* Since nested access epoch is not allowed in PSCW, the origin itself must be unlocked. */
+    CSP_ASSERT(ug_win->is_self_locked == 0);
 
     if (group == MPI_GROUP_NULL) {
         /* standard says do nothing for empty group */
@@ -151,11 +154,9 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
-    /* Check internal error of is_self_locked. */
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     for (i = 0; i < start_grp_size; i++) {
-        int target_rank = ug_win->start_ranks_in_win_group[i];
-        CSP_ASSERT(user_rank != target_rank || ug_win->is_self_locked == 0);
+        CSPU_TARGET_CHECK_RANK(ug_win->start_ranks_in_win_group[i], ug_win);
     }
 #endif
 
@@ -198,6 +199,9 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     ug_win->start_group = MPI_GROUP_NULL;
     ug_win->start_ranks_in_win_group = NULL;
 
+  fn_sync_err:
+    /* Do not release internal resource if it is RMA sync error.
+     * Because these resources are for the existing PSCW epoch, which is correct. */
     CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
     goto fn_exit;
 }

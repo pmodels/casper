@@ -187,13 +187,13 @@ static int initialize_env(void)
 
     if (CSP_PROC.wrank == 0) {
         CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "CASPER Configuration:  \n"
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
-                      "    EPOCH_STAT_CHECK (enabled) \n"
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
+                      "    RMA_ERR_CHECK    (enabled) \n"
 #endif
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
                       "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
-                      "    CSP_VERBOSE          = %s|%s|%s|%s|%s\n"
+                      "    CSP_VERBOSE      = %s|%s|%s|%s|%s\n"
                       "    CSP_NG           = %d\n"
                       "    CSP_ASYNC_CONFIG = %s\n",
                       (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",

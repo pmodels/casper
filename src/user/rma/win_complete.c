@@ -73,7 +73,7 @@ int MPI_Win_complete(MPI_Win win)
 
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.
      * The current epoch must be pscw on all involved targets.*/
     if (ug_win->epoch_stat != CSPU_WIN_EPOCH_PER_TARGET) {
@@ -97,7 +97,7 @@ int MPI_Win_complete(MPI_Win win)
 
     CSP_DBG_PRINT("Complete group 0x%x, size %d\n", ug_win->start_group, start_grp_size);
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.
      * The current epoch must be pscw on all involved targets.*/
     for (i = 0; i < start_grp_size; i++) {

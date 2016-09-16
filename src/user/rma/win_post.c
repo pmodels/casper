@@ -109,6 +109,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
+    int i CSP_ATTRIBUTE((unused));
 
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
@@ -119,7 +120,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
 
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
-#ifdef CSP_ENABLE_EPOCH_STAT_CHECK
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check exposure epoch status.
      * The current epoch can be none or FENCE.
      * We do not require closed FENCE epoch, because we don't know whether
@@ -158,6 +159,12 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     mpi_errno = fill_ranks_in_win_grp(ug_win);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
+
+#ifdef CSP_ENABLE_RMA_ERR_CHECK
+    for (i = 0; i < post_grp_size; i++) {
+        CSPU_TARGET_CHECK_RANK(ug_win->post_ranks_in_win_group[i], ug_win);
+    }
+#endif
 
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
