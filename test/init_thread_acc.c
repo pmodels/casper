@@ -36,15 +36,15 @@ static void reset_win()
     MPI_Win_unlock(rank, win);
 }
 
-static void change_data(int nop, int x)
+static void change_data(int x)
 {
     int i;
-    for (i = 0; i < nop; i++) {
+    for (i = 0; i < NUM_OPS; i++) {
         locbuf[i] = 1.0 * (x + 1) * (i + 1);
     }
 }
 
-static int check_data(int nop, int dst)
+static int check_data(int dst)
 {
     int errs = 0;
     /* note that it is in an epoch */
@@ -52,10 +52,10 @@ static int check_data(int nop, int dst)
 
     memset(checkbuf, 0, NUM_OPS * sizeof(double));
 
-    MPI_Get(checkbuf, nop, MPI_DOUBLE, dst, 0, nop, MPI_DOUBLE, win);
+    MPI_Get(checkbuf, NUM_OPS, MPI_DOUBLE, dst, 0, NUM_OPS, MPI_DOUBLE, win);
     MPI_Win_flush(dst, win);
 
-    for (i = 0; i < nop; i++) {
+    for (i = 0; i < NUM_OPS; i++) {
         if (CTEST_precise_double_diff(checkbuf[i], locbuf[i])) {
             fprintf(stderr, "[%d] winbuf[%d] %.1lf != %.1lf\n", dst, i, checkbuf[i], locbuf[i]);
             errs++;
@@ -64,15 +64,15 @@ static int check_data(int nop, int dst)
 
 #ifdef OUTPUT_FAIL_DETAIL
     if (errs > 0) {
-        CTEST_print_double_array(locbuf, nop, "locbuf");
-        CTEST_print_double_array(checkbuf, nop, "winbuf");
+        CTEST_print_double_array(locbuf, NUM_OPS, "locbuf");
+        CTEST_print_double_array(checkbuf, NUM_OPS, "winbuf");
     }
 #endif
 
     return errs;
 }
 
-static int run_test1(int nop)
+static int run_test()
 {
     int i, x, errs = 0;
     int dst;
@@ -82,7 +82,7 @@ static int run_test1(int nop)
 
         /* check lock/acc & flush + (NOP * acc) & flush/unlock. */
         for (x = 0; x < ITER; x++) {
-            change_data(nop, x);
+            change_data(x);
 
             MPI_Win_lock(MPI_LOCK_EXCLUSIVE, dst, 0, win);
 
@@ -92,16 +92,16 @@ static int run_test1(int nop)
             /* flush local so that I can change local buffers */
             MPI_Win_flush_local(dst, win);
 
-            change_data(nop, x + ITER);
+            change_data(x + ITER);
 
-            for (i = 0; i < nop; i++) {
+            for (i = 0; i < NUM_OPS; i++) {
                 MPI_Accumulate(&locbuf[i], 1, MPI_DOUBLE, dst, i, 1, MPI_DOUBLE, MPI_MAX, win);
             }
 
             /* still need flush before checking result on the target side */
             MPI_Win_flush(dst, win);
 
-            errs += check_data(nop, dst);
+            errs += check_data(dst);
 
             MPI_Win_unlock(dst, win);
         }
@@ -115,7 +115,6 @@ static int run_test1(int nop)
 
 int main(int argc, char *argv[])
 {
-    int size = NUM_OPS;
     int errs = 0;
     int provided = 0;
 
@@ -134,11 +133,12 @@ int main(int argc, char *argv[])
     }
 
     /* size in byte */
-    MPI_Win_allocate(sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &winbuf, &win);
+    MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), MPI_INFO_NULL,
+                     MPI_COMM_WORLD, &winbuf, &win);
 
     reset_win();
     MPI_Barrier(MPI_COMM_WORLD);
-    errs = run_test1(size);
+    errs = run_test();
     if (errs)
         goto exit;
 
