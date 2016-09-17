@@ -72,7 +72,7 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
 int MPI_Win_flush(int target_rank, MPI_Win win)
 {
     CSPU_win_t *ug_win;
-    CSPU_win_target_t *target;
+    CSPU_win_target_t *target CSP_ATTRIBUTE((unused));
     MPI_Win *win_ptr CSP_ATTRIBUTE((unused)) = NULL;
     int mpi_errno = MPI_SUCCESS;
 
