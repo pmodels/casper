@@ -17,6 +17,9 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
     CSPU_win_target_t *target = NULL;
     MPI_Win *win_ptr = NULL;
     int user_rank;
+    int target_g_rank_in_ug;
+    int main_g_off CSP_ATTRIBUTE((unused));
+    int k CSP_ATTRIBUTE((unused));
 
     target = &(ug_win->targets[target_rank]);
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
@@ -29,8 +32,8 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
 #if !defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     /* RMA operations are only issued to the main ghost, so we only flush it. */
     /* TODO: track op issuing, only flush the ghosts which received ops. */
-    int main_g_off = target->main_g_off;
-    int target_g_rank_in_ug = target->g_ranks_in_ug[main_g_off];
+    main_g_off = target->main_g_off;
+    target_g_rank_in_ug = target->g_ranks_in_ug[main_g_off];
 
     CSP_DBG_PRINT(" flush(ghost(%d), %s 0x%x), instead of target rank %d\n",
                   target_g_rank_in_ug, CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
@@ -42,9 +45,8 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
     /* RMA operations may be distributed to all ghosts, so we should
      * flush all ghosts on all windows. Consider flush does nothing if no
      * operations on that target in most MPI implementation, simpler code is better */
-    int k;
     for (k = 0; k < CSP_ENV.num_g; k++) {
-        int target_g_rank_in_ug = target->g_ranks_in_ug[k];
+        target_g_rank_in_ug = target->g_ranks_in_ug[k];
 
         CSP_DBG_PRINT(" flush(ghost(%d), %s 0x%x), instead of target rank %d\n",
                       target_g_rank_in_ug, CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr,
@@ -82,8 +84,6 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
         /* normal window */
         return PMPI_Win_flush(target_rank, win);
     }
-
-    /* casper window starts */
 
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;

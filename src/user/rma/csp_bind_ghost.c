@@ -14,13 +14,12 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
     int i, g_off, t_rank, user_nprocs;
-    int np_per_ghost;
+    int np_per_ghost, np;
 
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
 
     np_per_ghost = n_targets / CSP_ENV.num_g;
-
-    int np = np_per_ghost;
+    np = np_per_ghost;
     i = 0;
     g_off = 0;
     t_rank = local_targets[i];

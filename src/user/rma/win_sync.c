@@ -22,8 +22,6 @@ int MPI_Win_sync(MPI_Win win)
         return PMPI_Win_sync(win);
     }
 
-    /* casper window starts */
-
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     /* For no-lock window, just sync on single window. */

@@ -23,8 +23,6 @@ int MPI_Win_unlock_all(MPI_Win win)
         return PMPI_Win_unlock_all(win);
     }
 
-    /* casper window starts */
-
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 

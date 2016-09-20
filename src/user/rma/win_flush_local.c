@@ -82,7 +82,6 @@ int MPI_Win_flush_local(int target_rank, MPI_Win win)
         return PMPI_Win_flush_local(target_rank, win);
     }
 
-    /* casper window starts */
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 

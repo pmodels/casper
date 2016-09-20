@@ -222,8 +222,6 @@ int MPI_Win_free(MPI_Win * win)
         return PMPI_Win_free(win);
     }
 
-    /* casper window starts */
-
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
     PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
     PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);

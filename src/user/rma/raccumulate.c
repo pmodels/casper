@@ -36,8 +36,12 @@ static int raccumulate_impl(const void *origin_addr, int origin_count,
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
+    int target_g_rank_in_ug = -1;
+    int data_size CSP_ATTRIBUTE((unused)) = 0;
+    MPI_Aint target_g_offset = 0;
     int rank;
     CSPU_win_target_t *target = NULL;
+    MPI_Win *win_ptr = NULL;
 
     if (target_rank == MPI_PROC_NULL) {
         mpi_errno = raccumualte_proc_null_impl(origin_addr, origin_count,
@@ -58,10 +62,6 @@ static int raccumulate_impl(const void *origin_addr, int origin_count,
 
     /* Redirect operation to ghost process.
      * (See discussion of optimization for intra-node operations in csp.h.) */
-    int target_g_rank_in_ug = -1;
-    int data_size CSP_ATTRIBUTE((unused)) = 0;
-    MPI_Aint target_g_offset = 0;
-    MPI_Win *win_ptr = NULL;
 
     CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
 

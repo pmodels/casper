@@ -14,8 +14,12 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint ug_target_disp = 0;
+    int target_g_rank_in_ug = -1;
+    int data_size CSP_ATTRIBUTE((unused)) = 0;
+    MPI_Aint target_g_offset = 0;
     int rank;
     CSPU_win_target_t *target = NULL;
+    MPI_Win *win_ptr = NULL;
 
     /* If target is MPI_PROC_NULL, operation succeeds and returns as soon as possible. */
     if (target_rank == MPI_PROC_NULL)
@@ -33,10 +37,6 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
 
     /* Redirect operation to ghost process.
      * (See discussion of optimization for intra-node operations in csp.h.) */
-    int target_g_rank_in_ug = -1;
-    int data_size CSP_ATTRIBUTE((unused)) = 0;
-    MPI_Aint target_g_offset = 0;
-    MPI_Win *win_ptr = NULL;
 
     CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
 

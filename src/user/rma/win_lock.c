@@ -96,8 +96,6 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
         return PMPI_Win_lock(lock_type, target_rank, assert, win);
     }
 
-    /* casper window starts */
-
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 

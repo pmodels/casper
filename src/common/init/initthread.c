@@ -268,20 +268,19 @@ static int initialize_proc(void)
         CSP_SET_GLOBAL_COMM(CSP_PROC.ghost.g_local_comm, tmp_local_comm);
     }
 
-    /* Create a user root communicator including the first user on every node */
     if (CSP_IS_USER) {
         int local_user_rank = -1;
         PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &local_user_rank);
+
+        /* Create a user root communicator including the first user on every node */
         mpi_errno = PMPI_Comm_split(CSP_COMM_USER_WORLD, local_user_rank == 0, 1, &tmp_ur_comm);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
 
         if (local_user_rank == 0)
             CSP_SET_GLOBAL_COMM(CSP_PROC.user.ur_comm, tmp_ur_comm);
-    }
 
-    /* Set name for user comm_world.  */
-    if (CSP_IS_USER) {
+        /* Set name for user comm_world.  */
         mpi_errno = PMPI_Comm_set_name(CSP_COMM_USER_WORLD, "MPI_COMM_WORLD");
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;

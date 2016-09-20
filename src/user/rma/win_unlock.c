@@ -61,8 +61,6 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
         return PMPI_Win_unlock(target_rank, win);
     }
 
-    /* casper window starts */
-
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
