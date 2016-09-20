@@ -73,9 +73,6 @@ typedef struct CSPU_win_target {
     int user_world_rank;        /* rank in user world communicator */
     int node_id;
 
-    MPI_Aint wait_counter_offset;       /* counter for complete-wait synchronization. allocated in main ghost. */
-    MPI_Aint post_flg_offset;   /* flag for post-start synchronization. allocated in main ghost. */
-
     int main_g_off;
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     CSPU_main_lock_stat_t main_lock_stat;
