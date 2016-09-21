@@ -52,6 +52,8 @@ int MPI_Win_fence(int assert, MPI_Win win)
         return PMPI_Win_fence(assert, win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE));
 
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_FENCE)
@@ -120,6 +122,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
     ug_win->exp_epoch_stat = CSPU_WIN_EXP_EPOCH_FENCE;
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

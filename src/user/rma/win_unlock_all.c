@@ -23,6 +23,8 @@ int MPI_Win_unlock_all(MPI_Win win)
         return PMPI_Win_unlock_all(win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
@@ -90,6 +92,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     ug_win->epoch_stat = CSPU_WIN_NO_EPOCH;
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

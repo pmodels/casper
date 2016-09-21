@@ -306,6 +306,7 @@ static int initialize_proc(void)
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
     int mpi_errno = MPI_SUCCESS;
+    int is_threaded = 0;
 
     if (required == 0 && provided == NULL) {
         /* default init */
@@ -318,6 +319,9 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
         mpi_errno = PMPI_Init_thread(argc, argv, required, provided);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
+
+        if (required == MPI_THREAD_MULTIPLE && *provided == MPI_THREAD_MULTIPLE)
+            is_threaded = 1;
     }
 
     /* Initialize global variables */
@@ -341,7 +345,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
     if (CSP_IS_USER) {
         /* Other user-specific initialization */
-        mpi_errno = CSPU_global_init();
+        mpi_errno = CSPU_global_init(is_threaded);
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

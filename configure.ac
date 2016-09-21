@@ -40,7 +40,8 @@ AC_C_INLINE
 PAC_ARG_STRICT
 
 # Runtime load balancing optimization
-AC_ARG_ENABLE(runtime-load, AC_HELP_STRING([--enable-runtime-load],[Enable Runtime Load Balancing]),
+AC_ARG_ENABLE(runtime-load, AC_HELP_STRING([--enable-runtime-load],
+                 [Enable Runtime Load Balancing (no by default)]),
                  [ enable_runtime_load=$enableval ],
                  [ enable_runtime_load=no ])
 AC_MSG_CHECKING(runtime Load balancing support)
@@ -60,6 +61,94 @@ AC_MSG_CHECKING(RMA error checking support)
 AC_MSG_RESULT($enable_rmaerr_check)
 if test "$enable_rmaerr_check" = "yes"; then
    AC_DEFINE(CSP_ENABLE_RMA_ERR_CHECK,1,[Define if enable RMA error check])
+fi
+
+# Thread-safety
+AC_ARG_ENABLE(thread-safety, AC_HELP_STRING([--enable-thread-safety],
+                 [Enable Casper thread safety (no by default).
+                 Only MPI_THREAD_MULTIPLE RMA program requires the thread safety
+                 to be enabled in Casper. For MPI SINGLE/FUNNELED/SERIALIZED thread
+                 levels, it is recommanded to disable the thread-safety in Casper
+                 for better performance. Also see option --with-thread-package.]),
+                 [ enable_thread_safety=$enableval ],
+                 [ enable_thread_safety=no ])
+AC_MSG_CHECKING(Thread safety support)
+AC_MSG_RESULT($enable_thread_safety)
+if test "$enable_thread_safety" = "yes"; then
+   AC_DEFINE(CSP_ENABLE_THREAD_SAFE,1,[Define if enable thread safety])
+fi
+
+# External IZEM
+AC_ARG_WITH(izem, [AC_HELP_STRING([--with-izem[=DIR]],
+                [Use the selected IZEM; Header file zm_spinlock.h should be in 
+                dir/include, and libizem should be in dir/lib. Also see option
+                --with-thread-package])],,with_izem=no)
+
+# Thread package used in critical section
+AC_ARG_WITH([thread-package],
+[  --with-thread-package=posix|pthreads|izem
+                          Thread package to implement internal critical section 
+                          when multiple threads are present. Supported thread 
+                          packages include:
+                          posix or pthreads - POSIX threads (default if POSIX 
+                                              is supported)
+                          izem              - IZEM mcs lock (user-space spinlock. 
+                                              User should provide the directory of 
+                                              external IZEM library, see option --with-izem).
+],,with_thread_package=default)
+AC_MSG_CHECKING(Thread package to implement critical section)
+AC_MSG_RESULT($with_thread_package)
+
+# Set thread package only when thread safety is enabled
+if test "$enable_thread_safety" = "yes"; then
+    THREAD_PACKAGE_NAME=NONE
+    case $with_thread_package in
+        default|posix|pthreads)
+            # check if pthread is supported (e.g., invalid on windows or solaris)
+            have_pthreads=no
+            AC_CHECK_HEADERS(pthread.h)
+            AC_CHECK_LIB([pthread],[pthread_key_create],have_lpthread=yes)
+            if test "$have_lpthread" = "yes" ; then
+                PAC_PREPEND_FLAG([-lpthread],[LIBS])
+                # this check should come after the AC_CHECK_LIB for -lpthread
+                AC_CHECK_FUNC([pthread_mutex_lock],have_pthreads=yes)
+            fi
+            if test "$have_pthreads" = "yes" ; then
+                THREAD_PACKAGE_NAME=CSP_THREAD_CS_LOCK__PTHREAD_MUTEX
+            else
+                if test "$with_thread_package" = "default"; then
+                    # use izem if default
+                    with_thread_package=izem
+                else
+                    # error if user specified pthread
+                    AC_MSG_ERROR([unable to find pthreads library.])
+                fi
+            fi
+        ;;
+        izem)
+        ;;
+        *)
+            AC_MSG_ERROR([The specified thread package, $with_thread_package, is not supported.])
+        ;;
+    esac
+
+    if test "$with_thread_package" = "izem" ; then
+        # izem provides platform independent user-space lock.
+        # check if user provided izem exists.
+        if test "$with_izem" = "no" ; then
+            AC_MSG_ERROR([unable to find izem library.])
+        fi
+
+        CFLAGS="$CFLAGS -I$with_izem/include"
+        LDFLAGS="$LDFLAGS -L$with_izem/lib"
+        AC_CHECK_HEADERS(lock/zm_mcs.h)
+        AC_CHECK_LIB([zm],[zm_mcs_init],have_izem=yes, AC_MSG_ERROR([unable to find izem library.]))
+
+        THREAD_PACKAGE_NAME=CSP_THREAD_CS_LOCK__IZEM_MCS_LOCK
+    fi
+
+    AC_DEFINE_UNQUOTED(CSP_THREAD_CS_LOCK,[$THREAD_PACKAGE_NAME],
+                       [Thread package to implement critical section])
 fi
 
 # check for attribute support

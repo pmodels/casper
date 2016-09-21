@@ -102,6 +102,8 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
         return PMPI_Win_start(group, assert, win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     if (ug_win->epoch_stat == CSPU_WIN_EPOCH_FENCE)
@@ -191,6 +193,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     CSP_DBG_PRINT("Start done\n");
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

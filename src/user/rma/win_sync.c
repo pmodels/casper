@@ -22,6 +22,8 @@ int MPI_Win_sync(MPI_Win win)
         return PMPI_Win_sync(win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     PMPI_Comm_rank(ug_win->user_comm, &user_rank);
 
     /* For no-lock window, just sync on single window. */
@@ -78,6 +80,7 @@ int MPI_Win_sync(MPI_Win win)
     }
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

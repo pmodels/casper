@@ -118,6 +118,8 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
         return PMPI_Win_post(group, assert, win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
@@ -186,6 +188,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     CSP_DBG_PRINT("Post done\n");
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

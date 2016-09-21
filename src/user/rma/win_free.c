@@ -140,6 +140,10 @@ int CSPU_win_release(CSPU_win_t * ug_win)
     if (ug_win->ug_wins)
         free(ug_win->ug_wins);
 
+    /* Destroy per window critical section.
+     * Do nothing if it is not initialized (e.g., failure in win_allocate). */
+    CSPU_THREAD_DESTROY_OBJ_CS(ug_win);
+
     free(ug_win);
 
     CSP_DBG_PRINT("Freed CASPER window\n");

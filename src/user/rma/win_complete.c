@@ -71,6 +71,8 @@ int MPI_Win_complete(MPI_Win win)
         return PMPI_Win_complete(win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
@@ -145,6 +147,7 @@ int MPI_Win_complete(MPI_Win win)
     ug_win->start_group = MPI_GROUP_NULL;
     ug_win->start_ranks_in_win_group = NULL;
 
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

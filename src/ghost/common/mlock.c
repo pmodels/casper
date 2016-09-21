@@ -18,12 +18,14 @@
     } while (0)
 static const char *mlock_status_name[CSP_MLOCK_STATUS_MAX] =
     { "none", "suspended_l", "suspended_h", "acquired" };
+#define CSPG_MLOCK_DBG_GID_TO_STR(gid, str) CSP_mlock_gid_to_str(gid, str)
 #else
 #define CSPG_MLOCK_DBG_PRINT(str,...) do { } while (0)
+#define CSPG_MLOCK_DBG_GID_TO_STR(gid, str) do { } while (0)
 #endif
 
 typedef struct CSPG_mlock_req {
-    int group_id;
+    CSP_mlock_gid_t group_id;
     int user_local_rank;
     CSP_mlock_status_t status;
 } CSPG_mlock_req_t;
@@ -32,42 +34,67 @@ static CSP_slist_t mlock_susped_reqs_list;
 static CSPG_mlock_req_t *mlock_granted_req = NULL;
 static int mlock_req_cnt = 0;   /* counter to tracking unreleased lock requests. */
 
+/* return positive value if gid1 > gid2.*/
+static inline int mlock_gid_compare_fnc(CSP_mlock_gid_t gid1, CSP_mlock_gid_t gid2)
+{
+    int diff = 0;
+
+    diff = gid1.rank - gid2.rank;
+
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    /* if same rank, compare seqno. */
+    if (diff == 0)
+        diff = gid1.seqno - gid2.seqno;
+#endif
+    return diff;
+}
+
+/* return positive value if ubuf1 > ubuf2.*/
 static int mlock_req_compare_fnc(void *ubuf1, void *ubuf2)
 {
     CSPG_mlock_req_t *req1 = NULL, *req2 = NULL;
     req1 = (CSPG_mlock_req_t *) ubuf1;
     req2 = (CSPG_mlock_req_t *) ubuf2;
-    return req1->group_id - req2->group_id;
+
+    /* compare group id. */
+    return mlock_gid_compare_fnc(req1->group_id, req2->group_id);
 }
 
 static inline int mlock_sync_status(CSPG_mlock_req_t * req)
 {
     CSP_cwp_pkt_t pkt;
     CSP_cwp_mlock_status_sync_pkt_t *locksync_pkt = &pkt.u.lock_status_sync;
+    char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
 
     CSP_cwp_init_pkt(CSP_MLOCK_STATUS_SYNC, &pkt);
 
     locksync_pkt->status = req->status;
-    CSPG_MLOCK_DBG_PRINT(" \t sync CMD ACK %d [%s] to local user %d\n",
+
+    CSPG_MLOCK_DBG_GID_TO_STR(req->group_id, gidstr);
+    CSPG_MLOCK_DBG_PRINT(" \t sync CMD STAT %d [%s] to local user %d, gid %s\n",
                          locksync_pkt->status, mlock_status_name[locksync_pkt->status],
-                         req->user_local_rank);
+                         req->user_local_rank, gidstr);
 
     return PMPI_Send((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                     req->user_local_rank, CSP_CWP_TAG, CSP_PROC.local_comm);
+                     req->user_local_rank, CSP_CWP_MLOCK_SYNC_TAG(req->group_id),
+                     CSP_PROC.local_comm);
 }
 
 static inline int mlock_suspend_req(CSPG_mlock_req_t * req)
 {
+    char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
     CSP_ASSERT(mlock_granted_req != NULL);
-    if (req->group_id < mlock_granted_req->group_id) {
+
+    if (mlock_req_compare_fnc((void *) mlock_granted_req, (void *) req) > 0) {
         req->status = CSP_MLOCK_STATUS_SUSPENDED_H;
     }
     else {
         req->status = CSP_MLOCK_STATUS_SUSPENDED_L;
     }
 
-    CSPG_MLOCK_DBG_PRINT(" \t suspend lock req %p (%d, %d, %s)\n", req,
-                         req->group_id, req->user_local_rank,
+    CSPG_MLOCK_DBG_GID_TO_STR(req->group_id, gidstr);
+    CSPG_MLOCK_DBG_PRINT(" \t suspend lock req %p (gid %s, %d, %s)\n", req,
+                         gidstr, req->user_local_rank,
                          (req->status == CSP_MLOCK_STATUS_SUSPENDED_H) ? "H" : "L");
 
     /* Insert the new one in suspended list */
@@ -79,11 +106,12 @@ static inline int mlock_suspend_req(CSPG_mlock_req_t * req)
 
 static inline int mlock_grant_req(CSPG_mlock_req_t * req)
 {
+    char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
     req->status = CSP_MLOCK_STATUS_ACQUIRED;
     mlock_granted_req = req;
 
-    CSPG_MLOCK_DBG_PRINT(" \t grant lock req %p (%d, %d)\n", req, req->group_id,
-                         req->user_local_rank);
+    CSPG_MLOCK_DBG_GID_TO_STR(req->group_id, gidstr);
+    CSPG_MLOCK_DBG_PRINT(" \t grant lock req %p (gid %s, %d)\n", req, gidstr, req->user_local_rank);
     return mlock_sync_status(req);
 }
 
@@ -164,16 +192,22 @@ static int mlock_acquire_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
     goto fn_exit;
 }
 
-static int mlock_release_cwp_handler(CSP_cwp_pkt_t * pkt CSP_ATTRIBUTE((unused)),
-                                     int user_local_rank)
+static int mlock_release_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPG_mlock_req_t *rels_req = NULL;
+    CSP_cwp_mlock_release_pkt_t *lockrls_pkt = &pkt->u.lock_release;
+    char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
 
-    CSP_ASSERT(mlock_granted_req != NULL && mlock_granted_req->user_local_rank == user_local_rank);
+    CSP_ASSERT(mlock_granted_req != NULL &&
+               mlock_granted_req->user_local_rank == user_local_rank &&
+               (mlock_gid_compare_fnc(lockrls_pkt->group_id, mlock_granted_req->group_id) == 0));
 
     rels_req = mlock_granted_req;
     mlock_granted_req = NULL;
+
+    CSPG_MLOCK_DBG_GID_TO_STR(rels_req->group_id, gidstr);
+    CSPG_MLOCK_DBG_PRINT(" \t release lock (gid %s, %d)\n", gidstr, user_local_rank);
 
     mpi_errno = mlock_grant_next_req();
     if (mpi_errno != MPI_SUCCESS)
@@ -198,11 +232,16 @@ static int mlock_discard_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
     int mpi_errno = MPI_SUCCESS;
     CSPG_mlock_req_t *disc_req = NULL;
     CSPG_mlock_req_t search_req;
-    CSP_cwp_mlock_acquire_pkt_t *lockdcd_pkt = &pkt->u.lock_discard;
+    CSP_cwp_mlock_discard_pkt_t *lockdcd_pkt = &pkt->u.lock_discard;
+    char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
 
     /* If lock is just granted before receiving discard message, release it. */
-    if (mlock_granted_req && user_local_rank == mlock_granted_req->user_local_rank)
+    if (mlock_granted_req &&
+        (mlock_gid_compare_fnc(lockdcd_pkt->group_id, mlock_granted_req->group_id) == 0))
         return mlock_release_cwp_handler(pkt, user_local_rank);
+
+    CSPG_MLOCK_DBG_GID_TO_STR(lockdcd_pkt->group_id, gidstr);
+    CSPG_MLOCK_DBG_PRINT(" \t discard lock req (gid %s, %d)\n", gidstr, user_local_rank);
 
     /* Remove from suspended list. */
     search_req.user_local_rank = user_local_rank;
@@ -237,10 +276,12 @@ int CSPG_mlock_release(void)
     /* Only the first local ghost handles lock. */
     if (local_gp_rank == 0) {
         if (mlock_granted_req) {
+            char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
+
+            CSPG_MLOCK_DBG_GID_TO_STR(mlock_granted_req->group_id, gidstr);
             CSPG_MLOCK_DBG_PRINT("\n");
-            CSPG_MLOCK_DBG_PRINT(" ghost 0 release lock req %p (%d, %d)\n",
-                                 mlock_granted_req, mlock_granted_req->group_id,
-                                 mlock_granted_req->user_local_rank);
+            CSPG_MLOCK_DBG_PRINT(" ghost 0 release lock req %p (gid %s, %d)\n",
+                                 mlock_granted_req, gidstr, mlock_granted_req->user_local_rank);
 
             /* Release current lock */
             free(mlock_granted_req);

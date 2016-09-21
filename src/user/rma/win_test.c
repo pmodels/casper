@@ -22,6 +22,8 @@ int MPI_Win_test(MPI_Win win, int *flag)
         return PMPI_Win_test(win, flag);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_PSCW));
 
     /* Check exposure epoch status.
@@ -74,6 +76,7 @@ int MPI_Win_test(MPI_Win win, int *flag)
         ug_win->post_ranks_in_win_group = NULL;
     }
 
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

@@ -825,6 +825,15 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
             goto fn_fail;
     }
 
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    /* Creating ug_comm has to be based on MPI_COMM_WORLD, which is unsafe in
+     * threaded code. I.e., t0 and t1 are both waiting on comm_create_group(COMM_WORLD),
+     * thus t1 might mismatch the collective call with t0 on another user process.
+     * This barrier ensures only the correct set of threads can concurrently wait
+     * on that call.*/
+    PMPI_Barrier(ug_win->user_comm);
+#endif
+
     /* Create communicators
      *  ug_comm: including all USER and Ghost processes
      *  local_ug_comm: including local USER and Ghost processes
@@ -915,6 +924,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
+
+    /* Initialize per window critical section. */
+    CSPU_THREAD_INIT_OBJ_CS(ug_win);
 
     mpi_errno = CSPU_cache_ug_win(ug_win->win, ug_win);
     if (mpi_errno != MPI_SUCCESS)

@@ -57,6 +57,8 @@ int MPI_Win_flush_local_all(MPI_Win win)
         return PMPI_Win_flush_local_all(win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     CSP_ASSERT((ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) ||
                (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK_ALL));
 
@@ -99,6 +101,7 @@ int MPI_Win_flush_local_all(MPI_Win win)
     }
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

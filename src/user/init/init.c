@@ -60,7 +60,7 @@ static void dbg_print_proc(void)
 #endif
 
 /* Setup global user-specific information. */
-static int setup_proc(void)
+static int setup_proc(int is_threaded)
 {
     int mpi_errno = MPI_SUCCESS;
     int *tmp_gather_buf = NULL;
@@ -71,6 +71,9 @@ static int setup_proc(void)
 
     PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank);
     PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
+
+    /* Initialize threading protection on every user process */
+    CSP_PROC.user.is_thread_multiple = is_threaded;
 
     CSP_PROC.user.g_lranks = CSP_calloc(CSP_ENV.num_g, sizeof(int));
     CSP_PROC.user.g_wranks_per_user = CSP_calloc(user_nprocs * CSP_ENV.num_g, sizeof(int));
@@ -139,15 +142,19 @@ static int setup_proc(void)
     goto fn_exit;
 }
 
-int CSPU_global_init(void)
+int CSPU_global_init(int is_threaded)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    mpi_errno = setup_proc();
+    mpi_errno = setup_proc(is_threaded);
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
     mpi_errno = CSPU_init_win_cache();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    mpi_errno = CSPU_mlock_init();
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 

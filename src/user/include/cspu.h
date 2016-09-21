@@ -14,6 +14,7 @@
 #include "csp_cwp.h"
 #include "csp_mlock.h"
 #include "cspu_cwp.h"
+#include "cspu_thread.h"
 
 /* ======================================================================
  * CASPER user constants definition.
@@ -82,6 +83,11 @@ typedef struct CSPU_win_target {
 } CSPU_win_target_t;
 
 typedef struct CSPU_win {
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    CSP_thread_cs_t cs;         /* per window critical section object,
+                                 * used only when this process is multi-threaded. */
+#endif
+
     /* communicator including local process and ghosts */
     MPI_Comm local_ug_comm;
     MPI_Group local_ug_group;
@@ -538,6 +544,8 @@ static inline int CSPU_target_get_ghost(int target_rank, int is_order_required C
  * ====================================================================== */
 
 extern int CSPU_mlock_acquire(MPI_Comm user_root_comm);
+extern int CSPU_mlock_init(void);
+extern int CSPU_mlock_destroy(void);
 
 extern int CSPU_win_bind_ghosts(CSPU_win_t * ug_win);
 extern int CSPU_win_release(CSPU_win_t * ug_win);

@@ -6,6 +6,8 @@
 #ifndef CSP_MLOCK_H_
 #define CSP_MLOCK_H_
 
+#include <stdio.h>
+
 /* ======================================================================
  * Multi-objects lock (MLOCK) common definition.
  * ====================================================================== */
@@ -17,5 +19,24 @@ typedef enum {
     CSP_MLOCK_STATUS_ACQUIRED,
     CSP_MLOCK_STATUS_MAX
 } CSP_mlock_status_t;
+
+typedef struct CSP_mlock_gid {
+    int rank;
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    int seqno;
+#endif
+} CSP_mlock_gid_t;
+
+#define CSP_MLOCK_GID_MAXLEN 64
+static inline void CSP_mlock_gid_to_str(CSP_mlock_gid_t gid, char *str)
+{
+    memset(str, 0, CSP_MLOCK_GID_MAXLEN);
+
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    sprintf(str, "%d/%d", gid.rank, gid.seqno);
+#else
+    sprintf(str, "%d", gid.rank);
+#endif
+}
 
 #endif /* CSP_MLOCK_H_ */

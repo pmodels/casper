@@ -25,7 +25,10 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag
      * internally created by WIN_CREATE. For all the other attributes, just return
      * its real value.*/
     if (win_keyval == MPI_WIN_CREATE_FLAVOR) {
+        CSPU_THREAD_ENTER_OBJ_CS(ug_win);
         *((int **) attribute_val) = &ug_win->create_flavor;
+        CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+
         *flag = 1;
     }
     else {

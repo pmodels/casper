@@ -61,6 +61,8 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
         return PMPI_Win_unlock(target_rank, win);
     }
 
+    CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+
     if (target_rank == MPI_PROC_NULL)
         goto fn_exit;
 
@@ -125,6 +127,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     }
 
   fn_exit:
+    CSPU_THREAD_EXIT_OBJ_CS(ug_win);
     return mpi_errno;
 
   fn_fail:

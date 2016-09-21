@@ -18,6 +18,9 @@
 #include "csp_util.h"
 #include "csp_msg.h"
 #include "csp_error.h"
+#if defined(CSP_ENABLE_THREAD_SAFE)
+#include "csp_thread.h"
+#endif
 
 /* #define CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE */
 
@@ -142,6 +145,12 @@ typedef enum {
 } CSP_proc_type_t;
 
 typedef struct CSP_user_proc {
+    int is_thread_multiple;     /* Set to 1 only when MPI_THREAD_MULTIPLE.
+                                 * This enables internal critical sections. */
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    CSP_thread_cs_t cs;         /* Global critical section object,
+                                 * used only when this process is multi-threaded. */
+#endif
     int *g_lranks;
     int *g_wranks_per_user;     /* All user processes' ghost ranks.
                                  * Ghosts of user process x are stored as
@@ -213,7 +222,7 @@ extern CSP_env_param_t CSP_ENV;
 extern CSP_proc_t CSP_PROC;
 extern MPI_Comm CSP_COMM_USER_WORLD;
 
-extern int CSPU_global_init(void);
+extern int CSPU_global_init(int is_threaded);
 extern int CSPG_global_init(void);
 extern int CSPG_main(void);
 

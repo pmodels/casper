@@ -13,8 +13,21 @@
  * Command wire protocol (CWP) common definition (packet, tags).
  * ====================================================================== */
 
-#define CSP_CWP_TAG 9889        /* tag for command */
-#define CSP_CWP_PARAM_TAG 9890  /* tag for any later command parameters */
+#define CSP_CWP_TAG 9890        /* tag for command */
+#define CSP_CWP_PARAM_TAG 9891  /* tag for any later command parameters */
+#define CSP_CWP_MLOCK_DEFAULT_SYNC_TAG 9892     /* default tag for mlock synchronization.
+                                                 * To ensure multiple threads can receive
+                                                 * the correct sync packet from ghost, we
+                                                 * use (TAG + seqno) in threaded case.
+                                                 * Both ghost and user code should always call
+                                                 * wrapper macro CSP_CWP_MLOCK_SYNC_TAG to get
+                                                 * the correct sync_tag. */
+
+#if defined(CSP_ENABLE_THREAD_SAFE)
+#define CSP_CWP_MLOCK_SYNC_TAG(gid) (CSP_CWP_MLOCK_DEFAULT_SYNC_TAG + gid.seqno)
+#else
+#define CSP_CWP_MLOCK_SYNC_TAG(gid) (CSP_CWP_MLOCK_DEFAULT_SYNC_TAG)
+#endif
 
 typedef enum {
     CSP_CWP_UNSET = 0,
@@ -42,10 +55,7 @@ typedef struct CSP_cwp_winfree_pkt {
 } CSP_cwp_fnc_winfree_pkt_t;
 
 typedef struct CSP_cwp_mlock_acquire_pkt {
-    int group_id;               /* global unique id of user communicator. For now, it is safe to use
-                                 * world rank of the lowest rank, since all blocking command must be issued
-                                 * after all user processes arrived, thus two communicators within the same
-                                 * global comm id must always issue command in sequential.*/
+    CSP_mlock_gid_t group_id;   /* global unique id of user group. */
 } CSP_cwp_mlock_acquire_pkt_t;
 
 typedef CSP_cwp_mlock_acquire_pkt_t CSP_cwp_mlock_discard_pkt_t;

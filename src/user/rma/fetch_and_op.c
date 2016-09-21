@@ -80,8 +80,11 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
 
     if (ug_win) {
         /* casper window */
+        CSPU_THREAD_ENTER_OBJ_CS(ug_win);
         mpi_errno = fetch_and_op_impl(origin_addr, result_addr, datatype, target_rank,
                                       target_disp, op, ug_win);
+        CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

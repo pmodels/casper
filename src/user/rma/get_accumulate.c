@@ -85,10 +85,13 @@ int MPI_Get_accumulate(const void *origin_addr, int origin_count, MPI_Datatype o
 
     if (ug_win) {
         /* casper window */
+        CSPU_THREAD_ENTER_OBJ_CS(ug_win);
         mpi_errno = get_accumulate_impl(origin_addr, origin_count, origin_datatype,
                                         result_addr, result_count, result_datatype,
                                         target_rank, target_disp, target_count,
                                         target_datatype, op, ug_win);
+        CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }

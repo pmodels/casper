@@ -98,6 +98,10 @@ int CSPU_global_finalize(void)
     if (mpi_errno != MPI_SUCCESS)
         goto fn_fail;
 
+    mpi_errno = CSPU_mlock_destroy();
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
   fn_exit:
     return mpi_errno;
 

@@ -79,8 +79,11 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
 
     if (ug_win) {
         /* casper window */
+        CSPU_THREAD_ENTER_OBJ_CS(ug_win);
         mpi_errno = compare_and_swap_impl(origin_addr, compare_addr, result_addr,
                                           datatype, target_rank, target_disp, ug_win);
+        CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+
         if (mpi_errno != MPI_SUCCESS)
             goto fn_fail;
     }
