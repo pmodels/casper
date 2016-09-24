@@ -17,6 +17,7 @@ noinst_PROGRAMS = \
 	acclock	\
 	getacc	\
 	getacc_lockall_epoch	\
+	subcomm			\
 	self_acclock	\
 	no_loadstore	\
 	no_check	\

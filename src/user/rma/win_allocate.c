@@ -705,10 +705,28 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     ug_win = CSP_calloc(1, sizeof(CSPU_win_t));
 
-    /* If user specifies comm_world directly, use user comm_world instead;
-     * else this communicator directly, because it should be created from user comm_world */
-    if (user_comm == MPI_COMM_WORLD) {
+    if (user_comm == MPI_COMM_WORLD)
         user_comm = CSP_COMM_USER_WORLD;
+    ug_win->user_comm = user_comm;
+
+    /* Read window configuration */
+    mpi_errno = read_win_info(info, ug_win);
+    if (mpi_errno != MPI_SUCCESS)
+        goto fn_fail;
+
+    /* If user turns off asynchronous redirection, simply return normal window; */
+    if (ug_win->info_args.async_config == CSP_ASYNC_CONFIG_OFF) {
+        mpi_errno = PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
+        CSP_DBG_PRINT("User turns off async in win_allocate, return normal win 0x%x\n", *win);
+
+        goto fn_noasync;
+    }
+
+    /* Start allocating casper window */
+
+    /* Initialize basic communicators and information. */
+    if (user_comm == CSP_COMM_USER_WORLD) {
+        /* Fast patch for comm_world. */
         ug_win->local_user_comm = CSP_PROC.user.u_local_comm;
         ug_win->user_root_comm = CSP_PROC.user.ur_comm;
 
@@ -717,7 +735,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         ug_win->user_comm = user_comm;
     }
     else {
-        ug_win->user_comm = user_comm;
         mpi_errno = PMPI_Comm_split_type(user_comm, MPI_COMM_TYPE_SHARED, 0,
                                          MPI_INFO_NULL, &ug_win->local_user_comm);
         if (mpi_errno != MPI_SUCCESS)
@@ -743,22 +760,6 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, 0, ug_win->local_user_comm);
         ug_win->node_id = tmp_bcast_buf[0];
         ug_win->num_nodes = tmp_bcast_buf[1];
-    }
-
-    /* Read window configuration */
-    mpi_errno = read_win_info(info, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-
-    /* If user turns off asynchronous redirection, simply return normal window; */
-    if (ug_win->info_args.async_config == CSP_ASYNC_CONFIG_OFF) {
-        if (user_comm == MPI_COMM_WORLD)
-            user_comm = CSP_COMM_USER_WORLD;
-
-        mpi_errno = PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
-        CSP_DBG_PRINT("User turns off async in win_allocate, return normal win 0x%x\n", *win);
-
-        goto fn_noasync;
     }
 
     PMPI_Comm_group(user_comm, &ug_win->user_group);
