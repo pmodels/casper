@@ -6,6 +6,14 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 AM_LDFLAGS = -Wl,-rpath -Wl,$(libdir)
 LDADD = -L$(libdir) -lcasper 
 
+if CTEST_ENABLE_THREAD_TEST_COND
+THREAD_TESTS =  thread_acc_flush 	\
+				thread_acc_lock 	\
+				thread_multiwins
+else
+THREAD_TESTS =
+endif
+
 noinst_PROGRAMS = \
 	get	\
 	get_lockall_epoch	\
@@ -28,12 +36,12 @@ noinst_PROGRAMS = \
 	fetch_and_op	\
 	win_allocate	\
 	win_create_acc	\
-	init_thread_acc	\
 	epoch_type	\
 	epoch_type_assert	\
 	win_allocate_info	\
 	win_errhan			\
-	finalize
+	finalize			\
+	$(THREAD_TESTS)
 
 MPIEXEC=mpiexec
 

@@ -46,6 +46,36 @@ AC_CHECK_FUNCS(sysctl get_nprocs get_nprocs_conf pthread_getaffinity_np)
 # Check for types
 AC_CHECK_TYPES([cpu_set_t],,,[[#include <sched.h>]])
 
+# Checkes for enabling thread tests
+AC_ARG_ENABLE(thread-test, AC_HELP_STRING([--enable-thread-test],
+                 [Enable Casper thread tests (no by default).
+                 Thread safety is required in casper, otherwise the results of
+                 thread tests are undefined. Also see option --enable-thread-safety
+                 in Casper configure. These tests require POSIX threads.]),
+                 [ enable_thread_test=$enableval ],
+                 [ enable_thread_test=no ])
+AC_MSG_CHECKING(enable thread tests)
+AC_MSG_RESULT($enable_thread_test)
+AM_CONDITIONAL(CTEST_ENABLE_THREAD_TEST_COND, [test "$enable_thread_test" = "yes"])
+AC_DEFINE(CTEST_ENABLE_THREAD_TEST,[test "$enable_thread_test" = "yes"],[Define if enable thread tests])
+CTEST_ENABLE_THREAD_TEST=0
+if test "$enable_thread_test" = "yes"; then
+    CTEST_ENABLE_THREAD_TEST=1
+fi
+AC_SUBST(CTEST_ENABLE_THREAD_TEST)
+
+# Checks if pthread is supported for thread tests
+if test "$enable_thread_test" = "yes"; then
+    have_pthreads=no
+    AC_CHECK_HEADERS(pthread.h)
+    AC_CHECK_LIB([pthread],[pthread_key_create],have_lpthread=yes)
+    if test "$have_lpthread" = "yes" ; then
+        PAC_PREPEND_FLAG([-lpthread],[LIBS])
+        # this check should come after the AC_CHECK_LIB for -lpthread
+        AC_CHECK_FUNC([pthread_create],[],[AC_MSG_ERROR([unable to find pthreads library])])
+    fi
+fi
+
 # check for attribute support
 PAC_C_GNU_ATTRIBUTE
 

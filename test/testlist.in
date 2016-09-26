@@ -20,8 +20,10 @@ acc_get_fence
 fetch_and_op
 win_allocate
 win_create_acc
-init_thread_acc
 epoch_type
 win_allocate_info
 win_errhan
 finalize
+thread_acc_flush exec=@CTEST_ENABLE_THREAD_TEST@
+thread_acc_lock exec=@CTEST_ENABLE_THREAD_TEST@
+thread_multiwins exec=@CTEST_ENABLE_THREAD_TEST@

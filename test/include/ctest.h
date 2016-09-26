@@ -12,6 +12,10 @@
 #include <mpi.h>
 #include <ctestconf.h>
 
+#if defined(CTEST_ENABLE_THREAD_TEST)
+#include <pthread.h>
+#endif
+
 /* OS-dependent implementations */
 
 #ifndef CTEST_ATTRIBUTE
@@ -22,7 +26,9 @@
 #endif
 #endif /* CTEST_ATTRIBUTE */
 
-/* Generic functions for double test data */
+/* ==========================================
+ * Generic functions for double test data
+ * ========================================== */
 
 #define DOUBLE_TOLERANCE (0.00001)
 
@@ -71,5 +77,61 @@ static inline void CTEST_print_double_array(double *buffer, int size, const char
     fprintf(stderr, "\n");
 }
 
+#if defined(CTEST_ENABLE_THREAD_TEST)
+/* ==========================================
+ * Generic functions for threads tests
+ * ========================================== */
+
+/* Common argument passed to threads'function. */
+typedef struct CTEST_thread_tid_arg {
+    int tid;
+} CTEST_thread_tid_arg_t;
+
+/* Wrapper for creating pthread */
+static inline int CTEST_create_thread(pthread_t * thread, void *(*fn) (void *), void *arg)
+{
+    int err;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    err = pthread_create(thread, &attr, fn, arg);
+    pthread_attr_destroy(&attr);
+
+    return err;
+}
+
+/* Atomic variable wrapper */
+typedef struct CTEST_atomic_var {
+    void *ptr;
+    pthread_spinlock_t lock;
+} CTEST_atomic_var_t;
+
+#define CTEST_ATOMIC_VAR_INIT(atomic_var, varptr) do {  \
+    (atomic_var).ptr = varptr;                          \
+    pthread_spin_init(&(atomic_var).lock, 0);           \
+} while (0)
+
+#define CTEST_ATOMIC_VAR_DESTROY(atomic_var) pthread_spin_destroy(&(atomic_var).lock);
+
+#define CTEST_ATOMIC_VAR_ADD(atomic_var, type, val) do {    \
+    pthread_spin_lock(&(atomic_var).lock);                  \
+    *(type *)((atomic_var).ptr) += val;                     \
+    pthread_spin_unlock(&(atomic_var).lock);                \
+} while (0)
+
+#define CTEST_ATOMIC_VAR_SUB(atomic_var, type, val) do {    \
+    pthread_spin_lock(&atomic_var.lock);                    \
+    *((type) *)((atomic_var).ptr) -= val;                   \
+    pthread_spin_unlock(&(atomic_var).lock);                \
+} while (0)
+
+#define CTEST_ATOMIC_VAR_READ(atomic_var, type, val) do {    \
+    pthread_spin_lock(&(atomic_var).lock);                   \
+    (val) = *(type *)((atomic_var).ptr);                     \
+    pthread_spin_unlock(&(atomic_var).lock);                 \
+} while (0)
+
+#endif
 
 #endif /* CTEST_H_ */
