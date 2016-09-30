@@ -78,4 +78,17 @@ static inline void *CSP_calloc(int n, size_t size)
     return buf;
 }
 
+/* Wrap UTHASH generic routines before include
+ * The callers should always include csp_util.h instead of uthash.h. */
+#ifndef uthash_fatal
+#define uthash_fatal(msg) do {                                      \
+            fprintf(stderr, "%s", msg); fflush(stderr);             \
+            CSP_ASSERT(0);                                          \
+        } while (0)
+#endif
+#ifndef uthash_malloc
+#define uthash_malloc(sz) CSP_calloc(1, sz)
+#endif
+#include "uthash.h"
+
 #endif /* CSP_UTIL_H_ */
