@@ -15,8 +15,8 @@ static int fence_flush_all(CSPU_win_t * ug_win)
     int user_rank, user_nprocs;
     int i CSP_ATTRIBUTE((unused));
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
 
     /* Flush all ghosts to finish the sequence of locally issued RMA operations */
     mpi_errno = CSPU_win_global_flush_all(ug_win);

@@ -26,7 +26,7 @@ int CSPU_recv_pscw_complete_msg(int post_grp_size, CSPU_win_t * ug_win, int bloc
     int remote_cnt = 0;
     int new_issue = 0;
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     stats = CSP_calloc(post_grp_size, sizeof(MPI_Status));
 
     if (ug_win->wait_reqs == NULL) {

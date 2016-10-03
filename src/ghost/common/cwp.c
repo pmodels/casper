@@ -77,7 +77,7 @@ int CSPG_cwp_do_progress(void)
     MPI_Status stat;
     int local_gp_rank = -1;
 
-    PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank));
     memset(&pkt, 0, sizeof(CSP_cwp_pkt_t));
 
     while (1) {

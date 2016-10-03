@@ -20,7 +20,7 @@ int CSPU_win_release(CSPU_win_t * ug_win)
     if (ug_win == NULL)
         goto fn_exit;
 
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
 
     /* Free windows. */
 
@@ -144,7 +144,7 @@ static int issue_ghost_cmd(CSPU_win_t * ug_win)
 
     reqs = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
     stats = CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Status));
-    PMPI_Comm_rank(CSP_PROC.local_comm, &user_local_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &user_local_rank));
 
     /* Ensure all user roots have arrived before start lock. */
     CSP_CALLMPI(JUMP, PMPI_Barrier(ug_win->user_root_comm));
@@ -196,10 +196,10 @@ int MPI_Win_free(MPI_Win * win)
         return PMPI_Win_free(win);
     }
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
-    PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
-    PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->local_user_comm, &user_local_nprocs));
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.

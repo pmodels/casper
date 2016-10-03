@@ -40,6 +40,7 @@ static inline int rput_proc_null_impl(const void *origin_addr, int origin_count,
                                       MPI_Datatype target_datatype, CSPU_win_t * ug_win,
                                       MPI_Request * request)
 {
+    int mpi_errno = MPI_SUCCESS;
     MPI_Win *win_ptr = NULL;
     CSPU_win_target_t *target = NULL;
 
@@ -49,8 +50,9 @@ static inline int rput_proc_null_impl(const void *origin_addr, int origin_count,
      * through an window owned by a random target. */
     CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
 
-    return PMPI_Rput(origin_addr, origin_count, origin_datatype, target_rank,
-                     target_disp, target_count, target_datatype, *win_ptr, request);
+    CSP_CALLMPI(NOSTMT, PMPI_Rput(origin_addr, origin_count, origin_datatype, target_rank,
+                                  target_disp, target_count, target_datatype, *win_ptr, request));
+    return mpi_errno;
 }
 
 static int rput_impl(const void *origin_addr, int origin_count,
@@ -73,7 +75,7 @@ static int rput_impl(const void *origin_addr, int origin_count,
 
     CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
 
-    PMPI_Comm_rank(ug_win->user_comm, &rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &rank));
     target = &(ug_win->targets[target_rank]);
 
     CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
@@ -99,7 +101,7 @@ static int rput_impl(const void *origin_addr, int origin_count,
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
-            PMPI_Type_size(origin_datatype, &data_size);
+            CSP_CALLMPI(JUMP, PMPI_Type_size(origin_datatype, &data_size));
             data_size *= origin_count;
         }
 #endif

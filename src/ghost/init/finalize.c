@@ -82,7 +82,7 @@ int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_
     int local_nprocs, local_user_nprocs;
 
     finalize_cnt++;
-    PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
     local_user_nprocs = local_nprocs - CSP_ENV.num_g;
 
     CSPG_DBG_PRINT(" %d/%d processes already arrived finalize...\n",

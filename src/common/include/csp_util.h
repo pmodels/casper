@@ -92,6 +92,14 @@
             CSP_CHKMPIFAIL_##fail_stmt(mpi_errno);    \
         } while (0)
 
+/* Special wrapper of PMPI calls at exit or fail routine.
+ * Simple abort to avoid complexity.  */
+#define CSP_CALLMPI_EXIT(fnc_stmt) do {                \
+            int exit_mpi_errno = MPI_SUCCESS;          \
+            exit_mpi_errno = fnc_stmt;                 \
+            CSP_ASSERT(exit_mpi_errno == MPI_SUCCESS); \
+        } while (0)
+
 static inline void *CSP_calloc(int n, size_t size)
 {
     void *buf = NULL;

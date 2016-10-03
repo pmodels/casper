@@ -16,7 +16,7 @@ static int bind_by_ranks(int n_targets, int *local_targets, CSPU_win_t * ug_win)
     int i, g_off, t_rank, user_nprocs;
     int np_per_ghost, np;
 
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+    CSP_CALLMPI(RETURN, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
 
     np_per_ghost = n_targets / CSP_ENV.num_g;
     np = np_per_ghost;
@@ -53,7 +53,7 @@ int CSPU_win_bind_ghosts(CSPU_win_t * ug_win)
     int i, user_nprocs;
     int *local_targets = NULL;
 
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+    CSP_CALLMPI(RETURN, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
     local_targets = CSP_calloc(ug_win->num_nodes * ug_win->max_local_user_nprocs, sizeof(int));
 
     /* Sort targets by node_ids */

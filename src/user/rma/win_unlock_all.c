@@ -42,7 +42,7 @@ int MPI_Win_unlock_all(MPI_Win win)
 #endif
 
     CSP_ASSERT(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
 
     for (i = 0; i < user_nprocs; i++) {
         ug_win->targets[i].remote_lock_assert = 0;

@@ -108,9 +108,10 @@ static inline int mlock_issue_release_req(CSP_mlock_gid_t group_id)
 
 static int mlock_generate_gid(MPI_Comm user_root_comm, CSP_mlock_gid_t * group_id)
 {
+    int mpi_errno = MPI_SUCCESS;
     int user_root_rank = 0;
 
-    PMPI_Comm_rank(user_root_comm, &user_root_rank);
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(user_root_comm, &user_root_rank));
 
     if (user_root_rank == 0) {
         group_id->rank = CSP_PROC.wrank;
@@ -123,7 +124,8 @@ static int mlock_generate_gid(MPI_Comm user_root_comm, CSP_mlock_gid_t * group_i
 #endif
     }
 
-    return PMPI_Bcast(group_id, sizeof(CSP_mlock_gid_t), MPI_CHAR, 0, user_root_comm);
+    CSP_CALLMPI(NOSTMT, PMPI_Bcast(group_id, sizeof(CSP_mlock_gid_t), MPI_CHAR, 0, user_root_comm));
+    return mpi_errno;
 }
 
 int CSPU_mlock_init(void)
@@ -173,7 +175,7 @@ int CSPU_mlock_acquire(MPI_Comm user_root_comm)
     char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
 
     CSP_mlock_status_t lock_status = CSP_MLOCK_STATUS_UNSET;
-    PMPI_Comm_rank(user_root_comm, &user_root_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(user_root_comm, &user_root_rank));
 
     /* Get group id (the first root's world rank and seq no (unique when threaded)). */
     mpi_errno = mlock_generate_gid(user_root_comm, &group_id);

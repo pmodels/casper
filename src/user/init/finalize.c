@@ -101,7 +101,7 @@ int MPI_Finalize(void)
     int mpi_errno = MPI_SUCCESS;
     int user_local_rank;
 
-    PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &user_local_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &user_local_rank));
 
     /* notify ghost processes to finalize */
     mpi_errno = issue_ghost_cmd();

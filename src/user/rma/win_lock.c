@@ -19,7 +19,7 @@ int CSPU_win_target_lock(int lock_type, int assert, int target_rank, CSPU_win_t 
     int k;
 
     target = &(ug_win->targets[target_rank]);
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     /* Lock every ghost on every window for each target.
      * Because a ghost may be used on any window of this process for runtime
@@ -108,7 +108,7 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
 
     target = &(ug_win->targets[target_rank]);
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
     /* Check access epoch status.

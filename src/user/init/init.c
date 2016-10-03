@@ -18,14 +18,14 @@ static void dbg_print_proc(void)
 
     CSP_ASSERT(CSP_IS_USER);
 
-    PMPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
-    PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank);
-    PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
-    PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank);
-    PMPI_Comm_size(CSP_PROC.user.u_local_comm, &local_user_nprocs);
-    PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &local_user_rank);
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_size(CSP_PROC.user.u_local_comm, &local_user_nprocs));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &local_user_rank));
 
     CSP_DBG_PRINT("I am user: %d/%d in world, %d/%d in local\n"
                   "           %d/%d in user world, %d/%d in user local\n"
@@ -69,8 +69,8 @@ static int setup_proc(int is_threaded)
     MPI_Group user_world_group = MPI_GROUP_NULL, local_group = MPI_GROUP_NULL;
     int i, j;
 
-    PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank);
-    PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs));
 
     /* Initialize threading protection on every user process */
     CSP_PROC.user.is_thread_multiple = is_threaded;
@@ -121,9 +121,9 @@ static int setup_proc(int is_threaded)
 
   fn_exit:
     if (user_world_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&user_world_group);
+        CSP_CALLMPI_EXIT(PMPI_Group_free(&user_world_group));
     if (local_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&local_group);
+        CSP_CALLMPI_EXIT(PMPI_Group_free(&local_group));
     if (tmp_gather_buf)
         free(tmp_gather_buf);
     if (g_ranks_in_world)

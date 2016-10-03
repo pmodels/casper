@@ -43,7 +43,7 @@ static int send_pscw_post_msg(int post_grp_size, CSPU_win_t * ug_win)
     MPI_Status *stats = NULL;
     int remote_cnt = 0;
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     reqs = CSP_calloc(post_grp_size, sizeof(MPI_Request));
     stats = CSP_calloc(post_grp_size, sizeof(MPI_Status));
 
