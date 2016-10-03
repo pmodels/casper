@@ -40,6 +40,7 @@ noinst_PROGRAMS = \
 	epoch_type_assert	\
 	win_allocate_info	\
 	win_errhan			\
+	comm_errhan			\
 	finalize			\
 	$(THREAD_TESTS)
 
