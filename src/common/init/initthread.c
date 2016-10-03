@@ -25,10 +25,15 @@ MPI_Comm CSP_COMM_USER_WORLD = MPI_COMM_NULL;
 
 static inline int check_valid_ghosts(void)
 {
+    int mpi_errno = MPI_SUCCESS;
     int local_nprocs;
     int err_flag = 0;
 
-    PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs);
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
+    if (mpi_errno != MPI_SUCCESS) {
+        err_flag++;
+        return err_flag;
+    }
 
     if (local_nprocs < 2) {
         CSP_msg_print(CSP_MSG_ERROR, "Can not create shared memory region, %d process in "
@@ -52,21 +57,21 @@ static inline int setup_common_info(void)
     MPI_Comm node_comm = MPI_COMM_WORLD;
     int tmp_bcast_buf[2] = { 0, 0 };
 
-    PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
     CSP_CALLMPI(JUMP, PMPI_Comm_split(MPI_COMM_WORLD, local_rank == 0, 1, &node_comm));
 
     if (local_rank == 0) {
-        PMPI_Comm_rank(node_comm, &tmp_bcast_buf[0]);   /* node_id */
-        PMPI_Comm_size(node_comm, &tmp_bcast_buf[1]);   /* num_nodes */
+        CSP_CALLMPI(JUMP, PMPI_Comm_rank(node_comm, &tmp_bcast_buf[0]));        /* node_id */
+        CSP_CALLMPI(JUMP, PMPI_Comm_size(node_comm, &tmp_bcast_buf[1]));        /* num_nodes */
     }
 
-    PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, 0, CSP_PROC.local_comm);
+    CSP_CALLMPI(JUMP, PMPI_Bcast(tmp_bcast_buf, 2, MPI_INT, 0, CSP_PROC.local_comm));
     CSP_PROC.node_id = tmp_bcast_buf[0];
     CSP_PROC.num_nodes = tmp_bcast_buf[1];
 
   fn_exit:
     if (node_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&node_comm);
+        CSP_CALLMPI_EXIT(PMPI_Comm_free(&node_comm));
     return mpi_errno;
 
   fn_fail:
@@ -226,7 +231,7 @@ static int initialize_proc(void)
     CSP_CALLMPI(JUMP, PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
                                            MPI_INFO_NULL, &CSP_PROC.local_comm));
 
-    PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
 
     /* Statically set the lowest ranks on every node as ghosts */
     CSP_PROC.proc_type = (local_rank < CSP_ENV.num_g) ? CSP_PROC_GHOST : CSP_PROC_USER;
@@ -260,7 +265,7 @@ static int initialize_proc(void)
 
     if (CSP_IS_USER) {
         int local_user_rank = -1;
-        PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &local_user_rank);
+        CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &local_user_rank));
 
         /* Create a user root communicator including the first user on every node */
         CSP_CALLMPI(JUMP, PMPI_Comm_split(CSP_COMM_USER_WORLD, local_user_rank == 0,
@@ -279,9 +284,9 @@ static int initialize_proc(void)
   fn_exit:
     /* Free unused communicators */
     if (tmp_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&tmp_comm);
+        CSP_CALLMPI_EXIT(PMPI_Comm_free(&tmp_comm));
     if (tmp_ur_comm != MPI_COMM_NULL)
-        PMPI_Comm_free(&tmp_ur_comm);
+        CSP_CALLMPI_EXIT(PMPI_Comm_free(&tmp_ur_comm));
     return mpi_errno;
 
   fn_fail:
@@ -309,7 +314,7 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     /* Initialize global variables */
     memset(&CSP_PROC, 0, sizeof(CSP_proc_t));
 
-    PMPI_Comm_rank(MPI_COMM_WORLD, &CSP_PROC.wrank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(MPI_COMM_WORLD, &CSP_PROC.wrank));
 
     mpi_errno = CSP_error_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

@@ -47,7 +47,7 @@ static int wait_pscw_post_msg(int start_grp_size, CSPU_win_t * ug_win)
     reqs = CSP_calloc(start_grp_size, sizeof(MPI_Request));
     stats = CSP_calloc(start_grp_size, sizeof(MPI_Status));
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     for (i = 0; i < start_grp_size; i++) {
         int target_rank = ug_win->start_ranks_in_win_group[i];
@@ -135,7 +135,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
         return mpi_errno;
     }
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     ug_win->start_group = group;
     ug_win->start_ranks_in_win_group = CSP_calloc(start_grp_size, sizeof(int));

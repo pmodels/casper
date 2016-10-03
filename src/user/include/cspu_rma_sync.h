@@ -40,7 +40,7 @@ static inline int CSPU_win_grant_local_lock(int target_rank, CSPU_win_t * ug_win
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     /* force lock the main ghost */
     {
@@ -91,7 +91,7 @@ static inline int CSPU_win_lock_self(CSPU_win_t * ug_win)
 
     CSP_ASSERT(ug_win->is_self_locked == 0);
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     target = &(ug_win->targets[user_rank]);
     lock_win = target->ug_win;  /* only lock-exist mode calls this routine */
 
@@ -117,7 +117,7 @@ static inline int CSPU_win_unlock_self(CSPU_win_t * ug_win)
 
     CSP_ASSERT(ug_win->is_self_locked == 1);
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     target = &(ug_win->targets[user_rank]);
     lock_win = target->ug_win;  /* only lock-exist mode calls this routine */
 
@@ -142,7 +142,7 @@ static inline int CSPU_win_flush_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((unused)
 
     CSP_ASSERT(ug_win->is_self_locked == 1);
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     target = &(ug_win->targets[user_rank]);
 
     CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);
@@ -168,7 +168,7 @@ static inline int CSPU_win_flush_local_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((u
 
     CSP_ASSERT(ug_win->is_self_locked == 1);
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     target = &(ug_win->targets[user_rank]);
 
     CSPU_TARGET_GET_EPOCH_WIN(target, ug_win, win_ptr);

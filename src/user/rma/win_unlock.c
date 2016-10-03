@@ -20,7 +20,7 @@ int CSPU_win_target_unlock(int target_rank, CSPU_win_t * ug_win)
     int user_rank;
 
     target = &(ug_win->targets[target_rank]);
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     /* Unlock every ghost on every window for each target. */
     for (k = 0; k < CSP_ENV.num_g; k++) {
@@ -91,7 +91,7 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
     }
 #endif
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
     target->remote_lock_assert = 0;
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT

@@ -62,6 +62,7 @@ static int mlock_req_compare_fnc(void *ubuf1, void *ubuf2)
 
 static inline int mlock_sync_status(CSPG_mlock_req_t * req)
 {
+    int mpi_errno = MPI_SUCCESS;
     CSP_cwp_pkt_t pkt;
     CSP_cwp_mlock_status_sync_pkt_t *locksync_pkt = &pkt.u.lock_status_sync;
     char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
@@ -75,9 +76,10 @@ static inline int mlock_sync_status(CSPG_mlock_req_t * req)
                          locksync_pkt->status, mlock_status_name[locksync_pkt->status],
                          req->user_local_rank, gidstr);
 
-    return PMPI_Send((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                     req->user_local_rank, CSP_CWP_MLOCK_SYNC_TAG(req->group_id),
-                     CSP_PROC.local_comm);
+    CSP_CALLMPI(NOSTMT, PMPI_Send((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
+                                  req->user_local_rank, CSP_CWP_MLOCK_SYNC_TAG(req->group_id),
+                                  CSP_PROC.local_comm));
+    return mpi_errno;
 }
 
 static inline int mlock_suspend_req(CSPG_mlock_req_t * req)
@@ -264,7 +266,7 @@ int CSPG_mlock_release(void)
     int mpi_errno = MPI_SUCCESS;
     int local_gp_rank = 0;
 
-    PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank));
 
     /* Only the first local ghost handles lock. */
     if (local_gp_rank == 0) {

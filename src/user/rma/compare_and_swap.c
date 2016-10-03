@@ -26,7 +26,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
 
     CSPU_TARGET_CHECK_RANK(target_rank, ug_win);
 
-    PMPI_Comm_rank(ug_win->user_comm, &rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &rank));
     target = &(ug_win->targets[target_rank]);
 
     CSPU_TARGET_CHECK_OP_EPOCH(target, ug_win);
@@ -41,7 +41,7 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     if (CSP_ENV.load_opt == CSP_LOAD_BYTE_COUNTING) {
-        PMPI_Type_size(datatype, &data_size);
+        CSP_CALLMPI(JUMP, PMPI_Type_size(datatype, &data_size));
     }
 #endif
     mpi_errno = CSPU_target_get_ghost(target_rank, 1, data_size, ug_win,

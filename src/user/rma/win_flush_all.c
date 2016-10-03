@@ -74,7 +74,7 @@ int MPI_Win_flush_all(MPI_Win win)
 #endif
 
     CSP_ASSERT(ug_win->start_counter == 0 && ug_win->lock_counter == 0);
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
 
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, single window is shared by multiple targets. */

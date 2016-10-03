@@ -26,7 +26,7 @@ int MPI_Win_sync(MPI_Win win)
 
     CSPU_THREAD_ENTER_OBJ_CS(ug_win);
 
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     /* For no-lock window, just sync on single window. */
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
@@ -52,7 +52,7 @@ int MPI_Win_sync(MPI_Win win)
     else if (ug_win->epoch_stat == CSPU_WIN_EPOCH_PER_TARGET) {
         CSPU_win_target_t *target = NULL;
         int synced CSP_ATTRIBUTE((unused)) = 0;
-        PMPI_Comm_size(ug_win->user_comm, &user_nprocs);
+        CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));
 
         for (i = 0; i < user_nprocs; i++) {
             target = &ug_win->targets[i];

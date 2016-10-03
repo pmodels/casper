@@ -167,15 +167,15 @@ typedef struct CSPU_win {
  *   which we cannot get (FIXME).
  * This routine should be added in fn_fail only for CASPER wrapped window-calls.
  * Because the others just pass user window to MPI directly.*/
-#define CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno_ptr)   do {                \
-    /* Do not update mpi_errno_ptr's value. */                             \
-    /* Pointer input only emphasizes mpi_errno is an inout parameter  */   \
-    if (ug_win != NULL) {                                                  \
-        PMPI_Win_call_errhandler(ug_win->win, *(mpi_errno_ptr));           \
-    } else {                                                               \
-        /* Call default error handler if no window-object */               \
-        PMPI_Comm_call_errhandler(CSP_COMM_USER_WORLD, *(mpi_errno_ptr));  \
-    }                                                                      \
+#define CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno_ptr)   do {                         \
+    /* Do not update mpi_errno_ptr's value. */                                      \
+    /* Pointer input only emphasizes mpi_errno is an inout parameter  */            \
+    if (ug_win != NULL) {                                                           \
+        CSP_CALLMPI_EXIT(PMPI_Win_call_errhandler(ug_win->win, *(mpi_errno_ptr)));  \
+    } else {                                                                        \
+        /* Call default error handler if no window-object */                        \
+        CSP_CALLMPI_EXIT(PMPI_Comm_call_errhandler(CSP_COMM_USER_WORLD, *(mpi_errno_ptr)));  \
+    }                                                                                        \
 } while (0)
 
 /* Set user defined error handler to all internal windows.
@@ -200,7 +200,7 @@ typedef struct CSPU_win {
 #define CSPU_COMM_ERROR_RETURN(comm, mpi_errno_ptr)   do {                       \
     /* Do not update mpi_errno_ptr's value. */                                   \
     /* Pointer input only emphasizes mpi_errno is an inout parameter  */         \
-    PMPI_Comm_call_errhandler(comm, *(mpi_errno_ptr));                            \
+    CSP_CALLMPI_EXIT(PMPI_Comm_call_errhandler(comm, *(mpi_errno_ptr)));         \
 } while (0)
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
@@ -208,7 +208,7 @@ typedef struct CSPU_win {
  * This check is required because invalid rank can result in segment fault in CASPER. */
 #define CSPU_TARGET_CHECK_RANK(target_rank, ug_win) do {                            \
     int user_nprocs = 0;                                                            \
-    PMPI_Comm_size(ug_win->user_comm, &user_nprocs);                                \
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_win->user_comm, &user_nprocs));             \
     if ((target_rank) < MPI_PROC_NULL || (target_rank) >= user_nprocs) {            \
         CSP_msg_print(CSP_MSG_ERROR, "Invalid target rank %d in %s!\n",             \
                       (target_rank), __FUNCTION__);                                 \
@@ -255,8 +255,10 @@ extern int UG_WIN_HANDLE_KEY;
 
 static inline int CSPU_init_win_cache(void)
 {
-    return PMPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN,
-                                  &UG_WIN_HANDLE_KEY, (void *) 0);
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Win_create_keyval(MPI_WIN_NULL_COPY_FN, MPI_WIN_NULL_DELETE_FN,
+                                               &UG_WIN_HANDLE_KEY, (void *) 0));
+    return mpi_errno;
 }
 
 static inline int CSPU_destroy_win_cache(void)

@@ -12,15 +12,19 @@
 /* Receive parameters from user root via local communicator (blocking call). */
 static inline int recv_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
-    return PMPI_Recv(params, size, MPI_CHAR, win->user_local_root, CSP_CWP_PARAM_TAG,
-                     CSP_PROC.local_comm, MPI_STATUS_IGNORE);
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Recv(params, size, MPI_CHAR, win->user_local_root,
+                                  CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, MPI_STATUS_IGNORE));
+    return mpi_errno;
 }
 
 /* Send parameters to user root via local communicator (blocking call). */
 static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win_t * win)
 {
-    return PMPI_Send(params, size, MPI_CHAR, win->user_local_root, CSP_CWP_PARAM_TAG,
-                     CSP_PROC.local_comm);
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Send(params, size, MPI_CHAR, win->user_local_root,
+                                  CSP_CWP_PARAM_TAG, CSP_PROC.local_comm));
+    return mpi_errno;
 }
 
 static int init_ghost_win(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win_t * win,
@@ -72,7 +76,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     MPI_Group ug_group = MPI_GROUP_NULL;
     int num_ug_ranks;
 
-    PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs));
 
     /* maximum amount equals to world size */
     ug_ranks_in_world = CSP_calloc(world_nprocs, sizeof(int));
@@ -94,20 +98,20 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
 #endif
 
     /* -Create ug communicator. */
-    PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &ug_group);
+    CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &ug_group));
     CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &win->ug_comm));
 
   fn_exit:
     if (ug_ranks_in_world)
         free(ug_ranks_in_world);
     if (ug_group != MPI_GROUP_NULL)
-        PMPI_Group_free(&ug_group);
+        CSP_CALLMPI_EXIT(PMPI_Group_free(&ug_group));
 
     return mpi_errno;
 
   fn_fail:
     if (win->ug_comm != MPI_COMM_NULL) {
-        PMPI_Comm_free(&win->ug_comm);
+        CSP_CALLMPI_EXIT(PMPI_Comm_free(&win->ug_comm));
         win->ug_comm = MPI_COMM_NULL;
     }
     goto fn_exit;
@@ -156,8 +160,8 @@ static int create_communicators(CSPG_win_t * win)
 #ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
-            PMPI_Comm_rank(win->ug_comm, &ug_rank);
-            PMPI_Comm_size(win->ug_comm, &ug_nprocs);
+            CSP_CALLMPI(JUMP, PMPI_Comm_rank(win->ug_comm, &ug_rank));
+            CSP_CALLMPI(JUMP, PMPI_Comm_size(win->ug_comm, &ug_nprocs));
             CSPG_DBG_PRINT("created ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
         }
 #endif
@@ -167,8 +171,8 @@ static int create_communicators(CSPG_win_t * win)
 #ifdef CSP_DEBUG
         {
             int ug_rank, ug_nprocs;
-            PMPI_Comm_rank(win->local_ug_comm, &ug_rank);
-            PMPI_Comm_size(win->local_ug_comm, &ug_nprocs);
+            CSP_CALLMPI(JUMP, PMPI_Comm_rank(win->local_ug_comm, &ug_rank));
+            CSP_CALLMPI(JUMP, PMPI_Comm_size(win->local_ug_comm, &ug_nprocs));
             CSPG_DBG_PRINT("created local_ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
         }
 #endif
@@ -197,8 +201,8 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
     void **user_bases = NULL;
     int is_first_nonzero = 1;
 
-    PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank);
-    PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs));
 
     /* -Calculate the window size of ghost 0, because it contains extra space
      *  for sync. */
@@ -261,7 +265,7 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
 
   fn_exit:
     if (shared_info && shared_info != MPI_INFO_NULL)
-        PMPI_Info_free(&shared_info);
+        CSP_CALLMPI_EXIT(PMPI_Info_free(&shared_info));
     if (user_bases)
         free(user_bases);
     return mpi_errno;
@@ -314,10 +318,10 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
      */
     create_communicators(win);
 
-    PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank);
-    PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs);
-    PMPI_Comm_size(win->ug_comm, &ug_nprocs);
-    PMPI_Comm_rank(win->ug_comm, &ug_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(win->ug_comm, &ug_nprocs));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(win->ug_comm, &ug_rank));
     CSPG_DBG_PRINT(" Created ug_comm: %d/%d, local_ug_comm: %d/%d\n",
                    ug_rank, ug_nprocs, local_ug_rank, local_ug_nprocs);
 
@@ -357,7 +361,7 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
 
   fn_exit:
     if (user_info && user_info != MPI_INFO_NULL)
-        PMPI_Info_free(&user_info);
+        CSP_CALLMPI_EXIT(PMPI_Info_free(&user_info));
     return mpi_errno;
 
   fn_fail:

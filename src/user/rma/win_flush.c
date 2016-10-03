@@ -22,7 +22,7 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
     int k CSP_ATTRIBUTE((unused));
 
     target = &(ug_win->targets[target_rank]);
-    PMPI_Comm_rank(ug_win->user_comm, &user_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_win->user_comm, &user_rank));
 
     /* Get global window or a target window for no-lock mode or
      * lock-exist mode respectively. */

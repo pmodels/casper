@@ -73,8 +73,10 @@ extern void CSPG_cwp_terminate(void);
 
 static inline int CSPG_cwp_bcast(CSP_cwp_pkt_t * pkt)
 {
-    return PMPI_Bcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
-                      CSP_PROC.ghost.g_local_comm);
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Bcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
+                                   CSP_PROC.ghost.g_local_comm));
+    return mpi_errno;
 }
 
 /* ======================================================================
