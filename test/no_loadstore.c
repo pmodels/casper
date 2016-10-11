@@ -134,11 +134,10 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     errs = run_test();
 
-    if (rank == 0) {
-        fprintf(stdout, "%d errors\n", errs);
-    }
-
   exit:
+    if (rank == 0)
+        CTEST_report_result(errs);
+
     if (win != MPI_WIN_NULL)
         MPI_Win_free(&win);
     MPI_Info_free(&win_info);

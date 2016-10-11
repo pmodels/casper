@@ -105,8 +105,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Please run using at least 3 processes\n");
             fflush(stderr);
 
-            fprintf(stdout, "0 errors\n");
-            fflush(stdout);
+            CTEST_report_result(0);
         }
         goto exit;
     }
@@ -151,9 +150,8 @@ int main(int argc, char *argv[])
         MPI_Barrier(subcomm);
         errs = run_test(size);
 
-        if (rank == 0) {
-            fprintf(stdout, "%d errors\n", errs);
-        }
+        if (rank == 0)
+            CTEST_report_result(errs);
 
         /* resource clean up */
         if (info != MPI_INFO_NULL)

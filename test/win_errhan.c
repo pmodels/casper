@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "mpi.h"
+#include "ctest.h"
 
 /*
  *  This test checks window-related error handling.
@@ -234,12 +235,11 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
 
   exit:
-    if (rank == 0) {
-        fprintf(stdout, "%d errors\n", errs);
-    }
+    if (rank == 0)
+        CTEST_report_result(errs);
 
-    MPI_Errhandler_free(&win_errhan);
     MPI_Win_free(&win);
+    MPI_Errhandler_free(&win_errhan);
     MPI_Finalize();
 
     return 0;

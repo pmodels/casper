@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  *  This test checks multiple win_allocate and win_free.
@@ -91,9 +92,9 @@ int main(int argc, char *argv[])
     run_test3();
 
   exit:
-    if (rank == 0) {
-        fprintf(stdout, "0 errors\n");
-    }
+    if (rank == 0)
+        CTEST_report_result(0);
+
     MPI_Finalize();
 
     return 0;

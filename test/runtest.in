@@ -121,7 +121,7 @@ function exec_program()
     echo "testing mpiexec=$mpiexec CSP_NG=$CSP_NG $f ..."
     exec 5>&1
     output=$($mpiexec $program | tee /dev/fd/5 )
-    rs="$(echo $output | grep "0 errors"  --count)"
+    rs="$(echo $output | grep "PASS"  --count)"
     if [ $rs != 1 ];then
         echo "test failed ! $mpiexec $program"
         let num_failed+=1

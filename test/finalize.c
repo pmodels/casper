@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  *  This test checks finalize.
@@ -53,9 +54,8 @@ int main(int argc, char *argv[])
         MPI_Comm_free(&win_comm);
     MPI_Finalize();
 
-    if (rank == 0) {
-        fprintf(stdout, "0 errors\n");
-    }
+    if (rank == 0)
+        CTEST_report_result(0);
 
     return 0;
 }

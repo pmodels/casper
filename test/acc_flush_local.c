@@ -221,9 +221,9 @@ int main(int argc, char *argv[])
 #endif
 
   exit:
-    if (rank == 0) {
-        fprintf(stdout, "%d errors\n", errs);
-    }
+    if (rank == 0)
+        CTEST_report_result(errs);
+
     if (info != MPI_INFO_NULL)
         MPI_Info_free(&info);
     if (win != MPI_WIN_NULL)

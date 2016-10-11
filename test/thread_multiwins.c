@@ -180,10 +180,8 @@ int main(int argc, char *argv[])
         MPI_Comm_free(&comms[i]);
 
   exit:
-    if (rank == 0) {
-        fprintf(stdout, "%d errors\n", errs_total);
-        fflush(stdout);
-    }
+    if (rank == 0)
+        CTEST_report_result(errs_total);
 
     MPI_Finalize();
 

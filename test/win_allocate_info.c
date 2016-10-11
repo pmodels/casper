@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include "ctest.h"
 
 /*
  *  This test checks win_allocate with predefined info hints.
@@ -167,9 +168,9 @@ int main(int argc, char *argv[])
     errs += run_test3();
 
   exit:
-    if (rank == 0) {
-        fprintf(stdout, "%d errors\n", errs);
-    }
+    if (rank == 0)
+        CTEST_report_result(errs);
+
     MPI_Finalize();
 
     return 0;
