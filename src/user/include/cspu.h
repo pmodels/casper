@@ -15,6 +15,7 @@
 #include "csp_mlock.h"
 #include "cspu_cwp.h"
 #include "cspu_thread.h"
+#include "cspu_errhan.h"
 
 /* ======================================================================
  * CASPER user constants definition.
@@ -155,53 +156,6 @@ typedef struct CSPU_win {
     int create_flavor;
 
 } CSPU_win_t;
-
-/* ======================================================================
- * Error handling/checking routines.
- * ====================================================================== */
-
-/* Handle window-related CASPER internal error by user-specified window error handler.
- * - If MPI_ERRORS_ARE_FATAL, MPI does abort internally.
- * - If MPI_ERRORS_RETURN, the caller should return error.
- * - If others, call the handler. But the handler may change return error,
- *   which we cannot get (FIXME).
- * This routine should be added in fn_fail only for CASPER wrapped window-calls.
- * Because the others just pass user window to MPI directly.*/
-#define CSPU_WIN_ERROR_RETURN(ug_win, mpi_errno_ptr)   do {                         \
-    /* Do not update mpi_errno_ptr's value. */                                      \
-    /* Pointer input only emphasizes mpi_errno is an inout parameter  */            \
-    if (ug_win != NULL) {                                                           \
-        CSP_CALLMPI_EXIT(PMPI_Win_call_errhandler(ug_win->win, *(mpi_errno_ptr)));  \
-    } else {                                                                        \
-        /* Call default error handler if no window-object */                        \
-        CSP_CALLMPI_EXIT(PMPI_Comm_call_errhandler(CSP_COMM_USER_WORLD, *(mpi_errno_ptr)));  \
-    }                                                                                        \
-} while (0)
-
-/* Set user defined error handler to all internal windows.
- *
- * FIXME: If an RMA error happens on the internal window, the internal window
- * will be exposed to user error handler function. Possible ways to workaround
- * it could be:
- * (1) Wrap up the user error handler to replace the internal error window.
- *   Drawback: need portably handle CXX/FORTRAN calls (e.g., how to detect caller language ?).
- * (2) Set MPI_ERRORS_RETURN for all internal windows, pass the returned error
- *   to user window at fn_fail.
- *   Drawback: would lose user-modified error code.
- * Now we implement in the second way for simplicity. It works together with
- * CSPU_WIN_ERROR_RETURN.*/
-#define CSPU_WIN_SET_INTERN_ERRHANDLER(win) do {                        \
-    CSP_CALLMPI(JUMP, PMPI_Win_set_errhandler(win, MPI_ERRORS_RETURN)); \
-} while (0)
-
-/* Handle CASPER internal error into user-specified communicator error handler.
- * We need this routine to be in fn_fail only for win_allocate. Because internal
- * MPI calls are executed on other communicators */
-#define CSPU_COMM_ERROR_RETURN(comm, mpi_errno_ptr)   do {                       \
-    /* Do not update mpi_errno_ptr's value. */                                   \
-    /* Pointer input only emphasizes mpi_errno is an inout parameter  */         \
-    CSP_CALLMPI_EXIT(PMPI_Comm_call_errhandler(comm, *(mpi_errno_ptr)));         \
-} while (0)
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
 /* Check valid target rank in operation and synchronization calls.
@@ -536,7 +490,6 @@ static inline int CSPU_target_get_ghost(int target_rank, int is_order_required C
     return mpi_errno;
 }
 #endif
-
 
 /* ======================================================================
  * Other prototypes

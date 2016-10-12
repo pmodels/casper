@@ -597,8 +597,10 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
                                                &ug_win->base, &ug_win->local_ug_win));
     CSP_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, ug_win->base);
 
-    /* Reset error handler for all internal windows. */
-    CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->local_ug_win);
+    /* Set RETURN error handler for all internal windows.
+     * Thus any error happened on them will be returned and handled by the
+     * first level in CASPER. */
+    CSPU_WIN_ERRHAN_SET_INTERN(ug_win->local_ug_win);
 
     /* Gather user offsets on corresponding ghost processes */
     mpi_errno = gather_base_offsets(ug_win);
@@ -629,8 +631,10 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
         CSP_CALLMPI(JUMP, PMPI_Win_create(ug_win->base, size, disp_unit, info,
                                           ug_win->ug_comm, &ug_win->ug_wins[i]));
 
-        /* Reset error handler for all internal windows. */
-        CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->ug_wins[i]);
+        /* Set RETURN error handler for all internal windows.
+         * Thus any error happened on them will be returned and handled by the
+         * first level in CASPER. */
+        CSPU_WIN_ERRHAN_SET_INTERN(ug_win->ug_wins[i]);
     }
 
     for (i = 0; i < user_nprocs; i++) {
@@ -650,6 +654,24 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
     goto fn_exit;
 }
 
+static int check_valid_input(MPI_Aint size, int disp_unit)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    if (size < 0)
+        mpi_errno = MPI_ERR_SIZE;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    if (disp_unit <= 0)
+        mpi_errno = MPI_ERR_DISP;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
 int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                      MPI_Comm user_comm, void *baseptr, MPI_Win * win)
 {
@@ -661,6 +683,9 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     void **base_pp = (void **) baseptr;
     MPI_Aint *tmp_gather_buf = NULL;
     int tmp_bcast_buf[2];
+
+    CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
+    CSPU_COMM_ERRHAN_SET_EXTOBJ();
 
     ug_win = CSP_calloc(1, sizeof(CSPU_win_t));
 
@@ -674,6 +699,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* If user turns off asynchronous redirection, simply return normal window; */
     if (ug_win->info_args.async_config == CSP_ASYNC_CONFIG_OFF) {
+        CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
         CSP_CALLMPI(NOSTMT, PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win));
         CSP_DBG_PRINT("User turns off async in win_allocate, return normal win 0x%x\n", *win);
 
@@ -681,6 +707,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     }
 
     /* Start allocating casper window */
+
+    /* Check any invalid input which can only be checked by MPI calls after ghost joined.
+     * TODO: how to interrupt ghost win_allocate if MPI error reported on user side ?*/
+    mpi_errno = check_valid_input(size, disp_unit);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Initialize basic communicators and information. */
     if (user_comm == CSP_COMM_USER_WORLD) {
@@ -827,8 +858,10 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         CSP_CALLMPI(JUMP, PMPI_Win_create(ug_win->base, size, disp_unit, info,
                                           ug_win->ug_comm, &ug_win->global_win));
 
-        /* Reset error handler for all internal windows. */
-        CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->global_win);
+        /* Set RETURN error handler for all internal windows.
+         * Thus any error happened on them will be returned and handled by the
+         * first level in CASPER. */
+        CSPU_WIN_ERRHAN_SET_INTERN(ug_win->global_win);
 
         CSP_DBG_PRINT("[%d] Created global window 0x%x\n", user_rank, ug_win->global_win);
 
@@ -875,6 +908,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (tmp_gather_buf)
         free(tmp_gather_buf);
 
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before return */
     return mpi_errno;
 
   fn_noasync:
@@ -891,6 +925,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     *win = MPI_WIN_NULL;
     *base_pp = NULL;
 
-    CSPU_COMM_ERROR_RETURN(user_comm, &mpi_errno);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before error handling */
+    CSPU_COMM_ERRHANLDING(user_comm, &mpi_errno);
     goto fn_exit;
 }

@@ -126,8 +126,29 @@ while (<INFILE>) {
         || ($routine eq "MPI_Comm_spawn")
         || ($routine eq "MPI_Comm_spawn_multiple")
         || ($routine eq "MPI_DUP_FN")
-        || ($routine eq "MPI_Errhandler_set")
+        ## error handler related routines
+        || ($routine eq "MPI_Comm_call_errhandler")
+        || ($routine eq "MPI_Comm_create_errhandler")
         || ($routine eq "MPI_Comm_set_errhandler")
+        || ($routine eq "MPI_Comm_get_errhandler")
+        || ($routine eq "MPI_Errhandler_create")
+        || ($routine eq "MPI_Errhandler_free")
+        || ($routine eq "MPI_Errhandler_set")
+        || ($routine eq "MPI_Errhandler_get")
+        || ($routine eq "MPI_Win_call_errhandler")
+        || ($routine eq "MPI_Win_create_errhandler")
+        || ($routine eq "MPI_Win_set_errhandler")
+        || ($routine eq "MPI_Win_get_errhandler")
+        ## communicator construction routines
+        || ($routine eq "MPI_Comm_dup")
+        || ($routine eq "MPI_Comm_dup_with_info")
+        || ($routine eq "MPI_Comm_idup")
+        || ($routine eq "MPI_Comm_create")
+        || ($routine eq "MPI_Comm_create_group")
+        || ($routine eq "MPI_Comm_split")
+        || ($routine eq "MPI_Comm_split_type")
+        || ($routine eq "MPI_Cart_sub")
+        || ($routine eq "MPI_Comm_free")
         ) {
         $fullline = "";
         next;
