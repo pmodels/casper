@@ -67,6 +67,31 @@
             PMPI_Abort(MPI_COMM_WORLD, -1);                         \
         }} while (0)
 
+/* MPI error code checking MARCOs.
+ * Can be used by both PMPI calls and other internal calls. */
+#define CSP_CHKMPIFAIL_JUMP(mpi_errno) do {           \
+            if (mpi_errno != MPI_SUCCESS)             \
+                goto fn_fail;                         \
+        } while (0)
+
+#define CSP_CHKMPIFAIL_RETURN(mpi_errno) do {         \
+            if (mpi_errno != MPI_SUCCESS)             \
+                return mpi_errno;                     \
+        } while (0)
+
+#define CSP_CHKMPIFAIL_NOSTMT(mpi_errno) do { } while (0)
+
+/*  PMPI call wrapper.
+ *  For future PMPI management, PMPI calls should always try to use this wrapper
+ *  instead of directly handling the error code. Following fail statement are defined:
+ *  - JUMP  : goto fn_fail;
+ *  - RETURN: return mpi_errno;
+ *  - NOSTMT: do nothing (e.g., if the caller does other thing before jump) */
+#define CSP_CALLMPI(fail_stmt, fnc_stmt) do {         \
+            mpi_errno = fnc_stmt;                     \
+            CSP_CHKMPIFAIL_##fail_stmt(mpi_errno);    \
+        } while (0)
+
 static inline void *CSP_calloc(int n, size_t size)
 {
     void *buf = NULL;

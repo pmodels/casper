@@ -12,9 +12,7 @@ int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    mpi_errno = PMPI_Comm_set_errhandler(comm, errhandler);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Comm_set_errhandler(comm, errhandler));
 
     /* Set error handler for both MPI_COMM_WORLD and COMM_USER_WORLD if
      * input comm is MPI_COMM_WORLD.

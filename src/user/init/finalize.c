@@ -26,15 +26,11 @@ static int destroy_proc(void)
     /* common objects */
     if (CSP_PROC.local_comm && CSP_PROC.local_comm != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_PROC.local_comm\n");
-        mpi_errno = PMPI_Comm_free(&CSP_PROC.local_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.local_comm));
     }
 
     if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&CSP_PROC.wgroup);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_free(&CSP_PROC.wgroup));
     }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
@@ -43,23 +39,17 @@ static int destroy_proc(void)
     /* user-specific objects */
     if (CSP_COMM_USER_WORLD && CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_COMM_USER_WORLD\n");
-        mpi_errno = PMPI_Comm_free(&CSP_COMM_USER_WORLD);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_COMM_USER_WORLD));
     }
 
     if (CSP_PROC.user.u_local_comm && CSP_PROC.user.u_local_comm != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_PROC.user.u_local_comm\n");
-        mpi_errno = PMPI_Comm_free(&CSP_PROC.user.u_local_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.user.u_local_comm));
     }
 
     if (CSP_PROC.user.ur_comm && CSP_PROC.user.ur_comm != MPI_COMM_NULL) {
         CSP_DBG_PRINT(" free CSP_PROC.user.ur_comm\n");
-        mpi_errno = PMPI_Comm_free(&CSP_PROC.user.ur_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.user.ur_comm));
     }
 
     if (CSP_PROC.user.g_lranks)
@@ -91,16 +81,13 @@ int CSPU_global_finalize(void)
     int mpi_errno = MPI_SUCCESS;
 
     mpi_errno = destroy_proc();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_destroy_win_cache();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_mlock_destroy();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;
@@ -118,16 +105,12 @@ int MPI_Finalize(void)
 
     /* notify ghost processes to finalize */
     mpi_errno = issue_ghost_cmd();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_global_finalize();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = PMPI_Finalize();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Finalize());
 
   fn_exit:
     return mpi_errno;

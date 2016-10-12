@@ -26,8 +26,8 @@ static inline int CSPU_cwp_issue(CSP_cwp_pkt_t * pkt)
 
     CSPU_CWP_DBG_PRINT(" send CMD %d to local ghost %d\n", pkt->cmd_type,
                        CSP_PROC.user.g_lranks[0]);
-    mpi_errno = PMPI_Send((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                          CSP_PROC.user.g_lranks[0], CSP_CWP_TAG, CSP_PROC.local_comm);
+    CSP_CALLMPI(RETURN, PMPI_Send((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
+                                  CSP_PROC.user.g_lranks[0], CSP_CWP_TAG, CSP_PROC.local_comm));
     return mpi_errno;
 }
 

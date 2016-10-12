@@ -44,9 +44,8 @@ int CSPU_win_target_lock(int lock_type, int assert, int target_rank, CSPU_win_t 
                       "target rank %d\n", target_g_rank_in_ug, target->ug_win,
                       CSPU_GET_LOCK_TYPE_NAME(g_lock_type), CSPU_GET_ASSERT_NAME(g_assert),
                       target_rank);
-        mpi_errno = PMPI_Win_lock(g_lock_type, target_g_rank_in_ug, g_assert, target->ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_lock(g_lock_type, target_g_rank_in_ug, g_assert,
+                                        target->ug_win));
     }
 
     if (target_rank == user_rank) {
@@ -65,13 +64,11 @@ int CSPU_win_target_lock(int lock_type, int assert, int target_rank, CSPU_win_t 
         if (!ug_win->info_args.no_local_load_store
             && !(ug_win->targets[user_rank].remote_lock_assert & MPI_MODE_NOCHECK)) {
             mpi_errno = CSPU_win_grant_local_lock(user_rank, ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
         if (!ug_win->info_args.no_local_load_store && !ug_win->is_self_locked /*already locked */) {
             mpi_errno = CSPU_win_lock_self(ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
     }
 
@@ -144,16 +141,13 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
     CSP_DBG_PRINT(" lock_all(ug_win 0x%x), instead of target rank %d\n", target->ug_win,
                   target_rank);
-    mpi_errno = PMPI_Win_lock_all(assert, target->ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_lock_all(assert, target->ug_win));
 
     if (user_rank == target_rank)
         ug_win->is_self_locked = 1;
 #else
     mpi_errno = CSPU_win_target_lock(lock_type, assert, target_rank, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 #endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)

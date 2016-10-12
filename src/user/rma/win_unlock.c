@@ -28,16 +28,13 @@ int CSPU_win_target_unlock(int target_rank, CSPU_win_t * ug_win)
 
         CSP_DBG_PRINT(" unlock(ghost(%d), ug_win 0x%x), instead of "
                       "target rank %d\n", target_g_rank_in_ug, target->ug_win, target_rank);
-        mpi_errno = PMPI_Win_unlock(target_g_rank_in_ug, target->ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_unlock(target_g_rank_in_ug, target->ug_win));
     }
 
     /* If target is itself, we need also release the lock of local rank  */
     if (user_rank == target_rank && ug_win->is_self_locked) {
         mpi_errno = CSPU_win_unlock_self(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:
@@ -100,13 +97,10 @@ int MPI_Win_unlock(int target_rank, MPI_Win win)
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
     CSP_DBG_PRINT(" unlock_all(ug_win 0x%x), instead of target rank %d\n",
                   target->ug_win, target_rank);
-    mpi_errno = PMPI_Win_unlock_all(target->ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_unlock_all(target->ug_win));
 #else
     mpi_errno = CSPU_win_target_unlock(target_rank, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 #endif
 
 

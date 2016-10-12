@@ -34,32 +34,24 @@ int CSPU_win_release(CSPU_win_t * ug_win)
         CSP_DBG_PRINT("\t free ug windows\n");
         for (i = 0; i < ug_win->num_ug_wins; i++) {
             if (ug_win->ug_wins[i] && ug_win->ug_wins[i] != MPI_WIN_NULL) {
-                mpi_errno = PMPI_Win_free(&ug_win->ug_wins[i]);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
+                CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->ug_wins[i]));
             }
         }
     }
 
     if (ug_win->global_win && ug_win->global_win != MPI_WIN_NULL) {
         CSP_DBG_PRINT("\t free global window\n");
-        mpi_errno = PMPI_Win_free(&ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->global_win));
     }
 
     if (ug_win->win && ug_win->win != MPI_WIN_NULL) {
         CSP_DBG_PRINT("\t free user window\n");
-        mpi_errno = PMPI_Win_free(&ug_win->win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->win));
     }
 
     if (ug_win->local_ug_win && ug_win->local_ug_win != MPI_WIN_NULL) {
         CSP_DBG_PRINT("\t free shared window\n");
-        mpi_errno = PMPI_Win_free(&ug_win->local_ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->local_ug_win));
     }
 
     /* Free communicators.
@@ -67,52 +59,38 @@ int CSPU_win_release(CSPU_win_t * ug_win)
     if (ug_win->local_ug_comm && ug_win->local_ug_comm != MPI_COMM_NULL
         && ug_win->local_ug_comm != CSP_PROC.local_comm) {
         CSP_DBG_PRINT("\t free shared communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->local_ug_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_win->local_ug_comm));
     }
 
     if (ug_win->ug_comm && ug_win->ug_comm != MPI_COMM_NULL && ug_win->ug_comm != MPI_COMM_WORLD) {
         CSP_DBG_PRINT("\t free ug communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->ug_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_win->ug_comm));
     }
 
     if (ug_win->local_user_comm && ug_win->local_user_comm != MPI_COMM_NULL
         && ug_win->local_user_comm != CSP_PROC.user.u_local_comm) {
         CSP_DBG_PRINT("\t free local USER communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->local_user_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_win->local_user_comm));
     }
 
     if (ug_win->user_root_comm && ug_win->user_root_comm != MPI_COMM_NULL
         && ug_win->user_root_comm != CSP_PROC.user.ur_comm) {
         CSP_DBG_PRINT("\t free ur communicator\n");
-        mpi_errno = PMPI_Comm_free(&ug_win->user_root_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_win->user_root_comm));
     }
 
     /* Free groups. */
 
     if (ug_win->local_ug_group && ug_win->local_ug_group != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&ug_win->local_ug_group);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_free(&ug_win->local_ug_group));
     }
 
     if (ug_win->ug_group && ug_win->ug_group != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&ug_win->ug_group);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_free(&ug_win->ug_group));
     }
 
     if (ug_win->user_group && ug_win->user_group != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&ug_win->user_group);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_free(&ug_win->user_group));
     }
 
     /* Free allocations. */
@@ -169,37 +147,29 @@ static int issue_ghost_cmd(CSPU_win_t * ug_win)
     PMPI_Comm_rank(CSP_PROC.local_comm, &user_local_rank);
 
     /* Ensure all user roots have arrived before start lock. */
-    mpi_errno = PMPI_Barrier(ug_win->user_root_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Barrier(ug_win->user_root_comm));
 
     /* Lock ghost processes on all nodes. */
     mpi_errno = CSPU_mlock_acquire(ug_win->user_root_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* send command to root ghost. */
     CSP_cwp_init_pkt(CSP_CWP_FNC_WIN_FREE, &pkt);
     winfree_pkt->user_local_root = user_local_rank;
 
     mpi_errno = CSPU_cwp_issue(&pkt);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* send the handle of target ghost win.
      * Note that ghosts cannot fetch the corresponding window without handlers
      * so that only global communicator can be used here.*/
     for (i = 0; i < CSP_ENV.num_g; i++) {
-        mpi_errno = PMPI_Isend(&ug_win->g_win_handles[i], 1, MPI_UNSIGNED_LONG,
-                               CSP_PROC.user.g_lranks[i], CSP_CWP_PARAM_TAG, CSP_PROC.local_comm,
-                               &reqs[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Isend(&ug_win->g_win_handles[i], 1, MPI_UNSIGNED_LONG,
+                                     CSP_PROC.user.g_lranks[i], CSP_CWP_PARAM_TAG,
+                                     CSP_PROC.local_comm, &reqs[i]));
     }
 
-    mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Waitall(CSP_ENV.num_g, reqs, stats));
 
   fn_exit:
     if (reqs)
@@ -262,16 +232,13 @@ int MPI_Win_free(MPI_Win * win)
 
         /* Since all processes must be in win_free, we do not need worry
          * the possibility losing asynchronous progress. */
-        mpi_errno = PMPI_Win_unlock_all(ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_unlock_all(ug_win->global_win));
     }
 
     /* Local user root issues command to ghosts. */
     if (user_local_rank == 0) {
         mpi_errno = issue_ghost_cmd(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
     CSP_DBG_PRINT("\t free window cache\n");

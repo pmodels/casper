@@ -48,11 +48,10 @@ static inline int mlock_sync_status(CSP_mlock_gid_t group_id, CSP_mlock_status_t
     CSP_cwp_mlock_status_sync_pkt_t *locksync_pkt = &pkt.u.lock_status_sync;
     char gidstr[CSP_MLOCK_GID_MAXLEN] CSP_ATTRIBUTE((unused));
 
-    mpi_errno = PMPI_Recv((char *) &pkt, sizeof(CSP_cwp_pkt_t),
-                          MPI_CHAR, CSP_PROC.user.g_lranks[0],
-                          CSP_CWP_MLOCK_SYNC_TAG(group_id), CSP_PROC.local_comm, MPI_STATUS_IGNORE);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
+    CSP_CALLMPI(RETURN, PMPI_Recv((char *) &pkt, sizeof(CSP_cwp_pkt_t),
+                                  MPI_CHAR, CSP_PROC.user.g_lranks[0],
+                                  CSP_CWP_MLOCK_SYNC_TAG(group_id), CSP_PROC.local_comm,
+                                  MPI_STATUS_IGNORE));
 
     CSPU_MLOCK_DBG_GID_TO_STR(group_id, gidstr);
     CSPU_MLOCK_DBG_PRINT(" \t sync LOCK STAT (%d -> %d[%s], gid %s)\n", (*lock_status),
@@ -190,23 +189,19 @@ int CSPU_mlock_acquire(MPI_Comm user_root_comm)
         if (lock_status == CSP_MLOCK_STATUS_UNSET) {
             /* only initial, discarded, released locks need issue lock request. */
             mpi_errno = mlock_issue_acquire_req(group_id);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
 
         if (lock_status != CSP_MLOCK_STATUS_ACQUIRED) {
             /* new state can be acquired, suspended_l, suspended_h. */
             mpi_errno = mlock_sync_status(group_id, &lock_status);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
 
         my_lock_stats[0] = lock_status; /* suspended_l < suspended_h < acquired */
         my_lock_stats[1] = user_root_rank;
-        mpi_errno = PMPI_Allreduce(my_lock_stats, min_lock_stats, 1, MPI_2INT, MPI_MINLOC,
-                                   user_root_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Allreduce(my_lock_stats, min_lock_stats, 1, MPI_2INT, MPI_MINLOC,
+                                         user_root_comm));
         CSPU_MLOCK_DBG_PRINT(" \t all-reduced LOCK status min(stat %d [%s], root %d, gid %s)\n",
                              min_lock_stats[0], cwp_lock_status_name[min_lock_stats[0]],
                              min_lock_stats[1], gidstr);
@@ -225,8 +220,7 @@ int CSPU_mlock_acquire(MPI_Comm user_root_comm)
                      * wait till all higher priority groups finished work. */
                     do {
                         mpi_errno = mlock_sync_status(group_id, &lock_status);
-                        if (mpi_errno != MPI_SUCCESS)
-                            goto fn_fail;
+                        CSP_CHKMPIFAIL_JUMP(mpi_errno);
                     } while (lock_status != CSP_MLOCK_STATUS_ACQUIRED);
                 }
                 /* all other roots give up its lock and wait for the first root */
@@ -237,21 +231,18 @@ int CSPU_mlock_acquire(MPI_Comm user_root_comm)
                     else {
                         mpi_errno = mlock_issue_discard_req(group_id);
                     }
-                    if (mpi_errno != MPI_SUCCESS)
-                        goto fn_fail;
+                    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
                     /* drop any SYNC received before the discarded ACK (none). */
                     do {
                         mpi_errno = mlock_sync_status(group_id, &lock_status);
-                        if (mpi_errno != MPI_SUCCESS)
-                            goto fn_fail;
+                        CSP_CHKMPIFAIL_JUMP(mpi_errno);
                     } while (lock_status != CSP_MLOCK_STATUS_UNSET);
                 }
 
                 /* wait till the first root got lock */
-                mpi_errno = PMPI_Bcast(&bc_byte, 1, MPI_CHAR, lowest_p_root, user_root_comm);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
+                CSP_CALLMPI(JUMP, PMPI_Bcast(&bc_byte, 1, MPI_CHAR, lowest_p_root, user_root_comm));
+
                 CSPU_MLOCK_DBG_PRINT(" \t root %d bcast from %d in user root group, gid %s\n",
                                      user_root_rank, lowest_p_root, gidstr);
             }

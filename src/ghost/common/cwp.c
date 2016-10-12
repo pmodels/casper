@@ -85,10 +85,8 @@ int CSPG_cwp_do_progress(void)
          * Otherwise deadlock may happen if multiple user roots send request to
          * ghosts concurrently and some ghosts are locked in different communicator creation. */
         if (local_gp_rank == 0) {
-            mpi_errno = PMPI_Recv((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                                  MPI_ANY_SOURCE, CSP_CWP_TAG, CSP_PROC.local_comm, &stat);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CALLMPI(JUMP, PMPI_Recv((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
+                                        MPI_ANY_SOURCE, CSP_CWP_TAG, CSP_PROC.local_comm, &stat));
 
             /* skip undefined command */
             if (pkt.cmd_type <= CSP_CWP_UNSET || pkt.cmd_type >= CSP_CWP_MAX ||
@@ -100,16 +98,14 @@ int CSPG_cwp_do_progress(void)
             CSPG_CWP_DBG_PRINT(" ghost 0 received CMD %d [%s] from %d\n",
                                (int) (pkt.cmd_type), cwp_cmd_name[pkt.cmd_type], stat.MPI_SOURCE);
             mpi_errno = cwp_root_handlers[pkt.cmd_type] (&pkt, stat.MPI_SOURCE);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
         }
         else {
             /* All other ghosts wait on internal commands broadcasted by the root,
              * which is issued in root's command handler. */
             mpi_errno = CSPG_cwp_bcast(&pkt);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
             /* skip undefined internal command */
             if (pkt.cmd_type <= CSP_CWP_UNSET || pkt.cmd_type >= CSP_CWP_MAX ||
@@ -121,8 +117,7 @@ int CSPG_cwp_do_progress(void)
             CSPG_CWP_DBG_PRINT(" all ghosts received CMD %d [%s]\n", (int) pkt.cmd_type,
                                cwp_cmd_name[pkt.cmd_type]);
             mpi_errno = cwp_handlers[pkt.cmd_type] (&pkt);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
 
         /* Terminate after received notification from finalize handler. */

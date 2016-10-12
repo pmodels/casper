@@ -24,9 +24,9 @@ static int get_shared_impl(void *origin_addr, int origin_count,
     /* Issue operation to the target through local window, because shared
      * communication is fully handled by local process.
      */
-    mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
-                         ug_win->my_rank_in_ug_comm, target_disp,
-                         target_count, target_datatype, *win_ptr);
+    CSP_CALLMPI(RETURN, PMPI_Get(origin_addr, origin_count, origin_datatype,
+                                 ug_win->my_rank_in_ug_comm, target_disp,
+                                 target_count, target_datatype, *win_ptr));
     CSP_DBG_PRINT("CASPER Get from self(%d, in local win 0x%x)\n",
                   ug_win->my_rank_in_ug_comm, *win_ptr);
 
@@ -61,8 +61,7 @@ static int get_impl(void *origin_addr, int origin_count,
         mpi_errno = get_shared_impl(origin_addr, origin_count,
                                     origin_datatype, target_rank, target_disp, target_count,
                                     target_datatype, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
     else
 #endif
@@ -85,17 +84,14 @@ static int get_impl(void *origin_addr, int origin_count,
 
         mpi_errno = CSPU_target_get_ghost(target_rank, 0, data_size, ug_win,
                                           &target_g_rank_in_ug, &target_g_offset);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
         ug_target_disp = target_g_offset + target->disp_unit * target_disp;
 
         /* Issue operation to the ghost process in corresponding ug-window of target process. */
-        mpi_errno = PMPI_Get(origin_addr, origin_count, origin_datatype,
-                             target_g_rank_in_ug, ug_target_disp,
-                             target_count, target_datatype, *win_ptr);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Get(origin_addr, origin_count, origin_datatype,
+                                   target_g_rank_in_ug, ug_target_disp,
+                                   target_count, target_datatype, *win_ptr));
 
         CSP_DBG_PRINT("CASPER Get from (ghost %d, win 0x%x  [%s]) instead of "
                       "target %d, 0x%lx(0x%lx + %d * %ld)\n",
@@ -128,8 +124,7 @@ int MPI_Get(void *origin_addr, int origin_count,
                              target_rank, target_disp, target_count, target_datatype, ug_win);
         CSPU_THREAD_EXIT_OBJ_CS(ug_win);
 
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
     else {
         /* normal window */

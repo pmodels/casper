@@ -32,19 +32,15 @@ static int send_pscw_complete_msg(int start_grp_size, CSPU_win_t * ug_win)
         if (user_rank == target_rank)
             continue;
 
-        mpi_errno = PMPI_Isend(&comp_flg, 1, MPI_CHAR, target_rank,
-                               CSPU_PSCW_CW_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Isend(&comp_flg, 1, MPI_CHAR, target_rank,
+                                     CSPU_PSCW_CW_TAG, ug_win->user_comm, &reqs[remote_cnt++]));
 
         /* Set post flag to true on the main ghost of post origin. */
         CSP_DBG_PRINT("send pscw complete msg to target %d \n", target_rank);
     }
 
     /* Has to blocking wait here to poll progress. */
-    mpi_errno = PMPI_Waitall(remote_cnt, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Waitall(remote_cnt, reqs, stats));
 
   fn_exit:
     if (reqs)
@@ -94,9 +90,7 @@ int MPI_Win_complete(MPI_Win win)
         return mpi_errno;
     }
 
-    mpi_errno = PMPI_Group_size(ug_win->start_group, &start_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(ug_win->start_group, &start_grp_size));
     CSP_ASSERT(start_grp_size > 0);
 
     CSP_DBG_PRINT("Complete group 0x%x, size %d\n", ug_win->start_group, start_grp_size);
@@ -118,12 +112,10 @@ int MPI_Win_complete(MPI_Win win)
 
     /* Flush ghosts to finish the sequence of locally issued RMA operations. */
     mpi_errno = CSPU_win_global_flush_all(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = send_pscw_complete_msg(start_grp_size, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     ug_win->is_self_locked = 0;
 

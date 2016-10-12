@@ -14,20 +14,16 @@ static int fill_ranks_in_win_grp(CSPU_win_t * ug_win)
     int *ranks_in_post_grp = NULL;
     int i, post_grp_size;
 
-    mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(ug_win->post_group, &post_grp_size));
 
     ranks_in_post_grp = CSP_calloc(post_grp_size, sizeof(int));
     for (i = 0; i < post_grp_size; i++) {
         ranks_in_post_grp[i] = i;
     }
 
-    mpi_errno = PMPI_Group_translate_ranks(ug_win->post_group, post_grp_size,
-                                           ranks_in_post_grp, ug_win->user_group,
-                                           ug_win->post_ranks_in_win_group);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(ug_win->post_group, post_grp_size,
+                                                 ranks_in_post_grp, ug_win->user_group,
+                                                 ug_win->post_ranks_in_win_group));
 
   fn_exit:
     if (ranks_in_post_grp)
@@ -65,28 +61,22 @@ static int send_pscw_post_msg(int post_grp_size, CSPU_win_t * ug_win)
         if (user_rank == origin_rank)
             continue;
 
-        mpi_errno = PMPI_Isend(&post_flg, 1, MPI_CHAR, origin_rank,
-                               CSPU_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Isend(&post_flg, 1, MPI_CHAR, origin_rank,
+                                     CSPU_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]));
 
         /* Set post flag to true on the main ghost of post origin. */
         CSP_DBG_PRINT("send pscw post msg to origin %d \n", origin_rank);
 
 #ifdef CSP_ENABLE_EAGER_PSCW_SYNC
         /* Eager receive for complete sync. Later wait/test on these requests. */
-        mpi_errno = PMPI_Irecv(&CSPU_pscw_wait_flg, 1, MPI_CHAR, origin_rank,
-                               CSPU_PSCW_CW_TAG, ug_win->user_comm,
-                               &(ug_win->wait_reqs[remote_cnt]));
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Irecv(&CSPU_pscw_wait_flg, 1, MPI_CHAR, origin_rank,
+                                     CSPU_PSCW_CW_TAG, ug_win->user_comm,
+                                     &(ug_win->wait_reqs[remote_cnt])));
 #endif
     }
 
     /* Has to blocking wait here to poll progress. */
-    mpi_errno = PMPI_Waitall(remote_cnt, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Waitall(remote_cnt, reqs, stats));
 
   fn_exit:
     if (reqs)
@@ -143,9 +133,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
         return mpi_errno;
     }
 
-    mpi_errno = PMPI_Group_size(group, &post_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(group, &post_grp_size));
 
     if (post_grp_size <= 0) {
         /* standard says do nothing for empty group */
@@ -161,8 +149,7 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     assert = (assert == MPI_MODE_NOCHECK) ? MPI_MODE_NOCHECK : 0;
 
     mpi_errno = fill_ranks_in_win_grp(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
     for (i = 0; i < post_grp_size; i++) {
@@ -173,16 +160,13 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
         mpi_errno = send_pscw_post_msg(post_grp_size, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
     /* Need win_sync for synchronizing local window update.
      * Still need it to avoid instruction reordering of preceding load
      * even if user says no preceding store. */
-    mpi_errno = PMPI_Win_sync(ug_win->global_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_sync(ug_win->global_win));
 
     /* Indicate exposure epoch status. */
     ug_win->exp_epoch_stat = CSPU_WIN_EXP_EPOCH_PSCW;

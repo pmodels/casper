@@ -47,13 +47,11 @@ static int init_ghost_win(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win_t 
         info_keyvals = CSP_calloc(info_npairs, sizeof(CSP_info_keyval_t));
         mpi_errno = recv_ghost_cmd_param(info_keyvals, sizeof(CSP_info_keyval_t) * info_npairs,
                                          win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
         CSPG_DBG_PRINT(" Received parameters: info\n");
 
         mpi_errno = CSP_info_serialize(info_keyvals, info_npairs, user_info);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:
@@ -97,9 +95,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
 
     /* -Create ug communicator. */
     PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &ug_group);
-    mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &win->ug_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &win->ug_comm));
 
   fn_exit:
     if (ug_ranks_in_world)
@@ -142,8 +138,7 @@ static int create_communicators(CSPG_win_t * win)
 
         cmd_params = CSP_calloc(cmd_param_size, sizeof(int));
         mpi_errno = recv_ghost_cmd_param((char *) cmd_params, sizeof(int) * cmd_param_size, win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
         num_ghosts = cmd_params[0];
         user_ranks_in_world = &cmd_params[1];
@@ -156,8 +151,7 @@ static int create_communicators(CSPG_win_t * win)
          */
         mpi_errno = create_ug_comm(win->user_nprocs, user_ranks_in_world, num_ghosts,
                                    gp_ranks_in_world, win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
 #ifdef CSP_DEBUG
         {
@@ -167,10 +161,8 @@ static int create_communicators(CSPG_win_t * win)
             CSPG_DBG_PRINT("created ug_comm, my rank %d/%d\n", ug_rank, ug_nprocs);
         }
 #endif
-        mpi_errno = PMPI_Comm_split_type(win->ug_comm, MPI_COMM_TYPE_SHARED, 0,
-                                         MPI_INFO_NULL, &win->local_ug_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_split_type(win->ug_comm, MPI_COMM_TYPE_SHARED, 0,
+                                               MPI_INFO_NULL, &win->local_ug_comm));
 
 #ifdef CSP_DEBUG
         {
@@ -223,35 +215,23 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
      *  - If alloc_shm is true, MPI implementation can still provide shm optimization;
      *  - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI.*/
     if (user_info != MPI_INFO_NULL) {
-        mpi_errno = PMPI_Info_dup(user_info, &shared_info);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "alloc_shm", "true");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_dup(user_info, &shared_info));
+        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shm", "true"));
+        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "same_size", "false"));
+        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false"));
     }
 
     /* -Allocate shared window in CHAR type
      * (No local buffer, only need shared buffer on user processes) */
-    mpi_errno = PMPI_Win_allocate_shared(csp_buf_size, 1, shared_info,
-                                         win->local_ug_comm, &win->base, &win->local_ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_allocate_shared(csp_buf_size, 1, shared_info,
+                                               win->local_ug_comm, &win->base, &win->local_ug_win));
 
     /* -Query address of user buffers and send to USER processes */
     user_bases = CSP_calloc(local_ug_nprocs, sizeof(void *));
 
     for (dst = 0; dst < local_ug_nprocs; dst++) {
-        mpi_errno = PMPI_Win_shared_query(win->local_ug_win, dst, &r_size,
-                                          &r_disp_unit, &user_bases[dst]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_shared_query(win->local_ug_win, dst, &r_size,
+                                                &r_disp_unit, &user_bases[dst]));
 
         CSPG_DBG_PRINT("   shared base[%d]=%p, offset 0x%lx"
                        ", r_size %ld, r_unit %d\n", dst, user_bases[dst],
@@ -299,9 +279,8 @@ static int create_lock_windows(MPI_Aint size, MPI_Info user_info, CSPG_win_t * w
     win->num_ug_wins = win->max_local_user_nprocs;
     win->ug_wins = CSP_calloc(win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < win->num_ug_wins; i++) {
-        mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->ug_wins[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_create(win->base, size, 1, user_info,
+                                          win->ug_comm, &win->ug_wins[i]));
 
         CSPG_DBG_PRINT(" Created ug windows[%d] 0x%x\n", i, win->ug_wins[i]);
     }
@@ -327,8 +306,7 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
 
     /* Every ghost initialize ghost window by using received parameters. */
     mpi_errno = init_ghost_win(winalloc_pkt, win, &user_info);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Create communicators
      *  ug_comm: including all USER and Ghost processes
@@ -345,8 +323,7 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
 
     /* Allocate local shared window */
     mpi_errno = alloc_shared_window(user_info, &size, win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Create ug windows including all User and Ghost processes.
      * Every User process has a window used for permission check and accessing Ghosts.
@@ -358,8 +335,7 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
     if ((win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
 
         mpi_errno = create_lock_windows(size, user_info, win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
     /* - Create global window when fence|pscw are specified,
@@ -367,9 +343,8 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
     if ((win->info_args.epochs_used & CSP_EPOCH_FENCE) ||
         (win->info_args.epochs_used & CSP_EPOCH_PSCW) ||
         (win->info_args.epochs_used == CSP_EPOCH_LOCK_ALL)) {
-        mpi_errno = PMPI_Win_create(win->base, size, 1, user_info, win->ug_comm, &win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_create(win->base, size, 1, user_info,
+                                          win->ug_comm, &win->global_win));
         CSPG_DBG_PRINT(" Created global windows 0x%x\n", win->global_win);
     }
 
@@ -377,8 +352,7 @@ static int win_allocate_impl(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt)
 
     /* Notify user root the handle of ghost win. */
     mpi_errno = send_ghost_cmd_param(&win->csp_g_win_handle, sizeof(unsigned long), win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
     CSPG_DBG_PRINT(" Define csp_g_win_handle=0x%lx\n", win->csp_g_win_handle);
 
   fn_exit:
@@ -403,12 +377,10 @@ int CSPG_win_allocate_cwp_root_handler(CSP_cwp_pkt_t * pkt,
 
     /* broadcast to other local ghosts */
     mpi_errno = CSPG_cwp_bcast(pkt);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = win_allocate_impl(winalloc_pkt);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     /* Release local lock after a locked command finished. */
@@ -426,8 +398,7 @@ int CSPG_win_allocate_cwp_handler(CSP_cwp_pkt_t * pkt)
     CSP_cwp_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
 
     mpi_errno = win_allocate_impl(winalloc_pkt);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;

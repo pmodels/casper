@@ -36,9 +36,7 @@ int CSP_info_deserialize(MPI_Info info, CSP_info_keyval_t ** keyvals, int *npair
     if (info == MPI_INFO_NULL)
         goto fn_exit;
 
-    mpi_errno = PMPI_Info_get_nkeys(info, &nkeys);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Info_get_nkeys(info, &nkeys));
 
     if (nkeys == 0)
         goto fn_exit;
@@ -47,14 +45,10 @@ int CSP_info_deserialize(MPI_Info info, CSP_info_keyval_t ** keyvals, int *npair
     memset(tmp_keyvals, 0, nkeys * sizeof(CSP_info_keyval_t));
 
     for (i = 0; i < nkeys; i++) {
-        mpi_errno = PMPI_Info_get_nthkey(info, i, tmp_keyvals[i].key);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_get_nthkey(info, i, tmp_keyvals[i].key));
 
-        mpi_errno = PMPI_Info_get(info, (const char *) tmp_keyvals[i].key,
-                                  MPI_MAX_INFO_VAL, tmp_keyvals[i].value, &info_flag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, (const char *) tmp_keyvals[i].key,
+                                        MPI_MAX_INFO_VAL, tmp_keyvals[i].value, &info_flag));
 
         INFO_DBG_PRINT("deserialize info:    [%d/%d]%s:%s\n", i, nkeys,
                        tmp_keyvals[i].key, tmp_keyvals[i].value);
@@ -86,15 +80,11 @@ int CSP_info_serialize(CSP_info_keyval_t * keyvals, int npairs, MPI_Info * info)
     if (npairs < 1)
         goto fn_exit;
 
-    mpi_errno = PMPI_Info_create(&tmp_info);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Info_create(&tmp_info));
 
     for (i = 0; i < npairs; i++) {
-        mpi_errno = PMPI_Info_set(tmp_info, (const char *) keyvals[i].key,
-                                  (const char *) keyvals[i].value);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_set(tmp_info, (const char *) keyvals[i].key,
+                                        (const char *) keyvals[i].value));
 
         INFO_DBG_PRINT("serialize info:    [%d/%d]%s:%s\n", i, npairs,
                        keyvals[i].key, keyvals[i].value);

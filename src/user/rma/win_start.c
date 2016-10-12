@@ -14,20 +14,16 @@ static int fill_ranks_in_win_grp(CSPU_win_t * ug_win)
     int *ranks_in_start_grp = NULL;
     int i, start_grp_size;
 
-    mpi_errno = PMPI_Group_size(ug_win->start_group, &start_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(ug_win->start_group, &start_grp_size));
 
     ranks_in_start_grp = CSP_calloc(start_grp_size, sizeof(int));
     for (i = 0; i < start_grp_size; i++) {
         ranks_in_start_grp[i] = i;
     }
 
-    mpi_errno = PMPI_Group_translate_ranks(ug_win->start_group, start_grp_size,
-                                           ranks_in_start_grp, ug_win->user_group,
-                                           ug_win->start_ranks_in_win_group);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(ug_win->start_group, start_grp_size,
+                                                 ranks_in_start_grp, ug_win->user_group,
+                                                 ug_win->start_ranks_in_win_group));
 
   fn_exit:
     if (ranks_in_start_grp)
@@ -62,19 +58,15 @@ static int wait_pscw_post_msg(int start_grp_size, CSPU_win_t * ug_win)
         if (user_rank == target_rank)
             continue;
 
-        mpi_errno = PMPI_Irecv(&post_flg, 1, MPI_CHAR, target_rank,
-                               CSPU_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Irecv(&post_flg, 1, MPI_CHAR, target_rank,
+                                     CSPU_PSCW_PS_TAG, ug_win->user_comm, &reqs[remote_cnt++]));
 
         /* Set post flag to true on the main ghost of post origin. */
         CSP_DBG_PRINT("receive pscw post msg from target %d \n", target_rank);
     }
 
     /* It is blocking. */
-    mpi_errno = PMPI_Waitall(remote_cnt, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Waitall(remote_cnt, reqs, stats));
 
   fn_exit:
     if (reqs)
@@ -135,9 +127,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
         return mpi_errno;
     }
 
-    mpi_errno = PMPI_Group_size(group, &start_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(group, &start_grp_size));
 
     if (start_grp_size <= 0) {
         /* standard says do nothing for empty group */
@@ -155,8 +145,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     assert = (assert == MPI_MODE_NOCHECK) ? MPI_MODE_NOCHECK : 0;
 
     mpi_errno = fill_ranks_in_win_grp(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
     for (i = 0; i < start_grp_size; i++) {
@@ -167,8 +156,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     /* Synchronize start-post if user does not specify nocheck */
     if ((assert & MPI_MODE_NOCHECK) == 0) {
         mpi_errno = wait_pscw_post_msg(start_grp_size, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
 #ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT

@@ -190,10 +190,8 @@ typedef struct CSPU_win {
  *   Drawback: would lose user-modified error code.
  * Now we implement in the second way for simplicity. It works together with
  * CSPU_WIN_ERROR_RETURN.*/
-#define CSPU_WIN_SET_INTERN_ERRHANDLER(win) do {                    \
-    mpi_errno = PMPI_Win_set_errhandler(win, MPI_ERRORS_RETURN);    \
-    if (mpi_errno != MPI_SUCCESS)                                   \
-        goto fn_fail;                                               \
+#define CSPU_WIN_SET_INTERN_ERRHANDLER(win) do {                        \
+    CSP_CALLMPI(JUMP, PMPI_Win_set_errhandler(win, MPI_ERRORS_RETURN)); \
 } while (0)
 
 /* Handle CASPER internal error into user-specified communicator error handler.
@@ -265,7 +263,7 @@ static inline int CSPU_destroy_win_cache(void)
 {
     int mpi_errno = MPI_SUCCESS;
     if (UG_WIN_HANDLE_KEY != MPI_KEYVAL_INVALID) {
-        mpi_errno = PMPI_Win_free_keyval(&UG_WIN_HANDLE_KEY);
+        CSP_CALLMPI(NOSTMT, PMPI_Win_free_keyval(&UG_WIN_HANDLE_KEY));
         if (mpi_errno != MPI_SUCCESS)
             CSP_DBG_PRINT("Cannot free UG_WIN_HANDLE_KEY %p\n", &UG_WIN_HANDLE_KEY);
     }
@@ -277,7 +275,7 @@ static inline int CSPU_fetch_ug_win_from_cache(MPI_Win win, CSPU_win_t ** ug_win
     int mpi_errno = MPI_SUCCESS;
     int fetch_ug_win_flag = 0;
 
-    mpi_errno = PMPI_Win_get_attr(win, UG_WIN_HANDLE_KEY, ug_win, &fetch_ug_win_flag);
+    CSP_CALLMPI(NOSTMT, PMPI_Win_get_attr(win, UG_WIN_HANDLE_KEY, ug_win, &fetch_ug_win_flag));
     if (!fetch_ug_win_flag || mpi_errno != MPI_SUCCESS) {
         CSP_DBG_PRINT("Cannot fetch ug_win from win 0x%x\n", win);
         (*ug_win) = NULL;
@@ -288,7 +286,7 @@ static inline int CSPU_fetch_ug_win_from_cache(MPI_Win win, CSPU_win_t ** ug_win
 static inline int CSPU_cache_ug_win(MPI_Win win, CSPU_win_t * ug_win)
 {
     int mpi_errno = MPI_SUCCESS;
-    mpi_errno = PMPI_Win_set_attr(win, UG_WIN_HANDLE_KEY, ug_win);
+    CSP_CALLMPI(NOSTMT, PMPI_Win_set_attr(win, UG_WIN_HANDLE_KEY, ug_win));
     if (mpi_errno != MPI_SUCCESS) {
         CSP_DBG_PRINT("Cannot cache ug_win %p for win 0x%x\n", ug_win, win);
         return mpi_errno;
@@ -300,7 +298,7 @@ static inline int CSPU_cache_ug_win(MPI_Win win, CSPU_win_t * ug_win)
 static inline int CSPU_remove_ug_win_from_cache(MPI_Win win)
 {
     int mpi_errno = MPI_SUCCESS;
-    mpi_errno = PMPI_Win_delete_attr(win, UG_WIN_HANDLE_KEY);
+    CSP_CALLMPI(NOSTMT, PMPI_Win_delete_attr(win, UG_WIN_HANDLE_KEY));
     if (mpi_errno != MPI_SUCCESS)
         CSP_DBG_PRINT("Cannot remove ug_win cache for win 0x%x\n", win);
     return mpi_errno;
@@ -411,8 +409,8 @@ static inline int CSPU_win_grant_lock(int target_rank, CSPU_win_t * ug_win)
     int mpi_errno = MPI_SUCCESS;
     int main_g_off = ug_win->targets[target_rank].main_g_off;
 
-    mpi_errno = PMPI_Win_flush(ug_win->targets[target_rank].g_ranks_in_ug[main_g_off],
-                               ug_win->targets[target_rank].ug_win);
+    CSP_CALLMPI(NOSTMT, PMPI_Win_flush(ug_win->targets[target_rank].g_ranks_in_ug[main_g_off],
+                                       ug_win->targets[target_rank].ug_win));
     if (mpi_errno == MPI_SUCCESS) {
         ug_win->targets[target_rank].main_lock_stat = CSPU_MAIN_LOCK_GRANTED;
 
@@ -469,8 +467,7 @@ static inline int CSPU_target_get_ghost(int target_rank, int is_order_required,
         !(ug_win->targets[target_rank].remote_lock_assert & MPI_MODE_NOCHECK) &&
         ug_win->targets[target_rank].main_lock_stat == CSPU_MAIN_LOCK_OP_ISSUED) {
         mpi_errno = CSPU_win_grant_lock(target_rank, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            return mpi_errno;
+        CSP_CHKMPIFAIL_RETURN(mpi_errno);
     }
 
     /* Upgrade main lock status of target if it is the first operation of that target. */
