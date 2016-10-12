@@ -11,23 +11,29 @@
 int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler)
 {
     int mpi_errno = MPI_SUCCESS;
+    MPI_Comm_errhandler_function *errhandler_fnc = NULL;
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_set_errhandler(comm, errhandler));
+    if (errhandler != MPI_ERRORS_ARE_FATAL && errhandler != MPI_ERRORS_RETURN) {
+        /* Get cached user function on this handler */
+        CSPU_errhan_get_fnc(errhandler, (void **) (&errhandler_fnc));
+        CSP_ASSERT(errhandler_fnc != NULL);
+    }
 
-    /* Set error handler for both MPI_COMM_WORLD and COMM_USER_WORLD if
-     * input comm is MPI_COMM_WORLD.
-     * - Setting to MPI_COMM_WORLD allows global error handler to MPI calls
-     *   that are not related to any objects.
-     * - Setting to COMM_USER_WORLD allows specified error handler to MPI
-     *   calls related COMM_WORLD (translated to COMM_USER_WORLD) and its children.
-     * - No need to check any other input comm, because they are always created
-     *   from COMM_USER_WORLD. */
+    /* Wrap up user error handler and cache [comm -> error handler & callback].
+     * Note that we use manual hash instead of comm_get_attr, to avoid additional
+     * MPI calls in error handling that might result in infinite recursion.*/
+    mpi_errno = CSPU_comm_errhan_wrap(comm, errhandler, errhandler_fnc);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    /* Also wrap and cache for COMM_USER_WORLD if it is COMM_WORLD. */
     if (comm == MPI_COMM_WORLD) {
-        mpi_errno = PMPI_Comm_set_errhandler(CSP_COMM_USER_WORLD, errhandler);
+        mpi_errno = CSPU_comm_errhan_wrap(CSP_COMM_USER_WORLD, errhandler, errhandler_fnc);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSPU_comm_call_errhandler(comm, &mpi_errno);
     goto fn_exit;
 }

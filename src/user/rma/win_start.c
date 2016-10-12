@@ -88,11 +88,14 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     int user_rank;
 
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+    CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
+    CSPU_WIN_ERRHAN_SET_EXTOBJ();
 
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
+        CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
         return PMPI_Win_start(group, assert, win);
     }
 
@@ -184,6 +187,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
 
   fn_exit:
     CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before return */
     return mpi_errno;
 
   fn_fail:
@@ -195,6 +199,8 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
   fn_sync_err:
     /* Do not release internal resource if it is RMA sync error.
      * Because these resources are for the existing PSCW epoch, which is correct. */
-    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before error handling */
+    CSPU_WIN_ERRHANLDING(win, &mpi_errno);
     goto fn_exit;
 }

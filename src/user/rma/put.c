@@ -113,6 +113,9 @@ int MPI_Put(const void *origin_addr, int origin_count,
     int mpi_errno = MPI_SUCCESS;
     CSPU_win_t *ug_win;
 
+    CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
+    CSPU_WIN_ERRHAN_SET_EXTOBJ();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win) {
@@ -128,14 +131,17 @@ int MPI_Put(const void *origin_addr, int origin_count,
     }
     else {
         /* normal window */
+        CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
         return PMPI_Put(origin_addr, origin_count, origin_datatype, target_rank,
                         target_disp, target_count, target_datatype, win);
     }
 
   fn_exit:
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before return */
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before error handling */
+    CSPU_WIN_ERRHANLDING(win, &mpi_errno);
     goto fn_exit;
 }

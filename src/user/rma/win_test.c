@@ -16,11 +16,14 @@ int MPI_Win_test(MPI_Win win, int *flag)
     int post_grp_size = 0;
 
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+    CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
+    CSPU_WIN_ERRHAN_SET_EXTOBJ();
 
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
+        CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
         return PMPI_Win_test(win, flag);
     }
 
@@ -74,9 +77,11 @@ int MPI_Win_test(MPI_Win win, int *flag)
     }
 
     CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before return */
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before error handling */
+    CSPU_WIN_ERRHANLDING(win, &mpi_errno);
     goto fn_exit;
 }

@@ -76,17 +76,29 @@ static int destroy_proc(void)
     goto fn_exit;
 }
 
+/* Clean up cache for COMM_WORLDs' error handler wrappers. */
+static void comm_errhan_cleanup_predefined(void)
+{
+    CSPU_comm_errhan_reset(MPI_COMM_WORLD);
+    CSPU_comm_errhan_reset(CSP_COMM_USER_WORLD);
+}
+
 int CSPU_global_finalize(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    mpi_errno = destroy_proc();
+    comm_errhan_cleanup_predefined();
+
+    mpi_errno = CSPU_mlock_destroy();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_destroy_win_cache();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_mlock_destroy();
+    mpi_errno = CSPU_errhan_destroy();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    mpi_errno = destroy_proc();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:

@@ -61,11 +61,14 @@ int MPI_Win_complete(MPI_Win win)
     int i;
 
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+    CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
+    CSPU_WIN_ERRHAN_SET_EXTOBJ();
 
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {
         /* normal window */
+        CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
         return PMPI_Win_complete(win);
     }
 
@@ -142,10 +145,12 @@ int MPI_Win_complete(MPI_Win win)
     ug_win->start_ranks_in_win_group = NULL;
 
     CSPU_THREAD_EXIT_OBJ_CS(ug_win);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before return */
     return mpi_errno;
 
   fn_fail:
-    CSPU_WIN_ERROR_RETURN(ug_win, &mpi_errno);
+    CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before error handling */
+    CSPU_WIN_ERRHANLDING(win, &mpi_errno);
     goto fn_exit;
 
 }

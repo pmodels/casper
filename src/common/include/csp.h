@@ -159,6 +159,9 @@ typedef struct CSP_user_proc {
 
     MPI_Comm u_local_comm;      /* Includes all users on local node. */
     MPI_Comm ur_comm;           /* Includes the first user(root) on every node. */
+    MPI_Errhandler comm_errhan_wrapper; /* Errhandler wrapper for any communicator.
+                                         * see prototype of CSPU_comm_errhan_wrapper_fnc
+                                         * for details.*/
 } CSP_user_proc_t;
 
 typedef struct CSP_ghost_proc {
@@ -221,6 +224,7 @@ static inline void CSP_reset_typed_proc(void)
 extern CSP_env_param_t CSP_ENV;
 extern CSP_proc_t CSP_PROC;
 extern MPI_Comm CSP_COMM_USER_WORLD;
+extern MPI_Comm CSP_MPI_COMM_WORLD;
 
 extern int CSPU_global_init(int is_threaded);
 extern int CSPG_global_init(void);
