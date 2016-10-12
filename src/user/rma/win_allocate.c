@@ -45,9 +45,8 @@ static int read_win_info(MPI_Info info, CSPU_win_t * ug_win)
 
         /* Check if user wants to turn off async */
         memset(info_value, 0, sizeof(info_value));
-        mpi_errno = PMPI_Info_get(info, "async_config", MPI_MAX_INFO_VAL, info_value, &info_flag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "async_config", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
 
         if (info_flag == 1) {
             if (!strncmp(info_value, "off", strlen("off"))) {
@@ -61,10 +60,8 @@ static int read_win_info(MPI_Info info, CSPU_win_t * ug_win)
         /* Check if we are allowed to ignore force-lock for local target,
          * require force-lock by default. */
         memset(info_value, 0, sizeof(info_value));
-        mpi_errno = PMPI_Info_get(info, "no_local_load_store", MPI_MAX_INFO_VAL,
-                                  info_value, &info_flag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "no_local_load_store", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
 
         if (info_flag == 1) {
             if (!strncmp(info_value, "true", strlen("true")))
@@ -73,9 +70,8 @@ static int read_win_info(MPI_Info info, CSPU_win_t * ug_win)
 
         /* Check if user specifies epoch types */
         memset(info_value, 0, sizeof(info_value));
-        mpi_errno = PMPI_Info_get(info, "epochs_used", MPI_MAX_INFO_VAL, info_value, &info_flag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "epochs_used", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
 
         if (info_flag == 1) {
             int user_epochs_used = 0;
@@ -107,9 +103,8 @@ static int read_win_info(MPI_Info info, CSPU_win_t * ug_win)
          * user wants to pass to MPI, should call MPI_Win_set_name instead. */
         memset(ug_win->info_args.win_name, 0, sizeof(ug_win->info_args.win_name));
         memset(info_value, 0, sizeof(info_value));
-        mpi_errno = PMPI_Info_get(info, "win_name", MPI_MAX_INFO_VAL, info_value, &info_flag);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "win_name", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
 
         if (info_flag == 1) {
             strncpy(ug_win->info_args.win_name, info_value, MPI_MAX_OBJECT_NAME);
@@ -160,15 +155,11 @@ static int gather_ghost_cmd_params(void *params, size_t size)
     /* ghosts are always start from rank 0 on local communicator. */
     for (i = 0; i < CSP_ENV.num_g; i++) {
         offset = i * size;
-        mpi_errno = PMPI_Irecv(((char *) params + offset), size, MPI_CHAR, i,
-                               CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Irecv(((char *) params + offset), size, MPI_CHAR, i,
+                                     CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]));
     }
 
-    mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Waitall(CSP_ENV.num_g, reqs, stats));
 
   fn_exit:
     if (stats)
@@ -196,15 +187,11 @@ static int bcast_ghost_cmd_params(void *params, size_t size)
 
     /* ghosts are always start from rank 0 on local communicator. */
     for (i = 0; i < CSP_ENV.num_g; i++) {
-        mpi_errno =
-            PMPI_Isend(params, size, MPI_CHAR, i, CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Isend(params, size, MPI_CHAR, i, CSP_CWP_PARAM_TAG,
+                                     CSP_PROC.local_comm, &reqs[i]));
     }
 
-    mpi_errno = PMPI_Waitall(CSP_ENV.num_g, reqs, stats);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Waitall(CSP_ENV.num_g, reqs, stats));
 
   fn_exit:
     if (stats)
@@ -233,8 +220,7 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSPU_win_t * ug_win)
 
     /* Lock ghost processes on all nodes. */
     mpi_errno = CSPU_mlock_acquire(ug_win->user_root_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     CSP_cwp_init_pkt(CSP_CWP_FNC_WIN_ALLOCATE, &pkt);
     winalloc_pkt->user_local_root = user_local_rank;
@@ -244,21 +230,18 @@ static int issue_ghost_cmd(int user_nprocs, MPI_Info info, CSPU_win_t * ug_win)
     winalloc_pkt->is_u_world = (ug_win->user_comm == CSP_COMM_USER_WORLD) ? 1 : 0;
 
     mpi_errno = CSP_info_deserialize(info, &info_keyvals, &npairs);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     winalloc_pkt->info_npairs = npairs;
 
     /* Only send start request to root ghost. */
     mpi_errno = CSPU_cwp_issue(&pkt);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Send user info */
     if (npairs > 0 && info_keyvals) {
         mpi_errno = bcast_ghost_cmd_params(info_keyvals, sizeof(CSP_info_keyval_t) * npairs);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
         CSP_DBG_PRINT(" Send parameters: info\n");
     }
 
@@ -349,9 +332,7 @@ static int create_ug_comm(int num_ghosts, int *gp_ranks_in_world, CSPU_win_t * w
     CSP_ASSERT(num_ug_ranks <= world_nprocs);
 
     PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &win->ug_group);
-    mpi_errno = PMPI_Comm_create_group(MPI_COMM_WORLD, win->ug_group, 0, &win->ug_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, win->ug_group, 0, &win->ug_comm));
 
   fn_exit:
     if (ug_ranks_in_world)
@@ -417,8 +398,7 @@ static int create_communicators(CSPU_win_t * ug_win)
 
         /* Gather user rank information */
         mpi_errno = gather_ranks(ug_win, &num_ghosts, gp_ranks_in_world, unique_gp_rank_in_world);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
         if (user_local_rank == 0) {
             /* Set parameters to local Ghosts
@@ -439,8 +419,7 @@ static int create_communicators(CSPU_win_t * ug_win)
             /* ghost ranks in comm_world */
             memcpy(&cmd_params[user_nprocs + 1], unique_gp_rank_in_world, num_ghosts * sizeof(int));
             mpi_errno = bcast_ghost_cmd_params(cmd_params, sizeof(int) * cmd_param_size);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
 
         /* Create communicators
@@ -448,8 +427,7 @@ static int create_communicators(CSPU_win_t * ug_win)
          *  local_ug_comm: including local USER and Ghost processes
          */
         mpi_errno = create_ug_comm(num_ghosts, unique_gp_rank_in_world, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
 #ifdef CSP_DEBUG
         {
@@ -460,12 +438,10 @@ static int create_communicators(CSPU_win_t * ug_win)
         }
 #endif
 
-        mpi_errno = PMPI_Comm_split_type(ug_win->ug_comm, MPI_COMM_TYPE_SHARED, 0,
-                                         MPI_INFO_NULL, &ug_win->local_ug_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_split_type(ug_win->ug_comm, MPI_COMM_TYPE_SHARED, 0,
+                                               MPI_INFO_NULL, &ug_win->local_ug_comm));
 
-        PMPI_Comm_group(ug_win->local_ug_comm, &ug_win->local_ug_group);
+        CSP_CALLMPI(JUMP, PMPI_Comm_group(ug_win->local_ug_comm, &ug_win->local_ug_group));
 
 #ifdef CSP_DEBUG
         {
@@ -477,16 +453,13 @@ static int create_communicators(CSPU_win_t * ug_win)
 #endif
 
         /* Get all ghost rank in ug communicator */
-        mpi_errno = PMPI_Group_translate_ranks(CSP_PROC.wgroup, num_ghosts,
-                                               unique_gp_rank_in_world, ug_win->ug_group,
-                                               ug_win->g_ranks_in_ug);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(CSP_PROC.wgroup, num_ghosts,
+                                                     unique_gp_rank_in_world, ug_win->ug_group,
+                                                     ug_win->g_ranks_in_ug));
 
-        mpi_errno = PMPI_Group_translate_ranks(CSP_PROC.wgroup, user_nprocs * CSP_ENV.num_g,
-                                               gp_ranks_in_world, ug_win->ug_group, gp_ranks_in_ug);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(CSP_PROC.wgroup, user_nprocs * CSP_ENV.num_g,
+                                                     gp_ranks_in_world, ug_win->ug_group,
+                                                     gp_ranks_in_ug));
 
         for (i = 0; i < user_nprocs; i++)
             memcpy(ug_win->targets[i].g_ranks_in_ug, &gp_ranks_in_ug[i * CSP_ENV.num_g],
@@ -575,10 +548,8 @@ static int gather_base_offsets(CSPU_win_t * ug_win)
     CSP_DBG_PRINT("[%d] local base_g_offset 0x%lx\n", user_rank, tmp_u_offsets);
 
     /* -Receive the address of all the shared user buffers on Ghost processes. */
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, base_g_offsets,
-                               CSP_ENV.num_g, MPI_AINT, ug_win->user_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, base_g_offsets,
+                                     CSP_ENV.num_g, MPI_AINT, ug_win->user_comm));
 
     for (i = 0; i < user_nprocs; i++) {
         for (j = 0; j < CSP_ENV.num_g; j++) {
@@ -615,24 +586,14 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
      * - If alloc_shm is true, MPI implementation can still provide shm optimization;
      * - If alloc_shm is false, those win_create windows are just handled as normal windows in MPI. */
     if (info != MPI_INFO_NULL) {
-        mpi_errno = PMPI_Info_dup(info, &shared_info);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "alloc_shm", "true");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "same_size", "false");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
-        mpi_errno = PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false");
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Info_dup(info, &shared_info));
+        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shm", "true"));
+        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "same_size", "false"));
+        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false"));
     }
 
-    mpi_errno = PMPI_Win_allocate_shared(size, disp_unit, shared_info, ug_win->local_ug_comm,
-                                         &ug_win->base, &ug_win->local_ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_allocate_shared(size, disp_unit, shared_info, ug_win->local_ug_comm,
+                                               &ug_win->base, &ug_win->local_ug_win));
     CSP_DBG_PRINT("[%d] allocate shared base = %p\n", user_rank, ug_win->base);
 
     /* Reset error handler for all internal windows. */
@@ -640,8 +601,7 @@ static int alloc_shared_window(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
 
     /* Gather user offsets on corresponding ghost processes */
     mpi_errno = gather_base_offsets(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     /* Only release local variables. local_ug_win is released at the end of win_alloc. */
@@ -665,10 +625,8 @@ static int create_lock_windows(MPI_Aint size, int disp_unit, MPI_Info info, CSPU
     ug_win->num_ug_wins = ug_win->max_local_user_nprocs;
     ug_win->ug_wins = CSP_calloc(ug_win->num_ug_wins, sizeof(MPI_Win));
     for (i = 0; i < ug_win->num_ug_wins; i++) {
-        mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
-                                    ug_win->ug_comm, &ug_win->ug_wins[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_create(ug_win->base, size, disp_unit, info,
+                                          ug_win->ug_comm, &ug_win->ug_wins[i]));
 
         /* Reset error handler for all internal windows. */
         CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->ug_wins[i]);
@@ -711,12 +669,11 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Read window configuration */
     mpi_errno = read_win_info(info, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* If user turns off asynchronous redirection, simply return normal window; */
     if (ug_win->info_args.async_config == CSP_ASYNC_CONFIG_OFF) {
-        mpi_errno = PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
+        CSP_CALLMPI(NOSTMT, PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win));
         CSP_DBG_PRINT("User turns off async in win_allocate, return normal win 0x%x\n", *win);
 
         goto fn_noasync;
@@ -735,18 +692,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
         ug_win->user_comm = user_comm;
     }
     else {
-        mpi_errno = PMPI_Comm_split_type(user_comm, MPI_COMM_TYPE_SHARED, 0,
-                                         MPI_INFO_NULL, &ug_win->local_user_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_split_type(user_comm, MPI_COMM_TYPE_SHARED, 0,
+                                               MPI_INFO_NULL, &ug_win->local_user_comm));
 
         /* Create a user root communicator in order to figure out node_id and
          * num_nodes of this user communicator */
         PMPI_Comm_rank(ug_win->local_user_comm, &user_local_rank);
-        mpi_errno = PMPI_Comm_split(ug_win->user_comm,
-                                    user_local_rank == 0, 1, &ug_win->user_root_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_split(ug_win->user_comm,
+                                          user_local_rank == 0, 1, &ug_win->user_root_comm));
 
         if (user_local_rank == 0) {
             int node_id, num_nodes;
@@ -787,10 +740,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     tmp_gather_buf[7 * user_rank + 5] = (MPI_Aint) ug_win->node_id;
     tmp_gather_buf[7 * user_rank + 6] = (MPI_Aint) user_local_nprocs;
 
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               tmp_gather_buf, 7, MPI_AINT, user_comm);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                                     tmp_gather_buf, 7, MPI_AINT, user_comm));
     for (i = 0; i < user_nprocs; i++) {
         ug_win->targets[i].disp_unit = (int) tmp_gather_buf[7 * i];
         ug_win->targets[i].size = tmp_gather_buf[7 * i + 1];
@@ -821,8 +772,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     if (user_local_rank == 0) {
         mpi_errno = issue_ghost_cmd(user_nprocs, info, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
 #if defined(CSP_ENABLE_THREAD_SAFE)
@@ -839,8 +789,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
      *  local_ug_comm: including local USER and Ghost processes
      */
     mpi_errno = create_communicators(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     PMPI_Comm_rank(ug_win->local_ug_comm, &ug_local_rank);
     PMPI_Comm_size(ug_win->local_ug_comm, &ug_local_nprocs);
@@ -857,19 +806,16 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
 
     /* Allocate local shared window */
     mpi_errno = alloc_shared_window(size, disp_unit, info, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Bind window to main ghost process */
     mpi_errno = CSPU_win_bind_ghosts(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Create N-windows for lock */
     if (ug_win->info_args.epochs_used & CSP_EPOCH_LOCK) {
         mpi_errno = create_lock_windows(size, disp_unit, info, ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
     /* Create global window when fence|pscw are specified,
@@ -877,10 +823,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if ((ug_win->info_args.epochs_used & CSP_EPOCH_FENCE) ||
         (ug_win->info_args.epochs_used & CSP_EPOCH_PSCW) ||
         (ug_win->info_args.epochs_used == CSP_EPOCH_LOCK_ALL)) {
-        mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
-                                    ug_win->ug_comm, &ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_create(ug_win->base, size, disp_unit, info,
+                                          ug_win->ug_comm, &ug_win->global_win));
 
         /* Reset error handler for all internal windows. */
         CSPU_WIN_SET_INTERN_ERRHANDLER(ug_win->global_win);
@@ -891,9 +835,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
          * the possibility losing asynchronous progress.
          * This lock_all guarantees the semantics correctness when internally
          * change to passive mode. */
-        mpi_errno = PMPI_Win_lock_all(MPI_MODE_NOCHECK, ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_lock_all(MPI_MODE_NOCHECK, ug_win->global_win));
     }
 
     /* Track epoch status for redirecting RMA to different window. */
@@ -906,10 +848,8 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     ug_win->is_self_locked = 0;
 
     /* - Only expose user window in order to hide ghosts in all non-wrapped window functions */
-    mpi_errno = PMPI_Win_create(ug_win->base, size, disp_unit, info,
-                                ug_win->user_comm, &ug_win->win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_create(ug_win->base, size, disp_unit, info,
+                                      ug_win->user_comm, &ug_win->win));
 
     CSP_DBG_PRINT("[%d] Created window 0x%x\n", user_rank, ug_win->win);
 
@@ -921,16 +861,14 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (user_local_rank == 0) {
         ug_win->g_win_handles = CSP_calloc(CSP_ENV.num_g, sizeof(unsigned long));
         mpi_errno = gather_ghost_cmd_params(ug_win->g_win_handles, sizeof(unsigned long));
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
     /* Initialize per window critical section. */
     CSPU_THREAD_INIT_OBJ_CS(ug_win);
 
     mpi_errno = CSPU_cache_ug_win(ug_win->win, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     if (tmp_gather_buf)

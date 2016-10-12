@@ -47,14 +47,13 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
 #endif
     mpi_errno = CSPU_target_get_ghost(target_rank, 1, data_size, ug_win,
                                       &target_g_rank_in_ug, &target_g_offset);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     ug_target_disp = target_g_offset + target->disp_unit * target_disp;
 
     /* Issue operation to the ghost process in corresponding ug-window of target process. */
-    mpi_errno = PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_g_rank_in_ug,
-                                  ug_target_disp, op, *win_ptr);
+    CSP_CALLMPI(JUMP, PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_g_rank_in_ug,
+                                        ug_target_disp, op, *win_ptr));
 
     CSP_DBG_PRINT("CASPER Fetch_and_op to (ghost %d, win 0x%x [%s]) instead of "
                   "target %d, 0x%lx(0x%lx + %d * %ld)\n",
@@ -86,8 +85,7 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
                                       target_disp, op, ug_win);
         CSPU_THREAD_EXIT_OBJ_CS(ug_win);
 
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
     else {
         /* normal window */

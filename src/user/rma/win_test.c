@@ -44,22 +44,17 @@ int MPI_Win_test(MPI_Win win, int *flag)
         return mpi_errno;
     }
 
-    mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(ug_win->post_group, &post_grp_size));
     CSP_ASSERT(post_grp_size > 0);
 
     CSP_DBG_PRINT("Test group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 
     /* Test the completion on all origin processes */
     mpi_errno = CSPU_recv_pscw_complete_msg(post_grp_size, ug_win, 0 /*non-blocking */ , flag);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* NOTE: MPI implementation should do memory barrier in flush handler. */
-    mpi_errno = PMPI_Win_sync(ug_win->global_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_sync(ug_win->global_win));
 
     if ((*flag)) {
         /* Reset exposure status if all sync messages are received.

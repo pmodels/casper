@@ -16,24 +16,19 @@ static int win_global_flush_local_all(CSPU_win_t * ug_win)
 
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
     CSP_DBG_PRINT(" flush_local_all(global_win 0x%x)\n", ug_win->global_win);
-    mpi_errno = PMPI_Win_flush_local_all(ug_win->global_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_flush_local_all(ug_win->global_win));
 #else
     /* Flush every ghost once in the single window.
      * TODO: track op issuing, only flush the ghosts which receive ops. */
     for (i = 0; i < ug_win->num_g_ranks_in_ug; i++) {
         CSP_DBG_PRINT(" flush_local(ghost %d, global_win 0x%x)\n", ug_win->g_ranks_in_ug[i],
                       ug_win->global_win);
-        mpi_errno = PMPI_Win_flush_local(ug_win->g_ranks_in_ug[i], ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_flush_local(ug_win->g_ranks_in_ug[i], ug_win->global_win));
     }
 
     if (ug_win->is_self_locked) {
         mpi_errno = CSPU_win_flush_local_self(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 #endif
 
@@ -81,23 +76,19 @@ int MPI_Win_flush_local_all(MPI_Win win)
     if (!(ug_win->info_args.epochs_used & CSP_EPOCH_LOCK)) {
         /* In no-lock epoch, single window is shared by multiple targets. */
         mpi_errno = win_global_flush_local_all(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
     else {
         /* In lock-exist epoch, separate windows are bound with targets. */
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
         for (i = 0; i < ug_win->num_ug_wins; i++) {
             CSP_DBG_PRINT(" flush_local_all(ug_win 0x%x)\n", ug_win->ug_wins[i]);
-            mpi_errno = PMPI_Win_flush_local_all(ug_win->ug_wins[i]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CALLMPI(JUMP, PMPI_Win_flush_local_all(ug_win->ug_wins[i]));
         }
 #else
         for (i = 0; i < user_nprocs; i++) {
             mpi_errno = CSPU_win_target_flush_local(i, ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
 #endif /*end of CSP_ENABLE_SYNC_ALL_OPT */
     }

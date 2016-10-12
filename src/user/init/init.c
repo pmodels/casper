@@ -82,33 +82,26 @@ static int setup_proc(int is_threaded)
     g_ranks_in_world = CSP_calloc(CSP_ENV.num_g, sizeof(int));
     tmp_gather_buf = CSP_calloc(user_nprocs * (1 + CSP_ENV.num_g), sizeof(int));
 
-    mpi_errno = PMPI_Comm_group(CSP_COMM_USER_WORLD, &user_world_group);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
-    mpi_errno = PMPI_Comm_group(CSP_PROC.local_comm, &local_group);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_COMM_USER_WORLD, &user_world_group));
+    CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &local_group));
 
     /* Specify the first num_g local processes as ghosts on each node */
     for (i = 0; i < CSP_ENV.num_g; i++)
         CSP_PROC.user.g_lranks[i] = i;
 
     /* Translate ghost ranks in world */
-    mpi_errno = PMPI_Group_translate_ranks(local_group, CSP_ENV.num_g,
-                                           CSP_PROC.user.g_lranks, CSP_PROC.wgroup,
-                                           g_ranks_in_world);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(local_group, CSP_ENV.num_g,
+                                                 CSP_PROC.user.g_lranks, CSP_PROC.wgroup,
+                                                 g_ranks_in_world));
 
     /* Gather ghost ranks among all users in world */
     tmp_gather_buf[user_rank * (1 + CSP_ENV.num_g)] = CSP_PROC.node_id; /* node_id */
     for (i = 0; i < CSP_ENV.num_g; i++) /* ghost ranks in world */
         tmp_gather_buf[user_rank * (1 + CSP_ENV.num_g) + i + 1] = g_ranks_in_world[i];
 
-    mpi_errno = PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-                               tmp_gather_buf, 1 + CSP_ENV.num_g, MPI_INT, CSP_COMM_USER_WORLD);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                                     tmp_gather_buf, 1 + CSP_ENV.num_g, MPI_INT,
+                                     CSP_COMM_USER_WORLD));
 
     for (i = 0; i < user_nprocs; i++) {
         int node_id = 0;
@@ -147,16 +140,13 @@ int CSPU_global_init(int is_threaded)
     int mpi_errno = MPI_SUCCESS;
 
     mpi_errno = setup_proc(is_threaded);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_init_win_cache();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_mlock_init();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;

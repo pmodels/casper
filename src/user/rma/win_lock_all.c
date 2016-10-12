@@ -64,9 +64,7 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 
         /* Do not need grant local lock, because only shared lock in current epoch.
          * But memory consistency is still necessary for local load/store. */
-        mpi_errno = PMPI_Win_sync(ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_sync(ug_win->global_win));
 
         ug_win->is_self_locked = 1;
     }
@@ -77,16 +75,13 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
 #ifdef CSP_ENABLE_SYNC_ALL_OPT
         for (i = 0; i < ug_win->num_ug_wins; i++) {
             CSP_DBG_PRINT(" lock_all(ug_win 0x%x)\n", ug_win->ug_wins[i]);
-            mpi_errno = PMPI_Win_lock_all(assert, ug_win->ug_wins[i]);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CALLMPI(JUMP, PMPI_Win_lock_all(assert, ug_win->ug_wins[i]));
         }
         ug_win->is_self_locked = 1;
 #else
         for (i = 0; i < user_nprocs; i++) {
             mpi_errno = CSPU_win_target_lock(MPI_LOCK_SHARED, assert, i, ug_win);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
         }
 #endif
     }

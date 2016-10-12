@@ -125,8 +125,7 @@ static int mlock_grant_next_req(void)
     next_req = (CSPG_mlock_req_t *) CSP_slist_dequeue(&mlock_susped_reqs_list);
     if (next_req) {
         mpi_errno = mlock_grant_req(next_req);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
         /* Degrade any suspended requests with high priority. */
         e = mlock_susped_reqs_list.head;
@@ -141,8 +140,7 @@ static int mlock_grant_next_req(void)
 
             req->status = CSP_MLOCK_STATUS_SUSPENDED_L;
             mpi_errno = mlock_sync_status(req);
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
             e = e->next;
         }
@@ -174,13 +172,11 @@ static int mlock_acquire_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
 
     if (mlock_granted_req != NULL) {
         mpi_errno = mlock_suspend_req(req);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
     else {
         mpi_errno = mlock_grant_req(req);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:
@@ -210,13 +206,11 @@ static int mlock_release_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
     CSPG_MLOCK_DBG_PRINT(" \t release lock (gid %s, %d)\n", gidstr, user_local_rank);
 
     mpi_errno = mlock_grant_next_req();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     rels_req->status = CSP_MLOCK_STATUS_UNSET;
     mpi_errno = mlock_sync_status(rels_req);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     free(rels_req);
     mlock_req_cnt--;
@@ -251,8 +245,7 @@ static int mlock_discard_cwp_handler(CSP_cwp_pkt_t * pkt, int user_local_rank)
 
     disc_req->status = CSP_MLOCK_STATUS_UNSET;
     mpi_errno = mlock_sync_status(disc_req);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     free(disc_req);
     mlock_req_cnt--;
@@ -290,8 +283,7 @@ int CSPG_mlock_release(void)
         }
 
         mpi_errno = mlock_grant_next_req();
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:

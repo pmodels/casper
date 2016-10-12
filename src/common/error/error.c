@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <mpi.h>
+#include "csp_util.h"
 #include "csp_error.h"
 
 static int CSP_error_classes[CSP_ERR_MAX];
@@ -34,21 +35,13 @@ int CSP_error_init(void)
     int i;
 
     for (i = 0; i < CSP_ERR_MAX; i++) {
-        mpi_errno = PMPI_Add_error_class(&CSP_error_classes[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Add_error_class(&CSP_error_classes[i]));
 
-        mpi_errno = PMPI_Add_error_code(CSP_error_classes[i], &CSP_error_code[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Add_error_code(CSP_error_classes[i], &CSP_error_code[i]));
 
-        mpi_errno = PMPI_Add_error_string(CSP_error_classes[i], CSP_error_string[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Add_error_string(CSP_error_classes[i], CSP_error_string[i]));
 
-        mpi_errno = PMPI_Add_error_string(CSP_error_code[i], CSP_error_string[i]);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Add_error_string(CSP_error_code[i], CSP_error_string[i]));
     }
 
   fn_exit:

@@ -20,8 +20,7 @@ static int fence_flush_all(CSPU_win_t * ug_win)
 
     /* Flush all ghosts to finish the sequence of locally issued RMA operations */
     mpi_errno = CSPU_win_global_flush_all(ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     for (i = 0; i < user_nprocs; i++) {
@@ -89,15 +88,12 @@ int MPI_Win_fence(int assert, MPI_Win win)
     /* Eliminate flush_all if user explicitly specifies no preceding RMA calls. */
     if ((assert & MPI_MODE_NOPRECEDE) == 0) {
         mpi_errno = fence_flush_all(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
     /* Always need sync to avoid instruction reordering of preceding load even if
      * user says no preceding store.*/
-    mpi_errno = PMPI_Win_sync(ug_win->global_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_sync(ug_win->global_win));
 
     /* Eliminate barrier when user specifies noprecede + nostore + noput.
      * In all other cases, barrier is still required. In no_precede fence, it
@@ -106,9 +102,7 @@ int MPI_Win_fence(int assert, MPI_Win win)
      * Only when user specifies noprecede + nostore + noput, which means everyone
      * is only doing load/get, it is safe to drop barrier. */
     if ((assert & MPI_MODE_NOPRECEDE & MPI_MODE_NOSTORE & MPI_MODE_NOPUT) == 0) {
-        mpi_errno = PMPI_Barrier(ug_win->user_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Barrier(ug_win->user_comm));
     }
 
 #ifdef CSP_ENABLE_LOCAL_RMA_OP_OPT

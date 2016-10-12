@@ -41,9 +41,7 @@ int MPI_Win_sync(MPI_Win win)
         }
 #endif
 
-        mpi_errno = PMPI_Win_sync(ug_win->global_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_sync(ug_win->global_win));
 
         CSP_DBG_PRINT(" win sync on %s single win 0x%x\n",
                       CSPU_WIN_GET_EPOCH_STAT_NAME(ug_win), ug_win->global_win);
@@ -59,9 +57,7 @@ int MPI_Win_sync(MPI_Win win)
         for (i = 0; i < user_nprocs; i++) {
             target = &ug_win->targets[i];
             if (target->epoch_stat == CSPU_TARGET_EPOCH_LOCK) {
-                mpi_errno = PMPI_Win_sync(target->ug_win);
-                if (mpi_errno != MPI_SUCCESS)
-                    goto fn_fail;
+                CSP_CALLMPI(JUMP, PMPI_Win_sync(target->ug_win));
 
                 CSP_DBG_PRINT(" win sync on %s target %d, win 0x%x\n",
                               CSPU_target_epoch_stat_name[target->epoch_stat], i, target->ug_win);

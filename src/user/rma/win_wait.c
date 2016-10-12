@@ -45,10 +45,9 @@ int CSPU_recv_pscw_complete_msg(int post_grp_size, CSPU_win_t * ug_win, int bloc
 
         /* If receive is not issued yet, issue now. Otherwise just wait. */
         if (new_issue) {
-            mpi_errno = PMPI_Irecv(&CSPU_pscw_wait_flg, 1, MPI_CHAR, origin_rank, CSPU_PSCW_CW_TAG,
-                                   ug_win->user_comm, &(ug_win->wait_reqs[remote_cnt]));
-            if (mpi_errno != MPI_SUCCESS)
-                goto fn_fail;
+            CSP_CALLMPI(JUMP, PMPI_Irecv(&CSPU_pscw_wait_flg, 1, MPI_CHAR, origin_rank,
+                                         CSPU_PSCW_CW_TAG, ug_win->user_comm,
+                                         &(ug_win->wait_reqs[remote_cnt])));
 
             CSP_DBG_PRINT("receive pscw complete msg from target %d \n", origin_rank);
         }
@@ -56,15 +55,11 @@ int CSPU_recv_pscw_complete_msg(int post_grp_size, CSPU_win_t * ug_win, int bloc
     }
 
     if (blocking) {
-        mpi_errno = PMPI_Waitall(remote_cnt, ug_win->wait_reqs, stats);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Waitall(remote_cnt, ug_win->wait_reqs, stats));
     }
     else {
         CSP_ASSERT(flag != NULL);
-        mpi_errno = PMPI_Testall(remote_cnt, ug_win->wait_reqs, flag, stats);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Testall(remote_cnt, ug_win->wait_reqs, flag, stats));
     }
 
     /* free requests only when all requests are complete. */
@@ -120,22 +115,17 @@ int MPI_Win_wait(MPI_Win win)
         return mpi_errno;
     }
 
-    mpi_errno = PMPI_Group_size(ug_win->post_group, &post_grp_size);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Group_size(ug_win->post_group, &post_grp_size));
     CSP_ASSERT(post_grp_size > 0);
 
     CSP_DBG_PRINT("Wait group 0x%x, size %d\n", ug_win->post_group, post_grp_size);
 
     /* Wait for the completion on all origin processes */
     mpi_errno = CSPU_recv_pscw_complete_msg(post_grp_size, ug_win, 1 /*blocking */ , NULL);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* NOTE: MPI implementation should do memory barrier in flush handler. */
-    mpi_errno = PMPI_Win_sync(ug_win->global_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_sync(ug_win->global_win));
 
     /* Reset exposure status.
      * All later wait/test will return immediately.*/

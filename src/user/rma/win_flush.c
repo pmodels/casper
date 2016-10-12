@@ -38,9 +38,7 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
     CSP_DBG_PRINT(" flush(ghost(%d), %s 0x%x), instead of target rank %d\n",
                   target_g_rank_in_ug, CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
 
-    mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, *win_ptr);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_flush(target_g_rank_in_ug, *win_ptr));
 #else
     /* RMA operations may be distributed to all ghosts, so we should
      * flush all ghosts on all windows. Consider flush does nothing if no
@@ -52,16 +50,13 @@ int CSPU_win_target_flush(int target_rank, CSPU_win_t * ug_win)
                       target_g_rank_in_ug, CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr,
                       target_rank);
 
-        mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, *win_ptr);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_flush(target_g_rank_in_ug, *win_ptr));
     }
 #endif /*end of CSP_ENABLE_RUNTIME_LOAD_OPT */
 
     if (user_rank == target_rank && ug_win->is_self_locked) {
         mpi_errno = CSPU_win_flush_self(ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:
@@ -119,13 +114,10 @@ int MPI_Win_flush(int target_rank, MPI_Win win)
 
     CSP_DBG_PRINT(" flush_all(%s 0x%x), instead of target rank %d\n",
                   CSPU_GET_WIN_TYPE(*win_ptr, ug_win), *win_ptr, target_rank);
-    mpi_errno = PMPI_Win_flush_all(*win_ptr);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Win_flush_all(*win_ptr));
 #else
     mpi_errno = CSPU_win_target_flush(target_rank, ug_win);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 #endif
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)

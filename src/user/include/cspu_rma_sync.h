@@ -49,21 +49,17 @@ static inline int CSPU_win_grant_local_lock(int target_rank, CSPU_win_t * ug_win
 
 #ifdef CSP_ENABLE_GRANT_LOCK_HIDDEN_BYTE
         CSP_GRANT_LOCK_DATATYPE buf[1];
-        mpi_errno = PMPI_Get(buf, 1, CSP_GRANT_LOCK_MPI_DATATYPE, target_g_rank_in_ug,
-                             ug_win->grant_lock_g_offset, 1, CSP_GRANT_LOCK_MPI_DATATYPE,
-                             ug_win->targets[target_rank].ug_win);
+        CSP_CALLMPI(JUMP, PMPI_Get(buf, 1, CSP_GRANT_LOCK_MPI_DATATYPE, target_g_rank_in_ug,
+                                   ug_win->grant_lock_g_offset, 1, CSP_GRANT_LOCK_MPI_DATATYPE,
+                                   ug_win->targets[target_rank].ug_win);
 #else
         /* Simply get 1 byte from start, it does not affect the result of other updates */
         char buf[1];
-        mpi_errno = PMPI_Get(buf, 1, MPI_CHAR, target_g_rank_in_ug, 0,
-                             1, MPI_CHAR, ug_win->targets[user_rank].ug_win);
+        CSP_CALLMPI(JUMP, PMPI_Get(buf, 1, MPI_CHAR, target_g_rank_in_ug, 0,
+                                   1, MPI_CHAR, ug_win->targets[user_rank].ug_win));
 #endif
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
 
-        mpi_errno = PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[target_rank].ug_win);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Win_flush(target_g_rank_in_ug, ug_win->targets[target_rank].ug_win));
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         ug_win->targets[target_rank].main_lock_stat = CSPU_MAIN_LOCK_GRANTED;
@@ -100,10 +96,8 @@ static inline int CSPU_win_lock_self(CSPU_win_t * ug_win)
     lock_win = target->ug_win;  /* only lock-exist mode calls this routine */
 
     CSP_DBG_PRINT(" lock self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, lock_win);
-    mpi_errno = PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->my_rank_in_ug_comm,
-                              MPI_MODE_NOCHECK, lock_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
+    CSP_CALLMPI(RETURN, PMPI_Win_lock(MPI_LOCK_SHARED, ug_win->my_rank_in_ug_comm,
+                                      MPI_MODE_NOCHECK, lock_win));
 #endif
 
     ug_win->is_self_locked = 1;
@@ -128,9 +122,7 @@ static inline int CSPU_win_unlock_self(CSPU_win_t * ug_win)
     lock_win = target->ug_win;  /* only lock-exist mode calls this routine */
 
     CSP_DBG_PRINT(" unlock self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, lock_win);
-    mpi_errno = PMPI_Win_unlock(ug_win->my_rank_in_ug_comm, lock_win);
-    if (mpi_errno != MPI_SUCCESS)
-        return mpi_errno;
+    CSP_CALLMPI(RETURN, PMPI_Win_unlock(ug_win->my_rank_in_ug_comm, lock_win));
 #endif
 
     ug_win->is_self_locked = 0;
@@ -157,7 +149,7 @@ static inline int CSPU_win_flush_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((unused)
     CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
-    mpi_errno = PMPI_Win_flush(ug_win->my_rank_in_ug_comm, *win_ptr);
+    CSP_CALLMPI(RETURN, PMPI_Win_flush(ug_win->my_rank_in_ug_comm, *win_ptr));
 #endif
     return mpi_errno;
 }
@@ -183,7 +175,7 @@ static inline int CSPU_win_flush_local_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((u
     CSP_ASSERT(win_ptr != NULL);
 
     CSP_DBG_PRINT(" flush_local self(%d, local win 0x%x)\n", ug_win->my_rank_in_ug_comm, *win_ptr);
-    mpi_errno = PMPI_Win_flush_local(ug_win->my_rank_in_ug_comm, *win_ptr);
+    CSP_CALLMPI(RETURN, PMPI_Win_flush_local(ug_win->my_rank_in_ug_comm, *win_ptr));
 #endif
     return mpi_errno;
 }

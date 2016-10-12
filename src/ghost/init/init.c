@@ -60,9 +60,7 @@ int CSPG_global_init(void)
     CSPG_mlock_init();
 
     /* Disable MPI automatic error messages. */
-    mpi_errno = PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
 
   fn_exit:
     return mpi_errno;

@@ -17,8 +17,7 @@ int CSPG_main(void)
 
     /* Keep polling progress until finalize done */
     mpi_errno = CSPG_cwp_do_progress();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     CSPG_DBG_PRINT(" main done\n");
 

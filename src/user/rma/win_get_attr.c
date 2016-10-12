@@ -33,7 +33,7 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag
         *flag = 1;
     }
     else {
-        mpi_errno = PMPI_Win_get_attr(win, win_keyval, attribute_val, flag);
+        CSP_CALLMPI(NOSTMT, PMPI_Win_get_attr(win, win_keyval, attribute_val, flag));
     }
 
     return mpi_errno;

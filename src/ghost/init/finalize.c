@@ -20,9 +20,7 @@ static int finalize_impl(void)
     CSPG_global_finalize();
 
     CSPG_DBG_PRINT(" PMPI_Finalize\n");
-    mpi_errno = PMPI_Finalize();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CALLMPI(JUMP, PMPI_Finalize());
 
     CSPG_cwp_terminate();
 
@@ -40,15 +38,11 @@ static int destroy_proc(void)
     /* common objects. */
     if (CSP_PROC.local_comm && CSP_PROC.local_comm != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_PROC.local_comm\n");
-        mpi_errno = PMPI_Comm_free(&CSP_PROC.local_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.local_comm));
     }
 
     if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL) {
-        mpi_errno = PMPI_Group_free(&CSP_PROC.wgroup);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Group_free(&CSP_PROC.wgroup));
     }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
@@ -57,9 +51,7 @@ static int destroy_proc(void)
     /* ghost-specific objects */
     if (CSP_PROC.ghost.g_local_comm && CSP_PROC.ghost.g_local_comm != MPI_COMM_NULL) {
         CSPG_DBG_PRINT(" free CSP_PROC.ghost.g_local_comm\n");
-        mpi_errno = PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm);
-        if (mpi_errno != MPI_SUCCESS)
-            goto fn_fail;
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm));
     }
 
     CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
@@ -103,12 +95,10 @@ int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_
 
     /* broadcast to all local ghost */
     mpi_errno = CSPG_cwp_bcast(pkt);
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = finalize_impl();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;
@@ -123,8 +113,7 @@ int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt CSP_ATTRIBUTE((unused)))
     int mpi_errno = MPI_SUCCESS;
 
     mpi_errno = finalize_impl();
-    if (mpi_errno != MPI_SUCCESS)
-        goto fn_fail;
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;
