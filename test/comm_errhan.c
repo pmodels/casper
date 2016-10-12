@@ -46,14 +46,15 @@ static MPI_Comm errhan_comm = MPI_COMM_NULL;
 #define debug_printf(str,...)
 #endif
 
-#define CHECK_COMM_ERR_FUNC(err_class, comm, fnc_stmt)  do {   \
-    int mpi_errno = MPI_SUCCESS;                               \
-    exp_err_class = err_class;                                 \
-    exp_comm = comm;                                           \
-    exp_comm_errhan_ncalls++;                                  \
-    mpi_errno = fnc_stmt;        /* execute */                 \
-    if (mpi_errno == MPI_SUCCESS) {  /* return error check */  \
-        err_printf("Error operation succeeded\n");             \
+#define CHECK_COMM_ERR_FUNC(err_class, ret_class, comm, fnc_stmt)  do {       \
+    int mpi_errno = MPI_SUCCESS;                                              \
+    exp_err_class = err_class;                                                \
+    exp_comm = comm;                                                          \
+    exp_comm_errhan_ncalls++;                                                 \
+    mpi_errno = fnc_stmt;        /* execute */                                \
+    if (ret_class != 0 && compare_err_class(ret_class, mpi_errno)) {          \
+        /* return error check */                                              \
+        err_printf("Return error class does not match\n");     \
         errs++;                                                \
     }                                                          \
     /* error handler check */                                  \
@@ -64,19 +65,28 @@ static MPI_Comm errhan_comm = MPI_COMM_NULL;
     }                                                          \
 } while (0)
 
-
-static void comm_errhan_fnc(MPI_Comm * errcomm, int *err, ...)
+static int compare_err_class(int comp_err_class, int mpi_errno)
 {
     int errclass = 0, strlen = 0;
     char errstr[MPI_MAX_ERROR_STRING];
 
-    MPI_Error_class(*err, &errclass);
-    MPI_Error_string(*err, errstr, &strlen);
+    MPI_Error_class(mpi_errno, &errclass);
+    MPI_Error_string(mpi_errno, errstr, &strlen);
 
-    if (exp_err_class != 0 && errclass != exp_err_class) {
+    if (comp_err_class != errclass) {
+        err_printf("Unexpected error class=%d (%s), expected=%d\n",
+                   errclass, errstr, comp_err_class);
+        return 1;
+    }
+
+    return 0;
+}
+
+static void comm_errhan_fnc(MPI_Comm * errcomm, int *err, ...)
+{
+    if (exp_err_class != 0 && compare_err_class(exp_err_class, *err) != 0) {
         errs++;
-        err_printf("In %s: unexpected error class=%d (%s), expected=%d\n",
-                   __FUNCTION__, errclass, errstr, exp_err_class);
+        err_printf("In %s: error class does not match\n", __FUNCTION__);
     }
 
     if (*errcomm != exp_comm) {
@@ -94,15 +104,24 @@ static void check_non_rma(void)
     int sbuf[2];
 
     debug_printf("checking Internal Error with info_create(NULL)...\n");
-    CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , MPI_COMM_WORLD, (MPI_Info_create(NULL)));
+    CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , 0 /* do no check return code */ ,
+                        MPI_COMM_WORLD, (MPI_Info_create(NULL)));
 
     debug_printf("checking MPI_ERR_RANK with send(MPI_COMM_WORLD)...\n");
-    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_COMM_WORLD,
+    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, MPI_COMM_WORLD,
                         (MPI_Send(sbuf, 2, MPI_INT, -2, 0, MPI_COMM_WORLD)));
 
     debug_printf("checking MPI_ERR_RANK with send(errhan_comm)...\n");
-    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, errhan_comm,
+    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, errhan_comm,
                         (MPI_Send(sbuf, 2, MPI_INT, -2, 0, errhan_comm)));
+
+    debug_printf("checking MPI_ERR_OTHER with call_errhandler(MPI_COMM_WORLD)...\n");
+    CHECK_COMM_ERR_FUNC(MPI_ERR_OTHER, MPI_SUCCESS, MPI_COMM_WORLD,
+                        (MPI_Comm_call_errhandler(MPI_COMM_WORLD, MPI_ERR_OTHER)));
+
+    debug_printf("checking MPI_ERR_OTHER with call_errhandler(errhan_comm)...\n");
+    CHECK_COMM_ERR_FUNC(MPI_ERR_OTHER, MPI_SUCCESS, errhan_comm,
+                        (MPI_Comm_call_errhandler(errhan_comm, MPI_ERR_OTHER)));
 }
 
 static void check_rma(void)
@@ -114,40 +133,44 @@ static void check_rma(void)
     MPI_Win win = MPI_WIN_NULL;
 
     debug_printf("checking MPI_ERR_SIZE with win_allocate(MPI_COMM_WORLD)...\n");
-    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, MPI_COMM_WORLD,
+    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, MPI_ERR_SIZE, MPI_COMM_WORLD,
                         (MPI_Win_allocate(-1, disp, MPI_INFO_NULL,
                                           MPI_COMM_WORLD, &base_ptr, &win)));
 
     debug_printf("checking MPI_ERR_SIZE with win_create(MPI_COMM_WORLD)...\n");
-    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, MPI_COMM_WORLD,
+    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, MPI_ERR_SIZE, MPI_COMM_WORLD,
                         (MPI_Win_create(buf, -1, disp, MPI_INFO_NULL, MPI_COMM_WORLD, &win)));
 
     debug_printf("checking MPI_ERR_SIZE with win_allocate(errhan_comm)...\n");
-    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, errhan_comm,
+    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, MPI_ERR_SIZE, errhan_comm,
                         (MPI_Win_allocate(-1, disp, MPI_INFO_NULL, errhan_comm, &base_ptr, &win)));
 
     debug_printf("checking MPI_ERR_SIZE with win_create(errhan_comm)...\n");
-    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, errhan_comm,
+    CHECK_COMM_ERR_FUNC(MPI_ERR_SIZE, MPI_ERR_SIZE, errhan_comm,
                         (MPI_Win_create(buf, -1, disp, MPI_INFO_NULL, errhan_comm, &win)));
 
     debug_printf("checking Internal Error with win_allocate(MPI_COMM_NULL)...\n");
-    CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , MPI_COMM_WORLD,
-                        (MPI_Win_allocate
-                         (size, disp, MPI_INFO_NULL, MPI_COMM_NULL, &base_ptr, &win)));
+    CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , 0 /* do no check return code */ ,
+                        MPI_COMM_WORLD, (MPI_Win_allocate
+                                         (size, disp, MPI_INFO_NULL, MPI_COMM_NULL, &base_ptr,
+                                          &win)));
 
     debug_printf("checking Internal Error with win_create(MPI_COMM_NULL)...\n");
-    CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , MPI_COMM_WORLD,
-                        (MPI_Win_create(buf, size, disp, MPI_INFO_NULL, MPI_COMM_NULL, &win)));
+    CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , 0 /* do no check return code */ ,
+                        MPI_COMM_WORLD, (MPI_Win_create
+                                         (buf, size, disp, MPI_INFO_NULL, MPI_COMM_NULL, &win)));
 
     debug_printf("checking MPI_ERR_RANK in RMA SYNC with window over MPI_COMM_WORLD...\n");
     MPI_Win_allocate(size, disp, MPI_INFO_NULL, MPI_COMM_WORLD, &base_ptr, &win);
-    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_COMM_WORLD, (MPI_Win_lock(MPI_LOCK_SHARED, -2, 0, win)));
+    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, MPI_COMM_WORLD,
+                        (MPI_Win_lock(MPI_LOCK_SHARED, -2, 0, win)));
     MPI_Win_free(&win);
 
     debug_printf("checking MPI_ERR_RANK in RMA SYNC with window over errhan_comm "
                  "(still error on MPI_COMM_WORLD)...\n");
     MPI_Win_allocate(size, disp, MPI_INFO_NULL, errhan_comm, &base_ptr, &win);
-    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_COMM_WORLD, (MPI_Win_lock(MPI_LOCK_SHARED, -2, 0, win)));
+    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, MPI_COMM_WORLD,
+                        (MPI_Win_lock(MPI_LOCK_SHARED, -2, 0, win)));
     MPI_Win_free(&win);
 }
 
