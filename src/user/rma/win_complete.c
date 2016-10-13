@@ -64,6 +64,8 @@ int MPI_Win_complete(MPI_Win win)
     int start_grp_size = 0;
     int i;
 
+    CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {

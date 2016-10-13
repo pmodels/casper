@@ -36,7 +36,7 @@ static inline int CSP_thread_cs_destroy(CSP_thread_cs_t * cs_ptr)
     return err;
 }
 
-#define CSP_THREAD_CS_LOCAL_CTX_DCL
+#define CSP_THREAD_CS_LOCAL_CTX_DCL()
 #define CSP_THREAD_CS_ENTER(cs_ptr)  pthread_mutex_lock(&(cs_ptr)->mutex)
 #define CSP_THREAD_CS_EXIT(cs_ptr)  pthread_mutex_unlock(&(cs_ptr)->mutex)
 #define CSP_THREAD_CS_IS_INITIALIZED(cs_ptr)  ((cs_ptr)->is_initialied == 1)
@@ -68,7 +68,7 @@ static inline int CSP_thread_cs_destroy(CSP_thread_cs_t * cs_ptr)
     return err;
 }
 
-#define CSP_THREAD_CS_LOCAL_CTX_DCL  zm_mcs_qnode_t csp_thread_cs_local_ctx
+#define CSP_THREAD_CS_LOCAL_CTX_DCL()  zm_mcs_qnode_t csp_thread_cs_local_ctx
 #define CSP_THREAD_CS_ENTER(cs_ptr)  zm_mcs_acquire(&(cs_ptr)->lock, &csp_thread_cs_local_ctx)
 #define CSP_THREAD_CS_EXIT(cs_ptr)  zm_mcs_release(&(cs_ptr)->lock, &csp_thread_cs_local_ctx)
 #define CSP_THREAD_CS_IS_INITIALIZED(cs_ptr)  ((cs_ptr)->is_initialied == 1)

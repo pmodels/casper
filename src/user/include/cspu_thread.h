@@ -35,10 +35,11 @@
     }                                                       \
 } while (0)
 
+#define CSPU_THREAD_OBJ_CS_LOCAL_DCL CSP_THREAD_CS_LOCAL_CTX_DCL
+
 #define CSPU_THREAD_ENTER_OBJ_CS(obj_ptr)  do {                     \
     if (CSP_PROC.user.is_thread_multiple) {                         \
         int obj_cs_enter_err = 0;                                   \
-        CSP_THREAD_CS_LOCAL_CTX_DCL;                                \
         obj_cs_enter_err = CSP_THREAD_CS_ENTER(&(obj_ptr)->cs);     \
         CSP_ASSERT(obj_cs_enter_err == 0);                          \
     }                                                               \
@@ -47,7 +48,6 @@
 #define CSPU_THREAD_EXIT_OBJ_CS(obj_ptr)  do {                      \
     if (CSP_PROC.user.is_thread_multiple) {                         \
         int obj_cs_exit_err = 0;                                    \
-        CSP_THREAD_CS_LOCAL_CTX_DCL;                                \
         obj_cs_exit_err = CSP_THREAD_CS_EXIT(&(obj_ptr)->cs);       \
         CSP_ASSERT(obj_cs_exit_err == 0);                           \
     }                                                               \
@@ -57,6 +57,7 @@
 
 #define CSPU_THREAD_INIT_OBJ_CS(obj_ptr)
 #define CSPU_THREAD_DESTROY_OBJ_CS(obj_ptr)
+#define CSPU_THREAD_OBJ_CS_LOCAL_DCL()
 #define CSPU_THREAD_ENTER_OBJ_CS(obj_ptr)
 #define CSPU_THREAD_EXIT_OBJ_CS(obj_ptr)
 #endif

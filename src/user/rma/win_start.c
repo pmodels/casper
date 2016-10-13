@@ -95,6 +95,8 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     int i;
     int user_rank;
 
+    CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {

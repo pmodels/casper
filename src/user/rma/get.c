@@ -122,6 +122,7 @@ int MPI_Get(void *origin_addr, int origin_count,
 
     if (ug_win) {
         /* casper window */
+        CSPU_THREAD_OBJ_CS_LOCAL_DCL();
         CSPU_THREAD_ENTER_OBJ_CS(ug_win);
         mpi_errno = get_impl(origin_addr, origin_count, origin_datatype,
                              target_rank, target_disp, target_count, target_datatype, ug_win);

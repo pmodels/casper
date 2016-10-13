@@ -16,6 +16,8 @@ int MPI_Win_lock_all(int assert, MPI_Win win)
     int user_nprocs;
     int i;
 
+    CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {

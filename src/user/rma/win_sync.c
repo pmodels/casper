@@ -15,6 +15,8 @@ int MPI_Win_sync(MPI_Win win)
     int user_rank = 0, user_nprocs = 0;
     int i;
 
+    CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {

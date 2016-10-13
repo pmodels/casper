@@ -15,6 +15,8 @@ int MPI_Win_test(MPI_Win win, int *flag)
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
+    CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
 
     if (ug_win == NULL) {

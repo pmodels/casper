@@ -76,6 +76,8 @@ int MPI_Win_flush_local(int target_rank, MPI_Win win)
     MPI_Win *win_ptr CSP_ATTRIBUTE((unused)) = NULL;
     int mpi_errno = MPI_SUCCESS;
 
+    CSPU_THREAD_OBJ_CS_LOCAL_DCL();
+
     CSPU_fetch_ug_win_from_cache(win, &ug_win);
     if (ug_win == NULL) {
         /* normal window */

@@ -117,6 +117,7 @@ static int mlock_generate_gid(MPI_Comm user_root_comm, CSP_mlock_gid_t * group_i
         group_id->rank = CSP_PROC.wrank;
 
 #if defined(CSP_ENABLE_THREAD_SAFE)
+        CSPU_THREAD_OBJ_CS_LOCAL_DCL();
         CSPU_THREAD_ENTER_OBJ_CS(&mlock_seqno_gen);
         group_id->seqno = mlock_seqno_gen.no++;
         CSPU_THREAD_EXIT_OBJ_CS(&mlock_seqno_gen);
