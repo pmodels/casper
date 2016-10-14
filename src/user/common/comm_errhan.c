@@ -173,9 +173,9 @@ int CSPU_comm_errhan_destroy(void)
      * release each at errhandler_free). */
     nrecord = HASH_COUNT((comm_errhan_hash.record));
     if (nrecord > 0) {
-        CSP_msg_print(CSP_MSG_WARN, "%d comm:errhand record are not freed !\n", nrecord);
-
         comm_errhan_hash_record_t *record, *tmp;
+
+        CSP_msg_print(CSP_MSG_WARN, "%d comm:errhand record are not freed !\n", nrecord);
         HASH_ITER(hh, (comm_errhan_hash.record), record, tmp) {
             HASH_DEL((comm_errhan_hash.record), record);
             free(record);
@@ -203,12 +203,12 @@ int CSPU_comm_errhan_destroy(void)
  * - If not, do error handling here . */
 void CSPU_comm_errhan_wrapper_fnc(MPI_Comm * errcomm, int *errcode, ...)
 {
-    int set_flag = 0;
+    int setflag = 0;
     va_list list;
 
     /* handle error here only when no external error object is set. */
-    CSPU_ERRHAN_CHECK_EXTOBJ(set_flag);
-    if (!set_flag) {
+    CSPU_ERRHAN_CHECK_EXTOBJ(&setflag);
+    if (!setflag) {
         va_start(list, errcode);
         comm_errhan_wrapper_impl(*errcomm, errcode, list);
         va_end(list);
@@ -323,7 +323,7 @@ int CSPU_comm_call_errhandler(MPI_Comm expcomm, int *errcode)
     int mpi_errno = MPI_SUCCESS;
 
     /* ensure external object is reset, thus no infinite recursion risk. */
-    CSPU_ERRHAN_CHECK_EXTOBJ(setflag);
+    CSPU_ERRHAN_CHECK_EXTOBJ(&setflag);
     CSP_ASSERT(setflag == 0);
 
     mpi_errno = comm_errhan_wrapper_impl(expcomm, errcode);

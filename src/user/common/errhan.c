@@ -28,24 +28,34 @@ typedef struct CSPU_errhan_hash {
 } CSPU_errhan_hash_t;
 
 static CSPU_errhan_hash_t errhan_fnc_hash;
-CSPU_errhan_extobj_t CSPU_errhan_extobj;        /*TODO : make thread safe */
+CSPU_TLS_VAR_DCL(CSPU_errhan_extflag_t, CSPU_errhan_extflag);
 
 /* ======================================================================
  * Common initialization and destroy.
  * ====================================================================== */
 
-static inline void errhan_init_extobj(void)
+static int errhan_init_extflag(void)
 {
-    CSPU_errhan_extobj.type = CSPU_ERRHAN_EXT_UNSET;
+    int mpi_errno = MPI_SUCCESS;
+
+    CSPU_TLS_VAR_INIT(CSPU_ERRHAN_EXT_UNSET, CSPU_errhan_extflag);
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
 
-static inline void errhan_destroy_extobj(void)
+static int errhan_destroy_extflag(void)
 {
-    if (CSPU_errhan_extobj.type != CSPU_ERRHAN_EXT_UNSET) {
-        CSP_msg_print(CSP_MSG_WARN, "External error object is not reset yet, type = %d(%s) !\n",
-                      CSPU_errhan_extobj.type,
-                      CSPU_errhan_extobj.type == CSPU_ERRHAN_EXT_WIN ? "win" : "comm");
-    }
+    int mpi_errno = MPI_SUCCESS;
+
+    CSPU_TLS_VAR_DESTROY(CSPU_errhan_extflag);
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
 
 int CSPU_errhan_init(void)
@@ -54,7 +64,8 @@ int CSPU_errhan_init(void)
 
     CSPU_THREAD_INIT_OBJ_CS(&errhan_fnc_hash);
 
-    errhan_init_extobj();
+    mpi_errno = errhan_init_extflag();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_comm_errhan_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -80,16 +91,17 @@ int CSPU_errhan_destroy(void)
     mpi_errno = CSPU_comm_errhan_destroy();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    errhan_destroy_extobj();
+    mpi_errno = errhan_destroy_extflag();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     CSPU_THREAD_DESTROY_OBJ_CS(&errhan_fnc_hash);
     /* Release remaining hash records (incorrect user code, user should always
      * release each at errhandler_free). */
     nrecord = HASH_COUNT((errhan_fnc_hash.record));
     if (nrecord > 0) {
-        CSP_msg_print(CSP_MSG_WARN, "%d errhandler record are not freed !\n", nrecord);
-
         CSPU_errhan_hash_record_t *record, *tmp;
+
+        CSP_msg_print(CSP_MSG_WARN, "%d errhandler record are not freed !\n", nrecord);
         HASH_ITER(hh, (errhan_fnc_hash.record), record, tmp) {
             HASH_DEL((errhan_fnc_hash.record), record);
             free(record);
