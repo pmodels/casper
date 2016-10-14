@@ -16,13 +16,9 @@ typedef enum {
     CSPU_ERRHAN_EXT_UNSET,
     CSPU_ERRHAN_EXT_COMM,
     CSPU_ERRHAN_EXT_WIN,
-} CSPU_errhan_extobj_type_t;
+} CSPU_errhan_extflag_t;
 
-typedef struct CSPU_errhan_extobj {
-    CSPU_errhan_extobj_type_t type;
-} CSPU_errhan_extobj_t;
-
-extern CSPU_errhan_extobj_t CSPU_errhan_extobj;
+extern CSPU_TLS_VAR_DCL(CSPU_errhan_extflag_t, CSPU_errhan_extflag);
 
 extern int CSPU_errhan_init(void);
 extern int CSPU_errhan_destroy(void);
@@ -65,22 +61,24 @@ extern int CSPU_win_call_errhandler(MPI_Win expwin, int *errcode);
 } while (0)
 
 /* External error object setting (used in every RMA call) */
-#define CSPU_ERRHAN_EXTOBJ_LOCAL_DCL()
+#define CSPU_ERRHAN_EXTOBJ_LOCAL_DCL() CSPU_TLS_VCOPY_LOCAL_DCL(CSPU_errhan_extflag_t, errhan_extflag)
 
-#define CSPU_WIN_ERRHAN_SET_EXTOBJ() do {               \
-    CSPU_errhan_extobj.type = CSPU_ERRHAN_EXT_WIN;      \
-} while (0)
+#define CSPU_WIN_ERRHAN_SET_EXTOBJ()                              \
+    CSPU_TLS_VCOPY_SET(errhan_extflag, CSPU_errhan_extflag_t,     \
+                       CSPU_ERRHAN_EXT_WIN,  CSPU_errhan_extflag)
 
-#define CSPU_COMM_ERRHAN_SET_EXTOBJ() do {              \
-    CSPU_errhan_extobj.type = CSPU_ERRHAN_EXT_COMM;     \
-} while (0)
+#define CSPU_COMM_ERRHAN_SET_EXTOBJ()                              \
+    CSPU_TLS_VCOPY_SET(errhan_extflag, CSPU_errhan_extflag_t,      \
+                       CSPU_ERRHAN_EXT_COMM, CSPU_errhan_extflag);
 
-#define CSPU_ERRHAN_RESET_EXTOBJ() do {                 \
-    CSPU_errhan_extobj.type = CSPU_ERRHAN_EXT_UNSET;    \
-} while (0)
+#define CSPU_ERRHAN_RESET_EXTOBJ()                                \
+    CSPU_TLS_VCOPY_RESET(CSPU_errhan_extflag_t,                   \
+                         CSPU_ERRHAN_EXT_UNSET, CSPU_errhan_extflag)
 
-#define CSPU_ERRHAN_CHECK_EXTOBJ(setflag) do {                      \
-    setflag = (CSPU_errhan_extobj.type != CSPU_ERRHAN_EXT_UNSET);   \
+#define CSPU_ERRHAN_CHECK_EXTOBJ(setflag_ptr) do {                            \
+    CSPU_errhan_extflag_t extflag = CSPU_ERRHAN_EXT_UNSET;                    \
+    CSPU_TLS_VCOPY_GET(CSPU_errhan_extflag_t, CSPU_errhan_extflag, &extflag); \
+    *(setflag_ptr) = (extflag != CSPU_ERRHAN_EXT_UNSET);                      \
 } while (0)
 
 #define CSPU_COMM_ERRHANLDING(comm, errcode_ptr) CSPU_comm_call_errhandler(comm, errcode_ptr)

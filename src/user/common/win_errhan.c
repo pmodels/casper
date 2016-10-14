@@ -119,9 +119,9 @@ int CSPU_win_errhan_destroy(void)
      * release each at errhandler_free). */
     nrecord = HASH_COUNT((win_errhan_hash.record));
     if (nrecord > 0) {
-        CSP_msg_print(CSP_MSG_WARN, "%d win:errhand record are not freed !\n", nrecord);
-
         win_errhan_hash_record_t *record, *tmp;
+
+        CSP_msg_print(CSP_MSG_WARN, "%d win:errhand record are not freed !\n", nrecord);
         HASH_ITER(hh, (win_errhan_hash.record), record, tmp) {
             HASH_DEL((win_errhan_hash.record), record);
             free(record);
@@ -200,7 +200,7 @@ int CSPU_win_call_errhandler(MPI_Win expwin, int *errcode)
     int mpi_errno = MPI_SUCCESS;
 
     /* ensure external object is reset, thus no infinite recursion risk. */
-    CSPU_ERRHAN_CHECK_EXTOBJ(setflag);
+    CSPU_ERRHAN_CHECK_EXTOBJ(&setflag);
     CSP_ASSERT(setflag == 0);
 
     win_errhan_hash_get(expwin, &handler, &fnc);

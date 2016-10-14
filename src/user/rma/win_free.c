@@ -115,8 +115,8 @@ int CSPU_win_release(CSPU_win_t * ug_win)
 
     /* Any error happened at later MPI calls will be handled directly
      * in original user handler (or default COMM_WORLD's).*/
-    CSPU_ERRHAN_RESET_EXTOBJ();
     CSPU_win_errhan_reset(ug_win->win);
+    CSPU_ERRHAN_RESET_EXTOBJ();
 
     if (ug_win->win && ug_win->win != MPI_WIN_NULL) {
         CSP_DBG_PRINT("\t free user window\n");
