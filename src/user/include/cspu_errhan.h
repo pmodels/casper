@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSPU_ERRHAN_H_
-#define CSPU_ERRHAN_H_
+#ifndef CSPU_ERRHAN_H_INCLUDED
+#define CSPU_ERRHAN_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,4 +85,4 @@ extern int CSPU_win_call_errhandler(MPI_Win expwin, int *errcode);
 #define CSPU_WIN_ERRHANLDING(win, errcode_ptr) CSPU_win_call_errhandler(win, errcode_ptr)
 
 
-#endif /* CSPU_ERRHAN_H_ */
+#endif /* CSPU_ERRHAN_H_INCLUDED */

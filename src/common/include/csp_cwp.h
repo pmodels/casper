@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_CWP_H_
-#define CSP_CWP_H_
+#ifndef CSP_CWP_H_INCLUDED
+#define CSP_CWP_H_INCLUDED
 
 #include "csp.h"
 #include "csp_mlock.h"
@@ -83,4 +83,4 @@ static inline void CSP_cwp_init_pkt(CSP_cwp_t cmd_type, CSP_cwp_pkt_t * pkt)
     pkt->cmd_type = cmd_type;
 }
 
-#endif /* CSP_CWP_H_ */
+#endif /* CSP_CWP_H_INCLUDED */

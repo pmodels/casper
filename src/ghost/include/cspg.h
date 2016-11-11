@@ -4,8 +4,8 @@
  *     See COPYRIGHT in top-level directory.
  */
 
-#ifndef CSPG_H_
-#define CSPG_H_
+#ifndef CSPG_H_INCLUDED
+#define CSPG_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,4 +99,4 @@ extern void CSPG_mlock_init(void);
 extern void CSPG_mlock_destory(void);
 extern int CSPG_mlock_release(void);
 
-#endif /* CSPG_H_ */
+#endif /* CSPG_H_INCLUDED */

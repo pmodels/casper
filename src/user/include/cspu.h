@@ -3,8 +3,8 @@
  * (C) 2015 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSPU_H_
-#define CSPU_H_
+#ifndef CSPU_H_INCLUDED
+#define CSPU_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -502,4 +502,4 @@ extern int CSPU_mlock_destroy(void);
 extern int CSPU_win_bind_ghosts(CSPU_win_t * ug_win);
 extern int CSPU_win_release(CSPU_win_t * ug_win);
 
-#endif /* CSPU_H_ */
+#endif /* CSPU_H_INCLUDED */

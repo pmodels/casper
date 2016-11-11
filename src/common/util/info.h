@@ -3,8 +3,8 @@
  * (C) 2015 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_INFO_H_
-#define CSP_INFO_H_
+#ifndef INFO_H_INCLUDED
+#define INFO_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,4 +20,4 @@ typedef struct CSP_info_keyval {
 int CSP_info_deserialize(MPI_Info info, CSP_info_keyval_t ** keyvals, int *npairs);
 int CSP_info_serialize(CSP_info_keyval_t * keyvals, int npairs, MPI_Info * info);
 
-#endif /* CSP_INFO_H_ */
+#endif /* INFO_H_INCLUDED */

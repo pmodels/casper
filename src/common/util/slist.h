@@ -3,8 +3,8 @@
  * (C) 2015 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_SLIST_H_
-#define CSP_SLIST_H_
+#ifndef SLIST_H_INCLUDED
+#define SLIST_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,4 +48,4 @@ extern void *CSP_slist_dequeue(CSP_slist_t * slist);
 extern void *CSP_slist_remove(void *search_ubuf, CSP_slist_t * slist);
 extern int CSP_slist_insert(void *buf, CSP_slist_t * slist);
 
-#endif /* CSP_SLIST_H_ */
+#endif /* SLIST_H_INCLUDED */

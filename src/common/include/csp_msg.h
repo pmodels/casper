@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_MSG_H_
-#define CSP_MSG_H_
+#ifndef CSP_MSG_H_INCLUDED
+#define CSP_MSG_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,4 +30,4 @@ typedef enum {
 extern void CSP_msg_init(CSP_msg_verbose_t vbs);
 extern void CSP_msg_print(CSP_msg_verbose_t vbs, const char format[], ...);
 
-#endif /* CSP_MSG_H_ */
+#endif /* CSP_MSG_H_INCLUDED */

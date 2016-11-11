@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_ERROR_H_
-#define CSP_ERROR_H_
+#ifndef CSP_ERROR_H_INCLUDED
+#define CSP_ERROR_H_INCLUDED
 
 /* Define CASPER errors that cannot match any MPI predefined error.
  * Any error that matches an MPI predefined error, should always return
@@ -22,4 +22,4 @@ typedef enum {
 extern int CSP_get_error_code(CSP_error_t err_type);
 extern int CSP_error_init(void);
 
-#endif /* CSP_ERROR_H_ */
+#endif /* CSP_ERROR_H_INCLUDED */

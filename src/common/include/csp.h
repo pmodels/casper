@@ -4,8 +4,8 @@
  *     See COPYRIGHT in top-level directory.
  */
 
-#ifndef CSP_H_
-#define CSP_H_
+#ifndef CSP_H_INCLUDED
+#define CSP_H_INCLUDED
 
 /* This header file defines Casper structures/function prototypes used on
  * both ghost side and user side. */
@@ -233,4 +233,4 @@ extern int CSPG_main(void);
 extern int CSPU_global_finalize(void);
 extern int CSPG_global_finalize(void);
 
-#endif /* CSP_H_ */
+#endif /* CSP_H_INCLUDED */

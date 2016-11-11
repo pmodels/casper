@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSP_MLOCK_H_
-#define CSP_MLOCK_H_
+#ifndef CSP_MLOCK_H_INCLUDED
+#define CSP_MLOCK_H_INCLUDED
 
 #include <stdio.h>
 
@@ -39,4 +39,4 @@ static inline void CSP_mlock_gid_to_str(CSP_mlock_gid_t gid, char *str)
 #endif
 }
 
-#endif /* CSP_MLOCK_H_ */
+#endif /* CSP_MLOCK_H_INCLUDED */
