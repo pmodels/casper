@@ -11,3 +11,8 @@ include_HEADERS = include/casper.h
 libcasper_la_SOURCES =
 
 include src/Makefile.mk
+
+DIST_SUBDIRS = test
+
+check:
+	(cd test && make testing)

@@ -60,4 +60,5 @@ getacc_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
 
 testing:
 	./runtest 
-	
+
+DIST_SUBDIRS = perf
