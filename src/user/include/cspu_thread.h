@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSPU_THREAD_H_
-#define CSPU_THREAD_H_
+#ifndef CSPU_THREAD_H_INCLUDED
+#define CSPU_THREAD_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -131,4 +131,4 @@
 /* End of TLS variable MACROs with undefined CSP_ENABLE_THREAD_SAFE */
 #endif
 
-#endif /* CSPU_THREAD_H_ */
+#endif /* CSPU_THREAD_H_INCLUDED */

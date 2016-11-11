@@ -4,8 +4,8 @@
  *     See COPYRIGHT in top-level directory.
  */
 
-#ifndef CSP_THREAD_H_
-#define CSP_THREAD_H_
+#ifndef CSP_THREAD_H_INCLUDED
+#define CSP_THREAD_H_INCLUDED
 
 #include <pthread.h>
 
@@ -298,4 +298,4 @@ do {                                                                    \
 /* End of undefined CSP_TLS_SPECIFIER */
 #endif
 
-#endif /* CSP_THREAD_H_ */
+#endif /* CSP_THREAD_H_INCLUDED */

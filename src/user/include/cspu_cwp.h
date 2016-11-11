@@ -3,8 +3,8 @@
  * (C) 2016 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSPU_CWP_H_
-#define CSPU_CWP_H_
+#ifndef CSPU_CWP_H_INCLUDED
+#define CSPU_CWP_H_INCLUDED
 
 /* Command wire protocol (CWP) component on user processes */
 
@@ -31,4 +31,4 @@ static inline int CSPU_cwp_issue(CSP_cwp_pkt_t * pkt)
     return mpi_errno;
 }
 
-#endif /* CSPU_CWP_H_ */
+#endif /* CSPU_CWP_H_INCLUDED */

@@ -3,8 +3,8 @@
  * (C) 2015 by Argonne National Laboratory.
  *     See COPYRIGHT in top-level directory.
  */
-#ifndef CSPU_RMA_SYNC_H_
-#define CSPU_RMA_SYNC_H_
+#ifndef CSPU_RMA_SYNC_H_INCLUDED
+#define CSPU_RMA_SYNC_H_INCLUDED
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -180,4 +180,4 @@ static inline int CSPU_win_flush_local_self(CSPU_win_t * ug_win CSP_ATTRIBUTE((u
     return mpi_errno;
 }
 
-#endif /* CSPU_RMA_SYNC_H_ */
+#endif /* CSPU_RMA_SYNC_H_INCLUDED */

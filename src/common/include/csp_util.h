@@ -4,8 +4,8 @@
  *     See COPYRIGHT in top-level directory.
  */
 
-#ifndef CSP_UTIL_H_
-#define CSP_UTIL_H_
+#ifndef CSP_UTIL_H_INCLUDED
+#define CSP_UTIL_H_INCLUDED
 
 /* This header file defines generic MACROs both ghost side and user side. */
 
@@ -124,4 +124,4 @@ static inline void *CSP_calloc(int n, size_t size)
 #endif
 #include "uthash.h"
 
-#endif /* CSP_UTIL_H_ */
+#endif /* CSP_UTIL_H_INCLUDED */
