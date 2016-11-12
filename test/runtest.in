@@ -8,14 +8,14 @@ path=$(pwd)
 # - mpiexec command
 test_mpiexec="mpiexec -np"
 
-# - test mode (s: single|b: batch)
-#   single: test user specified setting (np in MPIEXEC, ng in NG or default 1)
-#   batch: test multiple predefined sets of np & ng
-test_mode=s
+# - test mode (manual|auto)
+#   manual|m: test user specified setting (np in MPIEXEC, ng in NG or default 1)
+#   auto|a:   test multiple predefined sets of np & ng
+test_mode=m
 
-# - number of ghost processes (only used in single test mode)
+# - number of ghost processes (only used in manual test mode)
 test_ng=1
-# - number of processes (only used in single test mode)
+# - number of processes (only used in manual test mode)
 test_np=4
 
 function print_usage()
@@ -24,14 +24,14 @@ function print_usage()
     echo "  MPIEXEC=<execution command>"
     echo "  NP=<number of processes including both user and ghost processes, default 4>"
     echo "  NG=<number of ghost processes, default 1>"
-    echo "  MODE=<testing mode, value batch|b|single|s, default s>"
-    echo "      BATCH mode (batch|b):   only MPIEXEC is valid input, NP and NG are ignored;"
-    echo "      SINGLE mode(single|s):  MPIEXEC, NP, NG are valid input"
+    echo "  MODE=<testing mode, value auto|a|manual|m, default m>"
+    echo "      AUTO mode (auto|a):   only MPIEXEC is valid input, NP and NG are ignored;"
+    echo "      MANUAL mode(manual|m):  MPIEXEC, NP, NG are valid input"
     echo "  Example 1: MPIEXEC=\"mpiexec -ppn 2 -np\" NP=4 NG=1,
             executes all tests on two nodes with 1 user process and 1 ghost process on each node"
     echo "  Example 2: MPIEXEC=\"srun -N 4 -n\" NP=8 NG=1 (on Cray supercomputer),
             executes all tests on four nodes with 1 user process and 1 ghost process on each node"
-    echo "  Example 3: MPIEXEC=\"mpiexec -ppn 2 -np\" MODE=b,
+    echo "  Example 3: MPIEXEC=\"mpiexec -ppn 2 -np\" MODE=auto,
             executes all tests on two nodes, with predefined sets of NP and NG."
 }
 
@@ -50,14 +50,14 @@ fi
 
 if [ "x$MODE" != "x" ]; then
     case $MODE in
-        b | batch )     test_mode=b
+        a | auto )     test_mode=a
                         ;;
-        s | single )    test_mode=s
+        m | manual )    test_mode=m
                         ;;
     esac
 fi
 
-if [ "$test_mode" = "s" ]; then
+if [ "$test_mode" = "m" ]; then
     if [ "x$NP" != "x" ]; then
         # overwrite mode if input is valid
         if [ "$NP" -ge "2" ]; then
@@ -160,13 +160,13 @@ function exec_all_programs()
 ##########################################################
 # execute test programs
 
-if [ "$test_mode" = "b" ];then
+if [ "$test_mode" = "a" ];then
     # User only provides MPIEXEC (execution command including all
     # parameters in front of <np>)
     # Example: MPIEXEC="mpiexec -f hostfile -np", or "srun -N 2 -n"
 
     echo "#############################"
-    echo "# Casper Test in Batch Mode"
+    echo "# Casper Test in Auto Mode"
     echo "#############################"
 
     np=4
@@ -176,11 +176,6 @@ if [ "$test_mode" = "b" ];then
 
     np=8
     ng=1
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
-
-    np=4
-    ng=2
     export CSP_NG=$ng
     exec_all_programs "$test_mpiexec $np"
 
@@ -193,11 +188,16 @@ if [ "$test_mode" = "b" ];then
     ng=2
     export CSP_NG=$ng
     exec_all_programs "$test_mpiexec $np"
+
+    np=16
+    ng=2
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
 else
     # User provides MPIEXEC, NP (or default 4) and NG (or default 1)
 
     echo "#############################"
-    echo "# Casper Test in Single Mode"
+    echo "# Casper Test in Manual Mode"
     echo "#############################"
     echo ""
 
