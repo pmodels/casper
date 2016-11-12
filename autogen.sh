@@ -42,7 +42,7 @@ else
 fi
 
 echo_n "Generating MPI wrappers... "
-./src/user/buildiface --infile $mpih_path --outfile $wrap_file
+./maint/buildiface --infile $mpih_path --outfile $wrap_file
 echo "done"
 
 # - MPI IO
@@ -58,7 +58,7 @@ else
 
     # add IO functions only when MPI supports it
 		echo_n "Generating MPI IO wrappers... "
-		./src/user/buildiface --infile $mpioh_path --outfile $wrap_file --append
+		./maint/buildiface --infile $mpioh_path --outfile $wrap_file --append
 		echo "done"
 fi
 
