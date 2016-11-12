@@ -1,0 +1,23 @@
+======================================================================
+                          Changes in 1.0
+======================================================================
+
+
+# This first release of Casper. Following features are included:
+
+- Provide asynchronous progress for RMA communication on window created
+  by MPI_Win_allocate.
+
+- Runtime load balancing. This feature is disabled by default, enable it
+  by setting --enable-runtime-load at configure time.
+
+- Multi-threading MPI supported. Internal critical sections are needed
+  to ensure thread-safety when using Casper with multi-threaded MPI
+  program (MPI_THREAD_MULTIPLE). This feature is disabled by default
+  for better performance, enable it by setting --enable-thread-safety
+  at configure time.
+
+- IZEM thread library supported. IZEM provides light weight user-space
+  level thread lock. Use it for Casper internal critical sections instead
+  of traditional POSIX thread locks by setting --with-thread-package=izem
+  and --with-izem=[DIR] at configure time.
