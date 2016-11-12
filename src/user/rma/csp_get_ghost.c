@@ -10,7 +10,7 @@
 
 /* dummy variable to avoid warnings on Mac OS/X with respect to no
  * symbols found in the file */
-static int dummy CSP_ATTRIBUTE((unused,used)) = 0;
+static int dummy CSP_ATTRIBUTE((unused, used)) = 0;
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
 void CSPU_target_get_ghost_opload_by_op(int target_rank, int is_order_required,
