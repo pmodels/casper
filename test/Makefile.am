@@ -6,6 +6,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 AM_LDFLAGS = -Wl,-rpath -Wl,$(libdir)
 LDADD = -L$(libdir) -lcasper 
 
+noinst_HEADERS = $(top_srcdir)/include/ctest.h
+
 if CTEST_ENABLE_THREAD_TEST_COND
 THREAD_TESTS =  thread_acc_flush 	\
 				thread_acc_lock 	\
