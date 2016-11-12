@@ -15,6 +15,10 @@ AC_INIT([CASPER],
         [casper],
         [http://www.mcs.anl.gov/project/casper])
 
+# build info
+CONFIGURE_ARGS_CLEAN=`echo $* | tr '"' ' '`
+AC_SUBST(CONFIGURE_ARGS_CLEAN)
+
 # these values come from the m4_include above
 CASPER_VERSION=CASPER_VERSION_m4
 AC_SUBST(CASPER_VERSION)

@@ -34,6 +34,7 @@
 #define CASPER_VERSION "@CASPER_VERSION@"
 #define CASPER_NUMVERSION @CASPER_NUMVERSION@
 #define CASPER_RELEASE_DATE "@CASPER_RELEASE_DATE@"
+#define CASPER_BUILD_INFO "@CONFIGURE_ARGS_CLEAN@"
 
 /* Get the number of ghost processes. */
 int CSP_ghost_size(int *ng);
