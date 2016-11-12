@@ -14,5 +14,8 @@ include src/Makefile.mk
 
 DIST_SUBDIRS = test
 
-check:
-	(cd test && make testing)
+buildtests:
+	(cd test && make)
+
+check:	buildtests
+	(cd test && make testing MODE=auto)
