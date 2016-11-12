@@ -16,8 +16,10 @@ AC_CONFIG_HEADER([include/ctestconf.h])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Running C compiler tests
+# Bug in libtool adds -O2 and -g by default
+PAC_PUSH_FLAG([CFLAGS])
 AC_PROG_CC(mpicc)
-AM_PROG_CC_C_O
+PAC_POP_FLAG([CFLAGS])
 
 # not using libtool for the test suite, so no LT_INIT.  Instead, test here
 # for Library programs
