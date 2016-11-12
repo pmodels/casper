@@ -4,6 +4,8 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(includedir)
 
+noinst_HEADERS = $(top_srcdir)/include/ctest.h
+
 noinst_PROGRAMS = \
 	lockall_overhead	\
 	csp_lockall_overhead \
