@@ -1,15 +1,35 @@
 #! /bin/bash
 
-# default MPI path
-# drop any error reported by which command.
-tmp_mpidir=`which mpicc 2>/dev/null`
-mpidir=`echo $tmp_mpidir| sed -e 's_/[^/]*$__g'`/../
-mpih_path=
+##########################################
+## Generic Utility Functions
+##########################################
 
 echo_n() {
 	# "echo_n" isn't portable, must portably implement with printf
 	printf "%s" "$*"
 }
+
+check_autotools_version()
+{
+    tool=$1
+    req_ver=$2
+    curr_ver=$($tool --version | head -1 | cut -f4 -d' ' | xargs echo -n)
+    if [ "$curr_ver" != "$req_ver" ]; then
+        echo ""
+        echo "$tool version mismatch ($req_ver) required"
+        exit
+    fi
+}
+
+##########################################
+## Input Initialization
+##########################################
+
+# default MPI path
+# drop any error reported by which command.
+tmp_mpidir=`which mpicc 2>/dev/null`
+mpidir=`echo $tmp_mpidir| sed -e 's_/[^/]*$__g'`/../
+mpih_path=
 
 # user specified MPI path
 for arg in "$@" ; do
@@ -17,16 +37,39 @@ for arg in "$@" ; do
         -with-mpi=*|--with-mpi=*)
             mpidir=`echo "A$arg" | sed -e 's/.*=//'`
         ;;
-
         --help|-h|-help)
-        echo "./autogen.sh --with-mpi=<mpi installation path>"
+        cat <<EOF
+   ./autogen.sh [ --with-mpi=/path/to/mpi/installation ]
+EOF
         exit
         ;;
 
     esac
 done
 
-# generate MPI wrapper functions
+
+##########################################
+## Autotools Version Check
+##########################################
+
+echo_n "Checking for autoconf version..."
+check_autotools_version autoconf 2.69
+echo "done"
+
+echo_n "Checking for automake version..."
+check_autotools_version automake 1.15
+echo "done"
+
+echo_n "Checking for libtool version..."
+check_autotools_version libtool 2.4.6
+echo "done"
+echo ""
+
+##########################################
+## MPI Wrapper Generation
+##########################################
+
+# - output
 wrap_file=src/user/mpi_wrap.c
 
 # - MPI
@@ -61,6 +104,11 @@ else
 		./maint/buildiface --infile $mpioh_path --outfile $wrap_file --append
 		echo "done"
 fi
+
+
+##########################################
+## Others
+##########################################
 
 subdirs=test
 
