@@ -104,11 +104,10 @@ Known Issues
         mpi_attr_put_
 
     b. Dynamic Process Routine
-    c. Fault Tolerance
 
-2. Casper currently ignores user info "alloc_shared_noncontig=true" in
+2. Casper currently disables user info "alloc_shared_noncontig=true" in
    MPI_Win_allocate, to avoid complex management of shared segments
    displacement on ghost processes.
 
-3. Casper does not support MPI Error Handler Callback in C++ and Fortran 
+3. Casper does not support MPI Error Handler Callback in C++ and Fortran
    Binding.
