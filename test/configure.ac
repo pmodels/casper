@@ -16,7 +16,7 @@ AC_CONFIG_HEADER([include/ctestconf.h])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Running C compiler tests
-PAC_PROG_CC
+AC_PROG_CC(mpicc)
 AM_PROG_CC_C_O
 
 # not using libtool for the test suite, so no LT_INIT.  Instead, test here
