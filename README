@@ -11,43 +11,79 @@ model for MPI remote memory access (RMA) communication.
 ====================================
 Getting Started
 ====================================
+
 1. Installation
-    ./configure --prefix=<your installation dir> CC=<your mpicc>
-    make
-    make install
 
-2. Link with MPI Program
-    [Example]
-    mpicc -o test test.c -lcasper -lmpich
+    The simplest way to configure Casper is using the following
+    command-line:
 
-3. Execution
-    You can set the number of ghost processes per node through the environment
-    variable CSP_NG, it is set to 1 by default.
+        $ ./configure --prefix=/your/casper/installation/dir CC=/path/to/mpicc
 
-    [Example 1]
-    Running on 2 node, 2 ghost processes and 6 user processes on eacn node.
-    export CSP_NG=2
-    mpiexec -np 16 -ppn 8 ./test
+    If you have an MPI installation in your path (`which mpicc`), you
+    do not need to explicitly provide the CC variable:
 
-    [Example 2]
-    Running on 4 node, 4 ghost processes and 20 user processes on eacn node.
-    export CSP_NG=4
-    mpiexec -np 96 -ppn 24 ./test
+        $ ./configure --prefix=/your/casper/installation/dir
+
+    Once you are done configuring, you can build the source and
+    install it using:
+
+        $ make
+        $ make install
+
+2. To check if Casper built correctly, you can do the following:
+
+        $ make check
+
+3. To start using Casper, you need to let Casper intercept your calls
+   to MPI before they reach the MPI library.
+
+     - If your application is using a dynamic MPI library (common
+       case), you can simply preload the Casper library while
+       executing the application:
+
+           $ mpiexec -genv LD_PRELOAD=/your/casper/installation/dir/lib/libcasper.so -n 4 ./test
+
+     - If your application is using a static MPI library, you'll need
+       to recompile (actually just relink) your application by placing
+       the Casper symbols before the MPI symbols.  You can do so using:
+
+           $ mpicc -o test test.c -lcasper -lmpi
+
+       Once you have linked with Casper, you can run as normal:
+
+           $ mpiexec -n 4 ./test
+
+4. Execution
+
+     - You can set the number of ghost processes per node through the
+       environment variable CSP_NG, it is set to 1 by default.
+
+       [Example 1]
+       Running on 2 node, 2 ghost processes and 6 user processes on eacn node.
+
+           $ mpiexec -genv CSP_NG=2 -np 16 -ppn 8 ./test
+
+       [Example 2]
+       Running on 4 node, 4 ghost processes and 20 user processes on eacn node.
+
+           $ mpiexec -genv CSP_NG=4 -np 96 -ppn 24 ./test
 
 
 ====================================
 Support
 ====================================
-If you have problems or need any assistance about the Casper installation and
-usage, please contact casper-users@lists.mpich.org mailing list.
+If you have problems or need any assistance about the Casper
+installation and usage, please contact casper-users@lists.mpich.org
+mailing list.
 
 
 ====================================
 Bug Reporting
 ====================================
-If you have found a bug in Casper, please contact casper-users@lists.mpich.org
-mailing list. If possible, please try to reproduce the error with a smaller
-application or benchmark and send that along in your bug report.
+If you have found a bug in Casper, please contact
+casper-users@lists.mpich.org mailing list.  If possible, please try to
+reproduce the error with a smaller application or benchmark and send
+that along in your bug report.
 
 
 ====================================
@@ -55,9 +91,10 @@ Casper Test Suite
 ====================================
 Capser includes a set of testing programs located under test/. These programs
 can be compiled and run via:
-cd <your installation dir>/test
-make
-make testing MPIEXEC=mpiexec
+
+    $ cd test
+    $ make
+    $ make testing MPIEXEC=mpiexec
 
 
 ====================================
