@@ -87,7 +87,6 @@ AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability-recursive silent-rules foreign 
 # Bug in libtool adds -O2 and -g by default
 PAC_PUSH_FLAG([CFLAGS])
 AC_PROG_CC(mpicc)
-AM_PROG_CC_C_O
 PAC_POP_FLAG([CFLAGS])
 
 AM_PROG_AR
