@@ -27,7 +27,7 @@ typedef enum {
     CSP_MSG_INFO = 16   /* any other information */
 } CSP_msg_verbose_t;
 
-extern void CSP_msg_init(CSP_msg_verbose_t vbs);
+extern void CSP_msg_init(int vbs);
 extern void CSP_msg_print(CSP_msg_verbose_t vbs, const char format[], ...);
 
 #endif /* CSP_MSG_H_INCLUDED */

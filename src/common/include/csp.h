@@ -130,7 +130,7 @@ typedef struct CSP_env_param {
     CSP_load_opt_t load_opt;    /* runtime load balancing options */
     CSP_load_lock_t load_lock;  /* how to grant locks for runtime load balancing */
 
-    CSP_msg_verbose_t verbose;  /* verbose level. print configuration information. */
+    int verbose;                /* verbose level. print configuration information. */
     CSP_async_config_t async_config;
 } CSP_env_param_t;
 

@@ -88,7 +88,7 @@ static int initialize_env(void)
     memset(&CSP_ENV, 0, sizeof(CSP_ENV));
 
     /* VERBOSE level */
-    CSP_ENV.verbose = CSP_MSG_OFF;
+    CSP_ENV.verbose = (int) CSP_MSG_OFF;
     val = getenv("CSP_VERBOSE");
     if (val && strlen(val)) {
         char *vbs = NULL;
@@ -96,28 +96,28 @@ static int initialize_env(void)
         vbs = strtok(val, ",|;");
         while (vbs != NULL) {
             if (!strncmp(vbs, "err", strlen("err"))) {
-                CSP_ENV.verbose |= CSP_MSG_ERROR;
+                CSP_ENV.verbose |= (int) CSP_MSG_ERROR;
             }
             else if (!strncmp(vbs, "warn", strlen("warn"))) {
-                CSP_ENV.verbose |= CSP_MSG_WARN;
+                CSP_ENV.verbose |= (int) CSP_MSG_WARN;
             }
             else if (!strncmp(vbs, "conf_g", strlen("conf_g"))) {
-                CSP_ENV.verbose |= CSP_MSG_CONFIG_GLOBAL;
+                CSP_ENV.verbose |= (int) CSP_MSG_CONFIG_GLOBAL;
             }
             else if (!strncmp(vbs, "conf_win", strlen("conf_win"))) {
-                CSP_ENV.verbose |= CSP_MSG_CONFIG_WIN;
+                CSP_ENV.verbose |= (int) CSP_MSG_CONFIG_WIN;
             }
             else if (!strncmp(vbs, "info", strlen("info"))) {
-                CSP_ENV.verbose |= CSP_MSG_INFO;
+                CSP_ENV.verbose |= (int) CSP_MSG_INFO;
             }
             vbs = strtok(NULL, ",|;");
         }
 
         /* Also check shortcut for most useful verbosity */
-        if (CSP_ENV.verbose == CSP_MSG_OFF) {
+        if (CSP_ENV.verbose == (int) CSP_MSG_OFF) {
             if (!strncmp(val, "1", strlen("1")) ||
                 !strncmp(val, "y", strlen("y")) || !strncmp(val, "Y", strlen("Y"))) {
-                CSP_ENV.verbose = CSP_MSG_ERROR | CSP_MSG_CONFIG_GLOBAL;
+                CSP_ENV.verbose = (int) (CSP_MSG_ERROR | CSP_MSG_CONFIG_GLOBAL);
             }
         }
     }

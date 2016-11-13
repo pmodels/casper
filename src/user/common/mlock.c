@@ -140,6 +140,7 @@ int CSPU_mlock_init(void)
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSP_ATTRIBUTE((unused));
     goto fn_exit;
 }
 
@@ -154,6 +155,7 @@ int CSPU_mlock_destroy(void)
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSP_ATTRIBUTE((unused));
     goto fn_exit;
 }
 

@@ -21,8 +21,5 @@ int MPI_Comm_get_errhandler(MPI_Comm comm, MPI_Errhandler * errhandler)
     /* Return the original error handler. */
     (*errhandler) = cached_errhandler;
 
-  fn_exit:
     return mpi_errno;
-  fn_fail:
-    goto fn_exit;
 }

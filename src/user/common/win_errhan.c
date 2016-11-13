@@ -104,6 +104,7 @@ int CSPU_win_errhan_init(void)
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSP_ATTRIBUTE((unused));
     /* Do not release global objects, they are released at MPI_Init_thread. */
     goto fn_exit;
 }
@@ -131,6 +132,7 @@ int CSPU_win_errhan_destroy(void)
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSP_ATTRIBUTE((unused));
     goto fn_exit;
 }
 
