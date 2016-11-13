@@ -170,7 +170,7 @@ print("done\n");
 
 print("===> Create release date and version information... ");
 chdir($local_git_clone);
-my $date = `git log -1 --format=%ci | head -c 10`;
+my $date = `git log -1 --format=%ci`;
 chomp $date;
 
 chdir($expdir);
