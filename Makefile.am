@@ -12,6 +12,8 @@ libcasper_la_SOURCES =
 
 include src/Makefile.mk
 
+EXTRA_DIST = CHANGES COPYRIGHT maint autogen.sh
+
 DIST_SUBDIRS = test
 
 buildtests:
