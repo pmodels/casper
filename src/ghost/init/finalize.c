@@ -70,10 +70,7 @@ int CSPG_global_finalize(void)
 
     mpi_errno = destroy_proc();
 
-  fn_exit:
     return mpi_errno;
-  fn_fail:
-    goto fn_exit;
 }
 
 int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))

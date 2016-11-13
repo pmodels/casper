@@ -80,16 +80,16 @@ static int read_win_info(MPI_Info info, CSPU_win_t * ug_win)
             type = strtok(info_value, ",|;");
             while (type != NULL) {
                 if (!strncmp(type, "lockall", strlen("lockall"))) {
-                    user_epochs_used |= CSP_EPOCH_LOCK_ALL;
+                    user_epochs_used |= (int) CSP_EPOCH_LOCK_ALL;
                 }
                 else if (!strncmp(type, "lock", strlen("lock"))) {
-                    user_epochs_used |= CSP_EPOCH_LOCK;
+                    user_epochs_used |= (int) CSP_EPOCH_LOCK;
                 }
                 else if (!strncmp(type, "pscw", strlen("pscw"))) {
-                    user_epochs_used |= CSP_EPOCH_PSCW;
+                    user_epochs_used |= (int) CSP_EPOCH_PSCW;
                 }
                 else if (!strncmp(type, "fence", strlen("fence"))) {
-                    user_epochs_used |= CSP_EPOCH_FENCE;
+                    user_epochs_used |= (int) CSP_EPOCH_FENCE;
                 }
                 type = strtok(NULL, "|");
             }

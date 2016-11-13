@@ -43,6 +43,7 @@ static int errhan_init_extflag(void)
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSP_ATTRIBUTE((unused));
     goto fn_exit;
 }
 
@@ -55,6 +56,7 @@ static int errhan_destroy_extflag(void)
   fn_exit:
     return mpi_errno;
   fn_fail:
+    CSP_ATTRIBUTE((unused));
     goto fn_exit;
 }
 

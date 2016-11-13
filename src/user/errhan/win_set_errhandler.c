@@ -24,8 +24,5 @@ int MPI_Win_set_errhandler(MPI_Win win, MPI_Errhandler errhandler)
      * MPI calls in error handling that might result in infinite recursion.*/
     CSPU_win_errhan_cache(win, errhandler, errhandler_fnc);
 
-  fn_exit:
     return mpi_errno;
-  fn_fail:
-    goto fn_exit;
 }

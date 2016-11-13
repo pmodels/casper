@@ -45,7 +45,7 @@ typedef struct CSP_cwp_winalloc_pkt {
     int user_local_root;
     int user_nprocs;
     int max_local_user_nprocs;
-    CSP_epoch_type_t epochs_used;
+    int epochs_used;
     int is_u_world;
     int info_npairs;
 } CSP_cwp_fnc_winalloc_pkt_t;
