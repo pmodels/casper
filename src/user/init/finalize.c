@@ -81,6 +81,7 @@ static void comm_errhan_cleanup_predefined(void)
 {
     CSPU_comm_errhan_reset(MPI_COMM_WORLD);
     CSPU_comm_errhan_reset(CSP_COMM_USER_WORLD);
+    CSPU_comm_errhan_reset(MPI_COMM_SELF);
 }
 
 int CSPU_global_finalize(void)

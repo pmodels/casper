@@ -145,13 +145,16 @@ static int comm_errhan_wrap_predefined(void)
 {
     int mpi_errno = MPI_SUCCESS;
 
-    /* Set wrapper for the error handling of COMM_WORLDs.
+    /* Set error handling wrapper for predefined communicators (COMM_WORLDs, SELF).
      * Thus we can separately handle the error caused by user MPI calls,
      * and the errors happened in CASPER overwriting calls (RETURN). */
     mpi_errno = CSPU_comm_errhan_wrap(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL, NULL);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_comm_errhan_wrap(CSP_COMM_USER_WORLD, MPI_ERRORS_ARE_FATAL, NULL);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    mpi_errno = CSPU_comm_errhan_wrap(MPI_COMM_SELF, MPI_ERRORS_ARE_FATAL, NULL);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Set RETURN error handler for all internal communicators.
