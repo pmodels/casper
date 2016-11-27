@@ -22,9 +22,12 @@ int MPI_Dist_graph_create(MPI_Comm comm_old, int n, const int sources[],
                                              destinations, weights,
                                              info, reorder, comm_dist_graph));
 
-    /* Inherit and cache the error handler wrapper */
-    mpi_errno = CSPU_comm_errhan_inherit(comm_old, *comm_dist_graph);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    /* Inherit and cache the error handler wrapper for valid new communicator.
+     * Note that MPI_COMM_NULL is returned on excluded process. */
+    if ((*comm_dist_graph) != MPI_COMM_NULL) {
+        mpi_errno = CSPU_comm_errhan_inherit(comm_old, *comm_dist_graph);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
   fn_exit:
     return mpi_errno;

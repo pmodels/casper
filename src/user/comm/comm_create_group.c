@@ -18,9 +18,12 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm * ne
 
     CSP_CALLMPI(JUMP, PMPI_Comm_create_group(comm, group, tag, newcomm));
 
-    /* Inherit and cache the error handler wrapper */
-    mpi_errno = CSPU_comm_errhan_inherit(comm, *newcomm);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    /* Inherit and cache the error handler wrapper for valid new communicator.
+     * Note that MPI_COMM_NULL is returned on excluded process. */
+    if ((*newcomm) != MPI_COMM_NULL) {
+        mpi_errno = CSPU_comm_errhan_inherit(comm, *newcomm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
   fn_exit:
     return mpi_errno;
