@@ -18,9 +18,12 @@ int MPI_Cart_create(MPI_Comm comm_old, int ndims, const int dims[],
 
     CSP_CALLMPI(JUMP, PMPI_Cart_create(comm_old, ndims, dims, periods, reorder, comm_cart));
 
-    /* Inherit and cache the error handler wrapper */
-    mpi_errno = CSPU_comm_errhan_inherit(comm_old, *comm_cart);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    /* Inherit and cache the error handler wrapper for valid new communicator.
+     * Note that MPI_COMM_NULL is returned on excluded process. */
+    if ((*comm_cart) != MPI_COMM_NULL) {
+        mpi_errno = CSPU_comm_errhan_inherit(comm_old, *comm_cart);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
   fn_exit:
     return mpi_errno;

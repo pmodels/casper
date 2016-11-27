@@ -17,9 +17,11 @@ int MPI_Comm_dup_with_info(MPI_Comm comm, MPI_Info info, MPI_Comm * newcomm)
 
     CSP_CALLMPI(JUMP, PMPI_Comm_dup_with_info(comm, info, newcomm));
 
-    /* Inherit and cache the error handler wrapper */
-    mpi_errno = CSPU_comm_errhan_inherit(comm, *newcomm);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    /* Inherit and cache the error handler wrapper for valid new communicator. */
+    if ((*newcomm) != MPI_COMM_NULL) {
+        mpi_errno = CSPU_comm_errhan_inherit(comm, *newcomm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
   fn_exit:
     return mpi_errno;

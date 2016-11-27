@@ -18,9 +18,11 @@ int MPI_Comm_accept(const char *port_name, MPI_Info info, int root, MPI_Comm com
 
     CSP_CALLMPI(JUMP, PMPI_Comm_accept(port_name, info, root, comm, newcomm));
 
-    /* Inherit and cache the error handler wrapper */
-    mpi_errno = CSPU_comm_errhan_inherit(comm, *newcomm);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    /* Inherit and cache the error handler wrapper for valid new communicator. */
+    if ((*newcomm) != MPI_COMM_NULL) {
+        mpi_errno = CSPU_comm_errhan_inherit(comm, *newcomm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
   fn_exit:
     return mpi_errno;

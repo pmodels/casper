@@ -22,7 +22,8 @@ int MPI_Win_set_errhandler(MPI_Win win, MPI_Errhandler errhandler)
     /* Cache [window -> error handler & callback function].
      * Note that we use manual hash instead of win_get_attr, to avoid additional
      * MPI calls in error handling that might result in infinite recursion.*/
-    CSPU_win_errhan_cache(win, errhandler, errhandler_fnc);
+    if (win != MPI_WIN_NULL)
+        CSPU_win_errhan_cache(win, errhandler, errhandler_fnc);
 
     /* Also set error handler to user window. Thus any unwrapped operation on this
      * window can be handled correctly. Note that all CASPER wrapped functions are

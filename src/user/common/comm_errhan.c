@@ -245,12 +245,16 @@ int CSPU_comm_errhan_wrap(MPI_Comm comm, MPI_Errhandler errhandler,
     /* Set error handler wrapper to communicator. */
     CSP_CALLMPI(RETURN, PMPI_Comm_set_errhandler(comm, CSP_PROC.user.comm_errhan_wrapper));
 
-    /* Cache the user error handler and callback.
-     * It is used at the error handling routine of CASPER overwritten calls. */
-    comm_errhan_hash_add(comm, errhandler, errhandler_fnc);
+    /* Skip invalid communicator. */
+    if (comm != MPI_COMM_NULL) {
+        /* Cache the user error handler and callback.
+         * It is used at the error handling routine of CASPER overwritten calls. */
+        comm_errhan_hash_add(comm, errhandler, errhandler_fnc);
 
-    CSP_DBG_PRINT("%s: wrapped comm 0x%x -> errhandler 0x%x, fnc %p\n",
-                  __FUNCTION__, comm, errhandler, errhandler_fnc);
+        CSP_DBG_PRINT("%s: wrapped comm 0x%x -> errhandler 0x%x, fnc %p\n",
+                      __FUNCTION__, comm, errhandler, errhandler_fnc);
+    }
+
     return mpi_errno;
 }
 
