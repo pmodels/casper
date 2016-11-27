@@ -13,13 +13,20 @@ int MPI_Win_get_errhandler(MPI_Win win, MPI_Errhandler * errhandler)
     MPI_Errhandler cached_errhandler = MPI_ERRHANDLER_NULL;
     MPI_Win_errhandler_function *cached_fnc = NULL;
 
-    /* The error handler in any communicator exposed to user should be wrapped,
-     * and the original user error handler is in cached. */
+    /* Only user-specified window error handler is cached, because
+     * standard does not say whether a window has default error handler. */
     CSPU_win_errhan_get(win, &cached_errhandler, &cached_fnc);
-    CSP_ASSERT(cached_errhandler != MPI_ERRHANDLER_NULL);
+    if (cached_errhandler != MPI_ERRHANDLER_NULL) {
+        (*errhandler) = cached_errhandler;
 
-    /* Return the original error handler. */
-    (*errhandler) = cached_errhandler;
+    }
+    else {
+        /* Return the default error handler from MPI. */
+        CSP_CALLMPI(JUMP, PMPI_Win_get_errhandler(win, errhandler));
+    }
 
+  fn_exit:
     return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
