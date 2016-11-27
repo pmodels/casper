@@ -149,6 +149,14 @@ while (<INFILE>) {
         || ($routine eq "MPI_Comm_split_type")
         || ($routine eq "MPI_Cart_sub")
         || ($routine eq "MPI_Comm_free")
+        || ($routine eq "MPI_Intercomm_create")
+        || ($routine eq "MPI_Intercomm_merge")
+        || ($routine eq "MPI_Cart_create")
+        || ($routine eq "MPI_Graph_create")
+        || ($routine eq "MPI_Comm_accept")
+        || ($routine eq "MPI_Comm_connect")
+        || ($routine eq "MPI_Dist_graph_create_adjacent")
+        || ($routine eq "MPI_Dist_graph_create")
         ) {
         $fullline = "";
         next;
