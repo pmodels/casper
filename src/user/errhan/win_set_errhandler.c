@@ -24,5 +24,10 @@ int MPI_Win_set_errhandler(MPI_Win win, MPI_Errhandler errhandler)
      * MPI calls in error handling that might result in infinite recursion.*/
     CSPU_win_errhan_cache(win, errhandler, errhandler_fnc);
 
+    /* Also set error handler to user window. Thus any unwrapped operation on this
+     * window can be handled correctly. Note that all CASPER wrapped functions are
+     * issued on internal windows, thus no conflict.*/
+    CSP_CALLMPI(RETURN, PMPI_Win_set_errhandler(win, errhandler));
+
     return mpi_errno;
 }
