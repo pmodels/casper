@@ -18,6 +18,10 @@ test_ng=1
 # - number of processes (only used in manual test mode)
 test_np=4
 
+# - output
+JUNIT_OUTPUT=""
+JUNIT_ENABLED=0 # only enable junit ouput when user specified JUNIT
+
 function print_usage()
 {
     echo "Input Variables:"
@@ -27,6 +31,7 @@ function print_usage()
     echo "  MODE=<testing mode, value auto|a|manual|m, default m>"
     echo "      AUTO mode (auto|a):   only MPIEXEC is valid input, NP and NG are ignored;"
     echo "      MANUAL mode(manual|m):  MPIEXEC, NP, NG are valid input"
+    echo "  JUNIT=<output file in junit format>"
     echo "  Example 1: MPIEXEC=\"mpiexec -ppn 2 -np\" NP=4 NG=1,
             executes all tests on two nodes with 1 user process and 1 ghost process on each node"
     echo "  Example 2: MPIEXEC=\"srun -N 4 -n\" NP=8 NG=1 (on Cray supercomputer),
@@ -72,6 +77,13 @@ if [ "$test_mode" = "m" ]; then
         fi
     fi
 fi
+
+if [ "x$JUNIT" != "x" ]; then
+    JUNIT_ENABLED=1
+    JUNIT_OUTPUT="$JUNIT"
+    echo "" > $JUNIT_OUTPUT
+fi
+
 ##########################################################
 # read testlist and initialize global varibales
 
@@ -110,6 +122,103 @@ done < ./testlist
 ##########################################################
 # generic functions
 
+# - Junit global variables
+JUNIT_TEMP_OUTPUT=".tmp.$JUNIT_OUTPUT"
+JUNIT_TEST_ID=1
+JUNIT_NUM_FAILED=0
+JUNIT_NUM_SKIPPED=0
+
+# - Junit related routines (internal)
+function junit_temp_print()
+{
+    echo "$1" >> $JUNIT_TEMP_OUTPUT
+}
+
+function junit_report_testcase()
+{
+    local test_exec=$1
+    local test_result=$2 #0: passed, 1: failed, 2: skipped
+    local test_output=$3
+    local test_tag="failure"
+    local test_type="TestFailed"
+
+    # do nothing if JUNIT is not explicitly enabled
+    if [ $JUNIT_ENABLED -eq 0 ]; then
+        return
+    fi
+
+    case $test_result in
+        1)
+            test_tag="failure"
+            test_type="TestFailed"
+            let "JUNIT_NUM_FAILED+=1"
+        ;;
+        2)
+            test_tag="skipped"
+            test_type="TestSkipped"
+            let "JUNIT_NUM_SKIPPED+=1"
+        ;;
+    esac
+
+    junit_temp_print "    <testcase name=\"$JUNIT_TEST_ID - $test_exec\">"
+    if [ $test_result -gt 0 ]; then
+        junit_temp_print "      <$test_tag type=\"$test_type\""
+        junit_temp_print "               message=\"$test_type: $JUNIT_TEST_ID - $test_exec\"><![CDATA["
+        junit_temp_print "Test $test_tag: $JUNIT_TEST_ID - $test_exec"
+        junit_temp_print "$test_output"
+        junit_temp_print "---"
+        junit_temp_print "      ]]></$test_tag>\n"
+    fi
+    junit_temp_print "    </testcase>"
+
+    let "JUNIT_TEST_ID+=1"
+}
+
+function junit_report_init()
+{
+    # do nothing if JUNIT is not explicitly enabled
+    if [ $JUNIT_ENABLED -eq 0 ]; then
+        return
+    fi
+
+    # reset junit output files
+    echo "" > $JUNIT_TEMP_OUTPUT 
+    echo "" > $JUNIT_OUTPUT
+}
+
+function junit_report_finish()
+{
+    local num_tested=0
+    local datetime=""
+
+    # do nothing if JUNIT is not explicitly enabled
+    if [ $JUNIT_ENABLED -eq 0 ]; then
+        return
+    fi
+
+    let "num_tested=$JUNIT_TEST_ID-1"
+    datetime=$(date "+%Y-%m-%d-%H-%M-%S")
+
+    cat > $JUNIT_OUTPUT <<EOF
+<testsuites>
+  <testsuite failures="$JUNIT_NUM_FAILED"
+             errors="0"
+             skipped="$JUNIT_NUM_SKIPPED"
+             tests="$num_tested"
+             date="$datetime"
+             name="test_results_xml">
+EOF
+    cat $JUNIT_TEMP_OUTPUT >> $JUNIT_OUTPUT
+    cat >> $JUNIT_OUTPUT <<EOF
+    <system-out></system-out>
+    <system-err></system-err>
+  </testsuite>
+</testsuites>
+EOF
+    rm -f $JUNIT_TEMP_OUTPUT
+}
+
+
 # - execute a test program
 #   exec_program <mpiexec> <relative path of testfile>
 function exec_program()
@@ -124,7 +233,13 @@ function exec_program()
     rs="$(echo $output | grep "PASS"  --count)"
     if [ $rs != 1 ];then
         echo "test failed ! $mpiexec $program"
+
+        # junit_report_testcase <exec> <result:0:pass | 1:failed | 2:skipped> <output>
+        junit_report_testcase "CSP_NG=$CSP_NG; $mpiexec $f" "1" "$output"
+
         let num_failed+=1
+    else
+        junit_report_testcase "CSP_NG=$CSP_NG; $mpiexec $f" "0"
     fi
     echo ""
 }
@@ -148,6 +263,10 @@ function exec_all_programs()
 
         if [ "$exec" -eq "0" ]; then
             echo "skip test $f"
+
+            # junit_report_testcase <exec> <result:0:pass | 1:failed | 2:skipped> <output>
+            junit_report_testcase "$mpiexec $f" "2"
+
             let i+=1
             continue
         fi
@@ -159,6 +278,8 @@ function exec_all_programs()
 
 ##########################################################
 # execute test programs
+
+junit_report_init
 
 if [ "$test_mode" = "a" ];then
     # User only provides MPIEXEC (execution command including all
@@ -204,6 +325,9 @@ else
     export CSP_NG=$test_ng
     exec_all_programs "$test_mpiexec $test_np"
 fi
+
+junit_report_finish
+
 
 if [ "$num_failed" -ge "1" ];then
     echo "$num_failed tests failed"
