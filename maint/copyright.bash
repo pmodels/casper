@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 for x in `find . ! -type d | grep -v .git` ; do
 
