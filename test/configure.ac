@@ -59,10 +59,10 @@ AC_ARG_ENABLE(thread-test, AC_HELP_STRING([--enable-thread-test],
 AC_MSG_CHECKING(enable thread tests)
 AC_MSG_RESULT($enable_thread_test)
 AM_CONDITIONAL(CTEST_ENABLE_THREAD_TEST_COND, [test "$enable_thread_test" = "yes"])
-AC_DEFINE(CTEST_ENABLE_THREAD_TEST,[test "$enable_thread_test" = "yes"],[Define if enable thread tests])
 CTEST_ENABLE_THREAD_TEST=0
 if test "$enable_thread_test" = "yes"; then
     CTEST_ENABLE_THREAD_TEST=1
+    AC_DEFINE(CTEST_ENABLE_THREAD_TEST,1,[Define if enable thread tests])
 fi
 AC_SUBST(CTEST_ENABLE_THREAD_TEST)
 
