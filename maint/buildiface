@@ -30,8 +30,32 @@ if (!$infile || !$outfile) {
 
 open(INFILE, "$infile");
 
+# Check whether mpich-style header or openmpi-style header (mpich by default).
+# Because each style uses slightly different format.
+my $mpihstyle = "_mpich";
 while (<INFILE>) {
-    if (/\/\*\s*Begin Prototypes/) { last; }
+    if (/define\s*OPEN_MPI/) {
+        $mpihstyle = "_ompi";
+        last;
+    }
+}
+print "mpihstyle=$mpihstyle\n";
+
+# Move to file beginning
+seek INFILE, 0, 0;
+
+# Goto the beginning prototype list
+if ( $mpihstyle eq "_mpich" ) {
+    while (<INFILE>) {
+        if (/\/\*\s*Begin Prototypes/) { last; }
+    }
+} else {
+    my $found = 0;
+    while (<INFILE>) {
+        # also skip the line after comment
+        if (/\*\s*MPI API/) { $found = 1; next; }
+        if ($found eq 1) { last; }
+    }
 }
 
 my $eol = 1;
@@ -72,12 +96,16 @@ EOT
 
 
 while (<INFILE>) {
-    if (/\/\*\s*End Prototypes/) { last; }
+    if ( $mpihstyle eq "_mpich" ) {
+        if (/\/\*\s*End Prototypes/) { last; }
 
-    if (/\/\*\s*Begin Skip Prototypes/) {
-        while (<INFILE>) {
-            if (/\/\*\s*End Skip Prototypes/) { last; }
+        if (/\/\*\s*Begin Skip Prototypes/) {
+            while (<INFILE>) {
+                if (/\/\*\s*End Skip Prototypes/) { last; }
+            }
         }
+    } else {
+        if (/\*\s*Profiling MPI API/) { last; }
     }
 
     # If we found a semi-colon at the end, that's the end of the line.
@@ -97,8 +125,14 @@ while (<INFILE>) {
     $fullline =~ s+/\*.*\*/++g;
 
     # parse out attributes
-    $fullline =~ s/MPICH_ATTR_WEAK_ALIAS\(.*\)//g;
-    $fullline =~ s/MPICH_ATTR_POINTER_WITH_TYPE_TAG\(.*\)//g;
+    if ( $mpihstyle eq "_mpich" ) {
+        $fullline =~ s/MPICH_ATTR_WEAK_ALIAS\(.*\)//g;
+        $fullline =~ s/MPICH_ATTR_POINTER_WITH_TYPE_TAG\(.*\)//g;
+    } else {
+        $fullline =~ s/OMPI_DECLSPEC//g;
+        $fullline =~ s/^\s+//;
+        $fullline =~ s/__mpi_interface_deprecated__\(.*\)//g;
+    }
 
     # split the line into the return type, routine name, and arguments
     $fullline =~ m/([^ ]*) ([^(]*)\((.*)\)/;
