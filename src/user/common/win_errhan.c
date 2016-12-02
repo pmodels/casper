@@ -207,8 +207,9 @@ int CSPU_win_call_errhandler(MPI_Win expwin, int *errcode)
 
     win_errhan_hash_get(expwin, &handler, &fnc);
 
-    switch (handler) {
-    case MPI_ERRHANDLER_NULL:
+    /* Do do switch/case on handler because it might not be integer type in some
+     * MPI implementations (e.g., openmpi). */
+    if (handler == MPI_ERRHANDLER_NULL) {
         /* Different from communicator, standard does not specify whether a window
          * has default handler, and whether the default COMM_WORLD error handler is
          * triggered if no window handler is set. Thus we only wrap up a window error
@@ -218,22 +219,20 @@ int CSPU_win_call_errhandler(MPI_Win expwin, int *errcode)
          * - No infinite recursion concern, because we have reset external error
          *   object, thus error handling executes there.*/
         CSP_CALLMPI(RETURN, PMPI_Win_call_errhandler(expwin, *errcode));
-        break;
-    case MPI_ERRORS_ARE_FATAL:
+    }
+    else if (handler == MPI_ERRORS_ARE_FATAL) {
         CSP_CALLMPI(RETURN, PMPI_Abort(MPI_COMM_WORLD, *errcode));
-        break;
-    case MPI_ERRORS_RETURN:
+    }
+    else if (handler == MPI_ERRORS_RETURN) {
         /* Do noting */
-        break;
-    default:
-        {
-            MPI_Win expwin_var; /* to get valid object pointer */
+    }
+    else {
+        MPI_Win expwin_var;     /* to get valid object pointer */
 
-            expwin_var = expwin;
-            CSP_ASSERT(fnc != NULL);
+        expwin_var = expwin;
+        CSP_ASSERT(fnc != NULL);
 
-            fnc(&expwin_var, errcode);
-        }
+        fnc(&expwin_var, errcode);
     }
 
     return mpi_errno;
