@@ -109,37 +109,36 @@ static inline int comm_errhan_wrapper_impl(MPI_Comm errcomm, int *errcode, ...)
      * is invalid errcomm. */
     comm_errhan_hash_get(errcomm, &handler, &fnc);
 
-    switch (handler) {
-    case MPI_ERRHANDLER_NULL:
+    /* Do do switch/case on handler because it might not be integer type in some
+     * MPI implementations (e.g., openmpi). */
+    if (handler == MPI_ERRHANDLER_NULL) {
         /* invalid errcomm, let MPI handle. */
         CSP_CALLMPI(RETURN, PMPI_Comm_call_errhandler(errcomm, *errcode));
-        break;
-    case MPI_ERRORS_ARE_FATAL:
+    }
+    else if (handler == MPI_ERRORS_ARE_FATAL) {
         /* abort. (no infinite recursion) */
         CSP_CALLMPI(RETURN, PMPI_Abort(errcomm, *errcode));
-        break;
-    case MPI_ERRORS_RETURN:
-        /* do nothing */
-        break;
-    default:
-        {
-            MPI_Comm expcomm_var;       /* to get valid object pointer */
-
-            /* user defined callback function. */
-            CSP_ASSERT(fnc != NULL);
-
-            /* Expose MPI_COMM_WORLD instead of CSP_COMM_USER_WORLD */
-            expcomm_var = errcomm;
-            if (expcomm_var == CSP_COMM_USER_WORLD)
-                expcomm_var = MPI_COMM_WORLD;
-
-            /* Call error handler on expcomm */
-            va_start(list, errcode);
-            fnc(&expcomm_var, errcode, list);
-            va_end(list);
-            break;
-        }
     }
+    else if (handler == MPI_ERRORS_RETURN) {
+        /* do nothing */
+    }
+    else {
+        MPI_Comm expcomm_var;   /* to get valid object pointer */
+
+        /* user defined callback function. */
+        CSP_ASSERT(fnc != NULL);
+
+        /* Expose MPI_COMM_WORLD instead of CSP_COMM_USER_WORLD */
+        expcomm_var = errcomm;
+        if (expcomm_var == CSP_COMM_USER_WORLD)
+            expcomm_var = MPI_COMM_WORLD;
+
+        /* Call error handler on expcomm */
+        va_start(list, errcode);
+        fnc(&expcomm_var, errcode, list);
+        va_end(list);
+    }
+
     return mpi_errno;
 }
 
