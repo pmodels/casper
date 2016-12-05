@@ -44,6 +44,17 @@ int CSPU_win_release(CSPU_win_t * ug_win)
         CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->global_win));
     }
 
+    /* Any error happened at later MPI calls will be handled directly
+     * in original user handler (or default COMM_WORLD's).*/
+    if (ug_win->win != MPI_WIN_NULL)
+        CSPU_win_errhan_reset(ug_win->win);
+    CSPU_ERRHAN_RESET_EXTOBJ();
+
+    if (ug_win->win && ug_win->win != MPI_WIN_NULL) {
+        CSP_DBG_PRINT("\t free user window\n");
+        CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->win));
+    }
+
     if (ug_win->local_ug_win && ug_win->local_ug_win != MPI_WIN_NULL) {
         CSP_DBG_PRINT("\t free shared window\n");
         CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->local_ug_win));
@@ -112,17 +123,6 @@ int CSPU_win_release(CSPU_win_t * ug_win)
         free(ug_win->g_win_handles);
     if (ug_win->ug_wins)
         free(ug_win->ug_wins);
-
-    /* Any error happened at later MPI calls will be handled directly
-     * in original user handler (or default COMM_WORLD's).*/
-    if (ug_win->win != MPI_WIN_NULL)
-        CSPU_win_errhan_reset(ug_win->win);
-    CSPU_ERRHAN_RESET_EXTOBJ();
-
-    if (ug_win->win && ug_win->win != MPI_WIN_NULL) {
-        CSP_DBG_PRINT("\t free user window\n");
-        CSP_CALLMPI(JUMP, PMPI_Win_free(&ug_win->win));
-    }
 
     /* Destroy per window critical section.
      * Do nothing if it is not initialized (e.g., failure in win_allocate). */
