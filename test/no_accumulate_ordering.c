@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
     }
 
     MPI_Info_create(&win_info);
-    MPI_Info_set(win_info, (char *) "accumulate_ordering", (char *) "");
+    MPI_Info_set(win_info, (char *) "accumulate_ordering", (char *) "none");
 
     /* size in byte */
     MPI_Win_allocate(sizeof(double) * NUM_OPS, sizeof(double), win_info,
