@@ -94,6 +94,18 @@ static inline void CTEST_print_double_array(double *buffer, int size, const char
     fprintf(stderr, "\n");
 }
 
+static inline int CTEST_gen_errrank(void)
+{
+    int rank;
+
+    /* a negative rank other than PROC_NULL */
+    rank = MPI_PROC_NULL - 1;
+    while (rank >= 0)
+        rank--;
+
+    return rank;
+}
+
 #if defined(CTEST_ENABLE_THREAD_TEST)
 /* ==========================================
  * Generic functions for threads tests

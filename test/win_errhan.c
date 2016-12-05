@@ -94,9 +94,12 @@ static void check_rma_sync(void)
     int origin_rank = 0, target_rank = 1;
     int assert = 0;
     int lock_type = MPI_LOCK_SHARED;
+    int err_rank = -1;
     MPI_Group pscw_group = MPI_GROUP_NULL;
 
     MPI_Comm_group(MPI_COMM_WORLD, &pscw_group);
+
+    err_rank = CTEST_gen_errrank();
 
     if (rank == origin_rank) {
         /* --- Checking invalid parameters --- */
@@ -106,7 +109,8 @@ static void check_rma_sync(void)
                            (MPI_Win_lock(-1, target_rank, assert, win)));
 #endif
         debug_printf("checking MPI_ERR_RANK in RMA SYNC...\n");
-        CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, (MPI_Win_lock(lock_type, -2, assert, win)));
+        CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
+                           (MPI_Win_lock(lock_type, err_rank, assert, win)));
 
         /* - skip MPI_ERR_ASSERT check because it is implementation dependent. */
         /* - skip MPI_ERR_WIN check because it is not handled by window error handler. */
@@ -158,26 +162,34 @@ static void check_rma_op(void)
     MPI_Aint target_disp = 0;
     int count = BUFSZ;
     MPI_Op op = MPI_SUM;
+    int err_rank = -1;
+
+    err_rank = CTEST_gen_errrank();
 
     MPI_Win_fence(0, win);      /* open epoch */
 
     if (rank == origin_rank) {
         debug_printf("checking MPI_ERR_RANK in RMA OP...\n");
         CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
-                           (MPI_Put(locbuf, count, MPI_INT, -5, target_disp, count, MPI_INT, win)));
+                           (MPI_Put
+                            (locbuf, count, MPI_INT, err_rank, target_disp, count, MPI_INT, win)));
         CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
-                           (MPI_Get(locbuf, count, MPI_INT, -5, target_disp, count, MPI_INT, win)));
+                           (MPI_Get
+                            (locbuf, count, MPI_INT, err_rank, target_disp, count, MPI_INT, win)));
         CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
-                           (MPI_Accumulate(locbuf, count, MPI_INT,
-                                           -5, target_disp, count, MPI_INT, op, win)));
+                           (MPI_Accumulate
+                            (locbuf, count, MPI_INT, err_rank, target_disp, count, MPI_INT, op,
+                             win)));
         CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
-                           (MPI_Get_accumulate(locbuf, count, MPI_INT, resbuf, count, MPI_INT,
-                                               -5, target_disp, count, MPI_INT, op, win)));
+                           (MPI_Get_accumulate
+                            (locbuf, count, MPI_INT, resbuf, count, MPI_INT, err_rank, target_disp,
+                             count, MPI_INT, op, win)));
         CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
-                           (MPI_Fetch_and_op(locbuf, resbuf, MPI_INT, -5, target_disp, op, win)));
+                           (MPI_Fetch_and_op
+                            (locbuf, resbuf, MPI_INT, err_rank, target_disp, op, win)));
         CHECK_WIN_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK,
-                           (MPI_Compare_and_swap(locbuf, compbuf, resbuf, MPI_INT,
-                                                 -5, target_disp, win)));
+                           (MPI_Compare_and_swap
+                            (locbuf, compbuf, resbuf, MPI_INT, err_rank, target_disp, win)));
 
         /* - skip MPI_ERR_OP check because it is hard to find the value of an invalid op. */
 

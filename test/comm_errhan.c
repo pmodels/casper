@@ -102,6 +102,9 @@ static void comm_errhan_fnc(MPI_Comm * errcomm, int *err, ...)
 static void check_non_rma(void)
 {
     int sbuf[2];
+    int err_rank = -1;
+
+    err_rank = CTEST_gen_errrank();
 
     debug_printf("checking Internal Error with info_create(NULL)...\n");
     CHECK_COMM_ERR_FUNC(0 /* do not check error class */ , 0 /* do no check return code */ ,
@@ -109,11 +112,11 @@ static void check_non_rma(void)
 
     debug_printf("checking MPI_ERR_RANK with send(MPI_COMM_WORLD)...\n");
     CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, MPI_COMM_WORLD,
-                        (MPI_Send(sbuf, 2, MPI_INT, -2, 0, MPI_COMM_WORLD)));
+                        (MPI_Send(sbuf, 2, MPI_INT, err_rank, 0, MPI_COMM_WORLD)));
 
     debug_printf("checking MPI_ERR_RANK with send(errhan_comm)...\n");
     CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, errhan_comm,
-                        (MPI_Send(sbuf, 2, MPI_INT, -2, 0, errhan_comm)));
+                        (MPI_Send(sbuf, 2, MPI_INT, err_rank, 0, errhan_comm)));
 
     debug_printf("checking MPI_ERR_OTHER with call_errhandler(MPI_COMM_WORLD)...\n");
     CHECK_COMM_ERR_FUNC(MPI_ERR_OTHER, MPI_SUCCESS, MPI_COMM_WORLD,
