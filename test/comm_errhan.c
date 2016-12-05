@@ -163,18 +163,9 @@ static void check_rma(void)
                         MPI_COMM_WORLD, (MPI_Win_create
                                          (buf, size, disp, MPI_INFO_NULL, MPI_COMM_NULL, &win)));
 
-    debug_printf("checking MPI_ERR_RANK in RMA SYNC with window over MPI_COMM_WORLD...\n");
-    MPI_Win_allocate(size, disp, MPI_INFO_NULL, MPI_COMM_WORLD, &base_ptr, &win);
-    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, MPI_COMM_WORLD,
-                        (MPI_Win_lock(MPI_LOCK_SHARED, -2, 0, win)));
-    MPI_Win_free(&win);
-
-    debug_printf("checking MPI_ERR_RANK in RMA SYNC with window over errhan_comm "
-                 "(still error on MPI_COMM_WORLD)...\n");
-    MPI_Win_allocate(size, disp, MPI_INFO_NULL, errhan_comm, &base_ptr, &win);
-    CHECK_COMM_ERR_FUNC(MPI_ERR_RANK, MPI_ERR_RANK, MPI_COMM_WORLD,
-                        (MPI_Win_lock(MPI_LOCK_SHARED, -2, 0, win)));
-    MPI_Win_free(&win);
+    /* MPI standard does not define whether the COMM_WORLD's error handler is invoked if
+     * the user does not specify handler to the error window. Therefore, we should not
+     * expect any RMA sync/operation error handled on COMM_WORLD.*/
 }
 
 int main(int argc, char *argv[])
