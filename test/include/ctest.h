@@ -133,32 +133,32 @@ static inline int CTEST_create_thread(pthread_t * thread, void *(*fn) (void *), 
 /* Atomic variable wrapper */
 typedef struct CTEST_atomic_var {
     void *ptr;
-    pthread_spinlock_t lock;
+    pthread_mutex_t mutex;
 } CTEST_atomic_var_t;
 
 #define CTEST_ATOMIC_VAR_INIT(atomic_var, varptr) do {  \
     (atomic_var).ptr = varptr;                          \
-    pthread_spin_init(&(atomic_var).lock, 0);           \
+    pthread_mutex_init(&(atomic_var).mutex, NULL);      \
 } while (0)
 
-#define CTEST_ATOMIC_VAR_DESTROY(atomic_var) pthread_spin_destroy(&(atomic_var).lock);
+#define CTEST_ATOMIC_VAR_DESTROY(atomic_var) pthread_mutex_destroy(&(atomic_var).mutex);
 
 #define CTEST_ATOMIC_VAR_ADD(atomic_var, type, val) do {    \
-    pthread_spin_lock(&(atomic_var).lock);                  \
+    pthread_mutex_lock(&(atomic_var).mutex);                \
     *(type *)((atomic_var).ptr) += val;                     \
-    pthread_spin_unlock(&(atomic_var).lock);                \
+    pthread_mutex_unlock(&(atomic_var).mutex);              \
 } while (0)
 
 #define CTEST_ATOMIC_VAR_SUB(atomic_var, type, val) do {    \
-    pthread_spin_lock(&atomic_var.lock);                    \
+    pthread_mutex_lock(&atomic_var.mutex);                  \
     *((type) *)((atomic_var).ptr) -= val;                   \
-    pthread_spin_unlock(&(atomic_var).lock);                \
+    pthread_mutex_unlock(&(atomic_var).mutex);              \
 } while (0)
 
 #define CTEST_ATOMIC_VAR_READ(atomic_var, type, val) do {    \
-    pthread_spin_lock(&(atomic_var).lock);                   \
+    pthread_mutex_lock(&(atomic_var).mutex);                 \
     (val) = *(type *)((atomic_var).ptr);                     \
-    pthread_spin_unlock(&(atomic_var).lock);                 \
+    pthread_mutex_unlock(&(atomic_var).mutex);               \
 } while (0)
 
 #endif
