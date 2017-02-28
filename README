@@ -94,8 +94,11 @@ can be compiled and run via:
 
     $ cd test
     $ make
-    $ make testing MPIEXEC=mpiexec
+    $ make testing MPIEXEC="<your mpiexec> -n"
 
+For more options to run the test suite, please check:
+
+    $ ./test/runtest -h
 
 ====================================
 Environment Variables
