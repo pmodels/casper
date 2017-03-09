@@ -31,6 +31,15 @@ tmp_mpidir=`which mpicc 2>/dev/null`
 mpidir=`echo $tmp_mpidir| sed -e 's_/[^/]*$__g'`/../
 mpih_path=
 
+# Detect Cray MPI 
+if [ "$mpidir" = "/../" ] || [ -d /opt/cray/ ] ; then
+  if [ ! -z "$CRAY_MPICH_DIR" ] ; then
+    mpidir=$CRAY_MPICH_DIR
+  elif [ ! -z "$CRAY_MPICH2_DIR" ] ; then
+    mpidir=$CRAY_MPICH2_DIR
+  fi
+fi
+
 # user specified MPI path
 for arg in "$@" ; do
     case $arg in
@@ -46,7 +55,6 @@ EOF
 
     esac
 done
-
 
 ##########################################
 ## Autotools Version Check
