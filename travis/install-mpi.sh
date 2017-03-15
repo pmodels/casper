@@ -53,9 +53,9 @@ case "$os" in
                     #wget --no-check-certificate https://www.open-mpi.org/software/ompi/v1.10/downloads/openmpi-1.10.2.tar.bz2
                     #tar -xjf openmpi-1.10.2.tar.bz2
                     #cd openmpi-1.10.2
-                    wget --no-check-certificate https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.0.tar.bz2
-                    tar -xjf openmpi-2.0.0.tar.bz2
-                    cd openmpi-2.0.0
+                    wget --no-check-certificate https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.2.tar.bz2
+                    tar -xjf openmpi-2.0.2.tar.bz2
+                    cd openmpi-2.0.2
                     mkdir build && cd build
                     ../configure CFLAGS="-w" --prefix=$TRAVIS_ROOT/open-mpi \
                                 --without-verbs --without-fca --without-mxm --without-ucx \
@@ -69,7 +69,6 @@ case "$os" in
                                 --without-cuda --disable-oshmem \
                                 --disable-mpi-fortran --disable-oshmem-fortran \
                                 --disable-libompitrace \
-                                --disable-mpi-io  --disable-io-romio \
                                 --disable-static \
                                 --enable-mpi-thread-multiple
                     make -j4
