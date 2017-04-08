@@ -41,8 +41,8 @@ static inline int check_valid_ghosts(void)
         err_flag++;
     }
 
-    if (CSP_ENV.num_g < 1 || CSP_ENV.num_g >= local_nprocs) {
-        CSP_msg_print(CSP_MSG_ERROR, "Wrong value of number of ghosts, %d. lt 1 or ge %d.\n",
+    if (CSP_ENV.num_g < 0 || CSP_ENV.num_g >= local_nprocs) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong value of number of ghosts, %d. lt 0 or ge %d.\n",
                       CSP_ENV.num_g, local_nprocs);
         err_flag++;
     }
@@ -124,12 +124,15 @@ static int initialize_env(void)
 
     CSP_msg_init(CSP_ENV.verbose);
 
+    /* NG can be zero or a positive integer smaller than ppn.
+     * Zero NG disables all asynchronous progress wrapping, note that this has
+     * to be a symmetric value in world. */
     CSP_ENV.num_g = CSP_DEFAULT_NG;
     val = getenv("CSP_NG");
     if (val && strlen(val)) {
         CSP_ENV.num_g = atoi(val);
     }
-    if (CSP_ENV.num_g <= 0) {
+    if (CSP_ENV.num_g < 0) {
         CSP_msg_print(CSP_MSG_ERROR, "Wrong CSP_NG %d\n", CSP_ENV.num_g);
         return CSP_get_error_code(CSP_ERR_NG);
     }
@@ -322,6 +325,10 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
     /* Initialize environment setting */
     mpi_errno = initialize_env();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    /* Skip future internal processing if user set NG to zero */
+    if (CSP_IS_DISABLED)
+        goto fn_exit;
 
     /* Initialize global process object */
     mpi_errno = initialize_proc();

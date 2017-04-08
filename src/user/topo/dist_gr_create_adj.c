@@ -17,6 +17,13 @@ int MPI_Dist_graph_create_adjacent(MPI_Comm comm_old,
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Dist_graph_create_adjacent(comm_old, indegree, sources,
+                                               sourceweights, outdegree,
+                                               destinations, destweights,
+                                               info, reorder, comm_dist_graph);
+
     if (comm_old == MPI_COMM_WORLD)
         comm_old = CSP_COMM_USER_WORLD;
 

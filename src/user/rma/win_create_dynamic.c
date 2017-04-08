@@ -12,6 +12,10 @@ int MPI_Win_create_dynamic(MPI_Info info, MPI_Comm comm, MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_create_dynamic(info, comm, win);
+
     if (comm == MPI_COMM_WORLD)
         comm = CSP_COMM_USER_WORLD;
     CSP_CALLMPI(NOSTMT, PMPI_Win_create_dynamic(info, comm, win));

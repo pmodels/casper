@@ -12,6 +12,10 @@ int MPI_Comm_free(MPI_Comm * comm)
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Comm_free(comm);
+
     /* User should not free COMM_WORLD, but we just let MPI to handle such error.
      * Even user makes such mistake, we do not free COMM_USER_WORLD. */
 

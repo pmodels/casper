@@ -16,6 +16,10 @@ int MPI_Win_unlock_all(MPI_Win win)
     int user_nprocs;
     int i;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_unlock_all(win);
+
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();

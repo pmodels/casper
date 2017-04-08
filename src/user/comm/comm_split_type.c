@@ -13,6 +13,10 @@ int MPI_Comm_split_type(MPI_Comm comm, int split_type, int key, MPI_Info info, M
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Comm_split_type(comm, split_type, key, info, newcomm);
+
     if (comm == MPI_COMM_WORLD)
         comm = CSP_COMM_USER_WORLD;
 

@@ -101,6 +101,10 @@ int MPI_Win_post(MPI_Group group, int assert, MPI_Win win)
     int post_grp_size = 0;
     int i CSP_ATTRIBUTE((unused));
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_post(group, assert, win);
+
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();

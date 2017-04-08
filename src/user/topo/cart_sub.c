@@ -14,6 +14,10 @@ int MPI_Cart_sub(MPI_Comm comm, const int remain_dims[], MPI_Comm * newcomm)
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Cart_sub(comm, remain_dims, newcomm);
+
     if (comm == MPI_COMM_WORLD)
         comm = CSP_COMM_USER_WORLD;
 

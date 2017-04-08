@@ -13,6 +13,10 @@ int MPI_Comm_get_errhandler(MPI_Comm comm, MPI_Errhandler * errhandler)
     MPI_Errhandler cached_errhandler = MPI_ERRHANDLER_NULL;
     MPI_Comm_errhandler_function *cached_fnc = NULL;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return MPI_Comm_get_errhandler(comm, errhandler);
+
     /* The error handler in any communicator exposed to user should be wrapped,
      * and the original user error handler is in cached. */
     CSPU_comm_errhan_get(comm, &cached_errhandler, &cached_fnc);

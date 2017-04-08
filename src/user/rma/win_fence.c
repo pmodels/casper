@@ -44,6 +44,10 @@ int MPI_Win_fence(int assert, MPI_Win win)
     CSPU_win_t *ug_win;
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_fence(assert, win);
+
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();

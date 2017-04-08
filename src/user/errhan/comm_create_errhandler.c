@@ -14,6 +14,10 @@ int MPI_Comm_create_errhandler(MPI_Comm_errhandler_function * comm_errhandler_fn
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Comm_create_errhandler(comm_errhandler_fn, errhandler);
+
     CSP_CALLMPI(JUMP, PMPI_Comm_create_errhandler(comm_errhandler_fn, errhandler));
 
     /* Because no way to get the user function from handler, we store it into hash.

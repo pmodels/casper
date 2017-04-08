@@ -68,12 +68,19 @@ static int fetch_and_op_impl(const void *origin_addr, void *result_addr,
     goto fn_exit;
 }
 
+#define ORIG_MPI_FNC() PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_rank,   \
+            target_disp, op, win)
+
 int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
                      MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
                      MPI_Op op, MPI_Win win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPU_win_t *ug_win;
+
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return ORIG_MPI_FNC();
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();
@@ -93,8 +100,7 @@ int MPI_Fetch_and_op(const void *origin_addr, void *result_addr,
     else {
         /* normal window */
         CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
-        return PMPI_Fetch_and_op(origin_addr, result_addr, datatype, target_rank,
-                                 target_disp, op, win);
+        return ORIG_MPI_FNC();
     }
 
   fn_exit:

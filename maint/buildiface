@@ -264,7 +264,7 @@ while (<INFILE>) {
             if (grep/MPI_Comm $/, $arglist[$x]) {
                 $comm_arg = $x;
 
-                print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD)\n";
+                print CFILE "${tab}if (x$comm_arg == MPI_COMM_WORLD && !CSP_IS_DISABLED)\n";
                 print CFILE "${tab}${tab}x$comm_arg = CSP_COMM_USER_WORLD;\n"
             }
         }

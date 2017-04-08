@@ -13,6 +13,10 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm * ne
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Comm_create_group(comm, group, tag, newcomm);
+
     if (comm == MPI_COMM_WORLD)
         comm = CSP_COMM_USER_WORLD;
 

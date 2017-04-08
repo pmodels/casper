@@ -15,6 +15,10 @@ int MPI_Win_test(MPI_Win win, int *flag)
     int mpi_errno = MPI_SUCCESS;
     int post_grp_size = 0;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_test(win, flag);
+
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();

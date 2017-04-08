@@ -13,6 +13,10 @@ int MPI_Comm_connect(const char *port_name, MPI_Info info, int root, MPI_Comm co
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Comm_connect(port_name, info, root, comm, newcomm);
+
     if (comm == MPI_COMM_WORLD)
         comm = CSP_COMM_USER_WORLD;
 

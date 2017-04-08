@@ -68,12 +68,19 @@ static int compare_and_swap_impl(const void *origin_addr, const void *compare_ad
     goto fn_exit;
 }
 
+#define ORIG_MPI_FNC() PMPI_Compare_and_swap(origin_addr, compare_addr, result_addr,    \
+            datatype, target_rank, target_disp, win)
+
 int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
                          void *result_addr, MPI_Datatype datatype, int target_rank,
                          MPI_Aint target_disp, MPI_Win win)
 {
     int mpi_errno = MPI_SUCCESS;
     CSPU_win_t *ug_win;
+
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return ORIG_MPI_FNC();
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();
@@ -93,8 +100,7 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
     else {
         /* normal window */
         CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
-        return PMPI_Compare_and_swap(origin_addr, compare_addr, result_addr,
-                                     datatype, target_rank, target_disp, win);
+        return ORIG_MPI_FNC();
     }
 
   fn_exit:
