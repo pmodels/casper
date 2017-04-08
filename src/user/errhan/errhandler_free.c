@@ -13,6 +13,10 @@ int MPI_Errhandler_free(MPI_Errhandler * errhandler)
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Errhandler_free(errhandler);
+
     /* Remove cached [error handler -> callback function] record, only free if found. */
     CSPU_errhan_remove_fnc(*errhandler);
 

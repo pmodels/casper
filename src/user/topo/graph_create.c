@@ -13,6 +13,10 @@ int MPI_Graph_create(MPI_Comm comm_old, int nnodes, const int indx[],
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Graph_create(comm_old, nnodes, indx, edges, reorder, comm_graph);
+
     if (comm_old == MPI_COMM_WORLD)
         comm_old = CSP_COMM_USER_WORLD;
 

@@ -114,6 +114,10 @@ int MPI_Finalize(void)
     int mpi_errno = MPI_SUCCESS;
     int user_local_rank;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Finalize();
+
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &user_local_rank));
 
     /* notify ghost processes to finalize */

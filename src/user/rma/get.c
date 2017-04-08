@@ -106,6 +106,9 @@ static int get_impl(void *origin_addr, int origin_count,
     goto fn_exit;
 }
 
+#define ORIG_MPI_FNC() PMPI_Get(origin_addr, origin_count, origin_datatype, \
+target_rank, target_disp, target_count, target_datatype, win)
+
 int MPI_Get(void *origin_addr, int origin_count,
             MPI_Datatype origin_datatype,
             int target_rank, MPI_Aint target_disp,
@@ -113,6 +116,10 @@ int MPI_Get(void *origin_addr, int origin_count,
 {
     int mpi_errno = MPI_SUCCESS;
     CSPU_win_t *ug_win;
+
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return ORIG_MPI_FNC();
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();
@@ -132,8 +139,7 @@ int MPI_Get(void *origin_addr, int origin_count,
     else {
         /* normal window */
         CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
-        return PMPI_Get(origin_addr, origin_count, origin_datatype,
-                        target_rank, target_disp, target_count, target_datatype, win);
+        return ORIG_MPI_FNC();
     }
 
   fn_exit:

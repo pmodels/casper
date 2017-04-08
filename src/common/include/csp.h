@@ -190,6 +190,7 @@ extern CSP_proc_t CSP_PROC;
 
 #define CSP_IS_USER (CSP_PROC.proc_type == CSP_PROC_USER)
 #define CSP_IS_GHOST (CSP_PROC.proc_type == CSP_PROC_GHOST)
+#define CSP_IS_DISABLED (CSP_ENV.num_g == 0)
 
 /* Initialize global information objects. */
 static inline void CSP_reset_proc(void)

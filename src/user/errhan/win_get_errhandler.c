@@ -13,6 +13,10 @@ int MPI_Win_get_errhandler(MPI_Win win, MPI_Errhandler * errhandler)
     MPI_Errhandler cached_errhandler = MPI_ERRHANDLER_NULL;
     MPI_Win_errhandler_function *cached_fnc = NULL;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_get_errhandler(win, errhandler);
+
     /* Only user-specified window error handler is cached, because
      * standard does not say whether a window has default error handler. */
     CSPU_win_errhan_get(win, &cached_errhandler, &cached_fnc);

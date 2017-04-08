@@ -72,7 +72,7 @@ if [ "$test_mode" = "m" ]; then
 
     if [ "x$NG" != "x" ]; then
         # overwrite mode if input is valid
-        if [ "$NG" -ge "1" ]; then
+        if [ "$NG" -ge "0" ]; then
             test_ng=$NG
         fi
     fi
@@ -250,7 +250,7 @@ function exec_all_programs()
 {
     mpiexec=$1
 
-    if [ "x$CSP_NG" = "x" ] || [ "$CSP_NG" -lt "1" ];then
+    if [ "x$CSP_NG" = "x" ] || [ "$CSP_NG" -lt "0" ];then
         echo "invalid CSP_NG=$CSP_NG !"
         exit
     fi
@@ -312,6 +312,11 @@ if [ "$test_mode" = "a" ];then
 
     np=16
     ng=2
+    export CSP_NG=$ng
+    exec_all_programs "$test_mpiexec $np"
+
+    np=4
+    ng=0
     export CSP_NG=$ng
     exec_all_programs "$test_mpiexec $np"
 else

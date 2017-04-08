@@ -12,6 +12,10 @@ int MPI_Intercomm_merge(MPI_Comm intercomm, int high, MPI_Comm * newintracomm)
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Intercomm_merge(intercomm, high, newintracomm);
+
     if (intercomm == MPI_COMM_WORLD)
         intercomm = CSP_COMM_USER_WORLD;
 

@@ -15,6 +15,10 @@ int MPI_Win_sync(MPI_Win win)
     int user_rank = 0, user_nprocs = 0;
     int i;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_sync(win);
+
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();

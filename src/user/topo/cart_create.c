@@ -13,6 +13,10 @@ int MPI_Cart_create(MPI_Comm comm_old, int ndims, const int dims[],
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Cart_create(comm_old, ndims, dims, periods, reorder, comm_cart);
+
     if (comm_old == MPI_COMM_WORLD)
         comm_old = CSP_COMM_USER_WORLD;
 

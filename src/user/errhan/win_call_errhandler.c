@@ -12,6 +12,10 @@ int MPI_Win_call_errhandler(MPI_Win win, int errorcode)
     int mpi_errno = MPI_SUCCESS;
     int errcode_val = errorcode;        /* to pass valid address */
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_call_errhandler(win, errorcode);
+
     CSPU_ERRHAN_RESET_EXTOBJ();
     mpi_errno = CSPU_win_call_errhandler(win, &errcode_val);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

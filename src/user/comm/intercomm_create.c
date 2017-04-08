@@ -13,6 +13,11 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Intercomm_create(local_comm, local_leader, peer_comm,
+                                     remote_leader, tag, newintercomm);
+
     if (local_comm == MPI_COMM_WORLD)
         local_comm = CSP_COMM_USER_WORLD;
 

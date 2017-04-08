@@ -13,6 +13,10 @@ int MPI_Win_set_errhandler(MPI_Win win, MPI_Errhandler errhandler)
     int mpi_errno = MPI_SUCCESS;
     MPI_Win_errhandler_function *errhandler_fnc = NULL;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_set_errhandler(win, errhandler);
+
     if (errhandler != MPI_ERRORS_ARE_FATAL && errhandler != MPI_ERRORS_RETURN) {
         /* Get cached user function on this handler */
         CSPU_errhan_get_fnc(errhandler, (void **) (&errhandler_fnc));

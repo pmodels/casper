@@ -15,6 +15,11 @@ int MPI_Dist_graph_create(MPI_Comm comm_old, int n, const int sources[],
 {
     int mpi_errno = MPI_SUCCESS;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Dist_graph_create(comm_old, n, sources, degrees,
+                                      destinations, weights, info, reorder, comm_dist_graph);
+
     if (comm_old == MPI_COMM_WORLD)
         comm_old = CSP_COMM_USER_WORLD;
 

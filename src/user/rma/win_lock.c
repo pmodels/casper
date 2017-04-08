@@ -86,6 +86,10 @@ int MPI_Win_lock(int lock_type, int target_rank, int assert, MPI_Win win)
     int mpi_errno = MPI_SUCCESS;
     int user_rank;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_lock(lock_type, target_rank, assert, win);
+
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();
