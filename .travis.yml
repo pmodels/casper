@@ -6,9 +6,9 @@ os:
 compiler:
   - clang
   - gcc
-#matrix:
-#  allow_failures:
-#    - env: MPI_IMPL=openmpi
+matrix:
+  allow_failures:
+    - env: MPI_IMPL=openmpi
 env:
   - MPI_IMPL=mpich
   - MPI_IMPL=openmpi
