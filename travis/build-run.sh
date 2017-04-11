@@ -42,8 +42,3 @@ export CSP_VERBOSE=1
 
 # Run unit tests
 make V=1 check
-
-# Run real tests
-cd test
-make V=1
-make V=1 MPIEXEC="mpirun -host localhost " testing
