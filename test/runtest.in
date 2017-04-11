@@ -331,6 +331,8 @@ junit_report_finish
 
 if [ "$num_failed" -ge "1" ];then
     echo "$num_failed tests failed"
+    exit 1
 else
     echo "all passed"
+    exit 0
 fi
