@@ -14,7 +14,7 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag
     int mpi_errno = MPI_SUCCESS;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return PMPI_Win_get_attr(win, win_keyval, attribute_val, flag);
 
     CSPU_fetch_ug_win_from_cache(win, &ug_win);

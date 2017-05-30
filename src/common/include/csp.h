@@ -121,17 +121,23 @@ typedef enum {
     CSP_EPOCH_FENCE = 8
 } CSP_epoch_type_t;
 
-
 /* ======================================================================
  * Environment related definitions.
  * ====================================================================== */
 
 #define CSP_DEFAULT_NG 1
 
+typedef enum {
+    CSP_ASYNC_MODE_RMA = 1,
+    CSP_ASYNC_MODE_PT2PT = 2,
+} CSP_async_mode_t;
+
 typedef struct CSP_env_param {
     int num_g;
     CSP_load_opt_t load_opt;    /* runtime load balancing options */
     CSP_load_lock_t load_lock;  /* how to grant locks for runtime load balancing */
+    int async_modes;            /* specify asynchronous progress enabled MPI communication modes
+                                 * (e.g., RMA|P2P, RMA is always enabled) */
 
     int verbose;                /* verbose level. print configuration information. */
     CSP_async_config_t async_config;
@@ -202,7 +208,15 @@ extern CSP_proc_t CSP_PROC;
 
 #define CSP_IS_USER (CSP_PROC.proc_type == CSP_PROC_USER)
 #define CSP_IS_GHOST (CSP_PROC.proc_type == CSP_PROC_GHOST)
+
+/* CSP_IS_DISABLED : No ghost process exists.
+ * ASYNC_CONFIG=OFF: Allows per window or communicator reconfigure. Need both communicator
+ *                   replacement and error handler wrapping.
+ * MODE_DISABLED   : A MPI mode (PT2PT, RMA, COLL) is globally disabled, only need
+ *                   communicator replacement. */
 #define CSP_IS_DISABLED (CSP_ENV.num_g == 0)
+#define CSP_IS_MODE_ENABLED(mode) (CSP_ENV.async_modes & CSP_ASYNC_MODE_##mode)
+#define CSP_IS_MODE_DISABLED(mode) ((CSP_ENV.async_modes & CSP_ASYNC_MODE_##mode) == 0)
 
 /* Initialize global information objects. */
 static inline void CSP_reset_proc(void)

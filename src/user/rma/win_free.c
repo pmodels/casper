@@ -196,7 +196,7 @@ int MPI_Win_free(MPI_Win * win)
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return PMPI_Win_free(win);
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
