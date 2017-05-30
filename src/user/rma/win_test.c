@@ -16,7 +16,7 @@ int MPI_Win_test(MPI_Win win, int *flag)
     int post_grp_size = 0;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return PMPI_Win_test(win, flag);
 
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();

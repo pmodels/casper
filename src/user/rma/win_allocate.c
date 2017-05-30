@@ -688,6 +688,12 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     if (CSP_IS_DISABLED)
         return PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
 
+    if (CSP_IS_MODE_DISABLED(RMA)) {
+        if (user_comm == MPI_COMM_WORLD)
+            user_comm = CSP_COMM_USER_WORLD;
+        return PMPI_Win_allocate(size, disp_unit, info, user_comm, baseptr, win);
+    }
+
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_COMM_ERRHAN_SET_EXTOBJ();
 

@@ -79,7 +79,7 @@ int MPI_Compare_and_swap(const void *origin_addr, const void *compare_addr,
     CSPU_win_t *ug_win;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return ORIG_MPI_FNC();
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();

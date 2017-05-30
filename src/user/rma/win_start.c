@@ -88,7 +88,7 @@ int MPI_Win_start(MPI_Group group, int assert, MPI_Win win)
     int user_rank;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return PMPI_Win_start(group, assert, win);
 
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();

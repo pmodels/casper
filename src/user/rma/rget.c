@@ -144,7 +144,7 @@ int MPI_Rget(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
     CSPU_win_t *ug_win;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return ORIG_MPI_FNC();
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();

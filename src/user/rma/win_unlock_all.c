@@ -17,7 +17,7 @@ int MPI_Win_unlock_all(MPI_Win win)
     int i;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED)
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
         return PMPI_Win_unlock_all(win);
 
     CSPU_THREAD_OBJ_CS_LOCAL_DCL();
