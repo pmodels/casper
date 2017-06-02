@@ -67,6 +67,12 @@
             PMPI_Abort(MPI_COMM_WORLD, -1);                         \
         }} while (0)
 
+#ifndef CSP_FAST
+#define CSP_DBG_ASSERT(EXPR) CSP_ASSERT(EXPR)
+#else
+#define CSP_DBG_ASSERT(EXPR)
+#endif
+
 /* MPI error code checking MARCOs.
  * Can be used by both PMPI calls and other internal calls. */
 #define CSP_CHKMPIFAIL_JUMP(mpi_errno) do {           \
