@@ -294,6 +294,20 @@ fi
 
 AM_CONDITIONAL([csp_have_topo_opt], [test "$have_hwloc" = "yes"])
 
+# External OPA library (required)
+AC_ARG_WITH(opa, [AC_HELP_STRING([--with-opa[=DIR]],
+                [Use the specified OPA installation; Header file opa_primitives.h should be in 
+                dir/include, and libopa should be in dir/lib.])],,with_opa=no)
+if test "$with_opa" = "no" ; then
+    AC_MSG_ERROR([unable to find opa library.])
+else
+    CFLAGS="$CFLAGS -I$with_opa/include"
+    AC_CHECK_HEADERS(opa_primitives.h)
+    # do not check library because all needed functions are inlined. 
+    # LDFLAGS="$LDFLAGS -L$with_opa/lib"
+    # AC_CHECK_LIB([opa],[OPA_swap_ptr],have_opa=yes,AC_MSG_ERROR([unable to find OPA_swap_ptr.]))
+fi
+
 # check for attribute support
 PAC_C_GNU_ATTRIBUTE
 

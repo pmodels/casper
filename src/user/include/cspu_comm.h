@@ -13,13 +13,28 @@
 
 typedef struct CSPU_comm_info_args {
     CSP_async_config_t async_config;
-    char win_name[MPI_MAX_OBJECT_NAME + 1];
 } CSPU_comm_info_args_t;
 
 typedef struct CSPU_comm {
-    MPI_Comm ug_comm;
-    MPI_Comm comm;
+#if defined(CSP_ENABLE_THREAD_SAFE)
+    CSP_thread_cs_t cs;         /* per window critical section object,
+                                 * used only when this process is multi-threaded. */
+#endif
+
+    MPI_Comm ug_comm;           /* Including both user and ghost processes */
+    MPI_Comm comm;              /* Including all user processes, exposed to user. */
+    MPI_Comm user_root_comm;    /* Used to acquire mlock. */
+    MPI_Comm local_user_comm;   /* Used to cwp with ghost */
+
     CSPU_comm_info_args_t info_args;
+    int num_ghosts_unique;
+
+    int *g_ranks_bound;         /* Bound ghost rank of each user in ug_comm.
+                                 * Ghost is already locally bound at MPI_init. */
+
+    MPI_Aint g_ugcomm_bound;    /* ug_comm address on the bound ghost process */
+    MPI_Aint *g_ugcomm_handles; /* ug_comm address on every ghost process.
+                                 * Only used by local user root.*/
 } CSPU_comm_t;
 
 /* ======================================================================
@@ -82,4 +97,12 @@ static inline int CSPU_remove_ug_comm_from_cache(MPI_Comm comm)
         CSP_DBG_PRINT("Cannot remove ug_comm cache for comm 0x%x\n", comm);
     return mpi_errno;
 }
+
+/* ======================================================================
+ * Other prototypes
+ * ====================================================================== */
+
+extern int CSPU_ugcomm_free(MPI_Comm comm);
+extern int CSPU_ugcomm_create(MPI_Info info, MPI_Comm user_newcomm);
+
 #endif /* CSPU_PT2PT_H_INCLUDED */

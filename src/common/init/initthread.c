@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "csp.h"
+#include "csp_offload.h"
 
 /* Global environment setting */
 CSP_env_param_t CSP_ENV;

@@ -196,7 +196,22 @@ int MPI_Win_free(MPI_Win * win)
     int user_rank, user_nprocs, user_local_rank, user_local_nprocs;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
+    if (CSP_IS_DISABLED)
+        return PMPI_Win_free(win);
+
+    /* First try to free as shmbuf window if pt2p2 is enabled. */
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        int freed = 0;
+        mpi_errno = CSPU_shmbuf_free(win, &freed);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+        /* Continue only when it is not freed. */
+        if (freed)
+            return mpi_errno;
+    }
+
+    /* Do not continue if RMA is disabled. */
+    if (CSP_IS_MODE_DISABLED(RMA))
         return PMPI_Win_free(win);
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();

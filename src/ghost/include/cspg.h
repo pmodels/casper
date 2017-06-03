@@ -13,6 +13,9 @@
 #include "csp.h"
 #include "csp_cwp.h"
 #include "csp_mlock.h"
+#include "csp_offload.h"
+#include "csp_datatype.h"
+#include "cspg_offload.h"
 
 /* ======================================================================
  * Ghost error and internal debugging MACRO.
@@ -71,11 +74,38 @@ extern void CSPG_cwp_register_handler(CSP_cwp_t cmd_type, CSPG_cwp_handler_t han
 extern int CSPG_cwp_do_progress(void);
 extern void CSPG_cwp_terminate(void);
 
-static inline int CSPG_cwp_bcast(CSP_cwp_pkt_t * pkt)
+static inline int CSPG_cwp_try_bcast(CSP_cwp_pkt_t * pkt, MPI_Request * ibcast_req)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_CALLMPI(NOSTMT, PMPI_Bcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
-                                   CSP_PROC.ghost.g_local_comm));
+    CSP_CALLMPI(NOSTMT, PMPI_Ibcast((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR, 0,
+                                    CSP_PROC.ghost.g_local_comm, ibcast_req));
+    return mpi_errno;
+}
+
+static inline int CSPG_cwp_root_try_recv(CSP_cwp_pkt_t * pkt, MPI_Request * irecv_req)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Irecv((char *) pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
+                                   MPI_ANY_SOURCE, CSP_CWP_TAG, CSP_PROC.local_comm, irecv_req));
+    return mpi_errno;
+}
+
+/* Receive parameters from user root via local communicator (blocking call). */
+static inline int CSPG_cwp_recv_param(void *params, size_t size, int user_local_root)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Recv(params, size, MPI_CHAR, user_local_root,
+                                  CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, MPI_STATUS_IGNORE));
+    return mpi_errno;
+}
+
+/* Send parameters to any local user via local communicator (blocking call). */
+static inline int CSPG_cwp_try_send_param(void *params, size_t size, int user_local_rank,
+                                          MPI_Request * isend_req)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Isend(params, size, MPI_CHAR, user_local_rank,
+                                   CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, isend_req));
     return mpi_errno;
 }
 
@@ -91,6 +121,18 @@ extern int CSPG_win_allocate_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_win_free_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt);
 
+extern int CSPG_datatype_regist_cwp_handler(CSP_cwp_pkt_t * pkt);
+
+extern int CSPG_ugcomm_create_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
+extern int CSPG_ugcomm_create_cwp_handler(CSP_cwp_pkt_t * pkt);
+extern int CSPG_ugcomm_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
+extern int CSPG_ugcomm_free_cwp_handler(CSP_cwp_pkt_t * pkt);
+
+extern int CSPG_shmbuf_regist_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
+extern int CSPG_shmbuf_regist_cwp_handler(CSP_cwp_pkt_t * pkt);
+extern int CSPG_shmbuf_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
+extern int CSPG_shmbuf_free_cwp_handler(CSP_cwp_pkt_t * pkt);
+
 /* ======================================================================
  * MLOCK related definition (ghost side).
  * ====================================================================== */
@@ -98,5 +140,12 @@ extern int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern void CSPG_mlock_init(void);
 extern void CSPG_mlock_destory(void);
 extern int CSPG_mlock_release(void);
+
+/* ======================================================================
+ * DATATYPE related definition (ghost side).
+ * ====================================================================== */
+extern int CSPG_datatype_init(void);
+extern int CSPG_datatype_destory(void);
+/* See CSPG_datatype_regist_cwp_handler above */
 
 #endif /* CSPG_H_INCLUDED */

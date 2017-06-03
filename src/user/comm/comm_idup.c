@@ -27,6 +27,16 @@ int MPI_Comm_idup(MPI_Comm comm, MPI_Comm * newcomm, MPI_Request * request)
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
+    /* Create background ug_comm.
+     * FIXME: wrap up error handler. */
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_ugcomm_create(MPI_INFO_NULL, *newcomm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
+    /* FIXME: idup is nonblocking, should we move the afterward wrapping
+     * at request completion ? */
+
   fn_exit:
     return mpi_errno;
   fn_fail:

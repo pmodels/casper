@@ -191,6 +191,9 @@ while (<INFILE>) {
         || ($routine eq "MPI_Comm_connect")
         || ($routine eq "MPI_Dist_graph_create_adjacent")
         || ($routine eq "MPI_Dist_graph_create")
+        || ($routine eq "MPI_Isend")
+        || ($routine eq "MPI_Irecv")
+        || ($routine eq "MPI_Test")
         ) {
         $fullline = "";
         next;

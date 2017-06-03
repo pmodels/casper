@@ -9,7 +9,7 @@
 
 CSP_DEFINE_WIN_CACHE;
 CSP_DEFINE_COMM_CACHE;
-CSPU_comm_t CSPU_UG_COMM_WORLD;
+CSP_DEFINE_SHMBUF_WIN_CACHE;
 
 #ifdef CSP_DEBUG
 static int dbg_print_proc(void)
@@ -188,18 +188,19 @@ int CSPU_global_init(int is_threaded)
     mpi_errno = setup_proc(is_threaded);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
+    mpi_errno = CSPU_offload_init();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    mpi_errno = CSPU_datatype_init();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
     mpi_errno = CSPU_init_win_cache();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_init_comm_cache();
+    mpi_errno = CSPU_init_shmbuf_win_cache();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    /* Set up ug_comm wrapper for comm_user_world. */
-    memset(&CSPU_UG_COMM_WORLD, 0, sizeof(CSPU_comm_t));
-    CSPU_UG_COMM_WORLD.comm = CSP_COMM_USER_WORLD;
-    CSPU_UG_COMM_WORLD.ug_comm = MPI_COMM_WORLD;
-
-    mpi_errno = CSPU_cache_ug_comm(CSP_COMM_USER_WORLD, &CSPU_UG_COMM_WORLD);
+    mpi_errno = CSPU_init_comm_cache();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_errhan_init();
@@ -209,6 +210,10 @@ int CSPU_global_init(int is_threaded)
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = comm_errhan_wrap_predefined();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    /* Set up ug_comm wrapper for comm_user_world. */
+    mpi_errno = CSPU_ugcomm_create(MPI_INFO_NULL, CSP_COMM_USER_WORLD);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:

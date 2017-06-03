@@ -21,3 +21,4 @@ include $(top_srcdir)/src/user/init/Makefile.mk
 include $(top_srcdir)/src/user/rma/Makefile.mk
 include $(top_srcdir)/src/user/topo/Makefile.mk
 include $(top_srcdir)/src/user/spawn/Makefile.mk
+include $(top_srcdir)/src/user/pt2pt/Makefile.mk

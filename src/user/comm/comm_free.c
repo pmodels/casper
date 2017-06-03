@@ -19,6 +19,12 @@ int MPI_Comm_free(MPI_Comm * comm)
     /* User should not free COMM_WORLD, but we just let MPI to handle such error.
      * Even user makes such mistake, we do not free COMM_USER_WORLD. */
 
+    /* Free background ug_comm. */
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_ugcomm_free(*comm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
     /* Only free the error handler record for valid user communicators.
      * The COMM_WORLD is always destroyed at finalize.*/
     if ((*comm) != MPI_COMM_WORLD && (*comm) != MPI_COMM_NULL) {
