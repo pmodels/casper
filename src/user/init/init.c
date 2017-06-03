@@ -8,6 +8,8 @@
 #include "cspu.h"
 
 CSP_DEFINE_WIN_CACHE;
+CSP_DEFINE_COMM_CACHE;
+CSPU_comm_t CSPU_UG_COMM_WORLD;
 
 #ifdef CSP_DEBUG
 static int dbg_print_proc(void)
@@ -187,6 +189,17 @@ int CSPU_global_init(int is_threaded)
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_init_win_cache();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    mpi_errno = CSPU_init_comm_cache();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    /* Set up ug_comm wrapper for comm_user_world. */
+    memset(&CSPU_UG_COMM_WORLD, 0, sizeof(CSPU_comm_t));
+    CSPU_UG_COMM_WORLD.comm = CSP_COMM_USER_WORLD;
+    CSPU_UG_COMM_WORLD.ug_comm = MPI_COMM_WORLD;
+
+    mpi_errno = CSPU_cache_ug_comm(CSP_COMM_USER_WORLD, &CSPU_UG_COMM_WORLD);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = CSPU_errhan_init();

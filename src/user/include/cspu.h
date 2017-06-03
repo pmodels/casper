@@ -16,6 +16,7 @@
 #include "cspu_cwp.h"
 #include "cspu_thread.h"
 #include "cspu_errhan.h"
+#include "cspu_comm.h"
 
 /* ======================================================================
  * CASPER user constants definition.
