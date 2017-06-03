@@ -17,6 +17,11 @@
 #include "cspu_thread.h"
 #include "cspu_errhan.h"
 #include "cspu_comm.h"
+#include "csp_offload.h"
+#include "cspu_offload.h"
+#include "csp_datatype.h"
+#include "cspu_datatype.h"
+#include "cspu_shmbuf.h"
 
 /* ======================================================================
  * CASPER user constants definition.
@@ -503,4 +508,6 @@ extern int CSPU_mlock_destroy(void);
 extern int CSPU_win_bind_ghosts(CSPU_win_t * ug_win);
 extern int CSPU_win_release(CSPU_win_t * ug_win);
 
+extern int CSPU_datatype_init(void);
+extern int CSPU_datatype_destroy(void);
 #endif /* CSPU_H_INCLUDED */

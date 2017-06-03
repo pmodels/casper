@@ -377,11 +377,14 @@ int CSPG_win_allocate_cwp_root_handler(CSP_cwp_pkt_t * pkt,
                                        int user_local_rank CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
+    MPI_Request ibcast_req = MPI_REQUEST_NULL;
     CSP_cwp_fnc_winalloc_pkt_t *winalloc_pkt = &pkt->u.fnc_winalloc;
 
     /* broadcast to other local ghosts */
-    mpi_errno = CSPG_cwp_bcast(pkt);
+    mpi_errno = CSPG_cwp_try_bcast(pkt, &ibcast_req);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    CSP_CALLMPI(JUMP, PMPI_Wait(&ibcast_req, MPI_STATUS_IGNORE));
 
     mpi_errno = win_allocate_impl(winalloc_pkt);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

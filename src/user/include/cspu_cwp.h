@@ -31,4 +31,71 @@ static inline int CSPU_cwp_issue(CSP_cwp_pkt_t * pkt)
     return mpi_errno;
 }
 
+
+/* Broadcast parameters to all the local ghosts (blocking call).
+ * It is usually called by only the local user root process after issued the header packet. */
+static inline int CSPU_cwp_bcast_params(void *params, size_t size)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i;
+    MPI_Request *reqs = NULL;
+
+    reqs = (MPI_Request *) CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+
+    /* ghosts are always start from rank 0 on local communicator. */
+    for (i = 0; i < CSP_ENV.num_g; i++) {
+        CSP_CALLMPI(JUMP, PMPI_Isend(params, size, MPI_CHAR, i, CSP_CWP_PARAM_TAG,
+                                     CSP_PROC.local_comm, &reqs[i]));
+    }
+
+    CSP_CALLMPI(JUMP, PMPI_Waitall(CSP_ENV.num_g, reqs, MPI_STATUS_IGNORE));
+
+  fn_exit:
+    if (reqs)
+        free(reqs);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+/* Gather parameters from all the local ghosts (blocking call).
+ * It is usually called by only the local user root process after issued the header packet. */
+static inline int CSPU_cwp_gather_params(void *params, size_t size)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int i;
+    MPI_Request *reqs = NULL;
+    size_t offset = 0;
+
+    reqs = (MPI_Request *) CSP_calloc(CSP_ENV.num_g, sizeof(MPI_Request));
+
+    /* ghosts are always start from rank 0 on local communicator. */
+    for (i = 0; i < CSP_ENV.num_g; i++) {
+        offset = i * size;
+        CSP_CALLMPI(JUMP, PMPI_Irecv(((char *) params + offset), size, MPI_CHAR, i,
+                                     CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, &reqs[i]));
+    }
+
+    CSP_CALLMPI(JUMP, PMPI_Waitall(CSP_ENV.num_g, reqs, MPI_STATUS_IGNORE));
+
+  fn_exit:
+    if (reqs)
+        free(reqs);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+/* Receive parameters from the specific local ghosts (blocking call).
+ * It may be called by any local user process. */
+static inline int CSPU_cwp_recv_params(void *params, size_t size, int g_lrank)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(RETURN, PMPI_Recv(params, size, MPI_CHAR, g_lrank, CSP_CWP_PARAM_TAG,
+                                  CSP_PROC.local_comm, MPI_STATUS_IGNORE));
+    return mpi_errno;
+}
+
 #endif /* CSPU_CWP_H_INCLUDED */

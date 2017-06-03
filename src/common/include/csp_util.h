@@ -130,4 +130,6 @@ static inline void *CSP_calloc(int n, size_t size)
 #endif
 #include "uthash.h"
 
+#include "utlist.h"
+
 #endif /* CSP_UTIL_H_INCLUDED */

@@ -21,6 +21,10 @@ static const char *cwp_cmd_name[CSP_CWP_MAX] = {
     "unset",
     "win_allocate",
     "win_free",
+    "ugcomm_create",
+    "ugcomm_free",
+    "shmbuf_regist",
+    "shmbuf_free",
     "finalize",
     "lock_acquire",
     "lock_discard",
@@ -44,6 +48,49 @@ static CSPG_cwp_handler_t cwp_handlers[CSP_CWP_MAX] = { NULL };
  * users have sent finalize command. The progress engine checks this flag to exit
  * from loop.*/
 static int cwp_terminate_flag = 0;
+
+static inline int cwp_root_pkt_handle(CSP_cwp_pkt_t * pkt_ptr, int src_rank)
+{
+    int mpi_errno = MPI_SUCCESS;
+    /* skip undefined command */
+    if (pkt_ptr->cmd_type <= CSP_CWP_UNSET || pkt_ptr->cmd_type >= CSP_CWP_MAX ||
+        !cwp_root_handlers[pkt_ptr->cmd_type]) {
+        CSPG_CWP_DBG_PRINT(" Received undefined CMD %d\n", (int) (pkt_ptr->cmd_type));
+        goto fn_exit;
+    }
+
+    CSPG_CWP_DBG_PRINT(" ghost 0 received CMD %d [%s] from %d\n",
+                       (int) (pkt_ptr->cmd_type), cwp_cmd_name[pkt_ptr->cmd_type], src_rank);
+    mpi_errno = cwp_root_handlers[pkt_ptr->cmd_type] (pkt_ptr, src_rank);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+static inline int cwp_pkt_handle(CSP_cwp_pkt_t * pkt_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    /* skip undefined internal command */
+    if (pkt_ptr->cmd_type <= CSP_CWP_UNSET || pkt_ptr->cmd_type >= CSP_CWP_MAX ||
+        !cwp_handlers[pkt_ptr->cmd_type]) {
+        CSPG_CWP_DBG_PRINT(" Received undefined CMD %d\n", (int) (pkt_ptr->cmd_type));
+        goto fn_exit;
+    }
+
+    CSPG_CWP_DBG_PRINT(" all ghosts received CMD %d [%s]\n", (int) pkt_ptr->cmd_type,
+                       cwp_cmd_name[pkt_ptr->cmd_type]);
+    mpi_errno = cwp_handlers[pkt_ptr->cmd_type] (pkt_ptr);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
 
 /* Register root handler functions for user issued commands. */
 void CSPG_cwp_register_root_handler(CSP_cwp_t cmd_type, CSPG_cwp_root_handler_t handler_fnc)
@@ -74,50 +121,52 @@ int CSPG_cwp_do_progress(void)
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cwp_pkt_t pkt;
-    MPI_Status stat;
+    MPI_Request irecv_req, ibcast_req;
+    MPI_Status irecv_stat;
+    int first_flag = 1, irecv_flag = 0, ibcast_flag = 0;
     int local_gp_rank = -1;
 
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.ghost.g_local_comm, &local_gp_rank));
-    memset(&pkt, 0, sizeof(CSP_cwp_pkt_t));
 
     while (1) {
+        /* Polls offload channel */
+        if (CSP_IS_MODE_ENABLED(PT2PT)) {
+            mpi_errno = CSPG_offload_poll_progress();
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        }
+
         /* Only the first local ghost (root) receives commands from any local user process.
          * Otherwise deadlock may happen if multiple user roots send request to
          * ghosts concurrently and some ghosts are locked in different communicator creation. */
         if (local_gp_rank == 0) {
-            CSP_CALLMPI(JUMP, PMPI_Recv((char *) &pkt, sizeof(CSP_cwp_pkt_t), MPI_CHAR,
-                                        MPI_ANY_SOURCE, CSP_CWP_TAG, CSP_PROC.local_comm, &stat));
-
-            /* skip undefined command */
-            if (pkt.cmd_type <= CSP_CWP_UNSET || pkt.cmd_type >= CSP_CWP_MAX ||
-                !cwp_root_handlers[pkt.cmd_type]) {
-                CSPG_CWP_DBG_PRINT(" Received undefined CMD %d\n", (int) (pkt.cmd_type));
-                continue;
+            if (first_flag || irecv_flag == 1) {
+                mpi_errno = CSPG_cwp_root_try_recv(&pkt, &irecv_req);
+                CSP_CHKMPIFAIL_JUMP(mpi_errno);
             }
 
-            CSPG_CWP_DBG_PRINT(" ghost 0 received CMD %d [%s] from %d\n",
-                               (int) (pkt.cmd_type), cwp_cmd_name[pkt.cmd_type], stat.MPI_SOURCE);
-            mpi_errno = cwp_root_handlers[pkt.cmd_type] (&pkt, stat.MPI_SOURCE);
-            CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            CSP_CALLMPI(JUMP, PMPI_Test(&irecv_req, &irecv_flag, &irecv_stat));
 
+            /* Received command */
+            if (irecv_flag == 1) {
+                mpi_errno = cwp_root_pkt_handle(&pkt, irecv_stat.MPI_SOURCE);
+                CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            }
         }
         else {
             /* All other ghosts wait on internal commands broadcasted by the root,
              * which is issued in root's command handler. */
-            mpi_errno = CSPG_cwp_bcast(&pkt);
-            CSP_CHKMPIFAIL_JUMP(mpi_errno);
-
-            /* skip undefined internal command */
-            if (pkt.cmd_type <= CSP_CWP_UNSET || pkt.cmd_type >= CSP_CWP_MAX ||
-                !cwp_handlers[pkt.cmd_type]) {
-                CSPG_CWP_DBG_PRINT(" Received undefined CMD %d\n", (int) (pkt.cmd_type));
-                continue;
+            if (first_flag || ibcast_flag == 1) {
+                mpi_errno = CSPG_cwp_try_bcast(&pkt, &ibcast_req);
+                CSP_CHKMPIFAIL_JUMP(mpi_errno);
             }
 
-            CSPG_CWP_DBG_PRINT(" all ghosts received CMD %d [%s]\n", (int) pkt.cmd_type,
-                               cwp_cmd_name[pkt.cmd_type]);
-            mpi_errno = cwp_handlers[pkt.cmd_type] (&pkt);
-            CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            CSP_CALLMPI(JUMP, PMPI_Test(&ibcast_req, &ibcast_flag, MPI_STATUS_IGNORE));
+
+            /* Received command */
+            if (ibcast_flag == 1) {
+                mpi_errno = cwp_pkt_handle(&pkt);
+                CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            }
         }
 
         /* Terminate after received notification from finalize handler. */
@@ -125,6 +174,8 @@ int CSPG_cwp_do_progress(void)
             CSPG_CWP_DBG_PRINT(" exit from progress engine\n");
             goto fn_exit;
         }
+
+        first_flag = 0;
     }
 
   fn_exit:

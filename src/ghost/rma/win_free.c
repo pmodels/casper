@@ -95,10 +95,13 @@ int CSPG_win_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_
 {
     int mpi_errno = MPI_SUCCESS;
     CSP_cwp_fnc_winfree_pkt_t *winfree_pkt = &pkt->u.fnc_winfree;
+    MPI_Request ibcast_req = MPI_REQUEST_NULL;
 
     /* broadcast to other local ghosts */
-    mpi_errno = CSPG_cwp_bcast(pkt);
+    mpi_errno = CSPG_cwp_try_bcast(pkt, &ibcast_req);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    CSP_CALLMPI(JUMP, PMPI_Wait(&ibcast_req, MPI_STATUS_IGNORE));
 
     mpi_errno = win_free_impl(winfree_pkt);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

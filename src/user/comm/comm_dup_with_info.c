@@ -27,6 +27,13 @@ int MPI_Comm_dup_with_info(MPI_Comm comm, MPI_Info info, MPI_Comm * newcomm)
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
+    /* Create background ug_comm.
+     * FIXME: wrap up error handler. */
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_ugcomm_create(info, *newcomm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
   fn_exit:
     return mpi_errno;
   fn_fail:

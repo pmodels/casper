@@ -33,6 +33,10 @@ typedef enum {
     CSP_CWP_UNSET = 0,
     CSP_CWP_FNC_WIN_ALLOCATE,
     CSP_CWP_FNC_WIN_FREE,
+    CSP_CWP_FNC_UGCOMM_CREATE,
+    CSP_CWP_FNC_UGCOMM_FREE,
+    CSP_CWP_FNC_SHMBUF_REGIST,
+    CSP_CWP_FNC_SHMBUF_FREE,
     CSP_CWP_FNC_FINALIZE,
     CSP_MLOCK_ACQUIRE,
     CSP_MLOCK_DISCARD,
@@ -54,6 +58,26 @@ typedef struct CSP_cwp_winfree_pkt {
     int user_local_root;
 } CSP_cwp_fnc_winfree_pkt_t;
 
+typedef struct CSP_cwp_shmbuf_regist_pkt {
+    int user_local_root;
+} CSP_cwp_shmbuf_regist_pkt_t;
+
+typedef struct CSP_cwp_shmbuf_free_pkt {
+    int user_local_root;
+} CSP_cwp_shmbuf_free_pkt_t;
+
+typedef struct CSP_cwp_ugcomm_create_pkt {
+    int user_local_root;
+    int user_nprocs;
+    int num_ghosts_unique;
+/*    int info_npairs; */
+} CSP_cwp_fnc_ugcomm_create_pkt_t;
+
+typedef struct CSP_cwp_ugcomm_free_pkt {
+    int user_local_root;
+    MPI_Aint g_comm_handle;
+} CSP_cwp_fnc_ugcomm_free_pkt_t;
+
 typedef struct CSP_cwp_mlock_acquire_pkt {
     CSP_mlock_gid_t group_id;   /* global unique id of user group. */
 } CSP_cwp_mlock_acquire_pkt_t;
@@ -70,6 +94,10 @@ typedef struct CSP_cwp_pkt {
     union {
         CSP_cwp_fnc_winalloc_pkt_t fnc_winalloc;
         CSP_cwp_fnc_winfree_pkt_t fnc_winfree;
+        CSP_cwp_shmbuf_regist_pkt_t fnc_shmbuf_regist;
+        CSP_cwp_shmbuf_free_pkt_t fnc_shmbuf_free;
+        CSP_cwp_fnc_ugcomm_create_pkt_t fnc_ugcomm_create;
+        CSP_cwp_fnc_ugcomm_free_pkt_t fnc_ugcomm_free;
         CSP_cwp_mlock_acquire_pkt_t lock_acquire;
         CSP_cwp_mlock_discard_pkt_t lock_discard;
         CSP_cwp_mlock_release_pkt_t lock_release;

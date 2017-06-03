@@ -71,15 +71,26 @@ int CSPG_global_finalize(void)
 
     CSPG_mlock_destory();
 
-    mpi_errno = destroy_proc();
+    mpi_errno = CSPG_datatype_destory();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
+    mpi_errno = CSPG_offload_destroy();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    mpi_errno = destroy_proc();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+  fn_exit:
     return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
 
 int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_ATTRIBUTE((unused)))
 {
     int mpi_errno = MPI_SUCCESS;
     int local_nprocs, local_user_nprocs;
+    MPI_Request ibcast_req = MPI_REQUEST_NULL;
 
     finalize_cnt++;
     CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
@@ -94,8 +105,10 @@ int CSPG_finalize_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank CSP_
         goto fn_exit;
 
     /* broadcast to all local ghost */
-    mpi_errno = CSPG_cwp_bcast(pkt);
+    mpi_errno = CSPG_cwp_try_bcast(pkt, &ibcast_req);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    CSP_CALLMPI(JUMP, PMPI_Wait(&ibcast_req, MPI_STATUS_IGNORE));
 
     mpi_errno = finalize_impl();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

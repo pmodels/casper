@@ -47,10 +47,18 @@ static void register_cwp_handlers(void)
 {
     CSPG_cwp_register_root_handler(CSP_CWP_FNC_WIN_ALLOCATE, CSPG_win_allocate_cwp_root_handler);
     CSPG_cwp_register_root_handler(CSP_CWP_FNC_WIN_FREE, CSPG_win_free_cwp_root_handler);
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_UGCOMM_CREATE, CSPG_ugcomm_create_cwp_root_handler);
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_UGCOMM_FREE, CSPG_ugcomm_free_cwp_root_handler);
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_SHMBUF_REGIST, CSPG_shmbuf_regist_cwp_root_handler);
+    CSPG_cwp_register_root_handler(CSP_CWP_FNC_SHMBUF_FREE, CSPG_shmbuf_free_cwp_root_handler);
     CSPG_cwp_register_root_handler(CSP_CWP_FNC_FINALIZE, CSPG_finalize_cwp_root_handler);
 
     CSPG_cwp_register_handler(CSP_CWP_FNC_WIN_ALLOCATE, CSPG_win_allocate_cwp_handler);
     CSPG_cwp_register_handler(CSP_CWP_FNC_WIN_FREE, CSPG_win_free_cwp_handler);
+    CSPG_cwp_register_handler(CSP_CWP_FNC_UGCOMM_CREATE, CSPG_ugcomm_create_cwp_handler);
+    CSPG_cwp_register_handler(CSP_CWP_FNC_UGCOMM_FREE, CSPG_ugcomm_free_cwp_handler);
+    CSPG_cwp_register_handler(CSP_CWP_FNC_SHMBUF_REGIST, CSPG_shmbuf_regist_cwp_handler);
+    CSPG_cwp_register_handler(CSP_CWP_FNC_SHMBUF_FREE, CSPG_shmbuf_free_cwp_handler);
     CSPG_cwp_register_handler(CSP_CWP_FNC_FINALIZE, CSPG_finalize_cwp_handler);
 }
 
@@ -60,6 +68,13 @@ int CSPG_global_init(void)
 
     /* Initialization */
     setup_proc();
+
+    mpi_errno = CSPG_offload_init();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    mpi_errno = CSPG_datatype_init();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
     register_cwp_handlers();
     CSPG_mlock_init();
 
