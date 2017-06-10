@@ -44,6 +44,7 @@ noinst_PROGRAMS = \
 	win_errhan			\
 	comm_errhan			\
 	finalize			\
+	isendirecv_test		\
 	$(THREAD_TESTS)
 
 MPIEXEC=mpiexec
