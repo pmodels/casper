@@ -26,11 +26,13 @@
  * Also see csp_datatype.h.
  * ====================================================================== */
 
-/* Number of pre-allocated cells on each user process.
+/* Default number of pre-allocated cells on each user process.
  * If all cells are enqueued into the shared recvq (offloaded), the user
- * process has to wait until one outstanding offloaded call finish.  */
-#define CSP_OFFLOAD_NCELLS 64
+ * process has to wait until one outstanding offloaded call finish.
+ * Also see offload_shmq_ncells in CSP_env_param_t struct.  */
+#define CSP_DEFAULT_OFFLOAD_SHMQ_NCELLS 64
 #define CSP_OFFLOAD_TAG_FACTOR 100
+#define CSP_OFFLOAD_SHMQ_MEMSZ(ncells) (ncells * sizeof(CSP_offload_cell_t))
 
 typedef enum {
     CSP_OFFLOAD_ISEND = 0,
