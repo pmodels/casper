@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
 
 #define DEFAULT_WINDOW       (64)
 
