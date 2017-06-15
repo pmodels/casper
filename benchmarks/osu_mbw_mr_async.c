@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
 
 #define DEFAULT_WINDOW       (64)
 
@@ -129,7 +130,17 @@ int main(int argc, char *argv[])
         }
     }
 
-    MPI_Win_allocate_shared((MAX_MSG_SIZE + align_size) * 2, 1, MPI_INFO_NULL, MPI_COMM_WORLD, &s_buf, &win);
+    MPI_Info info = MPI_INFO_NULL;
+    MPI_Comm shm_comm = MPI_COMM_NULL;
+
+    MPI_Info_create(&info);
+    /* Register as shared buffer in Casper. */
+    MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "true");
+
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &shm_comm);
+    MPI_Win_allocate_shared((MAX_MSG_SIZE + align_size) * 2, 1, info, shm_comm, &s_buf, &win);
+
+
     r_buf = s_buf + MAX_MSG_SIZE + align_size;
 
     s_buf += (align_size - ((uint64_t) s_buf % align_size));
@@ -269,23 +280,31 @@ int main(int argc, char *argv[])
 
            if(rank == 0) {
                rate = 1e6 * bw / curr_size;
+               double sum_time = curr_size / 1e6 * window_size / bw * 1000 * 1000;
 
                if(print_rate) {
-                   fprintf(stdout, "%-*d%*.*f%*.*f\n", 10, curr_size,
+                   fprintf(stdout, "%-*d%*.*f%*.*f%*.*f\n", 10, curr_size,
                            FIELD_WIDTH, FLOAT_PRECISION, bw, FIELD_WIDTH,
-                           FLOAT_PRECISION, rate);
+                           FLOAT_PRECISION, rate, FIELD_WIDTH,
+                           FLOAT_PRECISION, sum_time);
                }
 
                else {
-                   fprintf(stdout, "%-*d%*.*f\n", 10, curr_size, FIELD_WIDTH,
-                           FLOAT_PRECISION, bw);
+                   fprintf(stdout, "%-*d%*.*f%*.*f\n", 10, curr_size, FIELD_WIDTH,
+                           FLOAT_PRECISION, bw, FIELD_WIDTH,
+                           FLOAT_PRECISION, sum_time);
                }
            } 
        }
    }
 
 error:
-   MPI_Win_free(&win);
+   if(win != MPI_WIN_NULL)
+       MPI_Win_free(&win);
+   if(info != MPI_INFO_NULL)
+       MPI_Info_free(&info);
+   if(shm_comm != MPI_COMM_NULL)
+       MPI_Comm_free(&shm_comm);
 
    MPI_Finalize();
 
@@ -311,6 +330,9 @@ void usage() {
 static void delay(void)
 {
     double start, end;
+
+    if (computation == 0)
+        return;
 
     start = MPI_Wtime();
     do {
