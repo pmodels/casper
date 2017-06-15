@@ -147,6 +147,8 @@ typedef struct CSP_env_param {
         CSP_topo_domain_type_t domain;
     } topo;
 #endif
+    int offload_shmq_ncells;    /* number of free cells pre-allocated for offload shared queue.
+                                 * 8192 by default.*/
 } CSP_env_param_t;
 
 

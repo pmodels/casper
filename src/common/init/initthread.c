@@ -192,6 +192,17 @@ static int initialize_env(void)
         }
     }
 
+    CSP_ENV.offload_shmq_ncells = CSP_DEFAULT_OFFLOAD_SHMQ_NCELLS;
+    val = getenv("CSP_OFFLOAD_SHMQ_NCELLS");
+    if (val && strlen(val)) {
+        CSP_ENV.offload_shmq_ncells = atoi(val);
+    }
+    if (CSP_ENV.offload_shmq_ncells < 0) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong CSP_OFFLOAD_SHMQ_NCELLS %d\n",
+                      CSP_ENV.offload_shmq_ncells);
+        return CSP_get_error_code(CSP_ERR_ENV);
+    }
+
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     CSP_ENV.load_opt = CSP_LOAD_OPT_RANDOM;
 
@@ -261,7 +272,8 @@ static int initialize_env(void)
 #ifdef CSP_ENABLE_TOPO_OPT
                       "    CSP_TOPO         = %s\n"
 #endif
-                      "    CSP_ASYNC_MODE   = %s|%s\n",
+                      "    CSP_ASYNC_MODE   = %s|%s\n"
+                      "    CSP_OFFLOAD_SHMQ_NCELLS = %d (%ld Kbytes)\n",
                       (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
                       (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
@@ -272,7 +284,9 @@ static int initialize_env(void)
                       topo_str,
 #endif
                       (CSP_ENV.async_modes & CSP_ASYNC_MODE_RMA) ? "rma" : "",
-                      (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) ? "pt2pt" : "");
+                      (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) ? "pt2pt" : "",
+                      CSP_ENV.offload_shmq_ncells,
+                      CSP_OFFLOAD_SHMQ_MEMSZ(CSP_ENV.offload_shmq_ncells) / 1024);
 
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)

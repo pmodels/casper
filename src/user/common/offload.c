@@ -159,7 +159,7 @@ int CSPU_offload_init(void)
     /* Create shared memory region for pt2pt/collectives offload */
     /* [shm_recvq + 64 cells] per user process. Allocate on user process's
      * memory to ensure fast access. */
-    shm_region_size = sizeof(CSP_offload_shmqueue_t) + CSP_OFFLOAD_NCELLS *
+    shm_region_size = sizeof(CSP_offload_shmqueue_t) + CSP_ENV.offload_shmq_ncells *
         sizeof(CSP_offload_cell_t);
     CSP_CALLMPI(JUMP, PMPI_Win_allocate_shared(shm_region_size, sizeof(char),
                                                MPI_INFO_NULL, CSP_PROC.local_comm,
@@ -181,7 +181,7 @@ int CSPU_offload_init(void)
 
     /* Push all free cells into local stack */
     addr = CSPU_offload_ch.shm_base + sizeof(CSP_offload_shmqueue_t);
-    for (i = 0; i < CSP_OFFLOAD_NCELLS; i++) {
+    for (i = 0; i < CSP_ENV.offload_shmq_ncells; i++) {
         cell = (CSP_offload_cell_t *) addr;
         cell->type = CSP_OFFLOAD_CELL_SHM;
         CSP_offload_freestk_reset_cell(cell);
