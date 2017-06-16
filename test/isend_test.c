@@ -12,16 +12,16 @@
 #include "ctest.h"
 
 /*
- * This test checks round-trip isend and irecv with waitall.
+ * This test checks single-way isend and irecv with test loop.
  */
 
-#define NUM_OPS 100
+#define NUM_OPS 10
 #define COUNT 100
 
 double *sbuf = NULL, *rbuf = NULL;
 int rank, nprocs;
 MPI_Win sbuf_win = MPI_WIN_NULL, rbuf_win = MPI_WIN_NULL;
-int ITER = 10;
+int ITER = 5;
 
 static int check_stat(MPI_Status stat, int peer, int tag)
 {
@@ -51,42 +51,61 @@ static int run_test(void)
 {
     int i, x, c, errs = 0, errs_total = 0;
     int peer;
-    MPI_Request reqs[NUM_OPS * 2];
-    MPI_Status stats[NUM_OPS * 2];
+    MPI_Request reqs[NUM_OPS];
     int ncmpl = 0, cmpl[NUM_OPS];
 
-    if (rank % 2)
+    if (rank % 2)       /* receive only */
         peer = (rank - 1 + nprocs) % nprocs;
-    else
+    else        /* send only */
         peer = (rank + 1) % nprocs;
 
     for (x = 0; x < ITER; x++) {
         ncmpl = 0;
 
-        for (i = 0; i < NUM_OPS; i++) {
-            MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, MPI_COMM_WORLD, &reqs[i * 2]);
-            MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, MPI_COMM_WORLD,
-                      &reqs[i * 2 + 1]);
+        if (rank % 2) { /* receive only */
+            for (i = 0; i < NUM_OPS; i++)
+                MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, MPI_COMM_WORLD, &reqs[i]);
+        }
+        else {  /* send only */
+            for (i = 0; i < NUM_OPS; i++)
+                MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, MPI_COMM_WORLD, &reqs[i]);
         }
 
-        memset(stats, 0, sizeof(stats));
-        MPI_Waitall(NUM_OPS * 2, reqs, stats);
+        memset(cmpl, 0, sizeof(cmpl));
+        while (ncmpl < NUM_OPS) {
+            for (i = 0; i < NUM_OPS; i++) {
+                int flag = 0;
+                MPI_Status stat;
 
-        /* check completed receive */
-        for (i = 0; i < NUM_OPS; i++) {
-            for (c = 0; c < COUNT; c++) {
-                if (CTEST_double_diff(rbuf[i * COUNT + c], 1.0 * i * COUNT + c + peer)) {
-                    fprintf(stderr,
-                            "[%d] rbuf[%d] %.1lf != %.1lf\n",
-                            rank, i * COUNT + c, rbuf[i * COUNT + c], 1.0 * i * COUNT + c + peer);
-                    fflush(stderr);
-                    errs++;
+                /* reset */
+                stat.MPI_ERROR = MPI_SUCCESS;
+                stat.MPI_TAG = -1;
+                stat.MPI_SOURCE = -1;
+
+                MPI_Test(&reqs[i], &flag, &stat);
+                if (flag && cmpl[i] == 0 /* only check new completed request */) {
+                    ncmpl++;
+                    cmpl[i] = 1;
+
+                    if (rank % 2) {
+                        /* check completed receive */
+                        for (c = 0; c < COUNT; c++) {
+                            if (CTEST_double_diff(rbuf[i * COUNT + c], 1.0 * i * COUNT + c + peer)) {
+                                fprintf(stderr,
+                                        "[%d] rbuf[%d] %.1lf != %.1lf\n",
+                                        rank, i * COUNT + c,
+                                        rbuf[i * COUNT + c], 1.0 * i * COUNT + c + peer);
+                                fflush(stderr);
+                                errs++;
+                            }
+                        }
+
+                        errs += check_stat(stat, peer, i);
+                    }
                 }
             }
-            errs += check_stat(stats[i * 2 + 1], peer, i);
         }
     }
-
 
     MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     return errs_total;

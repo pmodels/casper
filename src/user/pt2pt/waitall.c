@@ -19,7 +19,7 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
 
     /*FIXME: complete error handler wrapping. */
 
-    cells = CSP_calloc(count, sizeof(CSP_offload_cell_t*));
+    cells = CSP_calloc(count, sizeof(CSP_offload_cell_t *));
     offload_cmpl_flags = CSP_calloc(count, sizeof(int));
     some_indices = CSP_calloc(count, sizeof(int));
     if (array_of_statuses != MPI_STATUS_IGNORE)
@@ -32,15 +32,15 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
 
     do {
         for (i = 0; i < count; i++) {
-            /* Skip any original or completed offload request.*/
+            /* Skip any original or completed offload request. */
             if (offload_cmpl_flags[i] || cells[i] == NULL)
                 continue;
 
             /* Complete offload request. */
             if (cells[i]->type == CSP_OFFLOAD_CELL_SHM && CSPU_offload_check_complete(cells[i])) {
                 CSP_CALLMPI(JUMP, PMPI_Grequest_complete(array_of_requests[i]));
-                CSP_DBG_PRINT("Waitall: completed offload cells[%d]=%p, reqs[%d]=0x%x\n", i, cells[i],
-                              i, array_of_requests[i]);
+                CSP_DBG_PRINT("Waitall: completed offload cells[%d]=%p, reqs[%d]=0x%x\n", i,
+                              cells[i], i, array_of_requests[i]);
                 offload_cmpl_flags[i] = 1;
             }
 
@@ -63,7 +63,9 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
          * are completed. Instead, PMPI_Testsome can release completed request at
          * every poll. It guarantees every completed request becomes inactive,
          * thus is ignored at next poll.*/
-        CSP_CALLMPI(JUMP, PMPI_Testsome(count, array_of_requests, &some_count, some_indices, some_statuses));
+        CSP_CALLMPI(JUMP,
+                    PMPI_Testsome(count, array_of_requests, &some_count, some_indices,
+                                  some_statuses));
 
         /* Should already left by checking ncompleted. */
         CSP_DBG_ASSERT(some_count != MPI_UNDEFINED);
@@ -83,7 +85,7 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
         free(some_indices);
     if (some_statuses)
         free(some_statuses);
-    if(cells)
+    if (cells)
         free(cells);
     if (offload_cmpl_flags)
         free(offload_cmpl_flags);

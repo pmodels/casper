@@ -44,7 +44,9 @@ noinst_PROGRAMS = \
 	win_errhan			\
 	comm_errhan			\
 	finalize			\
-	isendirecv_test		\
+	isend_test			\
+	isend_wait			\
+	isend_waitall		\
 	isendirecv_waitall	\
 	$(THREAD_TESTS)
 
