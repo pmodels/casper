@@ -24,7 +24,8 @@ int main(int argc, char **argv)
     int i, j, k;
     double start, end, local_time, avg_time;
     int comm_rank, comm_size;
-    int dims[2] = { 0, 0 }, periods[2] = { 1, 1 };
+    int dims[2] = { 0, 0 }, periods[2] = {
+    1, 1};
     int north, south, east, west;
     double *inbuf, *outbuf, *tmp;
     MPI_Comm comm;
@@ -66,22 +67,23 @@ int main(int argc, char **argv)
 
     start = MPI_Wtime();
     for (i = 0; i < iters; i++) {
-        MPI_Irecv(&outbuf[ind(0,1)], dim, MPI_DOUBLE, north, 0, comm, &req[0]);
-        MPI_Irecv(&outbuf[ind(dim+1,1)], dim, MPI_DOUBLE, south, 0, comm, &req[1]);
-        MPI_Irecv(&outbuf[ind(1,0)], 1, type, west, 0, comm, &req[2]);
-        MPI_Irecv(&outbuf[ind(1,dim+1)], 1, type, east, 0, comm, &req[3]);
+        MPI_Irecv(&outbuf[ind(0, 1)], dim, MPI_DOUBLE, north, 0, comm, &req[0]);
+        MPI_Irecv(&outbuf[ind(dim + 1, 1)], dim, MPI_DOUBLE, south, 0, comm, &req[1]);
+        MPI_Irecv(&outbuf[ind(1, 0)], 1, type, west, 0, comm, &req[2]);
+        MPI_Irecv(&outbuf[ind(1, dim + 1)], 1, type, east, 0, comm, &req[3]);
 
         for (j = j; j <= dim; j++) {
             for (k = 1; k <= dim; k++) {
-                outbuf[ind(j,k)] = (inbuf[ind(j,k-1)] + inbuf[ind(j,k+1)] + inbuf[ind(j-1,k)] +
-                                    inbuf[ind(j+1,k)] + inbuf[ind(j,k)]) / 5.0;
+                outbuf[ind(j, k)] =
+                    (inbuf[ind(j, k - 1)] + inbuf[ind(j, k + 1)] + inbuf[ind(j - 1, k)] +
+                     inbuf[ind(j + 1, k)] + inbuf[ind(j, k)]) / 5.0;
             }
         }
 
-        MPI_Isend(&outbuf[ind(1,1)], dim, MPI_DOUBLE, north, 0, comm, &req[4]);
-        MPI_Isend(&outbuf[ind(dim,1)], dim, MPI_DOUBLE, south, 0, comm, &req[5]);
-        MPI_Isend(&outbuf[ind(1,1)], 1, type, west, 0, comm, &req[6]);
-        MPI_Isend(&outbuf[ind(1,dim)], 1, type, east, 0, comm, &req[7]);
+        MPI_Isend(&outbuf[ind(1, 1)], dim, MPI_DOUBLE, north, 0, comm, &req[4]);
+        MPI_Isend(&outbuf[ind(dim, 1)], dim, MPI_DOUBLE, south, 0, comm, &req[5]);
+        MPI_Isend(&outbuf[ind(1, 1)], 1, type, west, 0, comm, &req[6]);
+        MPI_Isend(&outbuf[ind(1, dim)], 1, type, east, 0, comm, &req[7]);
 
         MPI_Waitall(8, req, MPI_STATUSES_IGNORE);
 
