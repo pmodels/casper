@@ -18,7 +18,7 @@ int MPI_Wait(MPI_Request * request, MPI_Status * status)
 
     CSPU_offload_req_hash_get(*request, &cell);
 
-    /* Original request or already completed.*/
+    /* Original request or already completed. */
     if (!cell)
         return PMPI_Wait(request, status);
 
