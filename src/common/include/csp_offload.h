@@ -33,6 +33,7 @@
 #define CSP_DEFAULT_OFFLOAD_SHMQ_NCELLS 64
 #define CSP_OFFLOAD_TAG_FACTOR 100
 #define CSP_OFFLOAD_SHMQ_MEMSZ(ncells) (ncells * sizeof(CSP_offload_cell_t))
+#define CSP_OFFLOAD_CACHE_LINE_LEN 64
 
 typedef enum {
     CSP_OFFLOAD_ISEND = 0,
@@ -85,13 +86,6 @@ typedef enum {
 } CSP_offload_cell_type_t;
 
 typedef struct CSP_offload_cell {
-    CSP_offload_cell_type_t type;
-    CSP_offload_pkt_t pkt;
-
-    /* Hash structure for request->cell mapping on user process. */
-    UT_hash_handle hh;
-    MPI_Request key;
-
     /* Note that the same cell can be stored in either local stack
      * or shared queue. Each routine should use the corresponding
      * pointers, and always reset before use. */
@@ -105,6 +99,13 @@ typedef struct CSP_offload_cell {
             CSP_offload_cell_rl_ptr_t next, prev;       /* Relative offset */
         } rl;
     } pt;
+
+    CSP_offload_cell_type_t type;
+    CSP_offload_pkt_t pkt;
+
+    /* Hash structure for request->cell mapping on user process. */
+    UT_hash_handle hh;
+    MPI_Request key;
 } CSP_offload_cell_t;
 
 #define CSP_OFFLOAD_ABS_PT_DECL(pointer) pt.abs.pointer
@@ -122,10 +123,14 @@ typedef struct {
     CSP_offload_cell_rl_ptr_t tail;     /* Need atomic access: producer updates it
                                          * at enqueue, and consumer may check+reset
                                          * it at dequeue.*/
+    char padding1[CSP_OFFLOAD_CACHE_LINE_LEN - 2 * sizeof(CSP_offload_cell_rl_ptr_t)];
+
     CSP_offload_cell_rl_ptr_t my_head;  /* local head used only by consumer.
                                          * Synced with head at empty, and updated
                                          * at dequeue.*/
-} CSP_offload_shmqueue_t;
+    char padding2[CSP_OFFLOAD_CACHE_LINE_LEN - sizeof(CSP_offload_cell_rl_ptr_t)];
+}
+CSP_offload_shmqueue_t;
 
 /* ======================================================================
  * Queue routines for cells offloaded from user process to ghost process.

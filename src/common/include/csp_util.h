@@ -57,7 +57,11 @@
 #endif
 
 #ifndef CSP_ALIGN
-#define CSP_ALIGN(val, align) (((char*)(val) + (align) - 1) & ~((align) - 1))
+#define CSP_ALIGN(val, align) (((unsigned long) (val) + (align) - 1) & ~((align) - 1))
+#endif
+
+#ifndef CSP_ALIGNED
+#define CSP_ALIGNED(val, align) (((unsigned long) (val) & ((unsigned long) (align) - 1)) == 0)
 #endif
 
 #define CSP_ASSERT(EXPR) do { if (CSP_UNLIKELY(!(EXPR))){           \
