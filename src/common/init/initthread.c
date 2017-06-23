@@ -273,7 +273,7 @@ static int initialize_env(void)
                       "    CSP_TOPO         = %s\n"
 #endif
                       "    CSP_ASYNC_MODE   = %s|%s\n"
-                      "    CSP_OFFLOAD_SHMQ_NCELLS = %d (%ld Kbytes)\n",
+                      "    CSP_OFFLOAD_SHMQ_NCELLS = %d (%ld Kbytes, sizeof(cell)=%ld/%ld bytes)\n",
                       (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
                       (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
@@ -286,7 +286,9 @@ static int initialize_env(void)
                       (CSP_ENV.async_modes & CSP_ASYNC_MODE_RMA) ? "rma" : "",
                       (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) ? "pt2pt" : "",
                       CSP_ENV.offload_shmq_ncells,
-                      CSP_OFFLOAD_SHMQ_MEMSZ(CSP_ENV.offload_shmq_ncells) / 1024);
+                      CSP_OFFLOAD_SHMQ_MEMSZ(CSP_ENV.offload_shmq_ncells) / 1024,
+                      sizeof(CSP_offload_cell_t), CSP_ALIGN(sizeof(CSP_offload_cell_t),
+                                                            CSP_OFFLOAD_CACHE_LINE_LEN));
 
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)

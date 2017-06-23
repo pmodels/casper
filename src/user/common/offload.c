@@ -141,6 +141,10 @@ int CSPU_offload_destroy(void)
         CSPU_offload_ch.shm_recvq.q_ptr = NULL;
     }
 
+    CSP_msg_print(CSP_MSG_INFO, "OFFLOAD: shm_recvq.nissued=%d, pending_q.nissued=%d\n",
+                  CSPU_offload_ch.shm_recvq.nissued, CSPU_offload_ch.pending_q.nissued);
+
+
   fn_exit:
     return mpi_errno;
 
@@ -153,19 +157,28 @@ int CSPU_offload_init(void)
     int mpi_errno = MPI_SUCCESS;
     void *baseptr = NULL;
     MPI_Aint shm_region_size = 0, addr = 0;
+    MPI_Aint align_cell_size = 0, align_shmq_size = 0;
     CSP_offload_cell_t *cell = NULL;
     int i;
+
+    /* Make sure the shared structures are aligned by cache line. */
+    align_cell_size = CSP_ALIGN(sizeof(CSP_offload_cell_t), CSP_OFFLOAD_CACHE_LINE_LEN);
+    align_shmq_size = CSP_ALIGN(sizeof(CSP_offload_shmqueue_t), CSP_OFFLOAD_CACHE_LINE_LEN);
 
     /* Create shared memory region for pt2pt/collectives offload */
     /* [shm_recvq + 64 cells] per user process. Allocate on user process's
      * memory to ensure fast access. */
-    shm_region_size = sizeof(CSP_offload_shmqueue_t) + CSP_ENV.offload_shmq_ncells *
-        sizeof(CSP_offload_cell_t);
+    shm_region_size = align_shmq_size + CSP_ENV.offload_shmq_ncells * align_cell_size;
     CSP_CALLMPI(JUMP, PMPI_Win_allocate_shared(shm_region_size, sizeof(char),
                                                MPI_INFO_NULL, CSP_PROC.local_comm,
                                                &baseptr, &CSPU_offload_ch.shm_win));
     CSPU_offload_ch.shm_base = (MPI_Aint) baseptr;
     CSPU_offload_ch.shm_recvq.q_ptr = (CSP_offload_shmqueue_t *) CSPU_offload_ch.shm_base;
+
+    /* Not sure if win_allocate_shared gives an aligned start address. */
+    if (!CSP_ALIGNED(CSPU_offload_ch.shm_recvq.q_ptr, CSP_OFFLOAD_CACHE_LINE_LEN))
+        CSP_msg_print(CSP_MSG_WARN, "The shm_recvq %p is not aligned by %d !\n",
+                      CSPU_offload_ch.shm_recvq.q_ptr, CSP_OFFLOAD_CACHE_LINE_LEN);
 
     /* Initialize local shm_recvq. */
     offload_shm_recvq_init();
@@ -180,7 +193,7 @@ int CSPU_offload_init(void)
     offload_pending_q_init();
 
     /* Push all free cells into local stack */
-    addr = CSPU_offload_ch.shm_base + sizeof(CSP_offload_shmqueue_t);
+    addr = CSPU_offload_ch.shm_base + align_shmq_size;
     for (i = 0; i < CSP_ENV.offload_shmq_ncells; i++) {
         cell = (CSP_offload_cell_t *) addr;
         cell->type = CSP_OFFLOAD_CELL_SHM;
@@ -188,7 +201,7 @@ int CSPU_offload_init(void)
         CSP_offload_freestk_push(cell);
 
         CSP_DBG_PRINT("OFFLOAD: pushed free cell %p\n", cell);
-        addr += sizeof(CSP_offload_cell_t);
+        addr += align_cell_size;
     }
 
     mpi_errno = CSPU_offload_bind_ghost(&CSPU_offload_ch.bound_g_lrank);
