@@ -213,7 +213,7 @@ int CSPU_global_init(int is_threaded)
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Set up ug_comm wrapper for comm_user_world. */
-    mpi_errno = CSPU_ugcomm_create(MPI_INFO_NULL, CSP_COMM_USER_WORLD);
+    mpi_errno = CSPU_ugcomm_create(MPI_COMM_NULL, MPI_INFO_NULL, CSP_COMM_USER_WORLD);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:

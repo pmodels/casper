@@ -308,6 +308,82 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
     goto fn_exit;
 }
 
+static inline void ugcomm_info_init(CSPU_comm_t * ug_comm, CSPU_comm_t * ug_newcomm)
+{
+    /* Get info from parent reference info. */
+    if (ug_comm) {
+        ug_newcomm->info_args.pt2pt_async_config = ug_comm->ref_info_args.pt2pt_async_config;
+        ug_newcomm->info_args.ignore_status_src = ug_comm->ref_info_args.ignore_status_src;
+        ug_newcomm->info_args.no_any_src_spec_tag = ug_comm->ref_info_args.no_any_src_spec_tag;
+        ug_newcomm->info_args.no_any_tag = ug_comm->ref_info_args.no_any_tag;
+    }
+    else {
+        /* Reset info if no parent (COMM_WORLD) */
+        ug_newcomm->info_args.pt2pt_async_config = 0;
+        ug_newcomm->info_args.ignore_status_src = 0;
+        ug_newcomm->info_args.no_any_src_spec_tag = 0;
+        ug_newcomm->info_args.no_any_tag = 0;
+    }
+
+    /* Reset my reference info for child. */
+    ug_newcomm->ref_info_args.pt2pt_async_config = 0;
+    ug_newcomm->ref_info_args.ignore_status_src = 0;
+    ug_newcomm->ref_info_args.no_any_src_spec_tag = 0;
+    ug_newcomm->ref_info_args.no_any_tag = 0;
+}
+
+static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int user_rank = 0;
+
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
+    if (user_rank == 0) {
+        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x\n"
+                      "    ignore_status_src            = %d\n"
+                      "    no_any_src_spec_tag          = %d\n"
+                      "    no_any_tag                   = %d\n"
+                      "    pt2pt_async_config(internal) = %s\n",
+                      ug_comm->comm, ug_comm->info_args.ignore_status_src,
+                      ug_comm->info_args.no_any_src_spec_tag,
+                      ug_comm->info_args.no_any_tag,
+                      (ug_comm->info_args.pt2pt_async_config == 0 ? "disabled" : "enabled"));
+    }
+    return mpi_errno;
+}
+
+int CSPU_ugcomm_set_info(CSPU_comm_info_args_t * info_args, MPI_Info info)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    if (info != MPI_INFO_NULL) {
+        mpi_errno = CSPU_info_get_bool(info, "ignore_status_src", "true", "false",
+                                       &info_args->ignore_status_src);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+        mpi_errno = CSPU_info_get_bool(info, "no_any_src_spec_tag", "true", "false",
+                                       &info_args->no_any_src_spec_tag);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+        mpi_errno = CSPU_info_get_bool(info, "no_any_tag", "true", "false", &info_args->no_any_tag);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
+    /* Disable async progress if ANY_SRC + specific TAG. Otherwise enable. */
+    if (!info_args->ignore_status_src && !info_args->no_any_src_spec_tag) {
+        info_args->pt2pt_async_config = 0;
+    }
+    else {
+        info_args->pt2pt_async_config = 1;
+    }
+
+  fn_exit:
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 int CSPU_ugcomm_free(MPI_Comm comm)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -316,12 +392,16 @@ int CSPU_ugcomm_free(MPI_Comm comm)
 
     CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
     if (ug_comm) {
-        /* Local user root issues command to ghosts. */
-        CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->local_user_comm, &ulrank));
-        if (ulrank == 0) {
-            mpi_errno = ugcomm_issue_ghost_cmd(ug_comm);
-            CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+        if (ug_comm->info_args.pt2pt_async_config) {
+            /* Local user root issues command to ghosts. */
+            CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->local_user_comm, &ulrank));
+            if (ulrank == 0) {
+                mpi_errno = ugcomm_issue_ghost_cmd(ug_comm);
+                CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            }
         }
+        /* NOTE: ugcomm may be empty if it is no_async and only for reference info. */
 
         mpi_errno = ugcomm_release(ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -334,17 +414,31 @@ int CSPU_ugcomm_free(MPI_Comm comm)
     goto fn_exit;
 }
 
-/* FIXME: check & transfer info. */
-int CSPU_ugcomm_create(MPI_Info info, MPI_Comm user_newcomm)
+int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
 {
     int mpi_errno = MPI_SUCCESS;
     int ulrank = 0;
-    CSPU_comm_t *ug_newcomm = NULL;
+    CSPU_comm_t *ug_newcomm = NULL, *ug_comm = NULL;
+
+    if (comm != MPI_COMM_NULL)
+        CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
 
     ug_newcomm = CSP_calloc(1, sizeof(CSPU_comm_t));
     CSP_ASSERT(ug_newcomm != NULL);
 
     ug_newcomm->comm = user_newcomm;
+
+    /* First init my info by using parent's ref_info. */
+    ugcomm_info_init(ug_comm, ug_newcomm);
+
+    /* Overwrite info if set. But note that it cannot be update by
+     * later comm_set_info. */
+    mpi_errno = CSPU_ugcomm_set_info(&ug_newcomm->info_args, info);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    /* Return empty ug_comm if async is disabled. */
+    if (!ug_newcomm->info_args.pt2pt_async_config)
+        goto no_async;
 
     /* Create user root communicator */
     if (user_newcomm == CSP_COMM_USER_WORLD) {
@@ -369,12 +463,16 @@ int CSPU_ugcomm_create(MPI_Info info, MPI_Comm user_newcomm)
     mpi_errno = ugcomm_gather_handles(ug_newcomm);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
+  no_async:
     /* Cache ug_comm in user newcomm. */
     mpi_errno = CSPU_cache_ug_comm(ug_newcomm->comm, ug_newcomm);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    CSP_DBG_PRINT("COMM: create user_newcomm 0x%x -> ug_newcomm %p ug_comm 0x%x\n",
-                  user_newcomm, ug_newcomm, ug_newcomm->ug_comm);
+    CSP_DBG_PRINT
+        ("COMM: create user_newcomm 0x%x -> ug_newcomm %p ug_comm 0x%x (null if no async)\n",
+         user_newcomm, ug_newcomm, ug_newcomm->ug_comm);
+
+    ugcomm_print_info(ug_newcomm);
 
   fn_exit:
     return mpi_errno;

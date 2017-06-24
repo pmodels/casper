@@ -12,7 +12,16 @@
 #include "csp.h"
 
 typedef struct CSPU_comm_info_args {
-    CSP_async_config_t async_config;
+    CSP_async_config_t pt2pt_async_config;      /* Internal info.
+                                                 * Updated by the following user hints. */
+
+    /* ignore_status_src && no_any_tag: tag_trans(recv_offset);
+     * ignore_status_src: duplicate comm;
+     * no_any_src_spec_tag: duplicate comm + trans(src_offset) (minimal). */
+
+    unsigned short ignore_status_src;   /* Ignore stat.SOURCE. */
+    unsigned short no_any_src_spec_tag; /* No ANY_SOURCE + specific TAG. */
+    unsigned short no_any_tag;
 } CSPU_comm_info_args_t;
 
 typedef struct CSPU_comm {
@@ -26,7 +35,9 @@ typedef struct CSPU_comm {
     MPI_Comm user_root_comm;    /* Used to acquire mlock. */
     MPI_Comm local_user_comm;   /* Used to cwp with ghost */
 
-    CSPU_comm_info_args_t info_args;
+    CSPU_comm_info_args_t info_args;    /* Store real info controlling implementation. */
+    CSPU_comm_info_args_t ref_info_args;        /* Store info passed by comm_set_info,
+                                                 * transfer to impl_info at child comm creation.*/
     int num_ghosts_unique;
 
     int *g_ranks_bound;         /* Bound ghost rank of each user in ug_comm.
@@ -102,7 +113,8 @@ static inline int CSPU_remove_ug_comm_from_cache(MPI_Comm comm)
  * Other prototypes
  * ====================================================================== */
 
+extern int CSPU_ugcomm_set_info(CSPU_comm_info_args_t * info_args, MPI_Info info);
 extern int CSPU_ugcomm_free(MPI_Comm comm);
-extern int CSPU_ugcomm_create(MPI_Info info, MPI_Comm user_newcomm);
+extern int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm);
 
 #endif /* CSPU_PT2PT_H_INCLUDED */

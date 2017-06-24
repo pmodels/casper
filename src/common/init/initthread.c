@@ -108,6 +108,9 @@ static int initialize_env(void)
             else if (!strncmp(vbs, "conf_win", strlen("conf_win"))) {
                 CSP_ENV.verbose |= (int) CSP_MSG_CONFIG_WIN;
             }
+            else if (!strncmp(vbs, "conf_win", strlen("conf_comm"))) {
+                CSP_ENV.verbose |= (int) CSP_MSG_CONFIG_COMM;
+            }
             else if (!strncmp(vbs, "info", strlen("info"))) {
                 CSP_ENV.verbose |= (int) CSP_MSG_INFO;
             }
