@@ -17,6 +17,11 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
     int some_count = 0, *some_indices = NULL;
     MPI_Status *some_statuses = NULL;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(PT2PT)) {
+        return PMPI_Waitall(count, array_of_requests, array_of_statuses);
+    }
+
     /*FIXME: complete error handler wrapping. */
 
     cells = CSP_calloc(count, sizeof(CSP_offload_cell_t *));
