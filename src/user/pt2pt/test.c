@@ -13,6 +13,11 @@ int MPI_Test(MPI_Request * request, int *flag, MPI_Status * status)
     int mpi_errno = MPI_SUCCESS;
     CSP_offload_cell_t *cell = NULL;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(PT2PT)) {
+        return PMPI_Test(request, flag, status);
+    }
+
     /*FIXME: complete error handler wrapping. */
 
     CSPU_offload_poll_progress();

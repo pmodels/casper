@@ -14,6 +14,11 @@ int MPI_Wait(MPI_Request * request, MPI_Status * status)
     CSP_offload_cell_t *cell = NULL;
     int flag = 0;
 
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(PT2PT)) {
+        return PMPI_Wait(request, status);
+    }
+
     /*FIXME: complete error handler wrapping. */
 
     CSPU_offload_req_hash_get(*request, &cell);
