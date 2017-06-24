@@ -32,7 +32,7 @@ int MPI_Comm_split_type(MPI_Comm comm, int split_type, int key, MPI_Info info, M
     /* Create background ug_comm.
      * FIXME: wrap up error handler. */
     if (CSP_IS_MODE_ENABLED(PT2PT)) {
-        mpi_errno = CSPU_ugcomm_create(info, *newcomm);
+        mpi_errno = CSPU_ugcomm_create(comm, info, *newcomm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 

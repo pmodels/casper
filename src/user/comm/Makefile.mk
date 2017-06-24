@@ -8,6 +8,7 @@ libcasper_la_SOURCES += src/user/comm/comm_create_group.c     \
                         src/user/comm/comm_dup.c              \
                         src/user/comm/comm_free.c             \
                         src/user/comm/comm_idup.c             \
+                        src/user/comm/comm_set_info.c         \
                         src/user/comm/comm_split_type.c       \
                         src/user/comm/comm_split.c            \
                         src/user/comm/intercomm_create.c      \

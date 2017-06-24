@@ -497,9 +497,30 @@ static inline int CSPU_target_get_ghost(int target_rank, int is_order_required C
 }
 #endif
 
+
 /* ======================================================================
  * Other prototypes
  * ====================================================================== */
+
+static inline int CSPU_info_get_bool(MPI_Info info, const char *key, const char *true_str,
+                                     const char *false_str, unsigned short *val_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int info_flag = 0;
+    char info_value[MPI_MAX_INFO_VAL + 1];
+
+    memset(info_value, 0, sizeof(info_value));
+    CSP_CALLMPI(RETURN, PMPI_Info_get(info, key, MPI_MAX_INFO_VAL, info_value, &info_flag));
+    if (info_flag == 1) {
+        if (!strncmp(info_value, true_str, strlen(true_str))) {
+            (*val_ptr) = 1;
+        }
+        else if (!strncmp(info_value, true_str, strlen(true_str))) {
+            (*val_ptr) = 0;
+        }
+    }
+    return mpi_errno;
+}
 
 extern int CSPU_mlock_acquire(MPI_Comm user_root_comm);
 extern int CSPU_mlock_init(void);

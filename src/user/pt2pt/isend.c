@@ -87,7 +87,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
     CSP_DBG_PRINT("isend: comm 0x%x->ug_comm=%p, buf=%p, g_bufaddr=0x%lx, "
                   "buf_found_flag=%d\n", comm, ug_comm, buf, g_bufaddr, buf_found_flag);
 
-    if (ug_comm && buf_found_flag) {
+    if (ug_comm && ug_comm->info_args.pt2pt_async_config && buf_found_flag) {
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = isend_impl(g_bufaddr, count, datatype, dest, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);

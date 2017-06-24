@@ -24,7 +24,8 @@ typedef enum {
     CSP_MSG_WARN = 2,   /* warning */
     CSP_MSG_CONFIG_GLOBAL = 4,  /* global configuration */
     CSP_MSG_CONFIG_WIN = 8,     /* window configuration */
-    CSP_MSG_INFO = 16   /* any other information */
+    CSP_MSG_CONFIG_COMM = 16,   /* communicator configuration */
+    CSP_MSG_INFO = 32   /* any other information */
 } CSP_msg_verbose_t;
 
 extern void CSP_msg_init(int vbs);

@@ -32,7 +32,7 @@ int MPI_Comm_create_group(MPI_Comm comm, MPI_Group group, int tag, MPI_Comm * ne
     /* Create background ug_comm.
      * FIXME: wrap up error handler. */
     if (CSP_IS_MODE_ENABLED(PT2PT)) {
-        mpi_errno = CSPU_ugcomm_create(MPI_INFO_NULL, *newcomm);
+        mpi_errno = CSPU_ugcomm_create(comm, MPI_INFO_NULL, *newcomm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
