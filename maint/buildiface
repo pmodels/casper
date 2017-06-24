@@ -195,6 +195,7 @@ while (<INFILE>) {
         || ($routine eq "MPI_Irecv")
         || ($routine eq "MPI_Test")
         || ($routine eq "MPI_Comm_set_info")
+        || ($routine eq "MPI_Comm_get_attr")
         ) {
         $fullline = "";
         next;

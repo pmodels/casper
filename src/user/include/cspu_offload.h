@@ -13,6 +13,8 @@
 #include "csp_util.h"
 #include "csp_offload.h"
 
+#define CSP_MPI_TAG_UB_MIN 32767        /*（2^15-1) */
+
 typedef struct CSPU_offload_req_hash {
     CSP_offload_cell_t *record;
 } CSPU_offload_req_hash_t;
@@ -23,6 +25,11 @@ typedef struct CSP_offload_channel {
     MPI_Win shm_win;
 
     int bound_g_lrank;
+
+    int mpi_tag_ub;             /* Real tag_ub provided by MPI. */
+    int user_tag_ub;            /* tag_ub exposed to user.
+                                 * user_tag_ub = mpi_tag_ub << trans_tag_nbits */
+    int trans_tag_nbits;        /* The number of bits available for tag translation. */
 
     /* Shared recvq, enqueued by local user and dequeued by a ghost. */
     struct {

@@ -33,6 +33,56 @@ static inline void offload_shm_recvq_init(void)
     CSPU_offload_ch.shm_recvq.noutstanding = 0;
 }
 
+static inline int offload_set_tag_ub(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int flag = 0;
+    int u_local_nproc = 0, u_local_rank = 0, max_u_local_nproc = 0;
+    int max_trans_tag_nbits = 0;
+    int user_rank = 0;
+    void *val;
+
+    CSP_CALLMPI(RETURN, PMPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &val, &flag));
+    if (!flag || mpi_errno != MPI_SUCCESS) {
+        CSP_DBG_PRINT("Cannot get MPI_TAG_UB from MPI_COMM_WORLD\n");
+        CSPU_offload_ch.mpi_tag_ub = 0;
+    }
+
+    CSPU_offload_ch.mpi_tag_ub = *(int *) val;
+
+    /* Compute the maximum number of bits for storing offset. */
+    CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.user.u_local_comm, &u_local_nproc));
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &u_local_rank));
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank));
+
+    /* Reduce the maximum ppn in world. */
+    if (u_local_rank == 0) {
+        CSP_CALLMPI(RETURN, PMPI_Allreduce(&u_local_nproc, &max_u_local_nproc, 1,
+                                           MPI_INT, MPI_MAX, CSP_PROC.user.ur_comm));
+    }
+    CSP_CALLMPI(RETURN, PMPI_Bcast(&max_u_local_nproc, 1, MPI_INT, 0, CSP_PROC.user.u_local_comm));
+
+    /* Check if we have sufficient space to store offset */
+    max_trans_tag_nbits = CSP_int_nbit(max_u_local_nproc);
+    if (CSPU_offload_ch.mpi_tag_ub > (CSP_MPI_TAG_UB_MIN + 1) * (1 << max_trans_tag_nbits) - 1) {
+        CSPU_offload_ch.trans_tag_nbits = max_trans_tag_nbits;
+        CSPU_offload_ch.user_tag_ub = CSPU_offload_ch.mpi_tag_ub >> CSPU_offload_ch.trans_tag_nbits;
+    }
+    else {
+        CSPU_offload_ch.user_tag_ub = CSPU_offload_ch.mpi_tag_ub;
+        CSPU_offload_ch.trans_tag_nbits = 0;
+    }
+
+    if (user_rank == 0) {
+        CSP_msg_print(CSP_MSG_INFO,
+                      "OFFLOAD tag: mpi_tag_ub = %d, trans_tag_nbits = %d, user_tag_ub = %d\n",
+                      CSPU_offload_ch.mpi_tag_ub, CSPU_offload_ch.trans_tag_nbits,
+                      CSPU_offload_ch.user_tag_ub);
+    }
+
+    return mpi_errno;
+}
+
 /* NOTE : this is triggered only after explicitly completed the request.
  * See standard about MPI_Grequest_complete. */
 static int CSPU_offload_req_query_fn(void *extra_state, MPI_Status * status)
@@ -207,6 +257,9 @@ int CSPU_offload_init(void)
     mpi_errno = CSPU_offload_bind_ghost(&CSPU_offload_ch.bound_g_lrank);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
     CSP_DBG_PRINT("OFFLOAD: bound ghost %d\n", CSPU_offload_ch.bound_g_lrank);
+
+    mpi_errno = offload_set_tag_ub();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;
