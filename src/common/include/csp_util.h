@@ -121,6 +121,20 @@ static inline void *CSP_calloc(int n, size_t size)
     return buf;
 }
 
+static inline int CSP_int_nbit(int val)
+{
+    int val_pos = val;
+    int bit = 0;
+
+    if (val < 0)
+        val_pos = ~val + 1;
+    while (val_pos != 0) {
+        val_pos >>= 1;
+        bit++;
+    }
+    return bit;
+}
+
 /* Wrap UTHASH generic routines before include
  * The callers should always include csp_util.h instead of uthash.h. */
 #ifndef uthash_fatal
