@@ -25,6 +25,7 @@
 
 
 static int computation = 0;     /* in usec */
+static MPI_Comm comm_world = MPI_COMM_NULL;
 
 static void delay(void)
 {
@@ -110,12 +111,17 @@ int main(int argc, char *argv[])
     /* Register as shared buffer in Casper. */
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "true");
 
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &shm_comm);
-    MPI_Win_allocate_shared((MAX_MSG_SIZE + align_size) * 2, 1, info, MPI_COMM_WORLD, &sbuf, &win);
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, info, &shm_comm);
+    MPI_Win_allocate_shared((MAX_MSG_SIZE + align_size) * 2, 1, MPI_INFO_NULL, shm_comm, &sbuf,
+                            &win);
     rbuf = sbuf + MAX_MSG_SIZE + align_size;
 
     sbuf += (align_size - ((uint64_t) sbuf % align_size));
     rbuf += (align_size - ((uint64_t) rbuf % align_size));
+
+    MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "false");
+    MPI_Info_set(info, (char *) "no_any_src_spec_tag", (char *) "true");
+    MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     /* Print header */
     if (0 == rank) {
@@ -146,7 +152,7 @@ int main(int argc, char *argv[])
         if (!skip_override)
             skip = loop * (SKIP_RATE);
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(comm_world);
 
         for (i = 0; i < loop + skip; i++) {
             if (i == skip)
@@ -156,8 +162,8 @@ int main(int argc, char *argv[])
             if (i > skip)
                 pt0 = MPI_Wtime();
 #endif
-            MPI_Isend(sbuf, size, MPI_CHAR, target, i, MPI_COMM_WORLD, &reqs[0]);
-            MPI_Irecv(rbuf, size, MPI_CHAR, target, i, MPI_COMM_WORLD, &reqs[1]);
+            MPI_Isend(sbuf, size, MPI_CHAR, target, i, comm_world, &reqs[0]);
+            MPI_Irecv(rbuf, size, MPI_CHAR, target, i, comm_world, &reqs[1]);
 #ifdef STEP_TIME
             if (i > skip)
                 post_time += MPI_Wtime() - pt0;
@@ -204,6 +210,8 @@ int main(int argc, char *argv[])
         MPI_Info_free(&info);
     if (shm_comm != MPI_COMM_NULL)
         MPI_Comm_free(&shm_comm);
+    if (comm_world != MPI_COMM_NULL)
+        MPI_Comm_free(&comm_world);
     MPI_Finalize();
 
     return EXIT_SUCCESS;

@@ -21,6 +21,7 @@
 double *sbuf = NULL, *rbuf = NULL;
 int rank, nprocs;
 MPI_Win sbuf_win = MPI_WIN_NULL, rbuf_win = MPI_WIN_NULL;
+MPI_Comm comm_world = MPI_COMM_NULL;
 int ITER = 10;
 
 static int check_stat(MPI_Status stat, int peer, int tag)
@@ -65,11 +66,11 @@ static int run_test(void)
 
         if (rank % 2) { /* receive only */
             for (i = 0; i < NUM_OPS; i++)
-                MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, MPI_COMM_WORLD, &reqs[i]);
+                MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, comm_world, &reqs[i]);
         }
         else {  /* send only */
             for (i = 0; i < NUM_OPS; i++)
-                MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, MPI_COMM_WORLD, &reqs[i]);
+                MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, comm_world, &reqs[i]);
         }
 
         memset(stats, 0, sizeof(stats));
@@ -94,7 +95,7 @@ static int run_test(void)
     }
 
 
-    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&errs, &errs_total, 1, MPI_INT, MPI_SUM, comm_world);
     return errs_total;
 }
 
@@ -115,23 +116,26 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &shm_comm);
-
     MPI_Info_create(&info);
+
     /* Register as shared buffer in Casper. */
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "true");
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, info, &shm_comm);
 
     MPI_Win_allocate_shared(sizeof(double) * NUM_OPS * COUNT, sizeof(double),
-                            info, shm_comm, &sbuf, &sbuf_win);
+                            MPI_INFO_NULL, shm_comm, &sbuf, &sbuf_win);
     MPI_Win_allocate_shared(sizeof(double) * NUM_OPS * COUNT, sizeof(double),
-                            info, shm_comm, &rbuf, &rbuf_win);
+                            MPI_INFO_NULL, shm_comm, &rbuf, &rbuf_win);
 
     for (i = 0; i < NUM_OPS * COUNT; i++) {
         sbuf[i] = 1.0 * i + rank;
         rbuf[i] = sbuf[i] * -1;
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Info_set(info, (char *) "no_any_src_spec_tag", (char *) "true");
+    MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
+
+    MPI_Barrier(comm_world);
     errs = run_test();
 
   exit:
@@ -146,6 +150,8 @@ int main(int argc, char *argv[])
         MPI_Win_free(&rbuf_win);
     if (shm_comm != MPI_COMM_NULL)
         MPI_Comm_free(&shm_comm);
+    if (comm_world != MPI_COMM_NULL)
+        MPI_Comm_free(&comm_world);
 
     MPI_Finalize();
 

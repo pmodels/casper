@@ -43,6 +43,7 @@ double sum_post_time = 0, sum_wait_time = 0, sum_sync_time = 0;
 
 MPI_Request *request;
 MPI_Status *reqstat;
+static MPI_Comm comm_world = MPI_COMM_NULL;
 
 double calc_bw(int rank, int size, int num_pairs, int window_size, char *s_buf, char *r_buf);
 void usage();
@@ -123,13 +124,17 @@ int main(int argc, char *argv[])
     /* Register as shared buffer in Casper. */
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "true");
 
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, MPI_INFO_NULL, &shm_comm);
-    MPI_Win_allocate_shared((MAX_MSG_SIZE + align_size) * 2, 1, info, shm_comm, &s_buf, &win);
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank, info, &shm_comm);
+    MPI_Win_allocate_shared((MAX_MSG_SIZE + align_size) * 2, 1, MPI_INFO_NULL,
+                            shm_comm, &s_buf, &win);
 
     r_buf = s_buf + MAX_MSG_SIZE + align_size;
 
     s_buf += (align_size - ((uint64_t) s_buf % align_size));
     r_buf += (align_size - ((uint64_t) r_buf % align_size));
+
+    MPI_Info_set(info, (char *) "no_any_src_spec_tag", (char *) "true");
+    MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     if (numprocs < 2) {
         if (rank == 0) {
@@ -144,7 +149,8 @@ int main(int argc, char *argv[])
     if (rank == 0) {
         fprintf(stdout, "# [ pairs: %d ] [ window size: %d ]\n", pairs, window_size);
         fprintf(stdout, "sbuf=%p, rbuf=%p\n", s_buf, r_buf);
-        fprintf(stdout, "%s, %s, %s, %s, %s, %s\n", "# Size", "Iters", "Computation (us)", "MB/s", "Messages/s", "Time (us)");
+        fprintf(stdout, "%s, %s, %s, %s, %s, %s\n", "# Size", "Iters", "Computation (us)", "MB/s",
+                "Messages/s", "Time (us)");
         fflush(stdout);
     }
 
@@ -179,6 +185,8 @@ int main(int argc, char *argv[])
         MPI_Info_free(&info);
     if (shm_comm != MPI_COMM_NULL)
         MPI_Comm_free(&shm_comm);
+    if (comm_world != MPI_COMM_NULL)
+        MPI_Comm_free(&comm_world);
 
     MPI_Finalize();
 
@@ -240,20 +248,20 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char *s_buf, 
     if (!skip_override)
         skip = loop * (SKIP_RATE);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(comm_world);
 
     if (rank < num_pairs) {
         target = rank + num_pairs;
 
         for (i = 0; i < loop + skip; i++) {
             if (i == skip) {
-                MPI_Barrier(MPI_COMM_WORLD);
+                MPI_Barrier(comm_world);
                 t_start = MPI_Wtime();
             }
 
             STEP_TIME_START(i, skip, pt0);
             for (j = 0; j < window_size; j++) {
-                MPI_Isend(s_buf, size, MPI_CHAR, target, 100, MPI_COMM_WORLD, request + j);
+                MPI_Isend(s_buf, size, MPI_CHAR, target, 100, comm_world, request + j);
             }
             STEP_TIME_STOP(i, skip, pt0, post_time);
 
@@ -264,7 +272,7 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char *s_buf, 
             STEP_TIME_STOP(i, skip, wt0, wait_time);
 
             STEP_TIME_START(i, skip, st0);
-            MPI_Recv(r_buf, 4, MPI_CHAR, target, 101, MPI_COMM_WORLD, &reqstat[0]);
+            MPI_Recv(r_buf, 4, MPI_CHAR, target, 101, comm_world, &reqstat[0]);
             STEP_TIME_STOP(i, skip, st0, sync_time);
         }
 
@@ -277,27 +285,27 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char *s_buf, 
 
         for (i = 0; i < loop + skip; i++) {
             if (i == skip) {
-                MPI_Barrier(MPI_COMM_WORLD);
+                MPI_Barrier(comm_world);
             }
 
             for (j = 0; j < window_size; j++) {
-                MPI_Irecv(r_buf, size, MPI_CHAR, target, 100, MPI_COMM_WORLD, request + j);
+                MPI_Irecv(r_buf, size, MPI_CHAR, target, 100, comm_world, request + j);
             }
 
             MPI_Waitall(window_size, request, reqstat);
-            MPI_Send(s_buf, 4, MPI_CHAR, target, 101, MPI_COMM_WORLD);
+            MPI_Send(s_buf, 4, MPI_CHAR, target, 101, comm_world);
         }
     }
 
     else {
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(comm_world);
     }
 
-    MPI_Reduce(&t, &sum_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&t, &sum_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
 #ifdef STEP_TIME
-    MPI_Reduce(&post_time, &sum_post_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&wait_time, &sum_wait_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&sync_time, &sum_sync_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&post_time, &sum_post_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
+    MPI_Reduce(&wait_time, &sum_wait_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
+    MPI_Reduce(&sync_time, &sum_sync_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
 
     sum_post_time *= 1e6 / num_pairs / loop / window_size;
     sum_wait_time *= 1e6 / num_pairs / loop / window_size;
