@@ -10,35 +10,6 @@
 
 CSPU_shmbuf_record_t *CSPU_shmbuf_list = NULL;
 
-int CSPU_check_shmbuf_regist_info(MPI_Info info, int *flag)
-{
-    int mpi_errno = MPI_SUCCESS;
-    int shmbuf_regist_flag = 0;
-
-    if (info != MPI_INFO_NULL) {
-        int info_flag = 0;
-        char info_value[MPI_MAX_INFO_VAL + 1];
-
-        memset(info_value, 0, sizeof(info_value));
-        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "shmbuf_regist", MPI_MAX_INFO_VAL,
-                                        info_value, &info_flag));
-
-        if (info_flag == 1) {
-            if (!strncmp(info_value, "true", strlen("true"))) {
-                shmbuf_regist_flag = 1;
-            }
-        }
-    }
-
-    CSP_DBG_PRINT("SHMBUF: shmbuf_regist_flag %d\n", shmbuf_regist_flag);
-    *flag = shmbuf_regist_flag;
-
-  fn_exit:
-    return mpi_errno;
-  fn_fail:
-    goto fn_exit;
-}
-
 int CSPU_shmbuf_free(MPI_Win * win, int *freed)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -103,11 +74,10 @@ int CSPU_shmbuf_free(MPI_Win * win, int *freed)
     goto fn_exit;
 }
 
-int CSPU_shmbuf_regist(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
-                       void *baseptr, MPI_Win * win)
+int CSPU_shmbuf_regist(CSPU_comm_t * ug_comm, MPI_Aint size, int disp_unit, MPI_Info info,
+                       MPI_Comm comm, void *baseptr, MPI_Win * win)
 {
     int mpi_errno = MPI_SUCCESS;
-    CSPU_comm_t *ug_comm = NULL;
     CSPU_shmbuf_win_t *shmbuf_win = NULL;
     CSP_cwp_pkt_t pkt;
     CSP_cwp_shmbuf_regist_pkt_t *shmbuf_regist_pkt = &pkt.u.fnc_shmbuf_regist;
@@ -115,11 +85,6 @@ int CSPU_shmbuf_regist(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm com
     void **base_pp = (void **) baseptr;
     MPI_Request *reqs = NULL;
     int i;
-
-    /* Cache ug_comm in user comm. */
-    mpi_errno = CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
-    CSP_ASSERT(ug_comm != NULL);
 
     shmbuf_win = CSP_calloc(1, sizeof(CSPU_shmbuf_win_t));
     CSP_ASSERT(shmbuf_win != NULL);

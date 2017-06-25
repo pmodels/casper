@@ -12,9 +12,6 @@
 #include "csp.h"
 
 typedef struct CSPU_comm_info_args {
-    CSP_async_config_t pt2pt_async_config;      /* Internal info.
-                                                 * Updated by the following user hints. */
-
     /* ignore_status_src && no_any_tag: tag_trans(recv_offset);
      * ignore_status_src: duplicate comm;
      * no_any_src_spec_tag: duplicate comm + trans(src_offset) (minimal). */
@@ -22,13 +19,26 @@ typedef struct CSPU_comm_info_args {
     unsigned short ignore_status_src;   /* Ignore stat.SOURCE. */
     unsigned short no_any_src_spec_tag; /* No ANY_SOURCE + specific TAG. */
     unsigned short no_any_tag;
+
+    /* special communicator for shared buffer allocation */
+    unsigned short shmbuf_regist;
 } CSPU_comm_info_args_t;
+
+typedef enum {
+    CSPU_COMM_REFER = 0,        /* Reference comm, only creates reference info, e.g., MPI_COMM_WORLD. */
+    CSPU_COMM_SHMBUF = 1,       /* Shared buffer comm, creates only one ug_comm to allocate
+                                 * shared buffer. */
+    CSPU_COMM_ASYNC = 2,        /* Asynchronous comm, creates all duplicating ug_comms for
+                                 * message offloading. */
+    CSPU_COMM_TYPE_MAX
+} CSPU_comm_type_t;
 
 typedef struct CSPU_comm {
 #if defined(CSP_ENABLE_THREAD_SAFE)
     CSP_thread_cs_t cs;         /* per window critical section object,
                                  * used only when this process is multi-threaded. */
 #endif
+    CSPU_comm_type_t type;
 
     MPI_Comm ug_comm;           /* Including both user and ghost processes */
     MPI_Comm comm;              /* Including all user processes, exposed to user. */

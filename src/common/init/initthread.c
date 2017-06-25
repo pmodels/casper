@@ -108,7 +108,7 @@ static int initialize_env(void)
             else if (!strncmp(vbs, "conf_win", strlen("conf_win"))) {
                 CSP_ENV.verbose |= (int) CSP_MSG_CONFIG_WIN;
             }
-            else if (!strncmp(vbs, "conf_win", strlen("conf_comm"))) {
+            else if (!strncmp(vbs, "conf_comm", strlen("conf_comm"))) {
                 CSP_ENV.verbose |= (int) CSP_MSG_CONFIG_COMM;
             }
             else if (!strncmp(vbs, "info", strlen("info"))) {
@@ -269,7 +269,7 @@ static int initialize_env(void)
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
                       "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
-                      "    CSP_VERBOSE      = %s|%s|%s|%s|%s\n"
+                      "    CSP_VERBOSE      = %s|%s|%s|%s|%s|%s\n"
                       "    CSP_NG           = %d\n"
                       "    CSP_ASYNC_CONFIG = %s\n"
 #ifdef CSP_ENABLE_TOPO_OPT
@@ -281,6 +281,7 @@ static int initialize_env(void)
                       (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_WIN) ? "conf_win" : "",
+                      (CSP_ENV.verbose & CSP_MSG_CONFIG_COMM) ? "conf_comm" : "",
                       (CSP_ENV.verbose & CSP_MSG_INFO) ? "info" : "",
                       CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off",
 #ifdef CSP_ENABLE_TOPO_OPT
