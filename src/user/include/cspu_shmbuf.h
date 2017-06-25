@@ -161,9 +161,8 @@ static inline void CSPU_shmbuf_translate_g_addr(void *addr, MPI_Aint * g_addr_pt
     }
 }
 
-extern int CSPU_shmbuf_regist(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
-                              void *baseptr, MPI_Win * win);
+extern int CSPU_shmbuf_regist(CSPU_comm_t * ug_comm, MPI_Aint size, int disp_unit, MPI_Info info,
+                              MPI_Comm comm, void *baseptr, MPI_Win * win);
 extern int CSPU_shmbuf_free(MPI_Win * win, int *freed);
-extern int CSPU_check_shmbuf_regist_info(MPI_Info info, int *flag);
 
 #endif /* CSPU_SHMBUF_H_ */

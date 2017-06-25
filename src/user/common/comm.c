@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include "cspu.h"
 
+static const char *ug_comm_type_name[CSPU_COMM_TYPE_MAX] = { "refer", "shmbuf", "async" };
+
+
 static int ugcomm_gather_ranks(MPI_Comm user_newcomm, int *num_ghosts_unique,
                                int *g_wranks_unique, int *u_wranks)
 {
@@ -312,24 +315,24 @@ static inline void ugcomm_info_init(CSPU_comm_t * ug_comm, CSPU_comm_t * ug_newc
 {
     /* Get info from parent reference info. */
     if (ug_comm) {
-        ug_newcomm->info_args.pt2pt_async_config = ug_comm->ref_info_args.pt2pt_async_config;
         ug_newcomm->info_args.ignore_status_src = ug_comm->ref_info_args.ignore_status_src;
         ug_newcomm->info_args.no_any_src_spec_tag = ug_comm->ref_info_args.no_any_src_spec_tag;
         ug_newcomm->info_args.no_any_tag = ug_comm->ref_info_args.no_any_tag;
+        ug_newcomm->info_args.shmbuf_regist = ug_comm->info_args.shmbuf_regist;
     }
     else {
         /* Reset info if no parent (COMM_WORLD) */
-        ug_newcomm->info_args.pt2pt_async_config = 0;
         ug_newcomm->info_args.ignore_status_src = 0;
         ug_newcomm->info_args.no_any_src_spec_tag = 0;
         ug_newcomm->info_args.no_any_tag = 0;
+        ug_newcomm->info_args.shmbuf_regist = 0;
     }
 
     /* Reset my reference info for child. */
-    ug_newcomm->ref_info_args.pt2pt_async_config = 0;
     ug_newcomm->ref_info_args.ignore_status_src = 0;
     ug_newcomm->ref_info_args.no_any_src_spec_tag = 0;
     ug_newcomm->ref_info_args.no_any_tag = 0;
+    ug_newcomm->ref_info_args.shmbuf_regist = 0;
 }
 
 static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
@@ -343,11 +346,12 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
                       "    ignore_status_src            = %d\n"
                       "    no_any_src_spec_tag          = %d\n"
                       "    no_any_tag                   = %d\n"
-                      "    pt2pt_async_config(internal) = %s\n",
+                      "    shmbuf_regist                = %d\n"
+                      "    type (internal) = %s\n",
                       ug_comm->comm, ug_comm->info_args.ignore_status_src,
                       ug_comm->info_args.no_any_src_spec_tag,
                       ug_comm->info_args.no_any_tag,
-                      (ug_comm->info_args.pt2pt_async_config == 0 ? "disabled" : "enabled"));
+                      ug_comm->info_args.shmbuf_regist, ug_comm_type_name[ug_comm->type]);
     }
     return mpi_errno;
 }
@@ -367,14 +371,10 @@ int CSPU_ugcomm_set_info(CSPU_comm_info_args_t * info_args, MPI_Info info)
 
         mpi_errno = CSPU_info_get_bool(info, "no_any_tag", "true", "false", &info_args->no_any_tag);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
-    }
 
-    /* Disable async progress if ANY_SRC + specific TAG. Otherwise enable. */
-    if (!info_args->ignore_status_src && !info_args->no_any_src_spec_tag) {
-        info_args->pt2pt_async_config = 0;
-    }
-    else {
-        info_args->pt2pt_async_config = 1;
+        mpi_errno =
+            CSPU_info_get_bool(info, "shmbuf_regist", "true", "false", &info_args->shmbuf_regist);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
   fn_exit:
@@ -393,7 +393,8 @@ int CSPU_ugcomm_free(MPI_Comm comm)
     CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
     if (ug_comm) {
 
-        if (ug_comm->info_args.pt2pt_async_config) {
+        /* NOTE: reference ugcomm does not have ghost-included structure. */
+        if (ug_comm->type > CSPU_COMM_REFER) {
             /* Local user root issues command to ghosts. */
             CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->local_user_comm, &ulrank));
             if (ulrank == 0) {
@@ -401,7 +402,6 @@ int CSPU_ugcomm_free(MPI_Comm comm)
                 CSP_CHKMPIFAIL_JUMP(mpi_errno);
             }
         }
-        /* NOTE: ugcomm may be empty if it is no_async and only for reference info. */
 
         mpi_errno = ugcomm_release(ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -427,6 +427,7 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
     CSP_ASSERT(ug_newcomm != NULL);
 
     ug_newcomm->comm = user_newcomm;
+    ug_newcomm->type = CSPU_COMM_REFER;
 
     /* First init my info by using parent's ref_info. */
     ugcomm_info_init(ug_comm, ug_newcomm);
@@ -436,8 +437,18 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
     mpi_errno = CSPU_ugcomm_set_info(&ug_newcomm->info_args, info);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    /* Return empty ug_comm if async is disabled. */
-    if (!ug_newcomm->info_args.pt2pt_async_config)
+    /* Mark as shmbuf communicator. */
+    if (ug_newcomm->info_args.shmbuf_regist) {
+        ug_newcomm->type = CSPU_COMM_SHMBUF;
+    }
+
+    /* Enable async progress if ignore status or no ANY_SRC + specific TAG. */
+    if (ug_newcomm->info_args.ignore_status_src || ug_newcomm->info_args.no_any_src_spec_tag) {
+        ug_newcomm->type = CSPU_COMM_ASYNC;
+    }
+
+    /* Return empty ug_comm if it is only reference use. */
+    if (ug_newcomm->type == CSPU_COMM_REFER)
         goto no_async;
 
     /* Create user root communicator */
@@ -469,8 +480,8 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     CSP_DBG_PRINT
-        ("COMM: create user_newcomm 0x%x -> ug_newcomm %p ug_comm 0x%x (null if no async)\n",
-         user_newcomm, ug_newcomm, ug_newcomm->ug_comm);
+        ("COMM: create user_newcomm 0x%x -> ug_newcomm %p ug_comm 0x%x (type: %s)\n",
+         user_newcomm, ug_newcomm, ug_newcomm->ug_comm, ug_comm_type_name[ug_newcomm->type]);
 
     ugcomm_print_info(ug_newcomm);
 

@@ -89,7 +89,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int src, int tag,
     CSP_DBG_PRINT("irecv: comm 0x%x->ug_comm=%p, buf=%p, count=%d, g_bufaddr=0x%lx, "
                   "buf_found_flag=%d\n", comm, ug_comm, buf, count, g_bufaddr, buf_found_flag);
 
-    if (ug_comm && ug_comm->info_args.pt2pt_async_config && buf_found_flag) {
+    if (ug_comm && ug_comm->type == CSPU_COMM_ASYNC && buf_found_flag) {
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = irecv_impl(g_bufaddr, count, datatype, src, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
