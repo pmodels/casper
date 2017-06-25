@@ -342,16 +342,14 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
 
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
-        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x\n"
-                      "    ignore_status_src            = %d\n"
-                      "    no_any_src_spec_tag          = %d\n"
-                      "    no_any_tag                   = %d\n"
-                      "    shmbuf_regist                = %d\n"
-                      "    type (internal) = %s\n",
-                      ug_comm->comm, ug_comm->info_args.ignore_status_src,
+        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x (%s)\n"
+                      "    ignore_status_src  = %d  no_any_src_spec_tag  = %d\n"
+                      "    no_any_tag         = %d  shmbuf_regist        = %d\n",
+                      ug_comm->comm, ug_comm_type_name[ug_comm->type],
+                      ug_comm->info_args.ignore_status_src,
                       ug_comm->info_args.no_any_src_spec_tag,
                       ug_comm->info_args.no_any_tag,
-                      ug_comm->info_args.shmbuf_regist, ug_comm_type_name[ug_comm->type]);
+                      ug_comm->info_args.shmbuf_regist);
     }
     return mpi_errno;
 }

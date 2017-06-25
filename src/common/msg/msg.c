@@ -39,6 +39,7 @@ void CSP_msg_print(CSP_msg_verbose_t vbs, const char format[], ...)
             break;
         case CSP_MSG_CONFIG_GLOBAL:
         case CSP_MSG_CONFIG_WIN:
+        case CSP_MSG_CONFIG_COMM:
             MSG_FPRINTF(stdout, "", list, format);
             break;
         case CSP_MSG_INFO:
