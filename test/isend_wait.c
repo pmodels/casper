@@ -66,8 +66,12 @@ static int run_test(void)
 
         if (rank % 2) { /* receive only */
             for (i = 0; i < NUM_OPS; i++) {
+#if defined(USE_ANYSRC)
+                MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG,
+                          comm_world, &req);
+#else
                 MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, comm_world, &req);
-
+#endif
                 stat.MPI_ERROR = MPI_SUCCESS;
                 MPI_Wait(&req, &stat);
 
@@ -130,7 +134,14 @@ int main(int argc, char *argv[])
         rbuf[i] = sbuf[i] * -1;
     }
 
-    MPI_Info_set(info, (char *) "no_any_src_spec_tag", (char *) "true");
+#ifdef USE_WC
+    MPI_Info_free(&info);
+    info = MPI_INFO_NULL;
+#elif defined(USE_ANYSRC)
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc|anytag_notag");
+#else
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
+#endif
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     MPI_Barrier(comm_world);
