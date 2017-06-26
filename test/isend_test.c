@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     MPI_Info_free(&info);
     MPI_Info_create(&info);
 
-    MPI_Info_set(info, (char *) "no_any_src_spec_tag", (char *) "true");
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     MPI_Barrier(comm_world);

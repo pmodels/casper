@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     s_buf += (align_size - ((uint64_t) s_buf % align_size));
     r_buf += (align_size - ((uint64_t) r_buf % align_size));
 
-    MPI_Info_set(info, (char *) "no_any_src_spec_tag", (char *) "true");
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     if (numprocs < 2) {
