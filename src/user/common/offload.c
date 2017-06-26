@@ -41,55 +41,100 @@ static inline int offload_set_tag_ub(void)
     int max_trans_tag_nbits = 0;
     int user_rank = 0;
     void *val;
+    CSP_offload_tag_trans_t *tag_trans = &CSPU_offload_ch.tag_trans;
 
-    CSP_CALLMPI(RETURN, PMPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &val, &flag));
-    if (!flag || mpi_errno != MPI_SUCCESS) {
-        CSP_DBG_PRINT("Cannot get MPI_TAG_UB from MPI_COMM_WORLD\n");
-        CSPU_offload_ch.mpi_tag_ub = 0;
-    }
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &u_local_rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank));
 
-    CSPU_offload_ch.mpi_tag_ub = *(int *) val;
+    tag_trans->mpi_tag_ub = 0;
+    tag_trans->trans_tag_nbits = 0;
+    tag_trans->user_tag_ub = 0;
+    tag_trans->user_tag_nbits = 0;
 
-    /* Compute the maximum number of bits for storing offset. */
-    CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.user.u_local_comm, &u_local_nproc));
-    CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &u_local_rank));
-    CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_COMM_USER_WORLD, &user_rank));
-
-    /* Reduce the maximum ppn in world. */
     if (u_local_rank == 0) {
-        CSP_CALLMPI(RETURN, PMPI_Allreduce(&u_local_nproc, &max_u_local_nproc, 1,
-                                           MPI_INT, MPI_MAX, CSP_PROC.user.ur_comm));
-    }
-    CSP_CALLMPI(RETURN, PMPI_Bcast(&max_u_local_nproc, 1, MPI_INT, 0, CSP_PROC.user.u_local_comm));
+        CSP_CALLMPI(JUMP, PMPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &val, &flag));
+        tag_trans->mpi_tag_ub = *(int *) val;
 
-    /* Check if we have sufficient space to store offset */
-    max_trans_tag_nbits = CSP_int_nbit(max_u_local_nproc);
-    if (CSPU_offload_ch.mpi_tag_ub > (CSP_MPI_TAG_UB_MIN + 1) * (1 << max_trans_tag_nbits) - 1) {
-        CSPU_offload_ch.trans_tag_nbits = max_trans_tag_nbits;
-        CSPU_offload_ch.user_tag_ub = CSPU_offload_ch.mpi_tag_ub >> CSPU_offload_ch.trans_tag_nbits;
+        /* Compute the maximum number of bits for storing offset.
+         * Reduce the maximum ppn in world. */
+        CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.user.u_local_comm, &u_local_nproc));
+        CSP_CALLMPI(JUMP, PMPI_Allreduce(&u_local_nproc, &max_u_local_nproc, 1,
+                                         MPI_INT, MPI_MAX, CSP_PROC.user.ur_comm));
+
+        /* Check if we have sufficient space to store offset */
+        max_trans_tag_nbits = CSP_int_nbit(max_u_local_nproc);
+        if (tag_trans->mpi_tag_ub > (CSP_MPI_TAG_UB_MIN + 1) * (1 << max_trans_tag_nbits) - 1) {
+            tag_trans->trans_tag_nbits = max_trans_tag_nbits;
+            tag_trans->user_tag_ub = tag_trans->mpi_tag_ub >> tag_trans->trans_tag_nbits;
+        }
+        else {
+            tag_trans->user_tag_ub = tag_trans->mpi_tag_ub;
+            tag_trans->trans_tag_nbits = 0;
+        }
+
+        /* Prepare masks */
+        tag_trans->user_tag_nbits = CSP_int_nbit(tag_trans->user_tag_ub);
+        tag_trans->trans_tag_mask =
+            ((1 << (max_trans_tag_nbits + 1)) - 1) << tag_trans->user_tag_nbits;
+        tag_trans->user_tag_mask = (1 << tag_trans->user_tag_nbits) - 1;
     }
-    else {
-        CSPU_offload_ch.user_tag_ub = CSPU_offload_ch.mpi_tag_ub;
-        CSPU_offload_ch.trans_tag_nbits = 0;
-    }
+
+    CSP_CALLMPI(JUMP, PMPI_Bcast(tag_trans, sizeof(CSP_offload_tag_trans_t),
+                                 MPI_BYTE, CSP_ENV.num_g /* first local user rank */ ,
+                                 CSP_PROC.local_comm));
 
     if (user_rank == 0) {
         CSP_msg_print(CSP_MSG_INFO,
-                      "OFFLOAD tag: mpi_tag_ub = %d, trans_tag_nbits = %d, user_tag_ub = %d\n",
-                      CSPU_offload_ch.mpi_tag_ub, CSPU_offload_ch.trans_tag_nbits,
-                      CSPU_offload_ch.user_tag_ub);
+                      "OFFLOAD tag: mpi_tag_ub = %d, trans_tag_nbits = %d, "
+                      "user_tag_ub = %d, user_tag_nbits=%d, trans_mask=0x%x,"
+                      "user_tag_mask=0x%x\n", tag_trans->mpi_tag_ub, tag_trans->trans_tag_nbits,
+                      tag_trans->user_tag_ub, tag_trans->user_tag_nbits,
+                      tag_trans->trans_tag_mask, tag_trans->user_tag_mask);
     }
 
+  fn_exit:
     return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+static inline int offload_ghost_binding_init(void)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int ulnproc = 0, ulrank = 0;
+
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.user.u_local_comm, &ulnproc));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &ulrank));
+
+    mpi_errno = CSPU_offload_bind_ghost(&CSPU_offload_ch.bound_g_lrank);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    CSP_DBG_PRINT("OFFLOAD: bound ghost lrank %d\n", CSPU_offload_ch.bound_g_lrank);
+
+    /* Exchange the bound ghost local rank among world. */
+    CSPU_offload_ch.bound_g_lranks_local = CSP_calloc(ulnproc, sizeof(int));
+    CSPU_offload_ch.bound_g_lranks_local[ulrank] = CSPU_offload_ch.bound_g_lrank;
+    CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                                     CSPU_offload_ch.bound_g_lranks_local,
+                                     1, MPI_INT, CSP_PROC.user.u_local_comm));
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
 
 /* NOTE : this is triggered only after explicitly completed the request.
  * See standard about MPI_Grequest_complete. */
 static int CSPU_offload_req_query_fn(void *extra_state, MPI_Status * status)
 {
+    int mpi_errno = MPI_SUCCESS;
     CSP_offload_cell_t *assign_cell = (CSP_offload_cell_t *) extra_state;
     CSP_offload_cell_t *cell = NULL;
     MPI_Request req = assign_cell->pkt.req;
+
+    /* Note that the status of a send message is not updated by MPI.  */
+    if (assign_cell->pkt.type == CSP_OFFLOAD_ISEND)
+        return mpi_errno;
 
     /* If the assigned cell is a pending one, we get the latest cell from hash. */
     if (assign_cell->type == CSP_OFFLOAD_CELL_PENDING) {
@@ -106,11 +151,18 @@ static int CSPU_offload_req_query_fn(void *extra_state, MPI_Status * status)
     /* Can never cancel so always true */
     MPI_Status_set_cancelled(status, 0);
 
-    /* Copy status from cell.
-     * Note that the status of a send message is not updated by MPI. */
+    /* Copy status from cell */
     status->MPI_SOURCE = cell->pkt.stat.MPI_SOURCE;
     status->MPI_TAG = cell->pkt.stat.MPI_TAG;
     status->MPI_ERROR = cell->pkt.stat.MPI_ERROR;
+
+    if (cell->pkt.irecv.peer_rank == MPI_ANY_SOURCE) {
+        CSPU_comm_t *ug_comm = (CSPU_comm_t *) cell->pkt.ug_comm_handle;
+        /* Translate source rank only for ANY_SOURCE receive. */
+        CSP_CALLMPI(RETURN,
+                    PMPI_Group_translate_ranks(ug_comm->ug_group, 1, &cell->pkt.stat.MPI_SOURCE,
+                                               ug_comm->group, &status->MPI_SOURCE));
+    }
 
     CSP_DBG_PRINT("OFFLOAD req_query: req=0x%x, cell=%p, assign_cell=%p, "
                   "stat.src=%d, tag=%d, err=%d\n", req, cell,
@@ -191,6 +243,10 @@ int CSPU_offload_destroy(void)
         CSPU_offload_ch.shm_recvq.q_ptr = NULL;
     }
 
+    if (CSPU_offload_ch.bound_g_lranks_local)
+        free(CSPU_offload_ch.bound_g_lranks_local);
+    CSPU_offload_ch.bound_g_lranks_local = NULL;
+
     CSP_msg_print(CSP_MSG_INFO, "OFFLOAD: shm_recvq.nissued=%d, pending_q.nissued=%d\n",
                   CSPU_offload_ch.shm_recvq.nissued, CSPU_offload_ch.pending_q.nissued);
 
@@ -254,9 +310,9 @@ int CSPU_offload_init(void)
         addr += align_cell_size;
     }
 
-    mpi_errno = CSPU_offload_bind_ghost(&CSPU_offload_ch.bound_g_lrank);
+    /* Bind every user to a ghost process */
+    mpi_errno = offload_ghost_binding_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
-    CSP_DBG_PRINT("OFFLOAD: bound ghost %d\n", CSPU_offload_ch.bound_g_lrank);
 
     mpi_errno = offload_set_tag_ub();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

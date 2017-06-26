@@ -44,9 +44,13 @@ static int destroy_proc(void)
     if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL) {
         CSP_CALLMPI(JUMP, PMPI_Group_free(&CSP_PROC.wgroup));
     }
+    if (CSP_PROC.lgroup && CSP_PROC.lgroup != MPI_GROUP_NULL) {
+        CSP_CALLMPI(JUMP, PMPI_Group_free(&CSP_PROC.lgroup));
+    }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
+    CSP_PROC.lgroup = MPI_GROUP_NULL;
 
     /* ghost-specific objects */
     if (CSP_PROC.ghost.g_local_comm && CSP_PROC.ghost.g_local_comm != MPI_COMM_NULL) {

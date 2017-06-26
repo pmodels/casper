@@ -16,27 +16,24 @@ static inline int irecv_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
     CSP_offload_cell_t *cell = NULL;
     CSP_offload_pkt_t *pkt = NULL;
     CSP_offload_irecv_pkt_t *irecv_pkt = NULL;
-    int rank = 0;
+    int rank = 0, ugrank = 0;
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->ug_comm, &rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->comm, &rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->ug_comm, &ugrank));
 
     mpi_errno = CSPU_offload_new_cell(&cell);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     pkt = &cell->pkt;
     irecv_pkt = &pkt->irecv;
-    irecv_pkt->rank = rank;
+    CSPU_offload_init_pkt(pkt, ug_comm, CSP_OFFLOAD_IRECV);
 
-    CSPU_offload_init_pkt(pkt, CSP_OFFLOAD_IRECV);
+    irecv_pkt->rank = rank;
+    irecv_pkt->ugrank = ugrank;
+    irecv_pkt->peer_rank = src; /* peer_ugrank is unused. */
     irecv_pkt->g_bufaddr = g_bufaddr;
     irecv_pkt->count = count;
-    if (src != MPI_ANY_SOURCE)
-        irecv_pkt->g_peer_rank = ug_comm->g_ranks_bound[src].g_rank;
-    else
-        irecv_pkt->g_peer_rank = MPI_ANY_SOURCE;
-    irecv_pkt->peer_rank = src;
     irecv_pkt->g_ugcomm_handle = (MPI_Comm) ug_comm->g_ugcomm_bound;
-    irecv_pkt->recv_offset = ug_comm->g_ranks_bound[rank].u_offset;
     irecv_pkt->tag = tag;
 
     /* Get datatype handle on the bound ghost process  */
@@ -47,11 +44,10 @@ static inline int irecv_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
 
     (*request) = pkt->req;
 
-    CSP_DBG_PRINT("irecv: offload [g_bufaddr=0x%lx, count=%d, datatype=0x%x/0x%x, "
-                  "dest=%d/%d, tag=%d, comm=0x%x/0x%lx, soffset=%d, roffset=%d], "
+    CSP_DBG_PRINT("OFFLOAD irecv: offload [g_bufaddr=0x%lx, count=%d, "
+                  "datatype=0x%x/0x%x, me=%d/%d, src=%d, tag=%d, comm=0x%x/0x%lx], "
                   "req 0x%x, cell %p(%s)\n", g_bufaddr, count, datatype, irecv_pkt->g_datatype,
-                  src, irecv_pkt->g_peer_rank, tag, comm, irecv_pkt->g_ugcomm_handle,
-                  irecv_pkt->send_offset, irecv_pkt->recv_offset, (*request),
+                  rank, ugrank, src, tag, comm, irecv_pkt->g_ugcomm_handle, (*request),
                   cell, (cell->type == CSP_OFFLOAD_CELL_SHM ? "shm" : "pending"));
 
   fn_exit:

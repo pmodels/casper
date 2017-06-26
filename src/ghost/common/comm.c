@@ -31,6 +31,10 @@ static inline int ugcomm_release(CSPG_comm_t * cspg_comm)
 
             free(cspg_comm->dup_ug_comms);
         }
+
+        if (cspg_comm->g_ranks_bound)
+            free(cspg_comm->g_ranks_bound);
+
         free(cspg_comm);
     }
     return mpi_errno;
@@ -39,7 +43,7 @@ static inline int ugcomm_release(CSPG_comm_t * cspg_comm)
 static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
-    int num_ghosts_unique = 0, user_nprocs = 0, user_local_root = 0;
+    int ug_comm_nproc = 0, user_local_root = 0;
     int *ug_ranks = NULL;
     MPI_Group ug_group = MPI_GROUP_NULL;
     MPI_Aint *tmp_g_ugcomm_handles = NULL;
@@ -50,31 +54,31 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
     CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
 
+    ug_comm_nproc = ugcomm_create_pkt->ug_comm_nproc;
+
     cspg_comm = CSP_calloc(1, sizeof(CSPG_comm_t));
-    ug_ranks = CSP_calloc(user_nprocs + num_ghosts_unique, sizeof(int));
+    ug_ranks = CSP_calloc(ug_comm_nproc, sizeof(int));
     CSP_ASSERT(cspg_comm != NULL && ug_ranks != NULL);
 
-    num_ghosts_unique = ugcomm_create_pkt->num_ghosts_unique;
-    user_nprocs = ugcomm_create_pkt->user_nprocs;
     user_local_root = ugcomm_create_pkt->user_local_root;
     cspg_comm->type = ugcomm_create_pkt->type;
     cspg_comm->num_ug_comms = ugcomm_create_pkt->num_ug_comms;
     cspg_comm->wildcard_info = ugcomm_create_pkt->wildcard_info;
+    cspg_comm->user_nproc = ugcomm_create_pkt->user_nproc;
 
-    mpi_errno = CSPG_cwp_recv_param(ug_ranks, (user_nprocs + num_ghosts_unique) * sizeof(int),
-                                    user_local_root);
+    mpi_errno = CSPG_cwp_recv_param(ug_ranks, ug_comm_nproc * sizeof(int), user_local_root);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Create the new ug_comm.
      * We always create from COMM_WORLD because the parent communicator may not be
      * extended to ug_comm depending on user hint. */
-    CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, user_nprocs + num_ghosts_unique,
-                                      ug_ranks, &ug_group));
+    CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, ug_comm_nproc, ug_ranks, &ug_group));
     CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &cspg_comm->ug_comm));
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(cspg_comm->ug_comm, &ug_rank));
-    CSPG_DBG_PRINT("COMM: created cspg_comm=%p, ug_rank=%d, num_ug_comms=%d, "
-                   "ug_comm=0x%x (type: %s)\n", cspg_comm, ug_rank, cspg_comm->num_ug_comms,
-                   cspg_comm->ug_comm, CSP_ug_comm_type_name[cspg_comm->type]);
+    CSPG_DBG_PRINT("COMM: created cspg_comm=%p, ug_rank=%d/%d, num_ug_comms=%d, "
+                   "ug_comm=0x%x (type: %s)\n", cspg_comm, ug_rank, ug_comm_nproc,
+                   cspg_comm->num_ug_comms, cspg_comm->ug_comm,
+                   CSP_ug_comm_type_name[cspg_comm->type]);
 
     if (cspg_comm->type == CSP_COMM_ASYNC) {
         CSP_ASSERT(cspg_comm->num_ug_comms >= 1);
@@ -89,6 +93,12 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
             CSPG_DBG_PRINT("COMM: dup ug_comm[%d]=0x%x\n", i, cspg_comm->dup_ug_comms[i]);
         }
     }
+
+    /* Receive bound ghost rank of every user ranks. */
+    cspg_comm->g_ranks_bound = CSP_calloc(cspg_comm->user_nproc, sizeof(int));
+    mpi_errno = CSPG_cwp_recv_param(cspg_comm->g_ranks_bound, cspg_comm->user_nproc * sizeof(int),
+                                    user_local_root);
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     /* Scatter my cspg_comm address to users.
      * Thus the cspg_comm can be found at offload call or comm free.*/

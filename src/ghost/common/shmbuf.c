@@ -31,43 +31,45 @@ static int shmbuf_regist_impl(CSP_cwp_shmbuf_regist_pkt_t * shmbuf_regist_pkt)
     cspg_comm = (CSPG_comm_t *) ugcomm_handle;
     ug_comm = cspg_comm->ug_comm;
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_comm, &ug_nproc));
-
-    /* Translate all bound ranks in the ug_comm. */
-    CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &local_group));
-    CSP_CALLMPI(JUMP, PMPI_Comm_group(ug_comm, &ug_group));
-
-    nbound = CSPG_offload_server.urange.lrank_end - CSPG_offload_server.urange.lrank_sta + 1;
-    bound_lranks = CSP_calloc(nbound, sizeof(int));
-    bound_ug_uranks = CSP_calloc(nbound, sizeof(int));
-
-    for (lrank = CSPG_offload_server.urange.lrank_sta;
-         lrank <= CSPG_offload_server.urange.lrank_end; lrank++)
-        bound_lranks[bound_idx++] = lrank;
-
-    CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(local_group, nbound,
-                                                 bound_lranks, ug_group, bound_ug_uranks));
-
     /* Create shared buffer window. */
     CSP_CALLMPI(JUMP, PMPI_Win_allocate_shared(0, 1, MPI_INFO_NULL, ug_comm, &base, &shmbuf_win));
     CSPG_DBG_PRINT("SHMBUF: regist ug_comm=0x%x, base=%p, shmbuf_win=0x%x\n",
                    ug_comm, base, shmbuf_win);
 
-    /* Query address for my bound users and send to each user.
-     * user_bases is accessed by local ranks.*/
-    user_bases = CSP_calloc(ug_nproc, sizeof(MPI_Aint));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_comm, &ug_nproc));
     reqs = CSP_calloc(ug_nproc + 1, sizeof(MPI_Request));
-    for (i = 0; i < nbound; i++) {
-        MPI_Aint r_size = 0;
-        int r_disp_unit = 0;
-        CSP_CALLMPI(JUMP, PMPI_Win_shared_query(shmbuf_win, bound_ug_uranks[i], &r_size,
-                                                &r_disp_unit, (void *) &user_bases[i]));
 
-        mpi_errno = CSPG_cwp_try_send_param(&user_bases[i],
-                                            sizeof(MPI_Aint), bound_lranks[i], &reqs[nreqs++]);
-        CSP_CHKMPIFAIL_JUMP(mpi_errno);
-        CSPG_DBG_PRINT("SHMBUF: regist urank %d, user_base=0x%lx\n", bound_ug_uranks[i],
-                       user_bases[i]);
+    /* Translate all bound ranks in the ug_comm. */
+    if (CSPG_offload_server.urange.lrank_sta > 0 && CSPG_offload_server.urange.lrank_end > 0) {
+        CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &local_group));
+        CSP_CALLMPI(JUMP, PMPI_Comm_group(ug_comm, &ug_group));
+
+        nbound = CSPG_offload_server.urange.lrank_end - CSPG_offload_server.urange.lrank_sta + 1;
+        bound_lranks = CSP_calloc(nbound, sizeof(int));
+        bound_ug_uranks = CSP_calloc(nbound, sizeof(int));
+
+        for (lrank = CSPG_offload_server.urange.lrank_sta;
+             lrank <= CSPG_offload_server.urange.lrank_end; lrank++)
+            bound_lranks[bound_idx++] = lrank;
+
+        CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(local_group, nbound,
+                                                     bound_lranks, ug_group, bound_ug_uranks));
+
+        /* Query address for my bound users and send to each user.
+         * user_bases is accessed by local ranks.*/
+        user_bases = CSP_calloc(ug_nproc, sizeof(MPI_Aint));
+        for (i = 0; i < nbound; i++) {
+            MPI_Aint r_size = 0;
+            int r_disp_unit = 0;
+            CSP_CALLMPI(JUMP, PMPI_Win_shared_query(shmbuf_win, bound_ug_uranks[i], &r_size,
+                                                    &r_disp_unit, (void *) &user_bases[i]));
+
+            mpi_errno = CSPG_cwp_try_send_param(&user_bases[i],
+                                                sizeof(MPI_Aint), bound_lranks[i], &reqs[nreqs++]);
+            CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            CSPG_DBG_PRINT("SHMBUF: regist urank %d, user_base=0x%lx\n", bound_ug_uranks[i],
+                           user_bases[i]);
+        }
     }
 
     /* Notify user root the handle of ghost win. */

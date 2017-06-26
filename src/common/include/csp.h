@@ -198,6 +198,7 @@ typedef struct CSP_proc {
                                  * use this object.*/
     MPI_Comm local_comm;        /* Includes all processes on local node. */
     MPI_Group wgroup;
+    MPI_Group lgroup;
 
     /* User/Ghost-specific */
     union {
@@ -228,6 +229,7 @@ static inline void CSP_reset_proc(void)
     CSP_PROC.num_nodes = 0;
     CSP_PROC.wrank = -1;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
+    CSP_PROC.lgroup = MPI_GROUP_NULL;
     CSP_PROC.local_comm = MPI_COMM_NULL;
 }
 

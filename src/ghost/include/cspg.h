@@ -73,6 +73,11 @@ typedef struct CSPG_comm {
     MPI_Comm *dup_ug_comms;
     int num_ug_comms;           /* Number of dupcomms on user process. at least 1. */
     int wildcard_info;
+    int user_nproc;
+
+    int *g_ranks_bound;         /* Bound ghost rank of every user in ug_comm.
+                                 * Indexed by user rank in user comm. User offset can be
+                                 * easily got by u_ugrank - g_ugrank.*/
 } CSPG_comm_t;
 
 /* ======================================================================
