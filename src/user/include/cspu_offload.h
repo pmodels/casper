@@ -13,8 +13,6 @@
 #include "csp_util.h"
 #include "csp_offload.h"
 
-#define CSP_MPI_TAG_UB_MIN 32767        /*（2^15-1) */
-
 typedef struct CSPU_offload_req_hash {
     CSP_offload_cell_t *record;
 } CSPU_offload_req_hash_t;
@@ -25,11 +23,10 @@ typedef struct CSP_offload_channel {
     MPI_Win shm_win;
 
     int bound_g_lrank;
+    int *bound_g_lranks_local;  /* The bound ghost's local rank of every user
+                                 * in local user comm. */
 
-    int mpi_tag_ub;             /* Real tag_ub provided by MPI. */
-    int user_tag_ub;            /* tag_ub exposed to user.
-                                 * user_tag_ub = mpi_tag_ub << trans_tag_nbits */
-    int trans_tag_nbits;        /* The number of bits available for tag translation. */
+    CSP_offload_tag_trans_t tag_trans;
 
     /* Shared recvq, enqueued by local user and dequeued by a ghost. */
     struct {
@@ -338,11 +335,14 @@ static inline int CSPU_offload_get_ghost(void)
     return CSPU_offload_ch.bound_g_lrank;
 }
 
-static inline void CSPU_offload_init_pkt(CSP_offload_pkt_t * pkt, CSP_offload_pkt_type_t type)
+static inline void CSPU_offload_init_pkt(CSP_offload_pkt_t * pkt, CSPU_comm_t * ug_comm,
+                                         CSP_offload_pkt_type_t type)
 {
     pkt->type = type;
     OPA_store_int(&pkt->complet_flag, 0);
     memset(&pkt->stat, 0, sizeof(MPI_Status));
+
+    pkt->ug_comm_handle = (MPI_Aint) ug_comm;
     /* request is set at new_cell. */
 }
 #endif /* CSPU_offload_ch_H_ */

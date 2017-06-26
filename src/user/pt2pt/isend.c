@@ -16,25 +16,26 @@ static inline int isend_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
     CSP_offload_cell_t *cell = NULL;
     CSP_offload_pkt_t *pkt = NULL;
     CSP_offload_isend_pkt_t *isend_pkt = NULL;
-    int rank = 0;
+    int rank = 0, ugrank = 0;
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->ug_comm, &rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->comm, &rank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->ug_comm, &ugrank));
 
     mpi_errno = CSPU_offload_new_cell(&cell);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     pkt = &cell->pkt;
     isend_pkt = &pkt->isend;
-    isend_pkt->rank = rank;
+    CSPU_offload_init_pkt(pkt, ug_comm, CSP_OFFLOAD_ISEND);
 
-    CSPU_offload_init_pkt(pkt, CSP_OFFLOAD_ISEND);
+    isend_pkt->rank = rank;
+    isend_pkt->ugrank = ugrank;
+    isend_pkt->peer_rank = dest;
+    CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(ug_comm->group, 1, &dest,
+                                                 ug_comm->ug_group, &isend_pkt->peer_ugrank));
     isend_pkt->g_bufaddr = g_bufaddr;
     isend_pkt->count = count;
-    isend_pkt->g_peer_rank = ug_comm->g_ranks_bound[dest].g_rank;
-    isend_pkt->peer_rank = dest;
     isend_pkt->g_ugcomm_handle = ug_comm->g_ugcomm_bound;
-    isend_pkt->send_offset = ug_comm->g_ranks_bound[rank].u_offset;
-    isend_pkt->recv_offset = ug_comm->g_ranks_bound[dest].u_offset;
     isend_pkt->tag = tag;
 
     /* Get datatype handle on the bound ghost process  */
@@ -46,12 +47,11 @@ static inline int isend_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
 
     (*request) = pkt->req;
 
-    CSP_DBG_PRINT("isend: offload [g_bufaddr=0x%lx, count=%d, datatype=0x%x/0x%x, "
-                  "dest=%d/%d, tag=%d, comm=0x%x/0x%lx, soffset=%d, roffset=%d], "
+    CSP_DBG_PRINT("OFFLOAD isend: offload [g_bufaddr=0x%lx, count=%d, datatype=0x%x/0x%x, "
+                  "me=%d/%d, dest=%d/%d, tag=%d, comm=0x%x/0x%lx], "
                   "req 0x%x, cell %p(%s)\n", g_bufaddr, count, datatype, isend_pkt->g_datatype,
-                  dest, isend_pkt->g_peer_rank, tag, comm, isend_pkt->g_ugcomm_handle,
-                  isend_pkt->send_offset, isend_pkt->recv_offset, (*request), cell,
-                  (cell->type == CSP_OFFLOAD_CELL_SHM ? "shm" : "pending"));
+                  rank, ugrank, dest, isend_pkt->peer_ugrank, tag, comm, isend_pkt->g_ugcomm_handle,
+                  (*request), cell, (cell->type == CSP_OFFLOAD_CELL_SHM ? "shm" : "pending"));
 
   fn_exit:
     return mpi_errno;

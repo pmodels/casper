@@ -19,6 +19,7 @@ typedef struct CSPU_comm_info_args {
     unsigned short shmbuf_regist;
 } CSPU_comm_info_args_t;
 
+
 typedef struct CSPU_comm {
 #if defined(CSP_ENABLE_THREAD_SAFE)
     CSP_thread_cs_t cs;         /* per window critical section object,
@@ -32,16 +33,15 @@ typedef struct CSPU_comm {
     MPI_Comm user_root_comm;    /* Used to acquire mlock. */
     MPI_Comm local_user_comm;   /* Used to cwp with ghost */
 
+    /* Store groups to avoid group allocation/free per offload. */
+    MPI_Group group;            /* Group of comm. */
+    MPI_Group ug_group;         /* Group of ug_comm. */
+
     CSPU_comm_info_args_t info_args;    /* Store real info controlling implementation. */
     CSPU_comm_info_args_t ref_info_args;        /* Store info passed by comm_set_info,
                                                  * transfer to impl_info at child comm creation.*/
-    int num_ghosts_unique;
-    int num_max_g_users;
-    struct {
-        int g_rank;             /* Bound ghost rank of each user in ug_comm.
-                                 * Ghost is already locally bound at MPI_init. */
-        int u_offset;           /* local offset of user bound to the ghost. */
-    } *g_ranks_bound;
+    int ug_comm_nproc;
+    int num_ug_comms;
 
     MPI_Aint g_ugcomm_bound;    /* cspg_comm address on the bound ghost process */
     MPI_Aint *g_ugcomm_handles; /* cspg_comm address on every ghost process.

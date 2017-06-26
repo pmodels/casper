@@ -342,6 +342,9 @@ static int initialize_proc(void)
     /* Reset user/ghost global object */
     CSP_reset_typed_proc();
 
+    CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.wcomm, &CSP_PROC.wgroup));
+    CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &CSP_PROC.lgroup));
+
     /* Create a user comm_world including all the users,
      * user will access it instead of comm_world */
     CSP_CALLMPI(JUMP, PMPI_Comm_split(CSP_PROC.wcomm, CSP_IS_USER, 1, &tmp_comm));

@@ -70,8 +70,8 @@ typedef struct CSP_cwp_shmbuf_free_pkt {
 typedef struct CSP_cwp_ugcomm_create_pkt {
     CSP_comm_type_t type;
     int user_local_root;
-    int user_nprocs;
-    int num_ghosts_unique;
+    int ug_comm_nproc;
+    int user_nproc;
     int num_ug_comms;
     int wildcard_info;
 /*    int info_npairs; */

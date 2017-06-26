@@ -21,6 +21,22 @@
 #include "opa_primitives.h"
 
 /* ======================================================================
+ * Tag translation related definition.
+ * ====================================================================== */
+
+#define CSP_MPI_TAG_UB_MIN 32767        /*（2^15-1) */
+
+typedef struct CSP_offload_tag_trans {
+    int mpi_tag_ub;             /* Real tag_ub provided by MPI. */
+    int user_tag_ub;            /* tag_ub exposed to user.
+                                 * user_tag_ub = mpi_tag_ub << trans_tag_nbits */
+    int trans_tag_nbits;        /* The number of bits available for tag translation. */
+    int user_tag_nbits;         /* The number of bits for user tag. Used as mask. */
+    int trans_tag_mask;
+    int user_tag_mask;
+} CSP_offload_tag_trans_t;
+
+/* ======================================================================
  * Communication offload definition.
  * This mechanism is used only for pt2pt and collective calls.
  * Also see csp_datatype.h.
@@ -31,7 +47,6 @@
  * process has to wait until one outstanding offloaded call finish.
  * Also see offload_shmq_ncells in CSP_env_param_t struct.  */
 #define CSP_DEFAULT_OFFLOAD_SHMQ_NCELLS 64
-#define CSP_OFFLOAD_TAG_FACTOR 100
 #define CSP_OFFLOAD_SHMQ_MEMSZ(ncells) (ncells * sizeof(CSP_offload_cell_t))
 #define CSP_OFFLOAD_CACHE_LINE_LEN 64
 
@@ -42,22 +57,17 @@ typedef enum {
 } CSP_offload_pkt_type_t;
 
 typedef struct CSP_offload_isend_pkt {
-    int rank;                   /* The user rank in ug_comm. Used to update tag on
+    int rank;                   /* The user rank in user comm. */
+    int ugrank;                 /* The user rank in ug_comm. Used to update tag on
                                  * ghost call to workaround the mismatching on
                                  * shared ghost issue...*/
-    int peer_rank;              /* The peer rank, used to fill status. */
-    int g_peer_rank;            /* The peer's ghost rank in ug_comm. */
+    int peer_rank;              /* The peer rank in user comm. */
+    int peer_ugrank;            /* The peer rank in ug_comm. Invalid in receive. */
     int tag;
     MPI_Aint g_bufaddr;         /* The absolute address of user buffer on ghost process */
     int count;
     MPI_Datatype g_datatype;    /* The handle on ghost process */
     MPI_Aint g_ugcomm_handle;   /* The handle of cspg_comm on ghost process */
-    int send_offset;            /* The send rank's offset on bound ghost.
-                                 * Used to fill tag for any_source status.
-                                 * Only valid in send packet.*/
-    int recv_offset;            /* The recv rank's offset on bound ghost.
-                                 * Used to get the corresponding comm or used to
-                                 * fill tag for matching. */
 } CSP_offload_isend_pkt_t;
 typedef CSP_offload_isend_pkt_t CSP_offload_irecv_pkt_t;
 
@@ -80,6 +90,7 @@ typedef struct CSP_offload_pkt {
                                  * when complet_flag = 1.*/
     MPI_Request g_req;          /* Only accessed by ghost process. Once the request is
                                  * completed, set complet_flag = 1.*/
+    MPI_Aint ug_comm_handle;    /* Address of user ug_comm object. */
 } CSP_offload_pkt_t;
 
 /* Relative offset of a cell's start address */
