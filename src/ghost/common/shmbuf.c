@@ -21,13 +21,16 @@ static int shmbuf_regist_impl(CSP_cwp_shmbuf_regist_pkt_t * shmbuf_regist_pkt)
     int nreqs = 0;
     MPI_Group local_group = MPI_GROUP_NULL, ug_group = MPI_GROUP_NULL;
     int *bound_lranks = NULL, *bound_ug_uranks = NULL, nbound = 0, bound_idx = 0;
+    CSPG_comm_t *cspg_comm = NULL;
 
     /* Receive my ug_comm handle */
     mpi_errno = CSPG_cwp_recv_param(&ugcomm_handle, sizeof(MPI_Aint),
                                     shmbuf_regist_pkt->user_local_root);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    ug_comm = (MPI_Comm) ugcomm_handle;
+    cspg_comm = (CSPG_comm_t *) ugcomm_handle;
+    ug_comm = cspg_comm->ug_comm;
+
     CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_comm, &ug_nproc));
 
     /* Translate all bound ranks in the ug_comm. */

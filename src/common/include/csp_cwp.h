@@ -8,6 +8,7 @@
 
 #include "csp.h"
 #include "csp_mlock.h"
+#include "csp_comm.h"
 
 /* ======================================================================
  * Command wire protocol (CWP) common definition (packet, tags).
@@ -67,9 +68,12 @@ typedef struct CSP_cwp_shmbuf_free_pkt {
 } CSP_cwp_shmbuf_free_pkt_t;
 
 typedef struct CSP_cwp_ugcomm_create_pkt {
+    CSP_comm_type_t type;
     int user_local_root;
     int user_nprocs;
     int num_ghosts_unique;
+    int num_ug_comms;
+    int wildcard_info;
 /*    int info_npairs; */
 } CSP_cwp_fnc_ugcomm_create_pkt_t;
 

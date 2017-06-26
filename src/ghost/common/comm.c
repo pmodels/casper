@@ -9,6 +9,32 @@
 #include <string.h>
 #include "cspg.h"
 
+static inline int ugcomm_release(CSPG_comm_t * cspg_comm)
+{
+    int i;
+    int mpi_errno = MPI_SUCCESS;
+
+    if (cspg_comm) {
+        if (cspg_comm->ug_comm && cspg_comm->ug_comm != MPI_COMM_NULL) {
+            CSPG_DBG_PRINT("COMM: free cspg_comm->ug_comm 0x%x\n", cspg_comm->ug_comm);
+            CSP_CALLMPI(RETURN, PMPI_Comm_free(&cspg_comm->ug_comm));
+        }
+
+        if (cspg_comm->type == CSP_COMM_ASYNC && cspg_comm->dup_ug_comms) {
+            for (i = 1; i < cspg_comm->num_ug_comms; i++) {
+                if (cspg_comm->dup_ug_comms[i] && cspg_comm->dup_ug_comms[i] != MPI_COMM_NULL) {
+                    CSPG_DBG_PRINT("COMM: free cspg_comm->ug_comms[%d] 0x%x\n", i,
+                                   cspg_comm->dup_ug_comms[i]);
+                    CSP_CALLMPI(RETURN, PMPI_Comm_free(&cspg_comm->dup_ug_comms[i]));
+                }
+            }
+
+            free(cspg_comm->dup_ug_comms);
+        }
+        free(cspg_comm);
+    }
+    return mpi_errno;
+}
 
 static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pkt)
 {
@@ -16,19 +42,24 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
     int num_ghosts_unique = 0, user_nprocs = 0, user_local_root = 0;
     int *ug_ranks = NULL;
     MPI_Group ug_group = MPI_GROUP_NULL;
-    MPI_Comm ug_comm = MPI_COMM_NULL;
     MPI_Aint *tmp_g_ugcomm_handles = NULL;
     int local_nprocs = 0, local_rank = 0, ug_rank = 0;
-
-    num_ghosts_unique = ugcomm_create_pkt->num_ghosts_unique;
-    user_nprocs = ugcomm_create_pkt->user_nprocs;
-    user_local_root = ugcomm_create_pkt->user_local_root;
+    CSPG_comm_t *cspg_comm = NULL;
+    int i;
 
     CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
 
+    cspg_comm = CSP_calloc(1, sizeof(CSPG_comm_t));
     ug_ranks = CSP_calloc(user_nprocs + num_ghosts_unique, sizeof(int));
-    CSP_ASSERT(ug_ranks != NULL);
+    CSP_ASSERT(cspg_comm != NULL && ug_ranks != NULL);
+
+    num_ghosts_unique = ugcomm_create_pkt->num_ghosts_unique;
+    user_nprocs = ugcomm_create_pkt->user_nprocs;
+    user_local_root = ugcomm_create_pkt->user_local_root;
+    cspg_comm->type = ugcomm_create_pkt->type;
+    cspg_comm->num_ug_comms = ugcomm_create_pkt->num_ug_comms;
+    cspg_comm->wildcard_info = ugcomm_create_pkt->wildcard_info;
 
     mpi_errno = CSPG_cwp_recv_param(ug_ranks, (user_nprocs + num_ghosts_unique) * sizeof(int),
                                     user_local_root);
@@ -39,17 +70,33 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
      * extended to ug_comm depending on user hint. */
     CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, user_nprocs + num_ghosts_unique,
                                       ug_ranks, &ug_group));
-    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &ug_comm));
-    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm, &ug_rank));
-    CSPG_DBG_PRINT("COMM: created ug_comm=0x%x, ug_rank=%d\n", ug_comm, ug_rank);
+    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &cspg_comm->ug_comm));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(cspg_comm->ug_comm, &ug_rank));
+    CSPG_DBG_PRINT("COMM: created cspg_comm=%p, ug_rank=%d, num_ug_comms=%d, "
+                   "ug_comm=0x%x (type: %s)\n", cspg_comm, ug_rank, cspg_comm->num_ug_comms,
+                   cspg_comm->ug_comm, CSP_ug_comm_type_name[cspg_comm->type]);
 
-    /* Scatter my ug_comm address to users.
-     * Thus the ug_comm can be found at offload call or comm free.*/
+    if (cspg_comm->type == CSP_COMM_ASYNC) {
+        CSP_ASSERT(cspg_comm->num_ug_comms >= 1);
+        cspg_comm->dup_ug_comms = CSP_calloc(cspg_comm->num_ug_comms, sizeof(MPI_Comm));
+        CSP_ASSERT(cspg_comm->dup_ug_comms != NULL);
+
+        /* Reuse the first ug_comm, and duplicate others when async is enabled.
+         * Note that it is not needed for CSP_COMM_ASYNC_NODUP type.*/
+        cspg_comm->dup_ug_comms[0] = cspg_comm->ug_comm;
+        for (i = 1; i < cspg_comm->num_ug_comms; i++) {
+            CSP_CALLMPI(JUMP, PMPI_Comm_dup(cspg_comm->ug_comm, &cspg_comm->dup_ug_comms[i]));
+            CSPG_DBG_PRINT("COMM: dup ug_comm[%d]=0x%x\n", i, cspg_comm->dup_ug_comms[i]);
+        }
+    }
+
+    /* Scatter my cspg_comm address to users.
+     * Thus the cspg_comm can be found at offload call or comm free.*/
     tmp_g_ugcomm_handles = CSP_calloc(local_nprocs, sizeof(MPI_Aint));
-    tmp_g_ugcomm_handles[local_rank] = (MPI_Aint) ug_comm;
+    tmp_g_ugcomm_handles[local_rank] = (MPI_Aint) cspg_comm;
     CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, tmp_g_ugcomm_handles,
                                      1, MPI_AINT, CSP_PROC.local_comm));
-    CSPG_DBG_PRINT("COMM: scatter handle ug_comm=0x%x\n", ug_comm);
+    CSPG_DBG_PRINT("COMM: scatter handle cspg_comm=%p\n", cspg_comm);
 
   fn_exit:
     if (ug_group && ug_group != MPI_GROUP_NULL)
@@ -60,25 +107,24 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
         free(tmp_g_ugcomm_handles);
     return mpi_errno;
   fn_fail:
-    if (ug_comm)
-        CSP_CALLMPI_EXIT(PMPI_Comm_free(&ug_comm));
+    mpi_errno = ugcomm_release(cspg_comm);
     goto fn_exit;
 }
 
 static int ugcomm_free_impl(CSP_cwp_fnc_ugcomm_free_pkt_t * ugcomm_free_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPI_Aint ugcomm_handle = 0;
-    MPI_Comm ug_comm = MPI_COMM_NULL;
+    MPI_Aint cspg_comm_handle = 0;
+    CSPG_comm_t *cspg_comm = NULL;
 
     /* Receive the handle of my ug_comm from user root */
-    CSP_CALLMPI(NOSTMT, PMPI_Recv(&ugcomm_handle, 1, MPI_AINT, ugcomm_free_pkt->user_local_root,
+    CSP_CALLMPI(NOSTMT, PMPI_Recv(&cspg_comm_handle, 1, MPI_AINT, ugcomm_free_pkt->user_local_root,
                                   CSP_CWP_PARAM_TAG, CSP_PROC.local_comm, MPI_STATUS_IGNORE));
 
-    ug_comm = (MPI_Comm) ugcomm_handle;
-    CSPG_DBG_PRINT("COMM: free ug_comm 0x%x\n", ug_comm);
+    cspg_comm = (CSPG_comm_t *) cspg_comm_handle;
+    CSPG_DBG_PRINT("COMM: free cspg_comm %p\n", cspg_comm);
 
-    CSP_CALLMPI(RETURN, PMPI_Comm_free(&ug_comm));
+    mpi_errno = ugcomm_release(cspg_comm);
     return mpi_errno;
 }
 

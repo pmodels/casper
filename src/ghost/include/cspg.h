@@ -15,6 +15,7 @@
 #include "csp_mlock.h"
 #include "csp_offload.h"
 #include "csp_datatype.h"
+#include "csp_comm.h"
 #include "cspg_offload.h"
 
 /* ======================================================================
@@ -61,6 +62,18 @@ typedef struct CSPG_win {
     unsigned long csp_g_win_handle;
 } CSPG_win_t;
 
+
+/* ======================================================================
+ * Communicator related definitions.
+ * ====================================================================== */
+
+typedef struct CSPG_comm {
+    CSP_comm_type_t type;
+    MPI_Comm ug_comm;
+    MPI_Comm *dup_ug_comms;
+    int num_ug_comms;           /* Number of dupcomms on user process. at least 1. */
+    int wildcard_info;
+} CSPG_comm_t;
 
 /* ======================================================================
  * CWP related definition (ghost side).

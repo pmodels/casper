@@ -10,37 +10,24 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include "csp.h"
+#include "csp_comm.h"
 
 typedef struct CSPU_comm_info_args {
-    /* ignore_status_src && no_any_tag: tag_trans(recv_offset);
-     * ignore_status_src: duplicate comm;
-     * no_any_src_spec_tag: duplicate comm + trans(src_offset) (minimal). */
-
-    unsigned short ignore_status_src;   /* Ignore stat.SOURCE. */
-    unsigned short no_any_src_spec_tag; /* No ANY_SOURCE + specific TAG. */
-    unsigned short no_any_tag;
+    int wildcard_used;          /* combination of CSP_comm_info_wildcard_t. */
 
     /* special communicator for shared buffer allocation */
     unsigned short shmbuf_regist;
 } CSPU_comm_info_args_t;
-
-typedef enum {
-    CSPU_COMM_REFER = 0,        /* Reference comm, only creates reference info, e.g., MPI_COMM_WORLD. */
-    CSPU_COMM_SHMBUF = 1,       /* Shared buffer comm, creates only one ug_comm to allocate
-                                 * shared buffer. */
-    CSPU_COMM_ASYNC = 2,        /* Asynchronous comm, creates all duplicating ug_comms for
-                                 * message offloading. */
-    CSPU_COMM_TYPE_MAX
-} CSPU_comm_type_t;
 
 typedef struct CSPU_comm {
 #if defined(CSP_ENABLE_THREAD_SAFE)
     CSP_thread_cs_t cs;         /* per window critical section object,
                                  * used only when this process is multi-threaded. */
 #endif
-    CSPU_comm_type_t type;
+    CSP_comm_type_t type;
 
     MPI_Comm ug_comm;           /* Including both user and ghost processes */
+    MPI_Comm *dup_ug_comms;     /* duplicated from ug_comm. dup_ug_comms[0] is ug_comm. */
     MPI_Comm comm;              /* Including all user processes, exposed to user. */
     MPI_Comm user_root_comm;    /* Used to acquire mlock. */
     MPI_Comm local_user_comm;   /* Used to cwp with ghost */
@@ -49,12 +36,15 @@ typedef struct CSPU_comm {
     CSPU_comm_info_args_t ref_info_args;        /* Store info passed by comm_set_info,
                                                  * transfer to impl_info at child comm creation.*/
     int num_ghosts_unique;
-
-    int *g_ranks_bound;         /* Bound ghost rank of each user in ug_comm.
+    int num_max_g_users;
+    struct {
+        int g_rank;             /* Bound ghost rank of each user in ug_comm.
                                  * Ghost is already locally bound at MPI_init. */
+        int u_offset;           /* local offset of user bound to the ghost. */
+    } *g_ranks_bound;
 
-    MPI_Aint g_ugcomm_bound;    /* ug_comm address on the bound ghost process */
-    MPI_Aint *g_ugcomm_handles; /* ug_comm address on every ghost process.
+    MPI_Aint g_ugcomm_bound;    /* cspg_comm address on the bound ghost process */
+    MPI_Aint *g_ugcomm_handles; /* cspg_comm address on every ghost process.
                                  * Only used by local user root.*/
 } CSPU_comm_t;
 
