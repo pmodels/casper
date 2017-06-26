@@ -31,11 +31,12 @@ static inline int irecv_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
     irecv_pkt->g_bufaddr = g_bufaddr;
     irecv_pkt->count = count;
     if (src != MPI_ANY_SOURCE)
-        irecv_pkt->g_peer_rank = ug_comm->g_ranks_bound[src];
+        irecv_pkt->g_peer_rank = ug_comm->g_ranks_bound[src].g_rank;
     else
         irecv_pkt->g_peer_rank = MPI_ANY_SOURCE;
     irecv_pkt->peer_rank = src;
-    irecv_pkt->g_ugcomm = (MPI_Comm) ug_comm->g_ugcomm_bound;
+    irecv_pkt->g_ugcomm_handle = (MPI_Comm) ug_comm->g_ugcomm_bound;
+    irecv_pkt->recv_offset = ug_comm->g_ranks_bound[rank].u_offset;
     irecv_pkt->tag = tag;
 
     /* Get datatype handle on the bound ghost process  */
@@ -47,9 +48,10 @@ static inline int irecv_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
     (*request) = pkt->req;
 
     CSP_DBG_PRINT("irecv: offload [g_bufaddr=0x%lx, count=%d, datatype=0x%x/0x%x, "
-                  "dest=%d/%d, tag=%d, comm=0x%x/0x%x], req 0x%x, cell %p(%s)\n",
-                  g_bufaddr, count, datatype, irecv_pkt->g_datatype, src, irecv_pkt->g_peer_rank,
-                  tag, comm, irecv_pkt->g_ugcomm, (*request),
+                  "dest=%d/%d, tag=%d, comm=0x%x/0x%lx, soffset=%d, roffset=%d], "
+                  "req 0x%x, cell %p(%s)\n", g_bufaddr, count, datatype, irecv_pkt->g_datatype,
+                  src, irecv_pkt->g_peer_rank, tag, comm, irecv_pkt->g_ugcomm_handle,
+                  irecv_pkt->send_offset, irecv_pkt->recv_offset, (*request),
                   cell, (cell->type == CSP_OFFLOAD_CELL_SHM ? "shm" : "pending"));
 
   fn_exit:
@@ -89,7 +91,7 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int src, int tag,
     CSP_DBG_PRINT("irecv: comm 0x%x->ug_comm=%p, buf=%p, count=%d, g_bufaddr=0x%lx, "
                   "buf_found_flag=%d\n", comm, ug_comm, buf, count, g_bufaddr, buf_found_flag);
 
-    if (ug_comm && ug_comm->type == CSPU_COMM_ASYNC && buf_found_flag) {
+    if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC && buf_found_flag) {
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = irecv_impl(g_bufaddr, count, datatype, src, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);

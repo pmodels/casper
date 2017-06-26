@@ -9,11 +9,11 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-static const char *ug_comm_type_name[CSPU_COMM_TYPE_MAX] = { "refer", "shmbuf", "async" };
-
+const char *CSP_ug_comm_type_name[CSP_COMM_TYPE_MAX] =
+    { "refer", "shmbuf", "async", "async_nodup" };
 
 static int ugcomm_gather_ranks(MPI_Comm user_newcomm, int *num_ghosts_unique,
-                               int *g_wranks_unique, int *u_wranks)
+                               int *g_wranks_unique, int *u_wranks, int *num_max_g_users)
 {
     int mpi_errno = MPI_SUCCESS;
     int user_newnproc, world_nproc;
@@ -21,6 +21,7 @@ static int ugcomm_gather_ranks(MPI_Comm user_newcomm, int *num_ghosts_unique,
     int *gp_bitmap = NULL;
     int *user_newuranks = NULL, *user_uwranks = NULL;
     MPI_Group user_newgroup = MPI_GROUP_NULL, uwgroup = MPI_GROUP_NULL;
+    int max_g_users = 0;
 
     CSP_CALLMPI(JUMP, PMPI_Comm_size(MPI_COMM_WORLD, &world_nproc));
     CSP_CALLMPI(JUMP, PMPI_Comm_size(user_newcomm, &user_newnproc));
@@ -56,14 +57,18 @@ static int ugcomm_gather_ranks(MPI_Comm user_newcomm, int *num_ghosts_unique,
             /* Unique ghost ranks */
             if (!gp_bitmap[g_wrank]) {
                 g_wranks_unique[tmp_num_ghosts++] = g_wrank;
-                gp_bitmap[g_wrank] = 1;
-
                 CSP_ASSERT(tmp_num_ghosts <= CSP_ENV.num_g * CSP_PROC.num_nodes);
             }
+            gp_bitmap[g_wrank]++;
+
+            /* Maximum number of users per ghost process. */
+            if (max_g_users < gp_bitmap[g_wrank])
+                max_g_users = gp_bitmap[g_wrank];
         }
     }
 
     *num_ghosts_unique = tmp_num_ghosts;
+    *num_max_g_users = max_g_users;
 
     if (user_newgroup)
         CSP_CALLMPI(JUMP, PMPI_Group_free(&user_newgroup));
@@ -129,6 +134,7 @@ static int ugcomm_issue_ghost_cmd(CSPU_comm_t * ug_comm)
 static int ugcomm_release(CSPU_comm_t * ug_comm)
 {
     int mpi_errno = MPI_SUCCESS;
+    int i;
 
     if (ug_comm->user_root_comm && ug_comm->user_root_comm != MPI_COMM_NULL &&
         ug_comm->user_root_comm != CSP_PROC.user.ur_comm) {
@@ -140,6 +146,16 @@ static int ugcomm_release(CSPU_comm_t * ug_comm)
     }
     if (ug_comm->ug_comm && ug_comm->ug_comm != MPI_COMM_NULL) {
         CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_comm->ug_comm));
+    }
+
+    if (ug_comm->type == CSP_COMM_ASYNC && ug_comm->dup_ug_comms) {
+        /* Skip the first, which reuses ug_comm. */
+        for (i = 1; i < ug_comm->num_max_g_users; i++) {
+            if (ug_comm->dup_ug_comms[i] && ug_comm->dup_ug_comms[i] != MPI_COMM_NULL) {
+                CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_comm->dup_ug_comms[i]));
+            }
+        }
+        free(ug_comm->dup_ug_comms);
     }
 
     if (ug_comm->g_ranks_bound)
@@ -165,14 +181,32 @@ static int ugcomm_exchange_granks_bound(CSPU_comm_t * ug_newcomm)
     int mpi_errno = MPI_SUCCESS;
     MPI_Group lgroup = MPI_GROUP_NULL, ug_newgroup = MPI_GROUP_NULL;
     int user_newrank, user_newnproc;
+    int *local_g_ranks_bound = NULL, lurank = 0, lunproc = 0;
+    int i, u_offset = 0;
 
     CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_newcomm->comm, &user_newnproc));
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_newcomm->comm, &user_newrank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_newcomm->local_user_comm, &lurank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_newcomm->local_user_comm, &lunproc));
+
+    /* Decide my offset on the bound ghost process according to the local rank. */
+    local_g_ranks_bound = CSP_calloc(lunproc, sizeof(int));
+    CSP_ASSERT(local_g_ranks_bound != NULL);
+    local_g_ranks_bound[lurank] = CSPU_offload_ch.bound_g_lrank;
+    CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, local_g_ranks_bound,
+                                     1, MPI_INT, ug_newcomm->local_user_comm));
+    u_offset = 0;
+    for (i = 0; i < lunproc; i++) {
+        if (i == lurank)
+            break;
+        if (local_g_ranks_bound[i] == CSPU_offload_ch.bound_g_lrank)
+            u_offset++;
+    }
 
     /* Exchange bound ghost rank in new ug_comm.
      * Ghost is statically bound at MPI init, thus each ghost only needs to
      * check fixed offload queues. */
-    ug_newcomm->g_ranks_bound = CSP_calloc(user_newnproc, sizeof(int));
+    ug_newcomm->g_ranks_bound = CSP_calloc(user_newnproc, sizeof(int) * 2);
     CSP_ASSERT(ug_newcomm->g_ranks_bound != NULL);
 
     CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &lgroup));
@@ -180,11 +214,14 @@ static int ugcomm_exchange_granks_bound(CSPU_comm_t * ug_newcomm)
 
     CSP_CALLMPI(JUMP, PMPI_Group_translate_ranks(lgroup, 1,
                                                  &CSPU_offload_ch.bound_g_lrank, ug_newgroup,
-                                                 &ug_newcomm->g_ranks_bound[user_newrank]));
+                                                 &ug_newcomm->g_ranks_bound[user_newrank].g_rank));
+    ug_newcomm->g_ranks_bound[user_newrank].u_offset = u_offset;
+
     CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, ug_newcomm->g_ranks_bound,
-                                     1, MPI_INT, ug_newcomm->comm));
-    CSP_DBG_PRINT("COMM: exchanged my g_ranks_bound[%d] %d\n", user_newrank,
-                  ug_newcomm->g_ranks_bound[user_newrank]);
+                                     2, MPI_INT, ug_newcomm->comm));
+    CSP_DBG_PRINT("COMM: exchanged my g_ranks_bound[%d] g_rank %d, u_offset %d\n",
+                  user_newrank, ug_newcomm->g_ranks_bound[user_newrank].g_rank,
+                  ug_newcomm->g_ranks_bound[user_newrank].u_offset);
 
     if (lgroup && lgroup != MPI_GROUP_NULL)
         CSP_CALLMPI(JUMP, PMPI_Group_free(&lgroup));
@@ -192,6 +229,8 @@ static int ugcomm_exchange_granks_bound(CSPU_comm_t * ug_newcomm)
         CSP_CALLMPI(JUMP, PMPI_Group_free(&ug_newgroup));
 
   fn_exit:
+    if (local_g_ranks_bound)
+        free(local_g_ranks_bound);
     return mpi_errno;
 
   fn_fail:
@@ -244,6 +283,8 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
     int *ug_ranks = NULL;
     int *g_wranks_unique_ptr, *u_wranks_ptr;
     MPI_Group ug_newgroup = MPI_GROUP_NULL;
+    int num_max_g_users = 0;
+    int i;
 
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_newcomm->local_user_comm, &ulrank));
     CSP_CALLMPI(JUMP, PMPI_Comm_size(ug_newcomm->comm, &user_newnproc));
@@ -260,8 +301,9 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
 
     /* Get all ghost ranks and user ranks in COMM_WORLD. */
     mpi_errno = ugcomm_gather_ranks(ug_newcomm->comm, &ug_newcomm->num_ghosts_unique,
-                                    g_wranks_unique_ptr, u_wranks_ptr);
+                                    g_wranks_unique_ptr, u_wranks_ptr, &num_max_g_users);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    ug_newcomm->num_max_g_users = num_max_g_users;
 
     if (ulrank == 0) {
         int lrank = 0;
@@ -276,9 +318,13 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
 
         /* First send start packet to root ghost. */
         CSP_cwp_init_pkt(CSP_CWP_FNC_UGCOMM_CREATE, &pkt);
+        ugcomm_create_pkt->type = ug_newcomm->type;
         ugcomm_create_pkt->num_ghosts_unique = ug_newcomm->num_ghosts_unique;
         ugcomm_create_pkt->user_nprocs = user_newnproc;
         ugcomm_create_pkt->user_local_root = lrank;
+        ugcomm_create_pkt->wildcard_info = ug_newcomm->info_args.wildcard_used;
+        if (ug_newcomm->type == CSP_COMM_ASYNC)
+            ugcomm_create_pkt->num_ug_comms = num_max_g_users;
 
         mpi_errno = CSPU_cwp_issue(&pkt);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -297,7 +343,20 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
                                       user_newnproc + ug_newcomm->num_ghosts_unique,
                                       ug_ranks, &ug_newgroup));
     CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_newgroup, 0, &ug_newcomm->ug_comm));
-    CSP_DBG_PRINT("COMM: created ug_newcomm->ug_comm=0x%x\n", ug_newcomm->ug_comm);
+    CSP_DBG_PRINT("COMM: created ug_newcomm->ug_comm=0x%x, num_max_g_users=%d\n",
+                  ug_newcomm->ug_comm, ug_newcomm->num_max_g_users);
+
+    if (ug_newcomm->type == CSP_COMM_ASYNC) {
+        /* Reuse the first ug_comm, and duplicate others when async is enabled.
+         * Note that it is not needed for CSP_COMM_ASYNC_NODUP type.*/
+        ug_newcomm->dup_ug_comms = CSP_calloc(num_max_g_users, sizeof(MPI_Comm));
+        ug_newcomm->dup_ug_comms[0] = ug_newcomm->ug_comm;
+        for (i = 1; i < num_max_g_users; i++) {
+            CSP_CALLMPI(JUMP, PMPI_Comm_dup(ug_newcomm->ug_comm, &ug_newcomm->dup_ug_comms[i]));
+            CSP_DBG_PRINT("COMM: dup ug_newcomm->dup_ug_comms[%d]=0x%x\n", i,
+                          ug_newcomm->dup_ug_comms[i]);
+        }
+    }
 
     if (ug_newgroup && ug_newgroup != MPI_GROUP_NULL)
         CSP_CALLMPI(JUMP, PMPI_Group_free(&ug_newgroup));
@@ -315,23 +374,17 @@ static inline void ugcomm_info_init(CSPU_comm_t * ug_comm, CSPU_comm_t * ug_newc
 {
     /* Get info from parent reference info. */
     if (ug_comm) {
-        ug_newcomm->info_args.ignore_status_src = ug_comm->ref_info_args.ignore_status_src;
-        ug_newcomm->info_args.no_any_src_spec_tag = ug_comm->ref_info_args.no_any_src_spec_tag;
-        ug_newcomm->info_args.no_any_tag = ug_comm->ref_info_args.no_any_tag;
+        ug_newcomm->info_args.wildcard_used = ug_comm->ref_info_args.wildcard_used;
         ug_newcomm->info_args.shmbuf_regist = ug_comm->info_args.shmbuf_regist;
     }
     else {
         /* Reset info if no parent (COMM_WORLD) */
-        ug_newcomm->info_args.ignore_status_src = 0;
-        ug_newcomm->info_args.no_any_src_spec_tag = 0;
-        ug_newcomm->info_args.no_any_tag = 0;
+        ug_newcomm->info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
         ug_newcomm->info_args.shmbuf_regist = 0;
     }
 
     /* Reset my reference info for child. */
-    ug_newcomm->ref_info_args.ignore_status_src = 0;
-    ug_newcomm->ref_info_args.no_any_src_spec_tag = 0;
-    ug_newcomm->ref_info_args.no_any_tag = 0;
+    ug_newcomm->ref_info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
     ug_newcomm->ref_info_args.shmbuf_regist = 0;
 }
 
@@ -343,13 +396,14 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
         CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x (%s)\n"
-                      "    ignore_status_src  = %d  no_any_src_spec_tag  = %d\n"
-                      "    no_any_tag         = %d  shmbuf_regist        = %d\n",
-                      ug_comm->comm, ug_comm_type_name[ug_comm->type],
-                      ug_comm->info_args.ignore_status_src,
-                      ug_comm->info_args.no_any_src_spec_tag,
-                      ug_comm->info_args.no_any_tag,
-                      ug_comm->info_args.shmbuf_regist);
+                      "    wildcard_used  = %s|%s|%s\n"
+                      "    shmbuf_regist  = %d\n",
+                      ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
+                      (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE ? "none" : ""),
+                      (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC ? "anysrc" : ""),
+                      (ug_comm->
+                       info_args.wildcard_used & CSP_COMM_INFO_WD_ANYTAG_NOTAG ? "anytag_notag" :
+                       ""), ug_comm->info_args.shmbuf_regist);
     }
     return mpi_errno;
 }
@@ -359,16 +413,34 @@ int CSPU_ugcomm_set_info(CSPU_comm_info_args_t * info_args, MPI_Info info)
     int mpi_errno = MPI_SUCCESS;
 
     if (info != MPI_INFO_NULL) {
-        mpi_errno = CSPU_info_get_bool(info, "ignore_status_src", "true", "false",
-                                       &info_args->ignore_status_src);
-        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        int info_flag = 0;
+        char info_value[MPI_MAX_INFO_VAL + 1];
 
-        mpi_errno = CSPU_info_get_bool(info, "no_any_src_spec_tag", "true", "false",
-                                       &info_args->no_any_src_spec_tag);
-        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        /* Check if user specifies wildcard types */
+        memset(info_value, 0, sizeof(info_value));
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "wildcard_used", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
+        if (info_flag == 1) {
+            int wildcard_used = 0;
+            char *type = NULL;
 
-        mpi_errno = CSPU_info_get_bool(info, "no_any_tag", "true", "false", &info_args->no_any_tag);
-        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+            type = strtok(info_value, ",|;");
+            while (type != NULL) {
+                if (!strncmp(type, "none", strlen("none"))) {
+                    wildcard_used = (int) CSP_COMM_INFO_WD_NONE;
+                    break;      /* do not check other types */
+                }
+                else if (!strncmp(type, "anysrc", strlen("anysrc"))) {
+                    wildcard_used |= (int) CSP_COMM_INFO_WD_ANYSRC;
+                }
+                else if (!strncmp(type, "anytag_notag", strlen("anytag_notag"))) {
+                    wildcard_used |= (int) CSP_COMM_INFO_WD_ANYTAG_NOTAG;
+                }
+                type = strtok(NULL, "|");
+            }
+
+            info_args->wildcard_used = wildcard_used;
+        }
 
         mpi_errno =
             CSPU_info_get_bool(info, "shmbuf_regist", "true", "false", &info_args->shmbuf_regist);
@@ -392,7 +464,7 @@ int CSPU_ugcomm_free(MPI_Comm comm)
     if (ug_comm) {
 
         /* NOTE: reference ugcomm does not have ghost-included structure. */
-        if (ug_comm->type > CSPU_COMM_REFER) {
+        if (ug_comm->type > CSP_COMM_REFER) {
             /* Local user root issues command to ghosts. */
             CSP_CALLMPI(JUMP, PMPI_Comm_rank(ug_comm->local_user_comm, &ulrank));
             if (ulrank == 0) {
@@ -425,7 +497,7 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
     CSP_ASSERT(ug_newcomm != NULL);
 
     ug_newcomm->comm = user_newcomm;
-    ug_newcomm->type = CSPU_COMM_REFER;
+    ug_newcomm->type = CSP_COMM_REFER;
 
     /* First init my info by using parent's ref_info. */
     ugcomm_info_init(ug_comm, ug_newcomm);
@@ -437,16 +509,23 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
 
     /* Mark as shmbuf communicator. */
     if (ug_newcomm->info_args.shmbuf_regist) {
-        ug_newcomm->type = CSPU_COMM_SHMBUF;
+        ug_newcomm->type = CSP_COMM_SHMBUF;
     }
 
     /* Enable async progress if ignore status or no ANY_SRC + specific TAG. */
-    if (ug_newcomm->info_args.ignore_status_src || ug_newcomm->info_args.no_any_src_spec_tag) {
-        ug_newcomm->type = CSPU_COMM_ASYNC;
+    if (!(ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC) ||
+        (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYTAG_NOTAG) ||
+        (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE)) {
+        ug_newcomm->type = CSP_COMM_ASYNC;
+    }
+    /* Use tag translation instead of dupcomm. */
+    if ((ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE) &&
+        CSPU_offload_ch.trans_tag_nbits > 0 /* ensure sufficient bits exist. */) {
+        ug_newcomm->type = CSP_COMM_ASYNC_NODUP;
     }
 
     /* Return empty ug_comm if it is only reference use. */
-    if (ug_newcomm->type == CSPU_COMM_REFER)
+    if (ug_newcomm->type == CSP_COMM_REFER)
         goto no_async;
 
     /* Create user root communicator */
@@ -479,7 +558,7 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
 
     CSP_DBG_PRINT
         ("COMM: create user_newcomm 0x%x -> ug_newcomm %p ug_comm 0x%x (type: %s)\n",
-         user_newcomm, ug_newcomm, ug_newcomm->ug_comm, ug_comm_type_name[ug_newcomm->type]);
+         user_newcomm, ug_newcomm, ug_newcomm->ug_comm, CSP_ug_comm_type_name[ug_newcomm->type]);
 
     ugcomm_print_info(ug_newcomm);
 

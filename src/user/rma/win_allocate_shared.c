@@ -28,7 +28,7 @@ int MPI_Win_allocate_shared(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Com
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
         /* Create shmbuf window if the communicator supports shmbuf (created ug_comm). */
-        if (ug_comm && ug_comm->type >= CSPU_COMM_SHMBUF)
+        if (ug_comm && ug_comm->type >= CSP_COMM_SHMBUF)
             return CSPU_shmbuf_regist(ug_comm, size, disp_unit, info, comm, baseptr, win);
     }
 

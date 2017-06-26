@@ -51,7 +51,13 @@ typedef struct CSP_offload_isend_pkt {
     MPI_Aint g_bufaddr;         /* The absolute address of user buffer on ghost process */
     int count;
     MPI_Datatype g_datatype;    /* The handle on ghost process */
-    MPI_Comm g_ugcomm;          /* The handle of ug_comm on ghost process */
+    MPI_Aint g_ugcomm_handle;   /* The handle of cspg_comm on ghost process */
+    int send_offset;            /* The send rank's offset on bound ghost.
+                                 * Used to fill tag for any_source status.
+                                 * Only valid in send packet.*/
+    int recv_offset;            /* The recv rank's offset on bound ghost.
+                                 * Used to get the corresponding comm or used to
+                                 * fill tag for matching. */
 } CSP_offload_isend_pkt_t;
 typedef CSP_offload_isend_pkt_t CSP_offload_irecv_pkt_t;
 
@@ -129,8 +135,7 @@ typedef struct {
                                          * Synced with head at empty, and updated
                                          * at dequeue.*/
     char padding2[CSP_OFFLOAD_CACHE_LINE_LEN - sizeof(CSP_offload_cell_rl_ptr_t)];
-}
-CSP_offload_shmqueue_t;
+} CSP_offload_shmqueue_t;
 
 /* ======================================================================
  * Queue routines for cells offloaded from user process to ghost process.

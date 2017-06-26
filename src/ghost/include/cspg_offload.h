@@ -103,4 +103,7 @@ extern void CSPG_isend_cmpl_handler(CSP_offload_pkt_t * pkt, MPI_Status g_stat);
 extern int CSPG_irecv_offload_handler(CSP_offload_pkt_t * pkt);
 extern void CSPG_irecv_cmpl_handler(CSP_offload_pkt_t * pkt, MPI_Status g_stat);
 
+#define CSP_TRANS_TAG(tag, off) (tag + off * CSP_OFFLOAD_TAG_FACTOR)
+#define CSP_TRANS_TAG_UTAG(tag) (tag % CSP_OFFLOAD_TAG_FACTOR)
+#define CSP_TRANS_TAG_OFF(tag) (tag / CSP_OFFLOAD_TAG_FACTOR)
 #endif /* CSPG_offload_ch_H_ */
