@@ -22,7 +22,14 @@
 #define LARGE_THRESHOLD      (8192)
 
 #define MAX_MSG_SIZE         (1<<22)
+#define MAX_FNAME_LEN        (128)
+#define MAX_FLINE_LEN        (256)
+#define NMSG_SIZE            (22+2)
 
+static char compf_name[MAX_FNAME_LEN] = { 0 };
+
+static int compf_set_flag = 0;
+static int compf_sz_comps[NMSG_SIZE] = { 0 };
 
 static int computation = 0;     /* in usec */
 static MPI_Comm comm_world = MPI_COMM_NULL;
@@ -53,10 +60,41 @@ static void usage()
     fflush(stdout);
 }
 
+static void read_comp(void)
+{
+    int c, pos;
+    FILE *comp_fp = NULL;
+    char line[MAX_FLINE_LEN];
+    int nsz, sz, lat = 0;
+    int rank = 0;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0) {
+        comp_fp = fopen(compf_name, "r");
+        if (!comp_fp) {
+            fprintf(stderr, "Cannot open file %s\n", compf_name);
+            fflush(stderr);
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+
+        /* Read computation time for each size. */
+        nsz = 0;
+        while (fgets(line, sizeof(line), comp_fp) && nsz < NMSG_SIZE) {
+            sscanf(line, "%d %d", &sz, &lat);
+            compf_sz_comps[nsz++] = lat;
+        }
+
+        fclose(comp_fp);
+    }
+
+    MPI_Bcast(compf_sz_comps, NMSG_SIZE, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
 int main(int argc, char *argv[])
 {
     int rank, numprocs, i, target;
-    int size;
+    int size, nsz;
     int loop, skip, loop_override = 0, skip_override = 0;
     MPI_Status stats[2];
     MPI_Request reqs[2];
@@ -84,7 +122,7 @@ int main(int argc, char *argv[])
     /* default values */
     computation = 0;
 
-    while ((c = getopt(argc, argv, "i:x:c:h:")) != -1) {
+    while ((c = getopt(argc, argv, "i:x:c:h:f:")) != -1) {
         switch (c) {
         case 'i':
             loop = atoi(optarg);
@@ -97,6 +135,12 @@ int main(int argc, char *argv[])
         case 'c':
             computation = atoi(optarg);
             break;
+        case 'f':
+            if (strlen(optarg) > 0) {
+                strncpy(compf_name, optarg, MAX_FNAME_LEN);
+                compf_set_flag = 1;
+            }
+            break;
 
         default:
             if (0 == rank) {
@@ -106,6 +150,9 @@ int main(int argc, char *argv[])
             goto error;
         }
     }
+
+    if (compf_set_flag)
+        read_comp();
 
     MPI_Info_create(&info);
     /* Register as shared buffer in Casper. */
@@ -133,6 +180,7 @@ int main(int argc, char *argv[])
     target = (rank == 0) ? 1 : 0;
 
     /* Latency test */
+    nsz = 0;
     for (size = 0; size <= MAX_MSG_SIZE; size = (size ? size * 2 : 1)) {
 #ifdef STEP_TIME
         double pt0 = 0, post_time = 0;
@@ -141,6 +189,9 @@ int main(int argc, char *argv[])
 
         memset(sbuf, 'a', size);
         memset(rbuf, 'b', size);
+
+        if (compf_set_flag)
+            computation = compf_sz_comps[nsz++];
 
         if (!loop_override) {
             if (size > LARGE_THRESHOLD)
@@ -184,10 +235,10 @@ int main(int argc, char *argv[])
         t_end = MPI_Wtime();
 
         if (rank == 0) {
-            double latency = (t_end - t_start) * 1e6 / (2.0 * loop);
+            double latency = (t_end - t_start) * 1e6 / (loop);
 #ifdef STEP_TIME
-            post_time = post_time * 1e6 / (loop * 2.0);
-            wait_time = wait_time * 1e6 / (loop * 2.0);
+            post_time = post_time * 1e6 / (loop);
+            wait_time = wait_time * 1e6 / (loop);
 #endif
 
             fprintf(stdout, "%d, %d, %d, %.2f"
