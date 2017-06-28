@@ -33,6 +33,7 @@ static int compf_sz_comps[NMSG_SIZE] = { 0 };
 
 static int computation = 0;     /* in usec */
 static MPI_Comm comm_world = MPI_COMM_NULL;
+static char testname[128] = { 0 };
 
 static void delay(void)
 {
@@ -58,6 +59,14 @@ static void usage()
     printf("  Note: This benchmark relies on block ordering of the ranks.  Please see\n");
     printf("        the README for more information.\n");
     fflush(stdout);
+}
+
+static void set_testname(void)
+{
+    char *val = getenv("TEST_NAME");
+    if (val && strlen(val) > 0) {
+        strncpy(testname, val, 128);
+    }
 }
 
 static void read_comp(void)
@@ -150,6 +159,8 @@ int main(int argc, char *argv[])
             goto error;
         }
     }
+
+    set_testname();
 
     if (compf_set_flag)
         read_comp();
@@ -245,11 +256,11 @@ int main(int argc, char *argv[])
             wait_time = wait_time * 1e6 / (loop);
 #endif
 
-            fprintf(stdout, "%d, %d, %d, %.2f"
+            fprintf(stdout, "%s %d, %d, %d, %.2f"
 #ifdef STEP_TIME
                     ", %.2f, %.2f"
 #endif
-                    "\n", size, loop, computation, latency
+                    "\n", testname, size, loop, computation, latency
 #ifdef STEP_TIME
                     , post_time, wait_time
 #endif
