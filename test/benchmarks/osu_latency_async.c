@@ -167,7 +167,11 @@ int main(int argc, char *argv[])
     rbuf += (align_size - ((uint64_t) rbuf % align_size));
 
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "false");
+#if defined(USE_DUPCOMM)
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc|anytag_notag");
+#else
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
+#endif
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     /* Print header */
