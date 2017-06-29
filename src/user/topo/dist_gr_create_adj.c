@@ -39,6 +39,13 @@ int MPI_Dist_graph_create_adjacent(MPI_Comm comm_old,
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
+    /* Create background ug_comm.
+     * FIXME: wrap up error handler. */
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_ugcomm_create(comm_old, MPI_INFO_NULL, *comm_dist_graph);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
   fn_exit:
     return mpi_errno;
   fn_fail:

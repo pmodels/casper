@@ -30,6 +30,13 @@ int MPI_Cart_sub(MPI_Comm comm, const int remain_dims[], MPI_Comm * newcomm)
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
 
+    /* Create background ug_comm.
+     * FIXME: wrap up error handler. */
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_ugcomm_create(comm, MPI_INFO_NULL, *newcomm);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
   fn_exit:
     return mpi_errno;
   fn_fail:

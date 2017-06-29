@@ -27,10 +27,10 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
     cells = CSP_calloc(count, sizeof(CSP_offload_cell_t *));
     offload_cmpl_flags = CSP_calloc(count, sizeof(int));
     some_indices = CSP_calloc(count, sizeof(int));
-    if (array_of_statuses != MPI_STATUS_IGNORE)
+    if (array_of_statuses != MPI_STATUSES_IGNORE)
         some_statuses = CSP_calloc(count, sizeof(MPI_Status));
     else
-        some_statuses = MPI_STATUS_IGNORE;
+        some_statuses = MPI_STATUSES_IGNORE;
 
     for (i = 0; i < count; i++)
         CSPU_offload_req_hash_get(array_of_requests[i], &cells[i]);
@@ -88,7 +88,7 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
   fn_exit:
     if (some_indices)
         free(some_indices);
-    if (some_statuses)
+    if (some_statuses && some_statuses != MPI_STATUSES_IGNORE)
         free(some_statuses);
     if (cells)
         free(cells);
