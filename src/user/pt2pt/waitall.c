@@ -9,31 +9,21 @@
 #include <stdlib.h>
 #include "cspu.h"
 
-int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_statuses[])
+static inline int waitall_pending_impl(CSP_offload_cell_t ** cells, int count,
+                                       MPI_Request array_of_requests[],
+                                       MPI_Status array_of_statuses[])
 {
     int mpi_errno = MPI_SUCCESS;
-    CSP_offload_cell_t **cells = NULL;
-    int i, ncompleted = 0, *offload_cmpl_flags = NULL;
+    int i, ncompleted = 0, ngcompleted = 0, *offload_cmpl_flags = NULL;
     int some_count = 0, *some_indices = NULL;
     MPI_Status *some_statuses = NULL;
 
-    /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(PT2PT)) {
-        return PMPI_Waitall(count, array_of_requests, array_of_statuses);
-    }
-
-    /*FIXME: complete error handler wrapping. */
-
-    cells = CSP_calloc(count, sizeof(CSP_offload_cell_t *));
     offload_cmpl_flags = CSP_calloc(count, sizeof(int));
     some_indices = CSP_calloc(count, sizeof(int));
     if (array_of_statuses != MPI_STATUSES_IGNORE)
         some_statuses = CSP_calloc(count, sizeof(MPI_Status));
     else
         some_statuses = MPI_STATUSES_IGNORE;
-
-    for (i = 0; i < count; i++)
-        CSPU_offload_req_hash_get(array_of_requests[i], &cells[i]);
 
     do {
         for (i = 0; i < count; i++) {
@@ -47,6 +37,7 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
                 CSP_DBG_PRINT("Waitall: completed offload cells[%d]=%p, reqs[%d]=0x%x\n", i,
                               cells[i], i, array_of_requests[i]);
                 offload_cmpl_flags[i] = 1;
+                ngcompleted++;
             }
 
             /* Polls offload progress if pending cell exists.
@@ -61,35 +52,93 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
             }
         }
 
-        /* The callback functions are triggered after completion :
-         * query_fn get the corresponding cell instance and generates correct status.
-         * free_fn cleans up the cell instance.
-         * Note that PMPI_Testall may release requests only after all requests
-         * are completed. Instead, PMPI_Testsome can release completed request at
-         * every poll. It guarantees every completed request becomes inactive,
-         * thus is ignored at next poll.*/
-        CSP_CALLMPI(JUMP,
-                    PMPI_Testsome(count, array_of_requests, &some_count, some_indices,
-                                  some_statuses));
+        if (ncompleted != ngcompleted) {
+            /* The callback functions are triggered after completion :
+             * query_fn get the corresponding cell instance and generates correct status.
+             * free_fn cleans up the cell instance.
+             * Note that PMPI_Testall may release requests only after all requests
+             * are completed. Instead, PMPI_Testsome can release completed request at
+             * every poll. It guarantees every completed request becomes inactive,
+             * thus is ignored at next poll.*/
+            CSP_CALLMPI(JUMP,
+                        PMPI_Testsome(count, array_of_requests, &some_count, some_indices,
+                                      some_statuses));
 
-        /* Should already left by checking ncompleted. */
-        CSP_DBG_ASSERT(some_count != MPI_UNDEFINED);
+            /* Should already left by checking ncompleted. */
+            CSP_DBG_ASSERT(some_count != MPI_UNDEFINED);
 
-        if (some_count > 0) {
-            if (array_of_statuses != MPI_STATUS_IGNORE) {
-                for (i = 0; i < some_count; i++)
-                    memcpy(&array_of_statuses[some_indices[i]], &some_statuses[i],
-                           sizeof(MPI_Status));
+            if (some_count > 0) {
+                if (array_of_statuses != MPI_STATUS_IGNORE) {
+                    for (i = 0; i < some_count; i++)
+                        memcpy(&array_of_statuses[some_indices[i]], &some_statuses[i],
+                               sizeof(MPI_Status));
+                }
+                ncompleted += some_count;
             }
-            ncompleted += some_count;
         }
     } while (ncompleted < count);
+
 
   fn_exit:
     if (some_indices)
         free(some_indices);
     if (some_statuses && some_statuses != MPI_STATUSES_IGNORE)
         free(some_statuses);
+    if (offload_cmpl_flags)
+        free(offload_cmpl_flags);
+    return mpi_errno;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_statuses[])
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_offload_cell_t **cells = NULL;
+    int i, ncompleted = 0, ngcompleted = 0, *offload_cmpl_flags = NULL;
+
+    /* Skip internal processing when disabled */
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(PT2PT)) {
+        return PMPI_Waitall(count, array_of_requests, array_of_statuses);
+    }
+
+    /*FIXME: complete error handler wrapping. */
+
+    cells = CSP_calloc(count, sizeof(CSP_offload_cell_t *));
+    offload_cmpl_flags = CSP_calloc(count, sizeof(int));
+
+    for (i = 0; i < count; i++)
+        CSPU_offload_req_hash_get(array_of_requests[i], &cells[i]);
+
+    if (CSPU_offload_ch.pending_q.noutstanding > 0) {
+        /* Slow path */
+        mpi_errno = waitall_pending_impl(cells, count, array_of_requests, array_of_statuses);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        goto fn_exit;
+    }
+
+    /* Fast path if no pending cells. */
+    do {
+        for (i = 0; i < count; i++) {
+            /* Skip any original or completed offload request. */
+            if (offload_cmpl_flags[i] || cells[i] == NULL)
+                continue;
+
+            /* Complete offload request. */
+            if (cells[i]->type == CSP_OFFLOAD_CELL_SHM && CSPU_offload_check_complete(cells[i])) {
+                CSP_CALLMPI(JUMP, PMPI_Grequest_complete(array_of_requests[i]));
+                CSP_DBG_PRINT("Waitall: completed offload cells[%d]=%p, reqs[%d]=0x%x\n", i,
+                              cells[i], i, array_of_requests[i]);
+                offload_cmpl_flags[i] = 1;
+                ngcompleted++;
+            }
+        }
+    } while (ngcompleted < count);
+
+    CSP_CALLMPI(JUMP, PMPI_Waitall(count, array_of_requests, array_of_statuses));
+
+  fn_exit:
     if (cells)
         free(cells);
     if (offload_cmpl_flags)
