@@ -35,6 +35,8 @@ static int computation = 0;     /* in usec */
 static MPI_Comm comm_world = MPI_COMM_NULL;
 static char testname[128] = { 0 };
 
+static int pairs = 0;
+
 static void delay(void)
 {
     double start, end;
@@ -108,7 +110,7 @@ int main(int argc, char *argv[])
     MPI_Status stats[2];
     MPI_Request reqs[2];
     char *sbuf, *rbuf;
-    double t_start = 0.0, t_end = 0.0;
+    double t_start = 0.0, t_end = 0.0, time = 0.0, avg_time = 0.0;
     unsigned long align_size = sysconf(_SC_PAGESIZE);
     int c;
     MPI_Info info = MPI_INFO_NULL;
@@ -119,9 +121,9 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (numprocs != 2) {
+    if (numprocs < 2 || numprocs % 2) {
         if (rank == 0) {
-            fprintf(stderr, "This test requires exactly two processes\n");
+            fprintf(stderr, "This test requires power of two processes\n");
         }
 
         MPI_Finalize();
@@ -131,7 +133,7 @@ int main(int argc, char *argv[])
     /* default values */
     computation = 0;
 
-    while ((c = getopt(argc, argv, "i:x:c:h:f:")) != -1) {
+    while ((c = getopt(argc, argv, "i:x:c:h:f:p:")) != -1) {
         switch (c) {
         case 'i':
             loop = atoi(optarg);
@@ -179,7 +181,7 @@ int main(int argc, char *argv[])
 
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "false");
 #if defined(USE_DUPCOMM)
-    MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc|anytag_notag");
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "anytag_notag");
 #else
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
 #endif
@@ -192,14 +194,20 @@ int main(int argc, char *argv[])
         fflush(stdout);
     }
 
-    target = (rank == 0) ? 1 : 0;
-
+    pairs = numprocs / 2;
+    if (rank < pairs) {
+        target = rank + pairs;
+    }
+    else {
+        target = rank - pairs;
+    }
+printf("rank %d, target %d\n", rank, target);fflush(stdout);
     /* Latency test */
     nsz = 0;
     for (size = 0; size <= MAX_MSG_SIZE; size = (size ? size * 2 : 1)) {
 #ifdef STEP_TIME
-        double pt0 = 0, post_time = 0;
-        double wt0 = 0, wait_time = 0;
+        double pt0 = 0, post_time = 0, avg_post_time = 0;
+        double wt0 = 0, wait_time = 0, avg_wait_time = 0;
 #endif
 
         memset(sbuf, 'a', size);
@@ -240,29 +248,39 @@ int main(int argc, char *argv[])
             if (i > skip)
                 wt0 = MPI_Wtime();
 #endif
-            MPI_Wait(&reqs[0], &stats[0]);
-            MPI_Wait(&reqs[1], &stats[1]);
+            MPI_Waitall(2, reqs, stats);
 #ifdef STEP_TIME
             if (i > skip)
                 wait_time += MPI_Wtime() - wt0;
 #endif
         }
-        t_end = MPI_Wtime();
+        time = MPI_Wtime() - t_start;
 
-        if (rank == 0) {
-            double latency = (t_end - t_start) * 1e6 / (loop);
+
+        MPI_Reduce(&time, &avg_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
+        avg_time /= numprocs;
+
 #ifdef STEP_TIME
-            post_time = post_time * 1e6 / (loop);
-            wait_time = wait_time * 1e6 / (loop);
+        MPI_Reduce(&post_time, &avg_post_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
+        avg_post_time /= numprocs;
+        MPI_Reduce(&wait_time, &avg_wait_time, 1, MPI_DOUBLE, MPI_SUM, 0, comm_world);
+        avg_wait_time /= numprocs;
 #endif
 
-            fprintf(stdout, "%s %d, %d, %d, %.2f"
+        if (rank == 0) {
+            double latency = avg_time * 1e6 / (loop);
+#ifdef STEP_TIME
+            avg_post_time = avg_post_time * 1e6 / (loop);
+            avg_wait_time = avg_wait_time * 1e6 / (loop);
+#endif
+
+            fprintf(stdout, "%s %d, %d, %d, %d, %.2f"
 #ifdef STEP_TIME
                     ", %.2f, %.2f"
 #endif
-                    "\n", testname, size, loop, computation, latency
+                    "\n", testname, numprocs, size, loop, computation, latency
 #ifdef STEP_TIME
-                    , post_time, wait_time
+                    , avg_post_time, avg_wait_time
 #endif
 );
             fflush(stdout);

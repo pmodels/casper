@@ -54,6 +54,15 @@ static int loop_override;
 static int skip_override;
 static int computation;
 static double sum_time = 0;
+static char testname[128] = { 0 };
+
+static void set_testname(void)
+{
+    char *val = getenv("TEST_NAME");
+    if (val && strlen(val) > 0) {
+        strncpy(testname, val, 128);
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -120,6 +129,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    set_testname();
+
     MPI_Info_create(&info);
     /* Register as shared buffer in Casper. */
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "true");
@@ -133,7 +144,11 @@ int main(int argc, char *argv[])
     s_buf += (align_size - ((uint64_t) s_buf % align_size));
     r_buf += (align_size - ((uint64_t) r_buf % align_size));
 
+#if defined(USE_DUPCOMM)
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "anytag_notag");
+#else
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
+#endif
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     if (numprocs < 2) {
@@ -165,11 +180,11 @@ int main(int argc, char *argv[])
 
         if (rank == 0) {
             rate = 1e6 * bw / curr_size;
-            fprintf(stdout, "%d, %d, %d, %.2f, %.2f, %.2f"
+            fprintf(stdout, "%s %d, %d, %d, %d, %.2f, %.2f, %.2f"
 #ifdef STEP_TIME
                     ", %.2f, %.2f, %.2f"
 #endif
-                    "\n", curr_size, loop, computation, bw, rate, sum_time
+                    "\n", testname, numprocs, curr_size, loop, computation, bw, rate, sum_time
 #ifdef STEP_TIME
                     , sum_post_time, sum_wait_time, sum_sync_time
 #endif
