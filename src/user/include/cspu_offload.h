@@ -345,4 +345,19 @@ static inline void CSPU_offload_init_pkt(CSP_offload_pkt_t * pkt, CSPU_comm_t * 
     pkt->ug_comm_handle = (MPI_Aint) ug_comm;
     /* request is set at new_cell. */
 }
+
+static inline int CSPU_offload_checksz(int count, MPI_Datatype datatype, CSPU_comm_t * ug_comm,
+                                       int *enabled)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int dtype_sz = 0;
+
+    /* FIXME: what if the receive size is larger than send ? */
+    *enabled = 0;
+    CSP_CALLMPI(RETURN, PMPI_Type_size(datatype, &dtype_sz));
+    if (dtype_sz * count >= ug_comm->info_args.offload_min_msgsz)
+        *enabled = 1;
+
+    return mpi_errno;
+}
 #endif /* CSPU_offload_ch_H_ */

@@ -388,16 +388,19 @@ static inline void ugcomm_info_init(CSPU_comm_t * ug_comm, CSPU_comm_t * ug_newc
     if (ug_comm) {
         ug_newcomm->info_args.wildcard_used = ug_comm->ref_info_args.wildcard_used;
         ug_newcomm->info_args.shmbuf_regist = ug_comm->info_args.shmbuf_regist;
+        ug_newcomm->info_args.offload_min_msgsz = ug_comm->info_args.offload_min_msgsz;
     }
     else {
         /* Reset info if no parent (COMM_WORLD) */
         ug_newcomm->info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
         ug_newcomm->info_args.shmbuf_regist = 0;
+        ug_newcomm->info_args.offload_min_msgsz = CSPU_OFFLOAD_MIN_MSGSZ_DEFAULT;
     }
 
     /* Reset my reference info for child. */
     ug_newcomm->ref_info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
     ug_newcomm->ref_info_args.shmbuf_regist = 0;
+    ug_newcomm->ref_info_args.offload_min_msgsz = CSPU_OFFLOAD_MIN_MSGSZ_DEFAULT;
 }
 
 static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
@@ -408,9 +411,11 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
         CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x (%s)\n"
+                      "    offload_min_msgsz = %ld\n  "
                       "    wildcard_used  = %s|%s|%s\n"
                       "    shmbuf_regist  = %d\n",
                       ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
+                      ug_comm->info_args.offload_min_msgsz,
                       (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE ? "none" : ""),
                       (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC ? "anysrc" : ""),
                       (ug_comm->info_args.wildcard_used &
@@ -453,6 +458,13 @@ int CSPU_ugcomm_set_info(CSPU_comm_info_args_t * info_args, MPI_Info info)
 
             info_args->wildcard_used = wildcard_used;
         }
+
+        /* Check if user specifies message offloading threshold types */
+        memset(info_value, 0, sizeof(info_value));
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "offload_min_msgsz", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
+        if (info_flag == 1)
+            info_args->offload_min_msgsz = atol(info_value);
 
         mpi_errno =
             CSPU_info_get_bool(info, "shmbuf_regist", "true", "false", &info_args->shmbuf_regist);

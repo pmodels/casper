@@ -12,8 +12,10 @@
 #include "csp.h"
 #include "csp_comm.h"
 
+#define CSPU_OFFLOAD_MIN_MSGSZ_DEFAULT 8192
 typedef struct CSPU_comm_info_args {
     int wildcard_used;          /* combination of CSP_comm_info_wildcard_t. */
+    MPI_Aint offload_min_msgsz; /* the smallest message size enables offloading. */
 
     /* special communicator for shared buffer allocation */
     unsigned short shmbuf_regist;

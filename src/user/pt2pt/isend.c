@@ -71,7 +71,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 {
     int mpi_errno = MPI_SUCCESS;
     CSPU_comm_t *ug_comm = NULL;
-    int buf_found_flag = 0;
+    int buf_found_flag = 0, offsz_flag = 0;
     MPI_Aint g_bufaddr = -1;
 
     if (comm == MPI_COMM_WORLD)
@@ -87,10 +87,13 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 
     CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
     CSPU_shmbuf_translate_g_addr((void *) buf, &g_bufaddr, &buf_found_flag);
-    CSP_DBG_PRINT("isend: comm 0x%x->ug_comm=%p, buf=%p, g_bufaddr=0x%lx, "
-                  "buf_found_flag=%d\n", comm, ug_comm, buf, g_bufaddr, buf_found_flag);
+    CSPU_offload_checksz(count, datatype, ug_comm, &offsz_flag);
 
-    if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC && buf_found_flag) {
+    CSP_DBG_PRINT("isend: comm 0x%x->ug_comm=%p, buf=%p, g_bufaddr=0x%lx, "
+                  "buf_found_flag=%d, offsz_flag=%d\n", comm, ug_comm, buf, g_bufaddr,
+                  buf_found_flag, offsz_flag);
+
+    if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC && buf_found_flag && offsz_flag) {
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = isend_impl(g_bufaddr, count, datatype, dest, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
