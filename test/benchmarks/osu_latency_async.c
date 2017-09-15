@@ -185,6 +185,10 @@ int main(int argc, char *argv[])
 #else
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
 #endif
+    /* By default disable offloading threshold for overhead measurement */
+#if !defined(USE_OFFLOAD_MIN)
+    MPI_Info_set(info, (char *) "offload_min_msgsz", (char *) "0");
+#endif
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     /* Print header */
@@ -201,7 +205,8 @@ int main(int argc, char *argv[])
     else {
         target = rank - pairs;
     }
-printf("rank %d, target %d\n", rank, target);fflush(stdout);
+    printf("rank %d, target %d\n", rank, target);
+    fflush(stdout);
     /* Latency test */
     nsz = 0;
     for (size = 0; size <= MAX_MSG_SIZE; size = (size ? size * 2 : 1)) {

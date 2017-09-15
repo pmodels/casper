@@ -149,6 +149,10 @@ int main(int argc, char *argv[])
 #else
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
 #endif
+    /* By default disable offloading threshold for overhead measurement */
+#if !defined(USE_OFFLOAD_MIN)
+    MPI_Info_set(info, (char *) "offload_min_msgsz", (char *) "0");
+#endif
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     if (numprocs < 2) {

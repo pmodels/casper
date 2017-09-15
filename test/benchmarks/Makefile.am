@@ -15,11 +15,13 @@ noinst_PROGRAMS = \
 	osu_latency_async       \
 	osu_latency_async_dupcomm       \
 	osu_latency_async_step  \
+	osu_latency_async_step_withthresh  \
 	osu_latency_async_step_dupcomm  \
 	orig_osu_latency_async_step     \
 	osu_mbw_mr_async        \
 	osu_mbw_mr_async_dupcomm \
 	osu_mbw_mr_async_step   \
+	osu_mbw_mr_async_withthresh   \
 	halo                    \
 	halo_overlap            \
 	halo_step               \
@@ -52,6 +54,11 @@ osu_latency_async_dupcomm_LDADD= $(LDADD)
 osu_latency_async_dupcomm_LDFLAGS= $(AM_LDFLAGS)
 osu_latency_async_dupcomm_CFLAGS= $(AM_CPPFLAGS) -DUSE_DUPCOMM
 
+osu_latency_async_step_withthresh_SOURCES= osu_latency_async.c
+osu_latency_async_step_withthresh_LDADD= $(LDADD)
+osu_latency_async_step_withthresh_LDFLAGS= $(AM_LDFLAGS)
+osu_latency_async_step_withthresh_CFLAGS= $(AM_CPPFLAGS) -DSTEP_TIME -DUSE_OFFLOAD_MIN
+
 orig_osu_latency_async_step_SOURCES= osu_latency_async.c
 orig_osu_latency_async_step_LDADD=
 orig_osu_latency_async_step_LDFLAGS= $(AM_LDFLAGS)
@@ -66,6 +73,11 @@ osu_mbw_mr_async_dupcomm_SOURCES= osu_mbw_mr_async.c
 osu_mbw_mr_async_dupcomm_LDADD= $(LDADD)
 osu_mbw_mr_async_dupcomm_LDFLAGS= $(AM_LDFLAGS)
 osu_mbw_mr_async_dupcomm_CFLAGS= $(AM_CPPFLAGS) -DUSE_DUPCOMM
+
+osu_mbw_mr_async_withthresh_SOURCES= osu_mbw_mr_async.c
+osu_mbw_mr_async_withthresh_LDADD= $(LDADD)
+osu_mbw_mr_async_withthresh_LDFLAGS= $(AM_LDFLAGS)
+osu_mbw_mr_async_withthresh_CFLAGS= $(AM_CPPFLAGS) -DUSE_OFFLOAD_MIN
 
 halo_step_SOURCES= halo.c
 halo_step_LDADD= $(LDADD)
