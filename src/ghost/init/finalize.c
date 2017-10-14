@@ -53,8 +53,11 @@ static int destroy_proc(void)
         CSPG_DBG_PRINT(" free CSP_PROC.ghost.g_local_comm\n");
         CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.ghost.g_local_comm));
     }
-
+    if (CSP_PROC.wcomm && CSP_PROC.wcomm != MPI_COMM_WORLD) {
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.wcomm));
+    }
     CSP_PROC.ghost.g_local_comm = MPI_COMM_NULL;
+    CSP_PROC.wcomm = MPI_COMM_NULL;
 
   fn_exit:
     return mpi_errno;

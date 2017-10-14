@@ -19,8 +19,8 @@ static int dbg_print_proc(void)
 
     CSP_ASSERT(CSP_IS_USER);
 
-    CSP_CALLMPI(RETURN, PMPI_Comm_size(MPI_COMM_WORLD, &nprocs));
-    CSP_CALLMPI(RETURN, PMPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.wcomm, &nprocs));
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_PROC.wcomm, &rank));
     CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
     CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_COMM_USER_WORLD, &user_nprocs));
@@ -150,6 +150,11 @@ static int comm_errhan_wrap_predefined(void)
      * and the errors happened in CASPER overwriting calls (RETURN). */
     mpi_errno = CSPU_comm_errhan_wrap(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL, NULL);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    if (CSP_PROC.wcomm != MPI_COMM_WORLD) {
+        mpi_errno = CSPU_comm_errhan_wrap(CSP_PROC.wcomm, MPI_ERRORS_ARE_FATAL, NULL);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
     mpi_errno = CSPU_comm_errhan_wrap(CSP_COMM_USER_WORLD, MPI_ERRORS_ARE_FATAL, NULL);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

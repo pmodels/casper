@@ -54,11 +54,11 @@ static inline int setup_common_info(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_rank;
-    MPI_Comm node_comm = MPI_COMM_WORLD;
+    MPI_Comm node_comm = MPI_COMM_NULL;
     int tmp_bcast_buf[2] = { 0, 0 };
 
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
-    CSP_CALLMPI(JUMP, PMPI_Comm_split(MPI_COMM_WORLD, local_rank == 0, 1, &node_comm));
+    CSP_CALLMPI(JUMP, PMPI_Comm_split(CSP_PROC.wcomm, local_rank == 0, 1, &node_comm));
 
     if (local_rank == 0) {
         CSP_CALLMPI(JUMP, PMPI_Comm_rank(node_comm, &tmp_bcast_buf[0]));        /* node_id */
@@ -152,6 +152,26 @@ static int initialize_env(void)
         }
     }
 
+#ifdef CSP_ENABLE_TOPO_OPT
+    CSP_ENV.topo.domain = CSP_TOPO_DOMAIN_MACHINE;
+    val = getenv("CSP_TOPO");
+    if (val && strlen(val)) {
+        if (!strncmp(val, "machine", strlen("machine"))) {
+            CSP_ENV.topo.domain = CSP_TOPO_DOMAIN_MACHINE;
+        }
+        else if (!strncmp(val, "numa", strlen("numa"))) {
+            CSP_ENV.topo.domain = CSP_TOPO_DOMAIN_NUMA;
+        }
+        else if (!strncmp(val, "sock", strlen("sock")) || !strncmp(val, "socket", strlen("socket"))) {
+            CSP_ENV.topo.domain = CSP_TOPO_DOMAIN_SOCK;
+        }
+        else {
+            CSP_msg_print(CSP_MSG_ERROR, "Unknown CSP_TOPO %s\n", val);
+            return CSP_get_error_code(CSP_ERR_ENV);
+        }
+    }
+#endif
+
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
     CSP_ENV.load_opt = CSP_LOAD_OPT_RANDOM;
 
@@ -192,6 +212,22 @@ static int initialize_env(void)
 #endif
 
     if (CSP_PROC.wrank == 0) {
+#ifdef CSP_ENABLE_TOPO_OPT
+        const char *topo_str = "";
+        switch (CSP_ENV.topo.domain) {
+        case CSP_TOPO_DOMAIN_NUMA:
+            topo_str = "numa";
+            break;
+        case CSP_TOPO_DOMAIN_SOCK:
+            topo_str = "sock";
+            break;
+        case CSP_TOPO_DOMAIN_MACHINE:
+        default:
+            topo_str = "machine";
+            break;
+        }
+#endif
+
         CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "CASPER Configuration:  \n"
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
                       "    RMA_ERR_CHECK    (enabled) \n"
@@ -201,13 +237,20 @@ static int initialize_env(void)
 #endif
                       "    CSP_VERBOSE      = %s|%s|%s|%s|%s\n"
                       "    CSP_NG           = %d\n"
-                      "    CSP_ASYNC_CONFIG = %s\n",
-                      (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
+                      "    CSP_ASYNC_CONFIG = %s\n"
+#ifdef CSP_ENABLE_TOPO_OPT
+                      "    CSP_TOPO         = %s\n"
+#endif
+                      , (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
                       (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_WIN) ? "conf_win" : "",
                       (CSP_ENV.verbose & CSP_MSG_INFO) ? "info" : "",
-                      CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off");
+                      CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off"
+#ifdef CSP_ENABLE_TOPO_OPT
+                      ,topo_str
+#endif
+                      );
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
         CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "Runtime Load Balancing Options:  \n"
@@ -234,6 +277,14 @@ static int initialize_proc(void)
     CSP_CALLMPI(JUMP, PMPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
                                            MPI_INFO_NULL, &CSP_PROC.local_comm));
 
+    CSP_CALLMPI(JUMP, PMPI_Comm_group(MPI_COMM_WORLD, &CSP_PROC.wgroup));
+    CSP_PROC.wcomm = MPI_COMM_WORLD;
+
+#ifdef CSP_ENABLE_TOPO_OPT
+    mpi_errno = CSP_topo_remap();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+#endif
+
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
 
     /* Statically set the lowest ranks on every node as ghosts */
@@ -248,11 +299,9 @@ static int initialize_proc(void)
     /* Reset user/ghost global object */
     CSP_reset_typed_proc();
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_group(MPI_COMM_WORLD, &CSP_PROC.wgroup));
-
     /* Create a user comm_world including all the users,
      * user will access it instead of comm_world */
-    CSP_CALLMPI(JUMP, PMPI_Comm_split(MPI_COMM_WORLD, CSP_IS_USER, 1, &tmp_comm));
+    CSP_CALLMPI(JUMP, PMPI_Comm_split(CSP_PROC.wcomm, CSP_IS_USER, 1, &tmp_comm));
 
     if (CSP_IS_USER)
         CSP_SET_GLOBAL_COMM(CSP_COMM_USER_WORLD, tmp_comm);

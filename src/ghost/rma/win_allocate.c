@@ -76,7 +76,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
     MPI_Group ug_group = MPI_GROUP_NULL;
     int num_ug_ranks;
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_size(MPI_COMM_WORLD, &world_nprocs));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.wcomm, &world_nprocs));
 
     /* maximum amount equals to world size */
     ug_ranks_in_world = CSP_calloc(world_nprocs, sizeof(int));
@@ -99,7 +99,7 @@ static int create_ug_comm(int user_nprocs, int *user_ranks_in_world, int num_gho
 
     /* -Create ug communicator. */
     CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, num_ug_ranks, ug_ranks_in_world, &ug_group));
-    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &win->ug_comm));
+    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(CSP_PROC.wcomm, ug_group, 0, &win->ug_comm));
 
   fn_exit:
     if (ug_ranks_in_world)
@@ -128,7 +128,7 @@ static int create_communicators(CSPG_win_t * win)
          *  ug_comm: including all USER and Ghost processes
          */
         win->local_ug_comm = CSP_PROC.local_comm;
-        win->ug_comm = MPI_COMM_WORLD;
+        win->ug_comm = CSP_PROC.wcomm;
     }
     else {
         /* Receive parameters from local user root

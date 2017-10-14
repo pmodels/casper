@@ -216,6 +216,31 @@ if test "$enable_thread_safety" = "yes"; then
                        [Thread package to implement critical section])
 fi
 
+# HWLOC library (optional)
+have_hwloc=no
+AC_ARG_WITH(hwloc, [AC_HELP_STRING([--with-hwloc[=DIR]],
+                [Use the specified HWLOC installation; Header file hwloc.h 
+                should be in dir/include, and libhwloc should be in dir/lib. 
+                Disabled by default])],,with_hwloc=no)
+
+# This needs to be an absolute pathname.
+# We do not support embedded mode because linking its static library to
+# casper dynamic library is not portable.
+if test "$with_hwloc" = "no" ; then
+    AC_MSG_WARN([No hwloc library.])
+else
+    CFLAGS="$CFLAGS -I$with_hwloc/include"
+    LDFLAGS="$LDFLAGS -L$with_hwloc/lib"
+    LIBS="$LIBS -lhwloc"
+    AC_CHECK_HEADERS(hwloc.h)
+    AC_CHECK_LIB([hwloc],[hwloc_topology_init],have_hwloc=yes,AC_MSG_ERROR([unable to find hwloc_get_nbobjs_by_type.]))
+fi
+if test "$have_hwloc" = "yes" ; then
+    AC_DEFINE(HAVE_HWLOC,1,[Define if hwloc is available])
+    AC_DEFINE(CSP_ENABLE_TOPO_OPT,1,[Define if topology optimization is enabled. Require hwloc.])
+fi
+AM_CONDITIONAL([csp_have_topo_opt], [test "$have_hwloc" = "yes"])
+
 # check for attribute support
 PAC_C_GNU_ATTRIBUTE
 
