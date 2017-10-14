@@ -32,6 +32,10 @@ static int destroy_proc(void)
     if (CSP_PROC.wgroup && CSP_PROC.wgroup != MPI_GROUP_NULL) {
         CSP_CALLMPI(JUMP, PMPI_Group_free(&CSP_PROC.wgroup));
     }
+    if (CSP_PROC.wcomm != MPI_COMM_WORLD && CSP_PROC.wcomm != MPI_COMM_NULL) {
+        CSP_DBG_PRINT(" free CSP_PROC.wcomm\n");
+        CSP_CALLMPI(JUMP, PMPI_Comm_free(&CSP_PROC.wcomm));
+    }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
@@ -80,6 +84,8 @@ static int destroy_proc(void)
 static void comm_errhan_cleanup_predefined(void)
 {
     CSPU_comm_errhan_reset(MPI_COMM_WORLD);
+    if (CSP_PROC.wcomm != MPI_COMM_WORLD)
+        CSPU_comm_errhan_reset(CSP_PROC.wcomm);
     CSPU_comm_errhan_reset(CSP_COMM_USER_WORLD);
     CSPU_comm_errhan_reset(MPI_COMM_SELF);
 }

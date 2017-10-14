@@ -9,3 +9,7 @@ libcasper_la_SOURCES += src/common/include/csp.h \
 			src/common/include/csp_msg.h \
 			src/common/include/csp_thread.h \
 			src/common/include/csp_util.h
+
+if csp_have_topo_opt
+libcasper_la_SOURCES += src/common/include/csp_topo.h
+endif

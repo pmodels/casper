@@ -68,7 +68,7 @@ static int win_free_impl(CSP_cwp_fnc_winfree_pkt_t * winfree_pkt)
             CSP_CALLMPI(JUMP, PMPI_Comm_free(&win->local_ug_comm));
         }
 
-        if (win->ug_comm && win->ug_comm != MPI_COMM_WORLD) {
+        if (win->ug_comm && win->ug_comm != CSP_PROC.wcomm) {
             CSPG_DBG_PRINT(" free ug communicator\n");
             CSP_CALLMPI(JUMP, PMPI_Comm_free(&win->ug_comm));
         }

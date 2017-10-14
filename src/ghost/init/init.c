@@ -18,8 +18,8 @@ static int dbg_print_proc(void)
 
     CSP_ASSERT(CSP_IS_GHOST);
 
-    CSP_CALLMPI(RETURN, PMPI_Comm_size(MPI_COMM_WORLD, &nprocs));
-    CSP_CALLMPI(RETURN, PMPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.wcomm, &nprocs));
+    CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_PROC.wcomm, &rank));
     CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.local_comm, &local_nprocs));
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
     CSP_CALLMPI(RETURN, PMPI_Comm_size(CSP_PROC.ghost.g_local_comm, &local_ghost_nprocs));
@@ -65,6 +65,8 @@ int CSPG_global_init(void)
 
     /* Disable MPI automatic error messages. */
     CSP_CALLMPI(JUMP, PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN));
+    if (CSP_PROC.wcomm != MPI_COMM_WORLD)
+        CSP_CALLMPI(JUMP, PMPI_Comm_set_errhandler(CSP_PROC.wcomm, MPI_ERRORS_RETURN));
 
   fn_exit:
     return mpi_errno;

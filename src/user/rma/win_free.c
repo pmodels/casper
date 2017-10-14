@@ -68,7 +68,7 @@ int CSPU_win_release(CSPU_win_t * ug_win)
         CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_win->local_ug_comm));
     }
 
-    if (ug_win->ug_comm && ug_win->ug_comm != MPI_COMM_NULL && ug_win->ug_comm != MPI_COMM_WORLD) {
+    if (ug_win->ug_comm && ug_win->ug_comm != MPI_COMM_NULL && ug_win->ug_comm != CSP_PROC.wcomm) {
         CSP_DBG_PRINT("\t free ug communicator\n");
         CSP_CALLMPI(JUMP, PMPI_Comm_free(&ug_win->ug_comm));
     }
