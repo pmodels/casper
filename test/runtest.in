@@ -13,6 +13,9 @@ test_mpiexec="mpiexec -np"
 #   auto|a:   test multiple predefined sets of np & ng
 test_mode=m
 
+# - auto test max number of processes (default - no limit)
+test_max_np=16
+
 # - number of ghost processes (only used in manual test mode)
 test_ng=1
 # - number of processes (only used in manual test mode)
@@ -28,8 +31,9 @@ function print_usage()
     echo "  MPIEXEC=<execution command>"
     echo "  NP=<number of processes including both user and ghost processes, default 4>"
     echo "  NG=<number of ghost processes, default 1>"
+    echo "  MAX_NP=<max number of processes generated for automatic test, default no limit>"
     echo "  MODE=<testing mode, value auto|a|manual|m, default m>"
-    echo "      AUTO mode (auto|a):   only MPIEXEC is valid input, NP and NG are ignored;"
+    echo "      AUTO mode (auto|a):   only MPIEXEC and MAX_NP are valid input, NP and NG are ignored;"
     echo "      MANUAL mode(manual|m):  MPIEXEC, NP, NG are valid input"
     echo "  JUNIT=<output file in junit format>"
     echo "  Example 1: MPIEXEC=\"mpiexec -ppn 2 -np\" NP=4 NG=1,
@@ -75,6 +79,10 @@ if [ "$test_mode" = "m" ]; then
         if [ "$NG" -ge "0" ]; then
             test_ng=$NG
         fi
+    fi
+else
+    if [ "x$MAX_NP" != "x" ]; then
+        test_max_np=$MAX_NP
     fi
 fi
 
@@ -288,37 +296,25 @@ if [ "$test_mode" = "a" ];then
 
     echo "#############################"
     echo "# Casper Test in Auto Mode"
+    echo "# MAX_NP: $test_max_np    "
     echo "#############################"
+    for np in 4 5 8 10; do
+        if [ $np -gt $test_max_np ]; then
+            break #skip larger np
+        fi
+        for ng in 0 1; do
+            export CSP_NG=$ng
+            exec_all_programs "$test_mpiexec $np"
+        done
+    done
 
-    np=4
-    ng=1
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
-
-    np=8
-    ng=1
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
-
-    np=8
-    ng=2
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
-
-    np=10
-    ng=2
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
-
-    np=16
-    ng=2
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
-
-    np=4
-    ng=0
-    export CSP_NG=$ng
-    exec_all_programs "$test_mpiexec $np"
+    for np in 8 10 16; do
+        if [ $np -gt $test_max_np ]; then
+            break #skip larger np
+        fi
+        export CSP_NG=2
+        exec_all_programs "$test_mpiexec $np"
+    done
 else
     # User provides MPIEXEC, NP (or default 4) and NG (or default 1)
 
