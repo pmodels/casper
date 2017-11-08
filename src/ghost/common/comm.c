@@ -73,7 +73,7 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
      * We always create from COMM_WORLD because the parent communicator may not be
      * extended to ug_comm depending on user hint. */
     CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, ug_comm_nproc, ug_ranks, &ug_group));
-    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_group, 0, &cspg_comm->ug_comm));
+    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(CSP_PROC.wcomm, ug_group, 0, &cspg_comm->ug_comm));
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(cspg_comm->ug_comm, &ug_rank));
     CSPG_DBG_PRINT("COMM: created cspg_comm=%p, ug_rank=%d/%d, num_ug_comms=%d, "
                    "ug_comm=0x%x (type: %s)\n", cspg_comm, ug_rank, ug_comm_nproc,
