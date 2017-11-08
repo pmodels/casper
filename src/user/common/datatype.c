@@ -40,11 +40,7 @@ int CSPU_datatype_destroy(void)
         CSPU_datatype_db.g_ddt_hashs = NULL;
     }
 
-  fn_exit:
     return mpi_errno;
-
-  fn_fail:
-    goto fn_exit;
 }
 
 int CSPU_datatype_init(void)
