@@ -16,7 +16,11 @@
  */
 
 #define NUM_OPS 10
-#define COUNT 100
+#ifdef TEST_LMSG
+#define COUNT 10000     /* count of double */
+#else
+#define COUNT 100       /* count of double */
+#endif
 
 double *sbuf = NULL, *rbuf = NULL;
 int rank, nprocs;
@@ -28,11 +32,13 @@ static int check_stat(MPI_Status stat, int peer, int tag)
 {
     int errs = 0;
 
+#if !defined(USE_ANYSRC_NOTAG)
     if (stat.MPI_TAG != tag) {
         fprintf(stderr, "[%d] stat.MPI_TAG %d != %d\n", rank, stat.MPI_TAG, tag);
         fflush(stderr);
         errs++;
     }
+#endif
     if (stat.MPI_SOURCE != peer) {
         fprintf(stderr, "[%d] stat.MPI_SOURCE %d != %d\n", rank, stat.MPI_SOURCE, peer);
         fflush(stderr);
@@ -66,9 +72,12 @@ static int run_test(void)
 
         if (rank % 2) { /* receive only */
             for (i = 0; i < NUM_OPS; i++) {
-#if defined(USE_ANYSRC)
+#if defined(USE_ANYSRC) || defined(USE_ANYSRC_ANYTAG)
                 MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG,
                           comm_world, &req);
+#elif defined(USE_ANYSRC_NOTAG)
+                /* tag is ignored */
+                MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm_world, &req);
 #else
                 MPI_Irecv(&rbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, comm_world, &req);
 #endif
@@ -91,7 +100,12 @@ static int run_test(void)
         }
         else {  /* send only */
             for (i = 0; i < NUM_OPS; i++) {
+#if defined(USE_ANYSRC_NOTAG)
+                /* tag is ignored */
+                MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, 0, comm_world, &req);
+#else
                 MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, comm_world, &req);
+#endif
                 MPI_Wait(&req, &stat);
             }
         }
@@ -134,14 +148,26 @@ int main(int argc, char *argv[])
         rbuf[i] = sbuf[i] * -1;
     }
 
-#ifdef USE_WC
+#ifdef USE_NOINFO
     MPI_Info_free(&info);
+    /* Default any_src(may with specific tag), disable asynchronous progress */
     info = MPI_INFO_NULL;
-#elif defined(USE_ANYSRC)
+#elif defined(USE_AYNSRC)
+    /* any_src(may with specific tag), disable asynchronous progress */
+    MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc");
+#elif defined(USE_ANYSRC_NOTAG) || defined(USE_ANYSRC_ANYTAG)
+    /* Use communicator duplicating approach */
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc|anytag_notag");
 #else
+    /* Use tag encoding approach */
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
 #endif
+
+#ifdef USE_OFFLOAD_MIN_MSGSZ
+    if (info != MPI_INFO_NULL)
+        MPI_Info_set(info, (char *) "offload_min_msgsz", (char *) "1");
+#endif
+
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     MPI_Barrier(comm_world);
