@@ -45,11 +45,20 @@ noinst_PROGRAMS = \
 	comm_errhan			\
 	finalize			\
 	isend_test			\
+	isend_test_l		\
 	isend_wait			\
-	isend_wait_wc		\
-	isend_wait_anysrc   \
+	isend_wait_l		\
+	isend_wait_noinfo	\
+	isend_wait_anysrc	\
+	isend_wait_anysrc_anytag   \
+	isend_wait_anysrc_anytag_l \
+	isend_wait_anysrc_notag   \
+	isend_wait_anysrc_notag_l \
+	isend_wait_offload_minsz  \
 	isend_waitall		\
+	isend_waitall_l		\
 	isendirecv_waitall	\
+	isendirecv_waitall_l\
 	$(THREAD_TESTS)
 
 MPIEXEC=mpiexec
@@ -66,11 +75,39 @@ acc_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
 getacc_lockall_epoch_SOURCES        = getacc.c
 getacc_lockall_epoch_CPPFLAGS  = -DTEST_EPOCHS_USED_LOCKALL $(AM_CPPFLAGS)
 
-isend_wait_wc_SOURCES        = isend_wait.c
-isend_wait_wc_CPPFLAGS       = -DUSE_WC $(AM_CPPFLAGS)
+isend_test_l_SOURCES        = isend_test.c
+isend_test_l_CPPFLAGS       = -DTEST_LMSG $(AM_CPPFLAGS)
 
-isend_wait_anysrc_SOURCES        = isend_wait.c
-isend_wait_anysrc_CPPFLAGS       = -DUSE_ANYSRC $(AM_CPPFLAGS)
+isend_wait_l_SOURCES        = isend_wait.c
+isend_wait_l_CPPFLAGS       = -DTEST_LMSG $(AM_CPPFLAGS)
+
+isend_wait_noinfo_SOURCES   = isend_wait.c
+isend_wait_noinfo_CPPFLAGS  = -DUSE_NOINFO $(AM_CPPFLAGS)
+
+isend_wait_anysrc_SOURCES   = isend_wait.c
+isend_wait_anysrc_CPPFLAGS  = -DUSE_ANYSRC $(AM_CPPFLAGS)
+
+isend_wait_anysrc_anytag_SOURCES   = isend_wait.c
+isend_wait_anysrc_anytag_CPPFLAGS  = -DUSE_ANYSRC_ANYTAG $(AM_CPPFLAGS)
+
+isend_wait_anysrc_anytag_l_SOURCES = isend_wait.c
+isend_wait_anysrc_anytag_l_CPPFLAGS= -DTEST_LMSG -DUSE_ANYSRC_ANYTAG $(AM_CPPFLAGS)
+
+isend_wait_anysrc_notag_SOURCES    = isend_wait.c
+isend_wait_anysrc_notag_CPPFLAGS   = -DUSE_ANYSRC_NOTAG $(AM_CPPFLAGS)
+
+isend_wait_anysrc_notag_l_SOURCES    = isend_wait.c
+isend_wait_anysrc_notag_l_CPPFLAGS   = -DTEST_LMSG -DUSE_ANYSRC_NOTAG $(AM_CPPFLAGS)
+
+isend_wait_offload_minsz_SOURCES    = isend_wait.c
+isend_wait_offload_minsz_CPPFLAGS   = -DUSE_OFFLOAD_MIN_MSGSZ $(AM_CPPFLAGS)
+
+isend_waitall_l_SOURCES     = isend_waitall.c
+isend_waitall_l_CPPFLAGS    = -DTEST_LMSG $(AM_CPPFLAGS)
+
+isendirecv_waitall_l_SOURCES     = isendirecv_waitall.c
+isendirecv_waitall_l_CPPFLAGS    = -DTEST_LMSG $(AM_CPPFLAGS)
+
 testing:
 	./runtest 
 

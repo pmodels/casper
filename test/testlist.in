@@ -25,6 +25,21 @@ win_allocate_info
 win_errhan
 comm_errhan
 finalize
+isend_test
+isend_test_l
+isend_wait
+isend_wait_l
+isend_wait_noinfo
+isend_wait_anysrc
+isend_wait_anysrc_anytag
+isend_wait_anysrc_anytag_l
+isend_wait_anysrc_notag
+isend_wait_anysrc_notag_l
+isend_wait_offload_minsz
+isend_waitall
+isend_waitall_l
+isendirecv_waitall
+isendirecv_waitall_l
 thread_acc_flush exec=@CTEST_ENABLE_THREAD_TEST@
 thread_acc_lock exec=@CTEST_ENABLE_THREAD_TEST@
 thread_multiwins exec=@CTEST_ENABLE_THREAD_TEST@

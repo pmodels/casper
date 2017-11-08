@@ -16,7 +16,11 @@
  */
 
 #define NUM_OPS 100
-#define COUNT 100
+#ifdef TEST_LMSG
+#define COUNT 10000     /* count of double */
+#else
+#define COUNT 100       /* count of double */
+#endif
 
 double *sbuf = NULL, *rbuf = NULL;
 int rank, nprocs;
