@@ -354,7 +354,7 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
      * extended to ug_comm depending on user hint. */
     CSP_CALLMPI(JUMP, PMPI_Group_incl(CSP_PROC.wgroup, ug_newcomm->ug_comm_nproc,
                                       ug_ranks, &ug_newgroup));
-    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(MPI_COMM_WORLD, ug_newgroup, 0, &ug_newcomm->ug_comm));
+    CSP_CALLMPI(JUMP, PMPI_Comm_create_group(CSP_PROC.wcomm, ug_newgroup, 0, &ug_newcomm->ug_comm));
     CSP_DBG_PRINT("COMM: created ug_newcomm->ug_comm=0x%x, ug_comm_nproc=%d, num_ug_comms=%d\n",
                   ug_newcomm->ug_comm, ug_newcomm->ug_comm_nproc, ug_newcomm->num_ug_comms);
 

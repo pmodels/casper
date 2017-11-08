@@ -41,6 +41,7 @@ static int destroy_proc(void)
     }
 
     CSP_PROC.local_comm = MPI_COMM_NULL;
+    CSP_PROC.wcomm = MPI_COMM_NULL;
     CSP_PROC.wgroup = MPI_GROUP_NULL;
     CSP_PROC.lgroup = MPI_GROUP_NULL;
 
