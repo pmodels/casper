@@ -10,6 +10,7 @@
 static int iters = DEFAULT_ITERS;
 static int dim = DEFAULT_DIM;
 static char testname[128] = { 0 };
+
 static int computation = 0;
 
 static void usage(void)
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
     MPI_Info_create(&info);
     MPI_Info_set(info, (char *) "shmbuf_regist", (char *) "true");
 
-    packbuf_sz = dim * 4; /* four boundaries */
+    packbuf_sz = dim * 4;       /* four boundaries */
     MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, comm_rank, info, &shm_comm);
     MPI_Win_allocate_shared(packbuf_sz * sizeof(double) * 2, 1, MPI_INFO_NULL,
                             shm_comm, &winbuf, &shm_win);
@@ -118,13 +119,14 @@ int main(int argc, char **argv)
     MPI_Cart_shift(comm, 0, 1, &north, &south);
     MPI_Cart_shift(comm, 1, 1, &west, &east);
 
-    if(comm_rank == 0) {
-        printf(">>>>> winbuf=%p, packsbuf=%p (off 0x%lx), packrbuf=%p (off 0x%lx), packbuf_sz=%ld\n",
-                winbuf, packsbuf, (MPI_Aint) ((char *)packsbuf - (char *)winbuf),
-                packrbuf, (MPI_Aint) ((char *)packrbuf - (char *)winbuf), packbuf_sz);
+    if (comm_rank == 0) {
+        printf
+            (">>>>> winbuf=%p, packsbuf=%p (off 0x%lx), packrbuf=%p (off 0x%lx), packbuf_sz=%ld\n",
+             winbuf, packsbuf, (MPI_Aint) ((char *) packsbuf - (char *) winbuf), packrbuf,
+             (MPI_Aint) ((char *) packrbuf - (char *) winbuf), packbuf_sz);
         fflush(stdout);
         printf("rank %d: north %d, south %d, west %d, east %d\n",
-                comm_rank, north, south, west, east);
+               comm_rank, north, south, west, east);
         fflush(stdout);
     }
 
