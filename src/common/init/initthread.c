@@ -177,13 +177,12 @@ static int initialize_env(void)
 #endif
 
     /* Asynchronous progress enabled MPI communication modes */
-    CSP_ENV.async_modes = CSP_ASYNC_MODE_RMA;
     val = getenv("CSP_ASYNC_MODE");
     if (val && strlen(val)) {
         char *vbs = NULL;
 
-        /* Force enables RMA. */
         vbs = strtok(val, ",|;");
+        CSP_ENV.async_modes = 0;
         while (vbs != NULL) {
             if (!strncmp(vbs, "rma", strlen("rma"))) {
                 CSP_ENV.async_modes |= (int) CSP_ASYNC_MODE_RMA;
@@ -193,6 +192,9 @@ static int initialize_env(void)
             }
             vbs = strtok(NULL, ",|;");
         }
+    } else {
+        /* By default enable RMA. */
+        CSP_ENV.async_modes = CSP_ASYNC_MODE_RMA;
     }
 
     CSP_ENV.offload_shmq_ncells = CSP_DEFAULT_OFFLOAD_SHMQ_NCELLS;

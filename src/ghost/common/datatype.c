@@ -90,12 +90,7 @@ int CSPG_datatype_regist_cwp_handler(CSP_cwp_pkt_t * pkt)
     /* FIXME: implement ddt registration. */
     CSP_ASSERT(0);
 
-  fn_exit:
     return mpi_errno;
-
-  fn_fail:
-    /* Error is handled in CSPG_main. */
-    goto fn_exit;
 }
 
 int CSPG_datatype_destory(void)
