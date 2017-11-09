@@ -1,6 +1,8 @@
 #! /usr/bin/env bash
 
 path=$(pwd)
+mpicc=@CC@
+abs_top_srcdir=@abs_top_srcdir@
 
 ##########################################################
 # test configuration with default value
@@ -90,6 +92,53 @@ if [ "x$JUNIT" != "x" ]; then
     JUNIT_ENABLED=1
     JUNIT_OUTPUT="$JUNIT"
     echo "" > $JUNIT_OUTPUT
+fi
+
+##########################################################
+# detect MPI type (ompi|mpich|impi) and read xfails file
+
+mpi_type=mpich
+mpicc_base=$(basename $mpicc)
+tmp_mpidir=$(which $mpicc 2>/dev/null)
+mpidir=`echo $tmp_mpidir| sed -e 's_/[^/]*$__g'`/../
+if [ -d $mpidir ] && [ -f $mpidir/bin/ompi_info ]; then
+    mpi_type=ompi
+elif [ -d $mpidir ] && [ -f $mpidir/bin/mpichversion ]; then
+    mpi_type=mpich
+elif [ "$mpicc_base" = "mpiicc" ]; then
+    mpi_type=impi
+fi
+
+xfailf="$abs_top_srcdir/xfail.$mpi_type"
+num_xfails=0
+xfail_programs=
+xfail_nps=
+xfail_ngs=
+
+# ignore xfail file if does not exist
+if [ -f $xfailf ]; then
+    echo "Parsing $xfailf"
+    first=1
+    while read LINE
+    do
+        #skip the first commend line
+        if [ $first -eq 1 ];then
+            first=0
+            continue
+        fi
+
+        # parse format: program np ng
+        f=$(echo "$LINE"|awk '{print $1}')
+        np=$(echo "$LINE"|awk '{print $2}')
+        ng=$(echo "$LINE"|awk '{print $3}')
+
+        if [ -f $path/$f ];then
+            xfail_programs[$num_xfails]=$f
+            xfail_nps[$num_xfails]=$np
+            xfail_ngs[$num_xfails]=$ng
+            let num_xfails+=1
+        fi
+    done < $xfailf
 fi
 
 ##########################################################
@@ -226,6 +275,34 @@ EOF
     rm -f $JUNIT_TEMP_OUTPUT
 }
 
+# - check xfail for a test program 
+#   check_xfail <testfile> <np> <CSP_NG>
+function check_xfail()
+{
+    fpath=$1
+    np=$2
+    ng=$3
+    f=$(basename $fpath)
+
+    xi=0
+    while [ $xi -lt $num_xfails ]
+    do
+        xfail_prog=${xfail_programs[$xi]}
+        xfail_np=${xfail_nps[$xi]}
+        xfail_ng=${xfail_ngs[$xi]}
+
+        if [ "$f" = "$xfail_prog" ] ; then
+            if [ "$np" = "$xfail_np" ] ||  [ "*" = "$xfail_np" ]; then
+                if [ "$ng" = "$xfail_ng" ] ||  [ "*" = "$xfail_ng" ]; then
+                    echo "1"
+                    return
+                fi
+            fi
+        fi
+        let xi+=1
+    done
+    echo "0"
+}
 
 # - execute a test program
 #   exec_program <mpiexec> <relative path of testfile>
@@ -257,6 +334,7 @@ function exec_program()
 function exec_all_programs()
 {
     mpiexec=$1
+    np=$2
 
     if [ "x$CSP_NG" = "x" ] || [ "$CSP_NG" -lt "0" ];then
         echo "invalid CSP_NG=$CSP_NG !"
@@ -268,12 +346,14 @@ function exec_all_programs()
     do
         f=${programs[$i]}
         exec=${exec_flags[$i]}
+        xfail=$(check_xfail $f $np $CSP_NG)
 
-        if [ "$exec" -eq "0" ]; then
-            echo "skip test $f"
+        if [ "$exec" -eq "0" ] || [ "$xfail" -eq "1" ]; then
+            echo "skip test $f -np $np CSP_NG=$CSP_NG"
+            echo ""
 
             # junit_report_testcase <exec> <result:0:pass | 1:failed | 2:skipped> <output>
-            junit_report_testcase "$mpiexec $f" "2"
+            junit_report_testcase "CSP_NG=$CSP_NG; $mpiexec $f" "2"
 
             let i+=1
             continue
@@ -304,7 +384,7 @@ if [ "$test_mode" = "a" ];then
         fi
         for ng in 0 1; do
             export CSP_NG=$ng
-            exec_all_programs "$test_mpiexec $np"
+            exec_all_programs "$test_mpiexec $np" $np
         done
     done
 
@@ -313,7 +393,7 @@ if [ "$test_mode" = "a" ];then
             break #skip larger np
         fi
         export CSP_NG=2
-        exec_all_programs "$test_mpiexec $np"
+        exec_all_programs "$test_mpiexec $np" $np
     done
 else
     # User provides MPIEXEC, NP (or default 4) and NG (or default 1)
@@ -324,7 +404,7 @@ else
     echo ""
 
     export CSP_NG=$test_ng
-    exec_all_programs "$test_mpiexec $test_np"
+    exec_all_programs "$test_mpiexec $test_np" $test_np
 fi
 
 junit_report_finish
