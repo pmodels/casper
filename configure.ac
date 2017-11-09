@@ -81,6 +81,16 @@ AC_SUBST(CASPER_NUMVERSION)
 
 AC_CONFIG_AUX_DIR(confdb)
 AC_CONFIG_MACRO_DIR(confdb)
+
+# needed by hwloc in embedded mode.  Must come very early to avoid
+# bizarre expansion ordering warnings
+AC_CANONICAL_TARGET
+AC_ARG_PROGRAM
+
+# also needed by hwloc in embedded mode, must also come early for expansion
+# ordering reasons
+AC_USE_SYSTEM_EXTENSIONS
+
 AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability-recursive silent-rules foreign 1.12.3 subdir-objects])
 
 # Bug in libtool adds -O2 and -g by default
@@ -98,7 +108,7 @@ AC_CONFIG_HEADER([include/casperconf.h])
 PAC_PUSH_FLAG([CFLAGS])
 LT_INIT()
 PAC_POP_FLAG([CFLAGS])
-
+ 
 CONFIGURE_ARGS_CLEAN="$CONFIGURE_ARGS_CLEAN CC=$CC CFLAGS=$CFLAGS "
 CONFIGURE_ARGS_CLEAN="$CONFIGURE_ARGS_CLEAN LDFLAGS=$LDFLAGS LIBS=$LIBS CPPFLAGS=$CPPFLAGS  "
 CONFIGURE_ARGS_CLEAN="$CONFIGURE_ARGS_CLEAN $BUILD_INFO LT_SYS_LIBRARY_PATH=$LT_SYS_LIBRARY_PATH CPP=$CPP"
@@ -217,28 +227,71 @@ if test "$enable_thread_safety" = "yes"; then
 fi
 
 # HWLOC library (optional)
+
+# Unconditionally include the hwloc macros, even if we are using an
+# external hwloc (or hwloc is disabled). This is needed for the
+# AM_CONDITIONALS that we will set later.
+m4_include([src/hwloc/config/hwloc.m4])
+m4_include([src/hwloc/config/hwloc_check_attributes.m4])
+m4_include([src/hwloc/config/hwloc_check_visibility.m4])
+m4_include([src/hwloc/config/hwloc_check_vendor.m4])
+m4_include([src/hwloc/config/hwloc_components.m4])
+m4_include([src/hwloc/config/hwloc_pkg.m4])
+
+hwlocsrcdir=""
+AC_SUBST([hwlocsrcdir])
+hwloclibdir=""
+AC_SUBST([hwloclibdir])
+hwloclib=""
+AC_SUBST([hwloclib])
+ 
 have_hwloc=no
-AC_ARG_WITH(hwloc, [AC_HELP_STRING([--with-hwloc[=DIR]],
+AC_ARG_WITH(hwloc, [AC_HELP_STRING([--with-hwloc[=DIR|embedded|no]],
                 [Use the specified HWLOC installation; Header file hwloc.h 
                 should be in dir/include, and libhwloc should be in dir/lib. 
-                Disabled by default])],,with_hwloc=no)
+                Use embedded hwloc by default])],,with_hwloc=embedded)
 
 # This needs to be an absolute pathname.
 # We do not support embedded mode because linking its static library to
 # casper dynamic library is not portable.
-if test "$with_hwloc" = "no" ; then
-    AC_MSG_WARN([No hwloc library.])
-else
-    CFLAGS="$CFLAGS -I$with_hwloc/include"
-    LDFLAGS="$LDFLAGS -L$with_hwloc/lib"
-    LIBS="$LIBS -lhwloc"
-    AC_CHECK_HEADERS(hwloc.h)
-    AC_CHECK_LIB([hwloc],[hwloc_topology_init],have_hwloc=yes,AC_MSG_ERROR([unable to find hwloc_get_nbobjs_by_type.]))
-fi
+case "$with_hwloc" in
+    embedded)
+        HWLOC_SETUP_CORE([src/hwloc],[have_hwloc=yes],[have_hwloc=no],[1])
+        # Only build hwloc in embedded mode
+        if test "$have_hwloc" = "yes" ; then
+            use_embedded_hwloc=yes
+            CFLAGS="$HWLOC_EMBEDDED_CFLAGS $CFLAGS"
+            CPPFLAGS="$HWLOC_EMBEDDED_CPPFLAGS $CPPFLAGS"
+            LIBS="$HWLOC_EMBEDDED_LIBS $LIBS"
+            hwlocsrcdir="src/hwloc"
+            hwloclib="src/hwloc/src/libhwloc_embedded.la"
+        fi
+    ;;
+    no)
+        AC_MSG_WARN([No hwloc library.])
+    ;;
+    *)
+        CFLAGS="$CFLAGS -I$with_hwloc/include"
+        LDFLAGS="$LDFLAGS -L$with_hwloc/lib"
+        LIBS="$LIBS -lhwloc"
+        AC_CHECK_HEADERS(hwloc.h)
+        AC_CHECK_LIB([hwloc],[hwloc_topology_init],have_hwloc=yes,AC_MSG_ERROR([unable to find hwloc_topology_init.]))
+        
+        hwloclib="-lhwloc"
+        if test -d ${with_hwloc}/lib64 ; then
+            hwloclibdir="-L${with_hwloc}/lib64"
+        else
+            hwloclibdir="-L${with_hwloc}/lib"
+        fi
+    ;;
+esac
+
+HWLOC_DO_AM_CONDITIONALS
 if test "$have_hwloc" = "yes" ; then
     AC_DEFINE(HAVE_HWLOC,1,[Define if hwloc is available])
     AC_DEFINE(CSP_ENABLE_TOPO_OPT,1,[Define if topology optimization is enabled. Require hwloc.])
 fi
+
 AM_CONDITIONAL([csp_have_topo_opt], [test "$have_hwloc" = "yes"])
 
 # check for attribute support
