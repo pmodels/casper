@@ -45,7 +45,6 @@ static CSP_topo_info_t CSP_topo_info;
 static inline int topo_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
-    int num_machine = 1, num_core = 1;
     int hwloc_err = 0;
 
     hwloc_err = hwloc_topology_init(&CSP_topo_info.topo);
@@ -80,7 +79,7 @@ static inline int topo_get_cpubind(CSP_topo_bind_info_t * bind_info,
 {
     hwloc_const_bitmap_t cset_all;
     hwloc_bitmap_t myset = NULL;
-    hwloc_obj_t bind_obj = NULL, domain_obj = NULL;
+    hwloc_obj_t domain_obj = NULL;
     int hwloc_err = 0;
 
     /* Reset indexes */
@@ -157,9 +156,6 @@ static inline void topo_free_map(CSP_topo_map_t * topo_map)
 static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Comm comm,
                                      CSP_topo_map_t * topo_map)
 {
-    hwloc_const_bitmap_t cset_all;
-    hwloc_bitmap_t myset = NULL;        /* FIXME: not portable. */
-    hwloc_obj_t bind_obj;
     hwloc_obj_type_t domain_obj_type;
     int hwloc_err = 0;
     int mpi_errno = MPI_SUCCESS;
@@ -303,7 +299,7 @@ int CSP_topo_remap(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int local_rank, local_nproc;
-    CSP_topo_map_t topo_map;
+    CSP_topo_map_t topo_map = { 0 };
     int *remap_ranks = NULL, *domains_num_g_set = NULL, *world_remap_ranks = NULL;
     MPI_Comm old_local_comm = MPI_COMM_NULL;
     MPI_Group old_lgroup = MPI_GROUP_NULL, old_wgroup = MPI_GROUP_NULL;
@@ -311,6 +307,14 @@ int CSP_topo_remap(void)
 
     mpi_errno = topo_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    /* reset */
+    topo_map.bind_infos = NULL;
+    topo_map.bind_ndomains = 0;
+    topo_map.comm = MPI_COMM_NULL;
+    topo_map.domain_obj_type = 0;
+    topo_map.domain_sizes = NULL;
+    topo_map.ndomains = 0;
 
 #ifdef TOPO_DEBUG
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.wcomm, &dbg_wrank));
@@ -330,9 +334,8 @@ int CSP_topo_remap(void)
 
     if (local_remap_flag) {
         int g_idx, u_idx, didx, i;
-        int domain_np, domain_num_g;
+        int domain_num_g;
 
-        domain_np = local_nproc / topo_map.bind_ndomains;
         domain_num_g = CSP_ENV.num_g / topo_map.bind_ndomains;
 
         remap_ranks = (int *) CSP_calloc(local_nproc, sizeof(int));
