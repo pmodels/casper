@@ -91,8 +91,8 @@ static void comm_errhan_fnc(MPI_Comm * errcomm, int *err, ...)
 
     if (*errcomm != exp_comm) {
         errs++;
-        err_printf("In %s: unexpected communicator (got %x expected %x)\n",
-                   __FUNCTION__, (int) *errcomm, (int) exp_comm);
+        err_printf("In %s: unexpected communicator (got %lx expected %lx)\n",
+                   __FUNCTION__, (unsigned long) *errcomm, (unsigned long) exp_comm);
     }
     comm_errhan_ncalls++;
     debug_printf("%s called, comm_errhan_ncalls=%d, exp_comm_errhan_ncalls=%d\n",

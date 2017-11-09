@@ -83,8 +83,8 @@ static void win_errhan_fnc(MPI_Win * errwin, int *err, ...)
 
     if (*errwin != win) {
         errs++;
-        err_printf("In %s: unexpected window (got %x expected %x)\n",
-                   __FUNCTION__, (int) *errwin, (int) win);
+        err_printf("In %s: unexpected window (got %lx expected %lx)\n",
+                   __FUNCTION__, (unsigned long) *errwin, (unsigned long) win);
     }
     win_errhan_ncalls++;
 }
