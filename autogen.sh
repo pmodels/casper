@@ -132,6 +132,12 @@ for subdir in $subdirs ; do
 	echo "done"
 done
 
+# apply patch for submodules
+echo ""
+echo_n "Applying patch to hwloc... "
+( cd src/hwloc && git am --3way ../../maint/patches/pre/hwloc/*.patch )
+echo "done"
+
 # autogen for submodules
 extdirs="src/hwloc"
 for extdir in $extdirs ; do
