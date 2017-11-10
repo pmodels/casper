@@ -23,9 +23,9 @@ typedef enum {
                                  * E.g., MPI_COMM_WORLD. */
     CSP_COMM_SHMBUF = 1,        /* Shared buffer comm, creates only one ug_comm on both user and
                                  * ghost sides to allocate shared buffer. */
-    CSP_COMM_ASYNC = 2, /* Asynchronous comm, creates all duplicating ug_comms for
-                         * message offloading. */
-    CSP_COMM_ASYNC_NODUP = 3,   /* ignore_status_src & no_any_tag. Use tag translation
+    CSP_COMM_ASYNC_DUP = 2,     /* Asynchronous comm, creates all duplicating ug_comms for
+                                 * message offloading. */
+    CSP_COMM_ASYNC_TAG = 3,     /* ignore_status_src & no_any_tag. Use tag translation
                                  * instead of duplicating.*/
     CSP_COMM_TYPE_MAX
 } CSP_comm_type_t;

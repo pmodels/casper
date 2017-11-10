@@ -93,7 +93,7 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
                   "buf_found_flag=%d, offsz_flag=%d\n", comm, ug_comm, buf, g_bufaddr,
                   buf_found_flag, offsz_flag);
 
-    if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC && buf_found_flag && offsz_flag) {
+    if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC_DUP && buf_found_flag && offsz_flag) {
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = isend_impl(g_bufaddr, count, datatype, dest, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);

@@ -50,6 +50,9 @@ typedef struct CSP_offload_tag_trans {
 #define CSP_OFFLOAD_SHMQ_MEMSZ(ncells) (ncells * sizeof(CSP_offload_cell_t))
 #define CSP_OFFLOAD_CACHE_LINE_LEN 64
 
+/* Default message size threshold for enabling offload. */
+#define CSP_DEFAULT_OFFLOAD_MIN_MSGSZ 8192
+
 typedef enum {
     CSP_OFFLOAD_ISEND = 0,
     CSP_OFFLOAD_IRECV,

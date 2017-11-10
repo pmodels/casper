@@ -20,7 +20,7 @@ static inline int ugcomm_release(CSPG_comm_t * cspg_comm)
             CSP_CALLMPI(RETURN, PMPI_Comm_free(&cspg_comm->ug_comm));
         }
 
-        if (cspg_comm->type == CSP_COMM_ASYNC && cspg_comm->dup_ug_comms) {
+        if (cspg_comm->type == CSP_COMM_ASYNC_DUP && cspg_comm->dup_ug_comms) {
             for (i = 1; i < cspg_comm->num_ug_comms; i++) {
                 if (cspg_comm->dup_ug_comms[i] && cspg_comm->dup_ug_comms[i] != MPI_COMM_NULL) {
                     CSPG_DBG_PRINT("COMM: free cspg_comm->ug_comms[%d] 0x%x\n", i,
@@ -80,13 +80,13 @@ static int ugcomm_create_impl(CSP_cwp_fnc_ugcomm_create_pkt_t * ugcomm_create_pk
                    cspg_comm->num_ug_comms, cspg_comm->ug_comm,
                    CSP_ug_comm_type_name[cspg_comm->type]);
 
-    if (cspg_comm->type == CSP_COMM_ASYNC) {
+    if (cspg_comm->type == CSP_COMM_ASYNC_DUP) {
         CSP_ASSERT(cspg_comm->num_ug_comms >= 1);
         cspg_comm->dup_ug_comms = CSP_calloc(cspg_comm->num_ug_comms, sizeof(MPI_Comm));
         CSP_ASSERT(cspg_comm->dup_ug_comms != NULL);
 
         /* Reuse the first ug_comm, and duplicate others when async is enabled.
-         * Note that it is not needed for CSP_COMM_ASYNC_NODUP type.*/
+         * Note that it is not needed for CSP_COMM_ASYNC_TAG type.*/
         cspg_comm->dup_ug_comms[0] = cspg_comm->ug_comm;
         for (i = 1; i < cspg_comm->num_ug_comms; i++) {
             CSP_CALLMPI(JUMP, PMPI_Comm_dup(cspg_comm->ug_comm, &cspg_comm->dup_ug_comms[i]));

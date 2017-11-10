@@ -140,6 +140,9 @@ typedef struct CSP_env_param {
                                  * (e.g., RMA|P2P, RMA is always enabled) */
 
     int verbose;                /* verbose level. print configuration information. */
+    MPI_Aint offload_min_msgsz; /* Global offloading message size threshold, by default
+                                 * set to CSPU_OFFLOAD_MIN_MSGSZ_DEFAULT. User can overwrite
+                                 * this value for a communicator through info. */
     CSP_async_config_t async_config;
 
 #if defined(CSP_ENABLE_TOPO_OPT)

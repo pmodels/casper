@@ -20,7 +20,7 @@ void CSPG_irecv_cmpl_handler(CSP_offload_pkt_t * pkt, MPI_Status g_stat)
     u_stat_ptr->MPI_TAG = pkt->irecv.tag;
     u_stat_ptr->MPI_ERROR = g_stat.MPI_ERROR;
 
-    if (cspg_comm->type == CSP_COMM_ASYNC) {
+    if (cspg_comm->type == CSP_COMM_ASYNC_DUP) {
         /* Translate source and tag.
          * Note that MPI_SOURCE is ugrank, need translation on user process.*/
         if (irecv_pkt->peer_rank == MPI_ANY_SOURCE)
@@ -49,7 +49,7 @@ int CSPG_irecv_offload_handler(CSP_offload_pkt_t * pkt)
     int g_rank = 0;
 
     cspg_comm = (CSPG_comm_t *) irecv_pkt->g_ugcomm_handle;
-    CSP_DBG_ASSERT(cspg_comm->type >= CSP_COMM_ASYNC);
+    CSP_DBG_ASSERT(cspg_comm->type >= CSP_COMM_ASYNC_DUP);
 
     if (irecv_pkt->peer_rank != MPI_ANY_SOURCE)
         peer_g_rank = cspg_comm->g_ranks_bound[irecv_pkt->peer_rank];
@@ -60,7 +60,7 @@ int CSPG_irecv_offload_handler(CSP_offload_pkt_t * pkt)
                                        irecv_pkt->ugrank);
 
     /* Use tag translation with recv_offset. */
-    if (cspg_comm->type == CSP_COMM_ASYNC_NODUP) {
+    if (cspg_comm->type == CSP_COMM_ASYNC_TAG) {
         tag = CSPG_TRANS_TAG(irecv_pkt->tag, recv_offset);
         ug_comm = cspg_comm->ug_comm;
     }
