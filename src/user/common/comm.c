@@ -413,9 +413,9 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
 
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
-        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x (%s) "
-                      "offload_min_msgsz = %ld, wildcard_used = %s|%s|%s, generated hidden comms = %d\n",
-                      ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
+        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%lx (%s) "
+                      "offload_min_msgsz = %ld, wildcard_used = %s|%s|%s, count of communicators = %d\n",
+                      (unsigned long) ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
                       ug_comm->info_args.offload_min_msgsz,
                       (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE ? "none" : ""),
                       (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC ? "anysrc" : ""),
