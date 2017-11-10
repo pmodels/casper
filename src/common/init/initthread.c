@@ -192,9 +192,20 @@ static int initialize_env(void)
             }
             vbs = strtok(NULL, ",|;");
         }
-    } else {
+    }
+    else {
         /* By default enable RMA. */
         CSP_ENV.async_modes = CSP_ASYNC_MODE_RMA;
+    }
+
+    CSP_ENV.offload_min_msgsz = CSP_DEFAULT_OFFLOAD_MIN_MSGSZ;
+    val = getenv("CSP_OFFLOAD_MIN_MSGSZ");
+    if (val && strlen(val)) {
+        CSP_ENV.offload_min_msgsz = (MPI_Aint) atol(val);
+    }
+    if (CSP_ENV.offload_min_msgsz < 0) {
+        CSP_msg_print(CSP_MSG_ERROR, "Wrong CSP_OFFLOAD_MIN_MSGSZ %d\n", CSP_ENV.offload_min_msgsz);
+        return CSP_get_error_code(CSP_ERR_ENV);
     }
 
     CSP_ENV.offload_shmq_ncells = CSP_DEFAULT_OFFLOAD_SHMQ_NCELLS;
@@ -264,7 +275,7 @@ static int initialize_env(void)
         }
 #endif
 
-        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "CASPER Configuration:  \n"
+        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "CASPER Configuration:\n"
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
                       "    RMA_ERR_CHECK    (enabled) \n"
 #endif
@@ -277,8 +288,7 @@ static int initialize_env(void)
 #ifdef CSP_ENABLE_TOPO_OPT
                       "    CSP_TOPO         = %s\n"
 #endif
-                      "    CSP_ASYNC_MODE   = %s|%s\n"
-                      "    CSP_OFFLOAD_SHMQ_NCELLS = %d (%ld Kbytes, sizeof(cell)=%ld/%ld bytes)\n",
+                      "    CSP_ASYNC_MODE   = %s|%s\n",
                       (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
                       (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
                       (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
@@ -290,15 +300,21 @@ static int initialize_env(void)
                       topo_str,
 #endif
                       (CSP_ENV.async_modes & CSP_ASYNC_MODE_RMA) ? "rma" : "",
-                      (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) ? "pt2pt" : "",
-                      CSP_ENV.offload_shmq_ncells,
-                      CSP_OFFLOAD_SHMQ_MEMSZ(CSP_ENV.offload_shmq_ncells) / 1024,
-                      sizeof(CSP_offload_cell_t), CSP_ALIGN(sizeof(CSP_offload_cell_t),
-                                                            CSP_OFFLOAD_CACHE_LINE_LEN));
+                      (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) ? "pt2pt" : "");
 
+        if (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) {
+            CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "PT2PT Offloading Options:\n"
+                          "    CSP_OFFLOAD_MIN_MSGSZ   = %d bytes\n"
+                          "    CSP_OFFLOAD_SHMQ_NCELLS = %d (total %ld Kbytes)\n"
+                          "                              cell size = %ld bytes, cell size(aligned) = %ld bytes\n",
+                          CSP_ENV.offload_min_msgsz, CSP_ENV.offload_shmq_ncells,
+                          CSP_OFFLOAD_SHMQ_MEMSZ(CSP_ENV.offload_shmq_ncells) / 1024,
+                          sizeof(CSP_offload_cell_t), CSP_ALIGN(sizeof(CSP_offload_cell_t),
+                                                                CSP_OFFLOAD_CACHE_LINE_LEN));
+        }
 
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
-        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "Runtime Load Balancing Options:  \n"
+        CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "Runtime Load Balancing Options:\n"
                       "    CSP_RUMTIME_LOAD_OPT = %s \n"
                       "    CSP_RUNTIME_LOAD_LOCK = %s \n",
                       (CSP_ENV.load_opt == CSP_LOAD_OPT_RANDOM) ? "random" :

@@ -10,7 +10,7 @@
 #include "cspu.h"
 
 const char *CSP_ug_comm_type_name[CSP_COMM_TYPE_MAX] =
-    { "refer", "shmbuf", "async", "async_nodup" };
+    { "refer", "shmbuf", "async_dup", "async_tag" };
 
 static int ugcomm_gather_ranks(CSPU_comm_t * ug_newcomm, int *ug_nproc, int *ug_ranks,
                                int *num_max_g_users)
@@ -188,7 +188,7 @@ static int ugcomm_release(CSPU_comm_t * ug_comm)
     if (ug_comm->ug_group && ug_comm->ug_group != MPI_GROUP_NULL)
         CSP_CALLMPI(JUMP, PMPI_Group_free(&ug_comm->ug_group));
 
-    if (ug_comm->type == CSP_COMM_ASYNC && ug_comm->dup_ug_comms) {
+    if (ug_comm->type == CSP_COMM_ASYNC_DUP && ug_comm->dup_ug_comms) {
         /* Skip the first, which reuses ug_comm. */
         for (i = 1; i < ug_comm->num_ug_comms; i++) {
             if (ug_comm->dup_ug_comms[i] && ug_comm->dup_ug_comms[i] != MPI_COMM_NULL) {
@@ -358,9 +358,9 @@ static int ugcomm_create_comm(CSPU_comm_t * ug_newcomm)
     CSP_DBG_PRINT("COMM: created ug_newcomm->ug_comm=0x%x, ug_comm_nproc=%d, num_ug_comms=%d\n",
                   ug_newcomm->ug_comm, ug_newcomm->ug_comm_nproc, ug_newcomm->num_ug_comms);
 
-    if (ug_newcomm->type == CSP_COMM_ASYNC) {
+    if (ug_newcomm->type == CSP_COMM_ASYNC_DUP) {
         /* Reuse the first ug_comm, and duplicate others when async is enabled.
-         * Note that it is not needed for CSP_COMM_ASYNC_NODUP type.*/
+         * Note that it is not needed for CSP_COMM_ASYNC_TAG type.*/
         ug_newcomm->dup_ug_comms = CSP_calloc(num_max_g_users, sizeof(MPI_Comm));
         ug_newcomm->dup_ug_comms[0] = ug_newcomm->ug_comm;
         for (i = 1; i < num_max_g_users; i++) {
@@ -394,13 +394,13 @@ static inline void ugcomm_info_init(CSPU_comm_t * ug_comm, CSPU_comm_t * ug_newc
         /* Reset info if no parent (COMM_WORLD) */
         ug_newcomm->info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
         ug_newcomm->info_args.shmbuf_regist = 0;
-        ug_newcomm->info_args.offload_min_msgsz = CSPU_OFFLOAD_MIN_MSGSZ_DEFAULT;
+        ug_newcomm->info_args.offload_min_msgsz = CSP_ENV.offload_min_msgsz;
     }
 
     /* Reset my reference info for child. */
     ug_newcomm->ref_info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
     ug_newcomm->ref_info_args.shmbuf_regist = 0;
-    ug_newcomm->ref_info_args.offload_min_msgsz = CSPU_OFFLOAD_MIN_MSGSZ_DEFAULT;
+    ug_newcomm->ref_info_args.offload_min_msgsz = CSP_ENV.offload_min_msgsz;
 }
 
 static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
@@ -410,17 +410,14 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
 
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
-        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x (%s)\n"
-                      "    offload_min_msgsz = %ld\n  "
-                      "    wildcard_used  = %s|%s|%s\n"
-                      "    shmbuf_regist  = %d\n",
+        CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%x (%s) "
+                      "offload_min_msgsz = %ld, wildcard_used = %s|%s|%s, generated hidden comms = %d\n",
                       ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
                       ug_comm->info_args.offload_min_msgsz,
                       (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE ? "none" : ""),
                       (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC ? "anysrc" : ""),
                       (ug_comm->info_args.wildcard_used &
-                       CSP_COMM_INFO_WD_ANYTAG_NOTAG ? "anytag_notag" : ""),
-                      ug_comm->info_args.shmbuf_regist);
+                       CSP_COMM_INFO_WD_ANYTAG_NOTAG ? "anytag_notag" : ""), ug_comm->num_ug_comms);
     }
     return mpi_errno;
 }
@@ -540,12 +537,12 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
     if (!(ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC) ||
         (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYTAG_NOTAG) ||
         (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE)) {
-        ug_newcomm->type = CSP_COMM_ASYNC;
+        ug_newcomm->type = CSP_COMM_ASYNC_DUP;
     }
     /* Use tag translation instead of dupcomm. */
     if ((ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE) &&
         CSPU_offload_ch.tag_trans.trans_tag_nbits > 0 /* ensure sufficient bits exist. */) {
-        ug_newcomm->type = CSP_COMM_ASYNC_NODUP;
+        ug_newcomm->type = CSP_COMM_ASYNC_TAG;
     }
 
     /* Return empty ug_comm if it is only reference use. */

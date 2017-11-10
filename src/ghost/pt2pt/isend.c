@@ -30,7 +30,7 @@ int CSPG_isend_offload_handler(CSP_offload_pkt_t * pkt)
     int g_rank;
 
     cspg_comm = (CSPG_comm_t *) isend_pkt->g_ugcomm_handle;
-    CSP_DBG_ASSERT(cspg_comm->type >= CSP_COMM_ASYNC);
+    CSP_DBG_ASSERT(cspg_comm->type >= CSP_COMM_ASYNC_DUP);
 
     peer_g_rank = cspg_comm->g_ranks_bound[isend_pkt->peer_rank];
     recv_offset = CSPG_UGCOMM_RANK2OFF(cspg_comm->g_ranks_bound[isend_pkt->peer_rank],
@@ -39,7 +39,7 @@ int CSPG_isend_offload_handler(CSP_offload_pkt_t * pkt)
                                        isend_pkt->ugrank);
 
     /* Use tag translation with recv_offset. */
-    if (cspg_comm->type == CSP_COMM_ASYNC_NODUP) {
+    if (cspg_comm->type == CSP_COMM_ASYNC_TAG) {
         tag = CSPG_TRANS_TAG(isend_pkt->tag, recv_offset);
         ug_comm = cspg_comm->ug_comm;
     }
