@@ -37,9 +37,10 @@ case "$os" in
         case "$MPI_IMPL" in
             mpich)
                 if [ ! -d "$TRAVIS_ROOT/mpich" ]; then
-                    wget --no-check-certificate http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz
-                    tar -xzf mpich-3.2.tar.gz
-                    cd mpich-3.2
+                    # mpich-v3.3a2 has symbol visibility issue, see https://github.com/pmodels/mpich/issues/2471.
+                    wget --no-check-certificate http://www.mpich.org/static/downloads/nightly/master/mpich/mpich-master-v3.3a2-452-ge0000be3f049.tar.gz
+                    tar -xzf mpich-master-v3.3a2-452-ge0000be3f049.tar.gz
+                    cd mpich-master-v3.3a2-452-ge0000be3f049
                     mkdir build && cd build
                     ../configure CFLAGS="-w" --prefix=$TRAVIS_ROOT/mpich --disable-fortran --disable-static
                     make -j2
