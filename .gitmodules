@@ -1,3 +1,6 @@
 [submodule "src/hwloc"]
 	path = src/hwloc
 	url = https://github.com/open-mpi/hwloc
+[submodule "src/openpa"]
+	path = src/openpa
+	url = http://git.mpich.org/openpa.git
