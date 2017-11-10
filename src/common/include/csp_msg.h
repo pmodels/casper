@@ -28,6 +28,11 @@ typedef enum {
     CSP_MSG_INFO = 32   /* any other information */
 } CSP_msg_verbose_t;
 
+#define CSP_MSG_VERBOSE_NUM_1  (CSP_MSG_ERROR|CSP_MSG_CONFIG_GLOBAL)
+#define CSP_MSG_VERBOSE_NUM_2  (CSP_MSG_VERBOSE_NUM_1|CSP_MSG_WARN)
+#define CSP_MSG_VERBOSE_NUM_3  (CSP_MSG_VERBOSE_NUM_2|CSP_MSG_CONFIG_WIN|CSP_MSG_CONFIG_COMM)
+#define CSP_MSG_VERBOSE_NUM_4  (CSP_MSG_VERBOSE_NUM_3|CSP_MSG_INFO)
+
 extern void CSP_msg_init(int vbs);
 extern void CSP_msg_print(CSP_msg_verbose_t vbs, const char format[], ...);
 
