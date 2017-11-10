@@ -28,6 +28,7 @@ typedef struct CSP_topo_bind_info {
 
     /* Debug use only */
     char mask[512];
+    int wrank;
     int npus;
 } CSP_topo_bind_info_t;
 
@@ -159,7 +160,7 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
     hwloc_obj_type_t domain_obj_type;
     int hwloc_err = 0;
     int mpi_errno = MPI_SUCCESS;
-    int i, myrank, size;
+    int i, myrank, size, wrank;
 
     switch (domain_type) {
     case CSP_TOPO_DOMAIN_MACHINE:
@@ -177,8 +178,9 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
     }
 
     topo_map->comm = comm;
-    MPI_Comm_rank(topo_map->comm, &myrank);
-    MPI_Comm_size(topo_map->comm, &size);
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.wcomm, &wrank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(topo_map->comm, &myrank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(topo_map->comm, &size));
 
     topo_map->ndomains = hwloc_get_nbobjs_by_type(CSP_topo_info.topo, domain_obj_type);
     topo_map->domain_sizes = (int *) CSP_calloc(topo_map->ndomains, sizeof(int));
@@ -191,6 +193,7 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
         goto fn_fail;
 
     /* exchange */
+    topo_map->bind_infos[myrank].wrank = wrank;
     CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
                                      topo_map->bind_infos, sizeof(CSP_topo_bind_info_t), MPI_BYTE,
                                      comm));
@@ -216,17 +219,17 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
 static inline void topo_print_comm_map(CSP_topo_map_t topo_map)
 {
     int i, comm_myrank, comm_size;
+    int mpi_errno CSP_ATTRIBUTE((unused)) = MPI_SUCCESS;
 
-    MPI_Comm_size(topo_map.comm, &comm_size);
-    MPI_Comm_rank(topo_map.comm, &comm_myrank);
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_size(topo_map.comm, &comm_size));
+    CSP_CALLMPI(NOSTMT, PMPI_Comm_rank(topo_map.comm, &comm_myrank));
 
     if (comm_myrank == 0 && (CSP_ENV.verbose & (int) CSP_MSG_INFO)) {
         for (i = 0; i < comm_size; i++) {
-            CSP_msg_print(CSP_MSG_INFO, "TOPO: rank %d, domain_idx=%d "
-                          "(type %s x %d/%d) bound %d PUs(%s)\n",
-                          i, topo_map.bind_infos[i].domain_idx,
+            CSP_msg_print(CSP_MSG_INFO, "TOPO: rank %d (%d in world), domain_idx=%d "
+                          "(type %s) bound %d PUs(%s)\n",
+                          i, topo_map.bind_infos[i].wrank, topo_map.bind_infos[i].domain_idx,
                           hwloc_obj_type_string(topo_map.domain_obj_type),
-                          topo_map.ndomains, topo_map.bind_ndomains,
                           topo_map.bind_infos[i].npus, topo_map.bind_infos[i].mask);
         }
     }
@@ -236,11 +239,12 @@ static inline int topo_check_remap(CSP_topo_map_t topo_map, int *local_remap_fla
                                    int *global_remap_flag)
 {
     int mpi_errno = MPI_SUCCESS;
-    int local_rank, local_nproc;
+    int local_rank, local_nproc, wrank;
     int domain_num_g, domain_np;
     int didx, i, map_uneven = 0;
     int ordered = 1;
 
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.wcomm, &wrank));
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
     CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nproc));
 
@@ -253,7 +257,9 @@ static inline int topo_check_remap(CSP_topo_map_t topo_map, int *local_remap_fla
     if (topo_map.bind_ndomains < 2 || domain_num_g < 1) {
         *local_remap_flag = 0;
         if (local_rank == 0)
-            CSP_msg_print(CSP_MSG_INFO, "TOPO: insufficient domains or ghosts, no remap\n");
+            CSP_msg_print(CSP_MSG_INFO, "TOPO: rank %d in world, insufficient domains (%d < 2) or "
+                          "ghosts (%d > ndomains), no remap\n", wrank,
+                          topo_map.bind_ndomains, CSP_ENV.num_g);
         goto no_local_remap;
     }
 
@@ -304,6 +310,7 @@ int CSP_topo_remap(void)
     MPI_Comm old_local_comm = MPI_COMM_NULL;
     MPI_Group old_lgroup = MPI_GROUP_NULL, old_wgroup = MPI_GROUP_NULL;
     int local_remap_flag = 0, global_remap_flag = 0;
+    int wrank, wnproc;
 
     mpi_errno = topo_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -312,7 +319,7 @@ int CSP_topo_remap(void)
     topo_map.bind_infos = NULL;
     topo_map.bind_ndomains = 0;
     topo_map.comm = MPI_COMM_NULL;
-    topo_map.domain_obj_type = 0;
+    topo_map.domain_obj_type = (hwloc_obj_type_t) 0;
     topo_map.domain_sizes = NULL;
     topo_map.ndomains = 0;
 
@@ -323,11 +330,20 @@ int CSP_topo_remap(void)
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
     CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nproc));
     CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &old_lgroup));
+    CSP_CALLMPI(JUMP, PMPI_Comm_rank(MPI_COMM_WORLD, &wrank));
+    CSP_CALLMPI(JUMP, PMPI_Comm_size(MPI_COMM_WORLD, &wnproc));
 
     CSP_DBG_PRINT("before remap,I am %d in world, %d in local\n", CSP_PROC.wrank, local_rank);
 
     mpi_errno = topo_load_comm_map(CSP_ENV.topo.domain, CSP_PROC.local_comm, &topo_map);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_ENV.verbose & (int) CSP_MSG_INFO) {
+        if (wrank == 0)
+            CSP_msg_print(CSP_MSG_INFO, "TOPO: before reordering -----\n");
+        CSP_CALLMPI(JUMP, PMPI_Barrier(CSP_PROC.wcomm));
+        topo_print_comm_map(topo_map);
+        CSP_CALLMPI(JUMP, PMPI_Barrier(CSP_PROC.wcomm));
+    }
 
     mpi_errno = topo_check_remap(topo_map, &local_remap_flag, &global_remap_flag);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -369,11 +385,6 @@ int CSP_topo_remap(void)
 
     /* Local remap on any node will cause a global remap. */
     if (global_remap_flag) {
-        int wrank, wnproc;
-
-        CSP_CALLMPI(JUMP, PMPI_Comm_rank(MPI_COMM_WORLD, &wrank));
-        CSP_CALLMPI(JUMP, PMPI_Comm_size(MPI_COMM_WORLD, &wnproc));
-
         world_remap_ranks = (int *) CSP_calloc(wnproc, sizeof(int));
 
         if (local_remap_flag) {
@@ -407,9 +418,10 @@ int CSP_topo_remap(void)
             topo_free_map(&topo_map);
             topo_load_comm_map(CSP_ENV.topo.domain, CSP_PROC.local_comm, &topo_map);
             if (wrank == 0)
-                CSP_msg_print(CSP_MSG_INFO, "TOPO: reordered\n");
+                CSP_msg_print(CSP_MSG_INFO, "TOPO: after reordered -----\n");
             CSP_CALLMPI(JUMP, PMPI_Barrier(CSP_PROC.wcomm));
             topo_print_comm_map(topo_map);
+            CSP_CALLMPI(JUMP, PMPI_Barrier(CSP_PROC.wcomm));
         }
     }
 
