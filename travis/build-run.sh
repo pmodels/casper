@@ -38,7 +38,7 @@ esac
 make V=1
 make V=1 install
 
-export CSP_VERBOSE=1
+export CSP_VERBOSE="err|conf_g|info"
 export MPIEXEC_TIMEOUT=600 # in seconds
 # Run unit tests
 make V=1 check MAX_NP=5
