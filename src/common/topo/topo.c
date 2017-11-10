@@ -41,22 +41,26 @@ typedef struct CSP_topo_map {
     CSP_topo_bind_info_t *bind_infos;
 } CSP_topo_map_t;
 
+#define CSP_TOPO_FAIL_ERRNO -1  /* Throw an MPI error if fails */
+#define CSP_TOPO_OFF_ERRNO 1    /* Disable topo reordering if user does not set binding. */
+#define CSP_TOPO_SUCCESS 0      /* Success */
+
 static CSP_topo_info_t CSP_topo_info;
 
 static inline int topo_init(void)
 {
     int mpi_errno = MPI_SUCCESS;
-    int hwloc_err = 0;
+    int hwloc_err = CSP_TOPO_SUCCESS;
 
     hwloc_err = hwloc_topology_init(&CSP_topo_info.topo);
     if (hwloc_err < 0) {
-        fprintf(stderr, "failed to init the topology\n");
+        CSP_msg_print(CSP_MSG_ERROR, "TOPO: Failed to initialize topology\n");
         goto fn_fail;
     }
 
     hwloc_err = hwloc_topology_load(CSP_topo_info.topo);
     if (hwloc_err < 0) {
-        fprintf(stderr, "failed to load the topology\n");
+        CSP_msg_print(CSP_MSG_ERROR, "TOPO: Failed to load topology\n");
         hwloc_topology_destroy(CSP_topo_info.topo);
         goto fn_fail;
     }
@@ -81,7 +85,7 @@ static inline int topo_get_cpubind(CSP_topo_bind_info_t * bind_info,
     hwloc_const_bitmap_t cset_all;
     hwloc_bitmap_t myset = NULL;
     hwloc_obj_t domain_obj = NULL;
-    int hwloc_err = 0;
+    int hwloc_err = CSP_TOPO_SUCCESS;
 
     /* Reset indexes */
     bind_info->domain_idx = -1;
@@ -91,18 +95,20 @@ static inline int topo_get_cpubind(CSP_topo_bind_info_t * bind_info,
     /* Get CPU binding of the current process */
     myset = hwloc_bitmap_alloc();
     if (!myset) {
-        fprintf(stderr, "Failed to allocate a bitmap\n");
+        CSP_msg_print(CSP_MSG_ERROR, "TOPO: Failed to allocate a bitmap\n");
         goto fn_fail;
     }
 
     hwloc_err = hwloc_get_cpubind(CSP_topo_info.topo, myset, HWLOC_CPUBIND_PROCESS);
     if (hwloc_err < 0) {
-        fprintf(stderr, "Failed to get cpu binding\n");
-        goto fn_fail;
+        /* Might because user does not set binding, thus just disable reorder. */
+        CSP_msg_print(CSP_MSG_WARN, "TOPO: Failed to get cpu binding\n");
+        goto fn_off;
     }
 
     if (hwloc_bitmap_isequal(myset, cset_all)) {
-        TOPO_DBG_PRINT("No binding found \n");
+        CSP_msg_print(CSP_MSG_WARN, "TOPO: No binding found\n");
+        goto fn_off;
     }
     else {
         /* Find domain index */
@@ -115,8 +121,11 @@ static inline int topo_get_cpubind(CSP_topo_bind_info_t * bind_info,
             domain_obj = hwloc_get_next_obj_by_type(CSP_topo_info.topo,
                                                     domain_obj_type, domain_obj);
         }
-        /* FIXME: throw more user friendly error. */
-        CSP_ASSERT(bind_info->domain_idx >= 0);
+
+        if (bind_info->domain_idx < 0) {
+            CSP_msg_print(CSP_MSG_ERROR, "TOPO: Failed to find domain index\n");
+            goto fn_fail;
+        }
 
         /* Info printing only. Encode bound PU indexes into a string. */
         int puprev = -1, puidx = -1, strpos = 0;
@@ -140,7 +149,11 @@ static inline int topo_get_cpubind(CSP_topo_bind_info_t * bind_info,
     if (!myset)
         hwloc_bitmap_free(myset);
     return hwloc_err;
+  fn_off:
+    hwloc_err = CSP_TOPO_OFF_ERRNO;
+    goto fn_exit;
   fn_fail:
+    hwloc_err = CSP_TOPO_FAIL_ERRNO;
     goto fn_exit;
 }
 
@@ -158,7 +171,7 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
                                      CSP_topo_map_t * topo_map)
 {
     hwloc_obj_type_t domain_obj_type;
-    int hwloc_err = 0;
+    int hwloc_err = 0, hwloc_err_max = 0;
     int mpi_errno = MPI_SUCCESS;
     int i, myrank, size, wrank;
 
@@ -186,11 +199,17 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
     topo_map->domain_sizes = (int *) CSP_calloc(topo_map->ndomains, sizeof(int));
     topo_map->bind_infos = (CSP_topo_bind_info_t *) CSP_calloc(size, sizeof(CSP_topo_bind_info_t));
     topo_map->domain_obj_type = domain_obj_type;
+    topo_map->bind_ndomains = 0;
 
     /* get my bind info */
     hwloc_err = topo_get_cpubind(&topo_map->bind_infos[myrank], domain_obj_type);
     if (hwloc_err < 0)
         goto fn_fail;
+
+    /* if anyone fails to get binding info, then disable reordering. */
+    CSP_CALLMPI(JUMP, PMPI_Allreduce(&hwloc_err, &hwloc_err_max, 1, MPI_INT, MPI_MAX, comm));
+    if (hwloc_err_max > CSP_TOPO_SUCCESS)
+        goto fn_exit;
 
     /* exchange */
     topo_map->bind_infos[myrank].wrank = wrank;
@@ -203,7 +222,6 @@ static inline int topo_load_comm_map(CSP_topo_domain_type_t domain_type, MPI_Com
     }
 
     /* Get number of bound domains */
-    topo_map->bind_ndomains = 0;
     for (i = 0; i < topo_map->ndomains; i++) {
         if (topo_map->domain_sizes[i] > 0)
             topo_map->bind_ndomains++;
@@ -248,10 +266,18 @@ static inline int topo_check_remap(CSP_topo_map_t topo_map, int *local_remap_fla
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.local_comm, &local_rank));
     CSP_CALLMPI(JUMP, PMPI_Comm_size(CSP_PROC.local_comm, &local_nproc));
 
+    *local_remap_flag = 1;
+
+    if (topo_map.bind_ndomains == 0) {
+        *local_remap_flag = 0;
+        if (local_rank == 0)
+            CSP_msg_print(CSP_MSG_INFO, "TOPO: rank %d in world, no binding found, no remap\n",
+                          wrank);
+        goto no_local_remap;
+    }
+
     domain_np = local_nproc / topo_map.bind_ndomains;
     domain_num_g = CSP_ENV.num_g / topo_map.bind_ndomains;
-
-    *local_remap_flag = 1;
 
     /* Do remapping only when more than one domain is set and ghosts is sufficient. */
     if (topo_map.bind_ndomains < 2 || domain_num_g < 1) {
@@ -337,11 +363,13 @@ int CSP_topo_remap(void)
 
     mpi_errno = topo_load_comm_map(CSP_ENV.topo.domain, CSP_PROC.local_comm, &topo_map);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
     if (CSP_ENV.verbose & (int) CSP_MSG_INFO) {
         if (wrank == 0)
             CSP_msg_print(CSP_MSG_INFO, "TOPO: before reordering -----\n");
         CSP_CALLMPI(JUMP, PMPI_Barrier(CSP_PROC.wcomm));
-        topo_print_comm_map(topo_map);
+        if (topo_map.bind_ndomains > 0)
+            topo_print_comm_map(topo_map);      /* do not print if no local binding. */
         CSP_CALLMPI(JUMP, PMPI_Barrier(CSP_PROC.wcomm));
     }
 
