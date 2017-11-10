@@ -148,19 +148,22 @@ int main(int argc, char *argv[])
         rbuf[i] = sbuf[i] * -1;
     }
 
-#ifdef USE_NOINFO
     MPI_Info_free(&info);
+#ifdef USE_NOINFO
     /* Default any_src(may with specific tag), disable asynchronous progress */
     info = MPI_INFO_NULL;
-#elif defined(USE_AYNSRC)
+#else
+    MPI_Info_create(&info);
+#   if defined(USE_ANYSRC)
     /* any_src(may with specific tag), disable asynchronous progress */
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc");
-#elif defined(USE_ANYSRC_NOTAG) || defined(USE_ANYSRC_ANYTAG)
+#   elif defined(USE_ANYSRC_NOTAG) || defined(USE_ANYSRC_ANYTAG)
     /* Use communicator duplicating approach */
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "anysrc|anytag_notag");
-#else
+#   else
     /* Use tag encoding approach */
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
+#   endif
 #endif
 
 #ifdef USE_OFFLOAD_MIN_MSGSZ
