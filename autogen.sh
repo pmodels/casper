@@ -139,7 +139,7 @@ echo_n "Applying patch to hwloc... "
 echo "done"
 
 # autogen for submodules
-extdirs="src/hwloc"
+extdirs="src/hwloc src/openpa"
 for extdir in $extdirs ; do
    if [ -d "$extdir" -o -L "$extdir" ] ; then
        echo ""

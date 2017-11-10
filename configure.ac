@@ -128,6 +128,28 @@ AC_C_INLINE
 # Check for enabling strict
 PAC_ARG_STRICT
 
+# This test is complicated by the fact that top_srcdir is not set until
+# the very end of configure.  Instead, we get it ourselves
+if test -z "$top_srcdir" ; then
+    csp_top_srcdir=$srcdir   
+else
+    csp_top_srcdir=$top_srcdir
+fi
+if test -z "$csp_top_srcdir" ; then 
+    # This needs to be an absolute pathname
+    case "$csp_top_srcdir" in
+    /*) ;;
+    *)
+        csp_top_srcdir=`(cd $csp_top_srcdir && pwd)`
+    ;;  
+    esac
+fi
+
+# Get the directory that we're running in...
+if test -z "$csp_top_builddir" ; then
+   csp_top_builddir="`pwd`"
+fi
+
 # Runtime load balancing optimization
 AC_ARG_ENABLE(runtime-load, AC_HELP_STRING([--enable-runtime-load],
                  [Enable Runtime Load Balancing (no by default)]),
@@ -294,19 +316,37 @@ fi
 
 AM_CONDITIONAL([csp_have_topo_opt], [test "$have_hwloc" = "yes"])
 
-# External OPA library (required)
-AC_ARG_WITH(opa, [AC_HELP_STRING([--with-opa[=DIR]],
+# OPA library (required)
+AC_ARG_WITH(opa, [AC_HELP_STRING([--with-opa[=DIR|embedded|no]],
                 [Use the specified OPA installation; Header file opa_primitives.h should be in 
-                dir/include, and libopa should be in dir/lib.])],,with_opa=no)
-if test "$with_opa" = "no" ; then
-    AC_MSG_ERROR([unable to find opa library.])
-else
+                dir/include, and libopa should be in dir/lib.Use embedded openpa by default])]
+                ,,with_opa=embedded)
+case "$with_opa" in
+    embedded)
+    if test -e "${csp_top_srcdir}/src/openpa" ; then
+        opasrcdir="src/openpa"
+        opalib="src/openpa/src/lib${OPALIBNAME}.la"
+        PAC_APPEND_FLAG([-I${csp_top_srcdir}/src/openpa/src],[CPPFLAGS])
+        PAC_APPEND_FLAG([-I${csp_top_builddir}/src/openpa/src],[CPPFLAGS])
+
+        # no need for libtool versioning when embedding OPA
+        opa_subdir_args="--disable-versioning --enable-embedded"
+        PAC_CONFIG_SUBDIR_ARGS([src/openpa],[$opa_subdir_args],[],[AC_MSG_ERROR([OpenPA configure failed])])
+    else
+        AC_MSG_WARN([Attempted to use the embedded OpenPA source tree in "src/openpa", but it is missing.  Configuration or compilation may fail later.])
+    fi
+    ;;
+    no)
+        AC_MSG_ERROR([unable to find opa library.])
+    ;;
+    *)
     CFLAGS="$CFLAGS -I$with_opa/include"
     AC_CHECK_HEADERS(opa_primitives.h)
     # do not check library because all needed functions are inlined. 
     # LDFLAGS="$LDFLAGS -L$with_opa/lib"
     # AC_CHECK_LIB([opa],[OPA_swap_ptr],have_opa=yes,AC_MSG_ERROR([unable to find OPA_swap_ptr.]))
-fi
+    ;;
+esac
 
 # check for attribute support
 PAC_C_GNU_ATTRIBUTE
