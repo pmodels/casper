@@ -119,10 +119,16 @@ static int initialize_env(void)
 
         /* Also check shortcut for most useful verbosity */
         if (CSP_ENV.verbose == (int) CSP_MSG_OFF) {
+            int vnum = 1;
             if (!strncmp(val, "1", strlen("1")) ||
-                !strncmp(val, "y", strlen("y")) || !strncmp(val, "Y", strlen("Y"))) {
-                CSP_ENV.verbose = (int) (CSP_MSG_ERROR | CSP_MSG_CONFIG_GLOBAL);
-            }
+                !strncmp(val, "y", strlen("y")) || !strncmp(val, "Y", strlen("Y")))
+                CSP_ENV.verbose = (int) CSP_MSG_VERBOSE_NUM_1;
+            if (!strncmp(val, "2", strlen("2")))
+                CSP_ENV.verbose = (int) CSP_MSG_VERBOSE_NUM_2;
+            if (!strncmp(val, "3", strlen("3")))
+                CSP_ENV.verbose = (int) CSP_MSG_VERBOSE_NUM_3;
+            if (!strncmp(val, "4", strlen("4")))
+                CSP_ENV.verbose = (int) CSP_MSG_VERBOSE_NUM_4;
         }
     }
 
@@ -283,8 +289,7 @@ static int initialize_env(void)
                       "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
                       "    CSP_VERBOSE      = %s|%s|%s|%s|%s|%s\n"
-                      "    CSP_NG           = %d\n"
-                      "    CSP_ASYNC_CONFIG = %s\n"
+                      "    CSP_NG           = %d\n" "    CSP_ASYNC_CONFIG = %s\n"
 #ifdef CSP_ENABLE_TOPO_OPT
                       "    CSP_TOPO         = %s\n"
 #endif
