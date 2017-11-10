@@ -18,7 +18,7 @@ static int ugcomm_gather_ranks(CSPU_comm_t * ug_newcomm, int *ug_nproc, int *ug_
     int mpi_errno = MPI_SUCCESS;
     MPI_Group lugroup = MPI_GROUP_NULL;
     int urrank = 0, urnproc = 0, lnproc = 0;
-    int max_g_users = 0, gmax_g_users = 0;
+    int max_g_users = 0, gmax_g_users = 1;
     int lurank = 0, lunproc = 0;
     int *tmp_ug_wranks = NULL, *tmp_lurank_buf = NULL;
     int i, j;
@@ -80,8 +80,10 @@ static int ugcomm_gather_ranks(CSPU_comm_t * ug_newcomm, int *ug_nproc, int *ug_
         tmp_ug_wranks_ptr[0] = local_ug_nproc;
         CSP_CALLMPI(JUMP, PMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, tmp_ug_wranks,
                                          lnproc + 1, MPI_INT, ug_newcomm->user_root_comm));
-        CSP_CALLMPI(JUMP, PMPI_Allreduce(&max_g_users, &gmax_g_users, 1, MPI_INT,
-                                         MPI_MAX, ug_newcomm->user_root_comm));
+
+        if (ug_newcomm->type == CSP_COMM_ASYNC_DUP)
+            CSP_CALLMPI(JUMP, PMPI_Allreduce(&max_g_users, &gmax_g_users, 1, MPI_INT,
+                                             MPI_MAX, ug_newcomm->user_root_comm));
 
 #ifdef CSP_DEBUG
         CSP_DBG_PRINT("COMM: urrank %d:\n", urrank);
@@ -95,7 +97,8 @@ static int ugcomm_gather_ranks(CSPU_comm_t * ug_newcomm, int *ug_nproc, int *ug_
     /* Every user root broadcasts to its local users. */
     CSP_CALLMPI(JUMP, PMPI_Bcast(tmp_ug_wranks, (lnproc + 1) * urnproc, MPI_INT, 0,
                                  ug_newcomm->local_user_comm));
-    CSP_CALLMPI(JUMP, PMPI_Bcast(&gmax_g_users, 1, MPI_INT, 0, ug_newcomm->local_user_comm));
+    if (ug_newcomm->type == CSP_COMM_ASYNC_DUP)
+        CSP_CALLMPI(JUMP, PMPI_Bcast(&gmax_g_users, 1, MPI_INT, 0, ug_newcomm->local_user_comm));
 
     /* Copy noncontiguous tmp_ug_wranks to final output. */
     int doff = 0, soff = 0;
