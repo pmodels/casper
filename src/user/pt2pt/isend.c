@@ -61,6 +61,7 @@ static inline int isend_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
 }
 
 #define ORIG_MPI_FNC() do {                                                     \
+    CSPU_PROF_PT2PT_COUNTER_INC(ISEND, OFF);                                    \
     mpi_errno = PMPI_Isend(buf, count, datatype, dest, tag, comm, request);     \
     CSP_DBG_PRINT("isend: [buf=%p, count=%d, datatype=0x%x, dest=%d, tag=%d, comm=0x%x]\n", \
                   buf, count, datatype, dest, tag, comm);                       \
@@ -94,6 +95,8 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
                   buf_found_flag, offsz_flag);
 
     if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC_DUP && buf_found_flag && offsz_flag) {
+        CSPU_PROF_PT2PT_COUNTER_INC(ISEND, ON);
+
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = isend_impl(g_bufaddr, count, datatype, dest, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);

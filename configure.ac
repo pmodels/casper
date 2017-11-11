@@ -189,6 +189,18 @@ if test "$enable_thread_safety" = "yes"; then
    AC_DEFINE(CSP_ENABLE_THREAD_SAFE,1,[Define if enable thread safety])
 fi
 
+# Profile output
+AC_ARG_ENABLE(profile, AC_HELP_STRING([--enable-profile],
+                 [Enable internal profiling routine (no by default).
+                  Enable it may degrade performance.]),
+                 [ enable_profile=$enableval ],
+                 [ enable_profile=no ])
+AC_MSG_CHECKING(Profiling routine support)
+AC_MSG_RESULT($enable_profile)
+if test "$enable_profile" = "yes"; then
+   AC_DEFINE(CSP_ENABLE_PROFILE,1,[Define if enable profiling routine])
+fi
+
 # External IZEM
 AC_ARG_WITH(izem, [AC_HELP_STRING([--with-izem[=DIR]],
                 [Use the selected IZEM; Header file lock/zm_mcs.h should be in 

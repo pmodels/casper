@@ -22,6 +22,7 @@
 #include "csp_datatype.h"
 #include "cspu_datatype.h"
 #include "cspu_shmbuf.h"
+#include "cspu_profile.h"
 
 /* ======================================================================
  * CASPER user constants definition.

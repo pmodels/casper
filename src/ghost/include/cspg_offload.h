@@ -43,7 +43,8 @@ typedef struct CSPG_offload_server {
     /* local issued queue, holding issued but incompleted cells. */
     struct {
         CSP_offload_cell_t *head;
-        int nissued, noutstanding;      /* DEBUG only */
+        int nissued;            /* DEBUG only */
+        int noutstanding;
     } issued_list;
 
     /* Offload packet handlers on ghost.

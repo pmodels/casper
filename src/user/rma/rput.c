@@ -129,8 +129,11 @@ static int rput_impl(const void *origin_addr, int origin_count,
     goto fn_exit;
 }
 
-#define ORIG_MPI_FNC() PMPI_Rput(origin_addr, origin_count, origin_datatype, target_rank,   \
-                         target_disp, target_count, target_datatype, win, request)
+#define ORIG_MPI_FNC() do {                                                                  \
+        CSPU_PROF_RMA_COUNTER_INC(RPUT, OFF);                                                \
+        mpi_errno = PMPI_Rput(origin_addr, origin_count, origin_datatype, target_rank,       \
+                              target_disp, target_count, target_datatype, win, request);     \
+        } while (0)
 
 int MPI_Rput(const void *origin_addr, int origin_count,
              MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
@@ -140,8 +143,10 @@ int MPI_Rput(const void *origin_addr, int origin_count,
     CSPU_win_t *ug_win;
 
     /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA))
-        return ORIG_MPI_FNC();
+    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(RMA)) {
+        ORIG_MPI_FNC();
+        return mpi_errno;
+    }
 
     CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_WIN_ERRHAN_SET_EXTOBJ();
@@ -152,6 +157,8 @@ int MPI_Rput(const void *origin_addr, int origin_count,
         /* casper window */
         CSPU_THREAD_OBJ_CS_LOCAL_DCL();
         CSPU_THREAD_ENTER_OBJ_CS(ug_win);
+        CSPU_PROF_RMA_COUNTER_INC(RPUT, ON);
+
         mpi_errno = rput_impl(origin_addr, origin_count, origin_datatype, target_rank,
                               target_disp, target_count, target_datatype, ug_win, request);
         CSPU_THREAD_EXIT_OBJ_CS(ug_win);
@@ -161,7 +168,8 @@ int MPI_Rput(const void *origin_addr, int origin_count,
     else {
         /* normal window */
         CSPU_ERRHAN_RESET_EXTOBJ();     /* reset before calling original MPI */
-        return ORIG_MPI_FNC();
+        ORIG_MPI_FNC();
+        return mpi_errno;
     }
 
   fn_exit:
