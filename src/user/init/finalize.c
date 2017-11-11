@@ -104,9 +104,6 @@ int CSPU_global_finalize(void)
     mpi_errno = CSPU_mlock_destroy();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_remove_ug_comm_from_cache(CSP_COMM_USER_WORLD);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
-
     mpi_errno = CSPU_destroy_comm_cache();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 

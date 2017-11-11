@@ -33,7 +33,7 @@ static inline int irecv_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
     irecv_pkt->peer_rank = src; /* peer_ugrank is unused. */
     irecv_pkt->g_bufaddr = g_bufaddr;
     irecv_pkt->count = count;
-    irecv_pkt->g_ugcomm_handle = (MPI_Comm) ug_comm->g_ugcomm_bound;
+    irecv_pkt->g_ugcomm_handle = ug_comm->g_ugcomm_bound;
     irecv_pkt->tag = tag;
 
     /* Get datatype handle on the bound ghost process  */
