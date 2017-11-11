@@ -135,6 +135,19 @@ static inline int CSP_int_nbit(int val)
     return bit;
 }
 
+static inline void CSP_strjoin(const char **strs, int nstrs, const char *sep,
+                               int result_len, char *result_str)
+{
+    int i, pos = 0, len = 0;
+    for (i = 0; i < nstrs; i++) {
+        /* no space */
+        if (pos + strlen(strs[i]) >= result_len)
+            break;
+        len = sprintf((result_str) + pos, "%s%s", strs[i], (i < nstrs - 1 ? sep : ""));
+        pos += len;
+    }
+}
+
 /* Wrap UTHASH generic routines before include
  * The callers should always include csp_util.h instead of uthash.h. */
 #ifndef uthash_fatal
