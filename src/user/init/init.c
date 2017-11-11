@@ -209,6 +209,8 @@ int CSPU_global_init(int is_threaded)
     mpi_errno = CSPU_mlock_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
+    CSPU_prof_init();
+
     mpi_errno = comm_errhan_wrap_predefined();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 

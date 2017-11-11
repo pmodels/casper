@@ -247,9 +247,12 @@ int CSPU_offload_destroy(void)
         free(CSPU_offload_ch.bound_g_lranks_local);
     CSPU_offload_ch.bound_g_lranks_local = NULL;
 
-    CSP_msg_print(CSP_MSG_INFO, "OFFLOAD: shm_recvq.nissued=%d, pending_q.nissued=%d\n",
-                  CSPU_offload_ch.shm_recvq.nissued, CSPU_offload_ch.pending_q.nissued);
-
+    mpi_errno = CSPU_prof_ext_counter_print(CSPU_offload_ch.shm_recvq.nissued,
+                                            "Offloading SHMQ direct");
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    mpi_errno = CSPU_prof_ext_counter_print(CSPU_offload_ch.pending_q.nissued,
+                                            "Offloading local pended");
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
   fn_exit:
     return mpi_errno;

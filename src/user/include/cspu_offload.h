@@ -12,6 +12,7 @@
 #include "csp.h"
 #include "csp_util.h"
 #include "csp_offload.h"
+#include "cspu_profile.h"
 
 typedef struct CSPU_offload_req_hash {
     CSP_offload_cell_t *record;
@@ -31,7 +32,8 @@ typedef struct CSP_offload_channel {
     /* Shared recvq, enqueued by local user and dequeued by a ghost. */
     struct {
         CSP_offload_shmqueue_t *q_ptr;
-        int nissued, noutstanding;      /* DEBUG only */
+        int nissued;            /* DEBUG only */
+        int noutstanding;
     } shm_recvq;
 
     /* Local stack holds free shared cells.
@@ -47,7 +49,8 @@ typedef struct CSP_offload_channel {
      * TODO: how to avoid copy when move pending cell to recvq ? */
     struct {
         CSP_offload_cell_t *head;
-        int nissued, noutstanding;      /* DEBUG only */
+        int nissued;            /* DEBUG only */
+        int noutstanding;
     } pending_q;
 
     CSPU_offload_req_hash_t req_hash;
@@ -162,7 +165,7 @@ static inline void CSP_offload_pending_q_enqueue(CSP_offload_cell_t * cell_ptr)
     DL_APPEND2(CSPU_offload_ch.pending_q.head, cell_ptr, CSP_OFFLOAD_ABS_PT_DECL(prev),
                CSP_OFFLOAD_ABS_PT_DECL(next));
 
-    CSPU_offload_ch.pending_q.nissued++;
+    CSPU_PROF_EXT_COUNTER_INC(CSPU_offload_ch.pending_q.nissued);
     CSPU_offload_ch.pending_q.noutstanding++;
 }
 
@@ -244,7 +247,7 @@ static inline void CSPU_offload_issue(CSP_offload_cell_t * cell)
 
         CSP_offload_recvq_enqueue(CSPU_offload_ch.shm_base, CSPU_offload_ch.shm_recvq.q_ptr, cell);
         CSPU_offload_ch.shm_recvq.noutstanding++;
-        CSPU_offload_ch.shm_recvq.nissued++;
+        CSPU_PROF_EXT_COUNTER_INC(CSPU_offload_ch.shm_recvq.nissued);
 
         CSP_DBG_PRINT("OFFLOAD issue: enqueue shm_recvq cell %p, req=0x%x, count %d/%d\n",
                       cell, cell->pkt.req, CSPU_offload_ch.shm_recvq.noutstanding,
@@ -293,7 +296,7 @@ static inline void CSPU_offload_poll_progress(void)
             CSP_offload_recvq_enqueue(CSPU_offload_ch.shm_base,
                                       CSPU_offload_ch.shm_recvq.q_ptr, free_c);
             CSPU_offload_ch.shm_recvq.noutstanding++;
-            CSPU_offload_ch.shm_recvq.nissued++;
+            CSPU_PROF_EXT_COUNTER_INC(CSPU_offload_ch.shm_recvq.nissued);
 
             CSP_DBG_PRINT("OFFLOAD progress: pending_c %p -> free_c %p, req=0x%x, "
                           "pending count %d/%d, shm_recvq count %d/%d\n",

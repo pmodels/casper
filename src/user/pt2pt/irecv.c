@@ -58,6 +58,7 @@ static inline int irecv_impl(MPI_Aint g_bufaddr, int count, MPI_Datatype datatyp
 }
 
 #define ORIG_MPI_FNC() do {                                                     \
+    CSPU_PROF_PT2PT_COUNTER_INC(IRECV, OFF);                                    \
     mpi_errno = PMPI_Irecv(buf, count, datatype, src, tag, comm, request);      \
     CSP_DBG_PRINT("irecv: [buf=%p, count=%d, datatype=0x%x, src=%d, tag=%d, comm=0x%x]\n",  \
                   buf, count, datatype, src, tag, comm);                        \
@@ -91,6 +92,8 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int src, int tag,
                   g_bufaddr, buf_found_flag, offsz_flag);
 
     if (ug_comm && ug_comm->type >= CSP_COMM_ASYNC_DUP && buf_found_flag && offsz_flag) {
+        CSPU_PROF_PT2PT_COUNTER_INC(IRECV, ON);
+
         /* Asynchronous enabled comm and registered shared buffer. */
         mpi_errno = irecv_impl(g_bufaddr, count, datatype, src, tag, comm, request, ug_comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);

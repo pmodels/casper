@@ -312,6 +312,9 @@ static int initialize_env(void)
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
                       "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
+#ifdef CSP_ENABLE_PROFILE
+                      "    PROFILING_INFO   (enabled) \n"
+#endif
                       "    CSP_VERBOSE      = %s\n"
                       "    CSP_NG           = %d\n" "    CSP_ASYNC_CONFIG = %s\n"
 #ifdef CSP_ENABLE_TOPO_OPT

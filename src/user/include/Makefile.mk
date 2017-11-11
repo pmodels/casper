@@ -10,4 +10,5 @@ libcasper_la_SOURCES += src/user/include/cspu.h \
 			src/user/include/cspu_comm.h        \
 			src/user/include/cspu_offload.h     \
 			src/user/include/cspu_datatype.h    \
-			src/user/include/cspu_shmbuf.h
+			src/user/include/cspu_shmbuf.h      \
+			src/user/include/cspu_profile.h

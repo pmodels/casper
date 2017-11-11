@@ -153,6 +153,11 @@ int MPI_Finalize(void)
     mpi_errno = issue_ghost_cmd();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
+    mpi_errno = CSPU_prof_async_counter_print();
+    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+    CSPU_prof_destroy();
+
     mpi_errno = CSPU_global_finalize();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
