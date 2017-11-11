@@ -23,26 +23,6 @@ typedef struct CSPG_datatype_db {
 
 CSPG_datatype_db_t datatype_db;
 
-static inline void datatype_regist_ddts_append(MPI_Datatype handle)
-{
-    datatype_ddt_elem_t *elem = NULL;
-    elem = CSP_calloc(1, sizeof(datatype_ddt_elem_t));
-    CSP_ASSERT(elem != NULL);
-    elem->handle = handle;
-
-    if (datatype_db.regist_ddt_list.head == NULL) {
-        CSP_DBG_ASSERT(datatype_db.regist_ddt_list.tail == NULL &&
-                       datatype_db.regist_ddt_list.count == 0);
-        datatype_db.regist_ddt_list.head = elem;
-        datatype_db.regist_ddt_list.tail = elem;
-    }
-    else {
-        datatype_db.regist_ddt_list.tail->next = elem;
-        datatype_db.regist_ddt_list.tail = elem;
-    }
-    datatype_db.regist_ddt_list.count++;
-}
-
 static void datatype_regist_ddts_init(void)
 {
     datatype_db.regist_ddt_list.head = NULL;
@@ -81,16 +61,6 @@ static int datatype_regist_ddts_destroy(void)
     return mpi_errno;
   fn_fail:
     goto fn_exit;
-}
-
-int CSPG_datatype_regist_cwp_handler(CSP_cwp_pkt_t * pkt)
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    /* FIXME: implement ddt registration. */
-    CSP_ASSERT(0);
-
-    return mpi_errno;
 }
 
 int CSPG_datatype_destory(void)

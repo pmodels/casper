@@ -31,15 +31,6 @@ int CSPU_datatype_destroy(void)
         CSPU_datatype_db.g_predefined_hashs = NULL;
     }
 
-    if (CSPU_datatype_db.g_ddt_hashs) {
-        for (i = 0; i < CSP_ENV.num_g; i++) {
-            /* Derived datatype should be removed at type free. */
-            CSP_ASSERT(CSPU_datatype_g_hash_count(CSPU_datatype_db.g_ddt_hashs[i]) == 0);
-        }
-        free(CSPU_datatype_db.g_ddt_hashs);
-        CSPU_datatype_db.g_ddt_hashs = NULL;
-    }
-
     return mpi_errno;
 }
 
@@ -54,7 +45,6 @@ int CSPU_datatype_init(void)
     CSP_datatype_fill_predefined_table(local_predefined_table);
 
     CSPU_datatype_db.g_predefined_hashs = CSP_calloc(CSP_ENV.num_g, sizeof(CSPU_datatype_g_hash_t));
-    CSPU_datatype_db.g_ddt_hashs = CSP_calloc(CSP_ENV.num_g, sizeof(CSPU_datatype_g_hash_t));
 
     g_predefined_tables = CSP_calloc(CSP_ENV.num_g, CSP_DATATYPE_MAX * sizeof(MPI_Datatype));
     memset(g_predefined_tables, 0, CSP_ENV.num_g * CSP_DATATYPE_MAX * sizeof(MPI_Datatype));
@@ -81,8 +71,8 @@ int CSPU_datatype_init(void)
         }
     }
 
-    CSP_DBG_PRINT("DATATYPE: initialized g_predefined_hashs=%p, g_ddt_hashs=%p\n",
-                  CSPU_datatype_db.g_predefined_hashs, CSPU_datatype_db.g_ddt_hashs);
+    CSP_DBG_PRINT("DATATYPE: initialized g_predefined_hashs=%p\n",
+                  CSPU_datatype_db.g_predefined_hashs);
 
   fn_exit:
     free(g_predefined_tables);

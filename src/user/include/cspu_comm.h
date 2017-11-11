@@ -16,6 +16,7 @@ typedef struct CSPU_comm_info_args {
     int wildcard_used;          /* combination of CSP_comm_info_wildcard_t. */
     MPI_Aint offload_min_msgsz; /* the smallest message size enables offloading. */
 
+    int datatype_used;          /* combination of CSP_comm_info_dtype_t. */
     /* special communicator for shared buffer allocation */
     unsigned short shmbuf_regist;
 } CSPU_comm_info_args_t;

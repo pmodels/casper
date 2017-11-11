@@ -139,8 +139,6 @@ extern int CSPG_win_allocate_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_win_free_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_finalize_cwp_handler(CSP_cwp_pkt_t * pkt);
 
-extern int CSPG_datatype_regist_cwp_handler(CSP_cwp_pkt_t * pkt);
-
 extern int CSPG_ugcomm_create_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
 extern int CSPG_ugcomm_create_cwp_handler(CSP_cwp_pkt_t * pkt);
 extern int CSPG_ugcomm_free_cwp_root_handler(CSP_cwp_pkt_t * pkt, int user_local_rank);
@@ -164,6 +162,5 @@ extern int CSPG_mlock_release(void);
  * ====================================================================== */
 extern int CSPG_datatype_init(void);
 extern int CSPG_datatype_destory(void);
-/* See CSPG_datatype_regist_cwp_handler above */
 
 #endif /* CSPG_H_INCLUDED */
