@@ -58,7 +58,6 @@ static int run_test(void)
     int peer;
     MPI_Request reqs[NUM_OPS * 2];
     MPI_Status stats[NUM_OPS * 2];
-    int ncmpl = 0, cmpl[NUM_OPS];
 
     if (rank % 2)
         peer = (rank - 1 + nprocs) % nprocs;
@@ -66,7 +65,6 @@ static int run_test(void)
         peer = (rank + 1) % nprocs;
 
     for (x = 0; x < ITER; x++) {
-        ncmpl = 0;
 
         for (i = 0; i < NUM_OPS; i++) {
             MPI_Isend(&sbuf[i * COUNT], COUNT, MPI_DOUBLE, peer, i, comm_world, &reqs[i * 2]);
@@ -98,7 +96,6 @@ static int run_test(void)
 
 int main(int argc, char *argv[])
 {
-    int size = NUM_OPS;
     int i, errs = 0;
     MPI_Info info = MPI_INFO_NULL;
     MPI_Comm shm_comm = MPI_COMM_NULL;
