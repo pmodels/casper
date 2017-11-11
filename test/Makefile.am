@@ -55,6 +55,8 @@ noinst_PROGRAMS = \
 	isend_wait_anysrc_notag   \
 	isend_wait_anysrc_notag_l \
 	isend_wait_offload_minsz  \
+	isend_wait_nodtypeinfo    \
+	isend_wait_deriveddtype   \
 	isend_waitall		\
 	isend_waitall_l		\
 	isendirecv_waitall	\
@@ -101,6 +103,12 @@ isend_wait_anysrc_notag_l_CPPFLAGS   = -DTEST_LMSG -DUSE_ANYSRC_NOTAG $(AM_CPPFL
 
 isend_wait_offload_minsz_SOURCES    = isend_wait.c
 isend_wait_offload_minsz_CPPFLAGS   = -DUSE_OFFLOAD_MIN_MSGSZ $(AM_CPPFLAGS)
+
+isend_wait_nodtypeinfo_SOURCES   = isend_wait.c
+isend_wait_nodtypeinfo_CPPFLAGS  = -DUSE_NODTYPE $(AM_CPPFLAGS)
+
+isend_wait_deriveddtype_SOURCES   = isend_wait.c
+isend_wait_deriveddtype_CPPFLAGS  = -DUSE_DERIVED_DTYPE $(AM_CPPFLAGS)
 
 isend_waitall_l_SOURCES     = isend_waitall.c
 isend_waitall_l_CPPFLAGS    = -DTEST_LMSG $(AM_CPPFLAGS)

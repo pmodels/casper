@@ -168,6 +168,15 @@ int main(int argc, char *argv[])
         MPI_Info_set(info, (char *) "offload_min_msgsz", (char *) "1");
 #endif
 
+#ifdef USE_DERIVED_DTYPE
+    if (info != MPI_INFO_NULL)
+        MPI_Info_set(info, (char *) "datatype_used", (char *) "derived");
+#elif defined(USE_NODTYPE)
+    /* Default datatype_used = predefined | derived. */
+#else
+    if (info != MPI_INFO_NULL)
+        MPI_Info_set(info, (char *) "datatype_used", (char *) "predefined");
+#endif
     MPI_Comm_dup_with_info(MPI_COMM_WORLD, info, &comm_world);
 
     MPI_Barrier(comm_world);
