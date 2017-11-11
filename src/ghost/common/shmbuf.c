@@ -107,7 +107,7 @@ static int shmbuf_free_impl(CSP_cwp_shmbuf_free_pkt_t * shmbuf_free_pkt)
 {
     int mpi_errno = MPI_SUCCESS;
     MPI_Aint shmbufwin_handle = 0;
-    MPI_Win shmbuf_win = MPI_COMM_NULL;
+    MPI_Win shmbuf_win = MPI_WIN_NULL;
 
     /* Receive the handle of my ug_comm from user root */
     CSP_CALLMPI(NOSTMT, PMPI_Recv(&shmbufwin_handle, 1, MPI_AINT, shmbuf_free_pkt->user_local_root,
