@@ -39,7 +39,7 @@ make V=1
 make V=1 install
 
 # Set test configuration
-export CSP_VERBOSE="err|conf_g|info"
+export CSP_VERBOSE=4
 export MPIEXEC_TIMEOUT=600 # in seconds
 
 TEST_MPIEXEC=
@@ -56,4 +56,6 @@ case "$MPI_IMPL" in
 esac
 
 # Run unit tests
-make V=1 check MPIEXEC="$TEST_MPIEXEC" MAX_NP=5
+export CSP_ASYNC_MODE="rma|pt2pt"
+echo "Run unit tests with CSP_ASYNC_MODE=$CSP_ASYNC_MODE"
+make check MPIEXEC="$TEST_MPIEXEC" MAX_NP=5
