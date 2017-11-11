@@ -390,18 +390,23 @@ static inline void ugcomm_info_init(CSPU_comm_t * ug_comm, CSPU_comm_t * ug_newc
     /* Get info from parent reference info. */
     if (ug_comm) {
         ug_newcomm->info_args.wildcard_used = ug_comm->ref_info_args.wildcard_used;
+        ug_newcomm->info_args.datatype_used = ug_comm->ref_info_args.datatype_used;
         ug_newcomm->info_args.shmbuf_regist = ug_comm->info_args.shmbuf_regist;
         ug_newcomm->info_args.offload_min_msgsz = ug_comm->info_args.offload_min_msgsz;
     }
     else {
         /* Reset info if no parent (COMM_WORLD) */
         ug_newcomm->info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
+        ug_newcomm->info_args.datatype_used =
+            (CSP_COMM_INFO_DT_PREDEFINED | CSP_COMM_INFO_DT_DERIVED);
         ug_newcomm->info_args.shmbuf_regist = 0;
         ug_newcomm->info_args.offload_min_msgsz = CSP_ENV.offload_min_msgsz;
     }
 
     /* Reset my reference info for child. */
     ug_newcomm->ref_info_args.wildcard_used = CSP_COMM_INFO_WD_ANYSRC;
+    ug_newcomm->ref_info_args.datatype_used =
+        (CSP_COMM_INFO_DT_PREDEFINED | CSP_COMM_INFO_DT_DERIVED);
     ug_newcomm->ref_info_args.shmbuf_regist = 0;
     ug_newcomm->ref_info_args.offload_min_msgsz = CSP_ENV.offload_min_msgsz;
 }
@@ -414,7 +419,7 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
         const char *strs[3];
-        char wc_joined_str[64];
+        char wc_joined_str[64], dt_joined_str[64];
         int nstrs = 0;
 
         if (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE)
@@ -425,10 +430,19 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
             strs[nstrs++] = "anysrc_notag";
         CSP_strjoin(strs, nstrs, "|", 64, &wc_joined_str[0]);
 
+        nstrs = 0;
+        if (ug_comm->info_args.datatype_used & CSP_COMM_INFO_DT_PREDEFINED)
+            strs[nstrs++] = "predefined";
+        if (ug_comm->info_args.datatype_used & CSP_COMM_INFO_DT_DERIVED)
+            strs[nstrs++] = "derived";
+        CSP_strjoin(strs, nstrs, "|", 64, &dt_joined_str[0]);
+
         CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%lx (%s) "
-                      "offload_min_msgsz = %ld, wildcard_used = %s, count of communicators = %d\n",
+                      "offload_min_msgsz = %ld, wildcard_used = %s, datatype_used = %s, "
+                      "count of communicators = %d\n",
                       (unsigned long) ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
-                      ug_comm->info_args.offload_min_msgsz, wc_joined_str, ug_comm->num_ug_comms);
+                      ug_comm->info_args.offload_min_msgsz, wc_joined_str, dt_joined_str,
+                      ug_comm->num_ug_comms);
     }
     return mpi_errno;
 }
@@ -465,6 +479,29 @@ int CSPU_ugcomm_set_info(CSPU_comm_info_args_t * info_args, MPI_Info info)
             }
 
             info_args->wildcard_used = wildcard_used;
+        }
+
+        /* Check if user specifies used datatypes */
+        memset(info_value, 0, sizeof(info_value));
+        CSP_CALLMPI(JUMP, PMPI_Info_get(info, "datatype_used", MPI_MAX_INFO_VAL,
+                                        info_value, &info_flag));
+        if (info_flag == 1) {
+            int datatype_used = 0;
+            char *type = NULL;
+
+            type = strtok(info_value, ",|;");
+            while (type != NULL) {
+                if (!strncmp(type, "predefined", strlen("predefined"))) {
+                    datatype_used = (int) CSP_COMM_INFO_DT_PREDEFINED;
+                    break;      /* do not check other types */
+                }
+                else if (!strncmp(type, "derived", strlen("derived"))) {
+                    datatype_used |= (int) CSP_COMM_INFO_DT_DERIVED;
+                }
+                type = strtok(NULL, "|");
+            }
+
+            info_args->datatype_used = datatype_used;
         }
 
         /* Check if user specifies message offloading threshold types */
@@ -544,16 +581,19 @@ int CSPU_ugcomm_create(MPI_Comm comm, MPI_Info info, MPI_Comm user_newcomm)
         ug_newcomm->type = CSP_COMM_SHMBUF;
     }
 
-    /* Enable async progress if ignore status or no ANY_SRC + specific TAG. */
-    if (!(ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC) ||
-        (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYTAG_NOTAG) ||
-        (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE)) {
-        ug_newcomm->type = CSP_COMM_ASYNC_DUP;
-    }
-    /* Use tag translation instead of dupcomm. */
-    if ((ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE) &&
-        CSPU_offload_ch.tag_trans.trans_tag_nbits > 0 /* ensure sufficient bits exist. */) {
-        ug_newcomm->type = CSP_COMM_ASYNC_TAG;
+    /* Only enable async when user only uses predefined datatype. */
+    if (ug_newcomm->info_args.datatype_used == CSP_COMM_INFO_DT_PREDEFINED) {
+        /* Enable async progress if ignore status or no ANY_SRC + specific TAG. */
+        if (!(ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC) ||
+            (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYTAG_NOTAG) ||
+            (ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE)) {
+            ug_newcomm->type = CSP_COMM_ASYNC_DUP;
+        }
+        /* Use tag translation instead of dupcomm. */
+        if ((ug_newcomm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE) &&
+            CSPU_offload_ch.tag_trans.trans_tag_nbits > 0 /* ensure sufficient bits exist. */) {
+            ug_newcomm->type = CSP_COMM_ASYNC_TAG;
+        }
     }
 
     /* Return empty ug_comm if it is only reference use. */

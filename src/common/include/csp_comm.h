@@ -19,6 +19,11 @@ typedef enum {
 } CSP_comm_info_wildcard_t;
 
 typedef enum {
+    CSP_COMM_INFO_DT_PREDEFINED = 1,    /* Using predefined datatype */
+    CSP_COMM_INFO_DT_DERIVED = 2        /* Using derived datatype */
+} CSP_comm_info_dtype_t;
+
+typedef enum {
     CSP_COMM_REFER = 0,         /* Reference comm, only creates reference info on user process.
                                  * E.g., MPI_COMM_WORLD. */
     CSP_COMM_SHMBUF = 1,        /* Shared buffer comm, creates only one ug_comm on both user and

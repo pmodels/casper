@@ -33,9 +33,6 @@ typedef struct CSPU_datatype_db {
 
     /* predefined datatype mapping for each ghost process */
     CSPU_datatype_g_hash_t *g_predefined_hashs;
-
-    /* derived datatype mapping for each ghost process */
-    CSPU_datatype_g_hash_t *g_ddt_hashs;
 } CSPU_datatype_db_t;
 
 extern CSPU_datatype_db_t CSPU_datatype_db;
@@ -113,15 +110,15 @@ static inline int CSPU_datatype_get_g_handle(MPI_Datatype myhandle, int ghost_lr
         CSPU_datatype_g_hash_get(CSPU_datatype_db.g_predefined_hashs[ghost_lrank],
                                  myhandle, &g_handle, &found);
     }
-    else {
-        CSPU_datatype_g_hash_get(CSPU_datatype_db.g_ddt_hashs[ghost_lrank], myhandle,
-                                 &g_handle, &found);
-    }
 
     /* Must be found in one of the hashes.
      * Not sure if DATATYPE_NULL is a valid datatype on other processes,
      * so we use a found flag instead.*/
-    CSP_ASSERT(found);
+    if (!found) {
+        CSP_msg_print(CSP_MSG_WARN, "Found unknown or not supported datatype 0x%lx "
+                      "in pt2pt message offloading\n", (unsigned long) myhandle);
+        CSP_ASSERT(found);
+    }
 
     (*g_handle_ptr) = g_handle;
 
