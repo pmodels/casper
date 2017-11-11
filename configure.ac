@@ -374,6 +374,41 @@ if test "$pac_cv_have___typeof" = "yes" ; then
     AC_DEFINE([HAVE___TYPEOF],[1],[defined if the C compiler supports __typeof(variable)])
 fi
 
+# Check optional datatype support
+AC_DEFUN([UD_CHECK_MPI_DTYPE], [
+  AC_MSG_CHECKING(if $1 defined)
+  AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE([
+  #include "mpi.h"
+  #include <stdio.h>
+  int main (int argc, char **argv) {
+  MPI_Datatype dtype;
+  MPI_Type_contiguous(1, $1, &dtype);
+  }])],
+  AC_MSG_RESULT(yes)
+  have_$1=yes,
+  AC_MSG_RESULT(no)
+  have_$1=no)
+  if test "$have_$1" = "yes" ; then
+    AC_DEFINE([HAVE_$1],[1],[defined if the MPI library defines $1])
+  fi
+])
+
+UD_CHECK_MPI_DTYPE(MPI_DOUBLE_COMPLEX)
+UD_CHECK_MPI_DTYPE(MPI_INTEGER1)
+UD_CHECK_MPI_DTYPE(MPI_INTEGER2)
+UD_CHECK_MPI_DTYPE(MPI_INTEGER4)
+UD_CHECK_MPI_DTYPE(MPI_INTEGER8)
+UD_CHECK_MPI_DTYPE(MPI_INTEGER16)
+UD_CHECK_MPI_DTYPE(MPI_REAL2)
+UD_CHECK_MPI_DTYPE(MPI_REAL4)
+UD_CHECK_MPI_DTYPE(MPI_REAL8)
+UD_CHECK_MPI_DTYPE(MPI_REAL16)
+UD_CHECK_MPI_DTYPE(MPI_COMPLEX4)
+UD_CHECK_MPI_DTYPE(MPI_COMPLEX8)
+UD_CHECK_MPI_DTYPE(MPI_COMPLEX16)
+UD_CHECK_MPI_DTYPE(MPI_COMPLEX32)
+
 AC_CONFIG_FILES([include/casper.h])
 AC_CONFIG_SUBDIRS([test])
 AC_CONFIG_FILES([Makefile])
