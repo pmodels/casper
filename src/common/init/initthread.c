@@ -119,7 +119,6 @@ static int initialize_env(void)
 
         /* Also check shortcut for most useful verbosity */
         if (CSP_ENV.verbose == (int) CSP_MSG_OFF) {
-            int vnum = 1;
             if (!strncmp(val, "1", strlen("1")) ||
                 !strncmp(val, "y", strlen("y")) || !strncmp(val, "Y", strlen("Y")))
                 CSP_ENV.verbose = (int) CSP_MSG_VERBOSE_NUM_1;
