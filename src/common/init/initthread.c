@@ -264,7 +264,11 @@ static int initialize_env(void)
     CSP_ENV.load_lock = CSP_LOAD_LOCK_NATURE;
 #endif
 
-    if (CSP_PROC.wrank == 0) {
+    if (CSP_PROC.wrank == 0 && (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL)) {
+        const char *strs[6];
+        int nstrs = 0;
+        char verb_joined_str[128], async_joined_str[64];
+
 #ifdef CSP_ENABLE_TOPO_OPT
         const char *topo_str = "";
         switch (CSP_ENV.topo.domain) {
@@ -281,6 +285,27 @@ static int initialize_env(void)
         }
 #endif
 
+        if (CSP_ENV.verbose & CSP_MSG_ERROR)
+            strs[nstrs++] = "err";
+        if (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL)
+            strs[nstrs++] = "conf_g";
+        if (CSP_ENV.verbose & CSP_MSG_WARN)
+            strs[nstrs++] = "warn";
+        if (CSP_ENV.verbose & CSP_MSG_CONFIG_WIN)
+            strs[nstrs++] = "conf_win";
+        if (CSP_ENV.verbose & CSP_MSG_CONFIG_COMM)
+            strs[nstrs++] = "conf_comm";
+        if (CSP_ENV.verbose & CSP_MSG_INFO)
+            strs[nstrs++] = "info";
+        CSP_strjoin(strs, nstrs, "|", 128, &verb_joined_str[0]);
+
+        nstrs = 0;
+        if (CSP_ENV.async_modes & CSP_ASYNC_MODE_RMA)
+            strs[nstrs++] = "rma";
+        if (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT)
+            strs[nstrs++] = "pt2pt";
+        CSP_strjoin(strs, nstrs, "|", 64, &async_joined_str[0]);
+
         CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "CASPER Configuration:\n"
 #ifdef CSP_ENABLE_RMA_ERR_CHECK
                       "    RMA_ERR_CHECK    (enabled) \n"
@@ -288,24 +313,18 @@ static int initialize_env(void)
 #if defined(CSP_ENABLE_RUNTIME_LOAD_OPT)
                       "    RUMTIME_LOAD_OPT (enabled) \n"
 #endif
-                      "    CSP_VERBOSE      = %s|%s|%s|%s|%s|%s\n"
+                      "    CSP_VERBOSE      = %s\n"
                       "    CSP_NG           = %d\n" "    CSP_ASYNC_CONFIG = %s\n"
 #ifdef CSP_ENABLE_TOPO_OPT
                       "    CSP_TOPO         = %s\n"
 #endif
-                      "    CSP_ASYNC_MODE   = %s|%s\n",
-                      (CSP_ENV.verbose & CSP_MSG_ERROR) ? "err" : "",
-                      (CSP_ENV.verbose & CSP_MSG_WARN) ? "warn" : "",
-                      (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL) ? "conf_g" : "",
-                      (CSP_ENV.verbose & CSP_MSG_CONFIG_WIN) ? "conf_win" : "",
-                      (CSP_ENV.verbose & CSP_MSG_CONFIG_COMM) ? "conf_comm" : "",
-                      (CSP_ENV.verbose & CSP_MSG_INFO) ? "info" : "",
-                      CSP_ENV.num_g, (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off",
+                      "    CSP_ASYNC_MODE   = %s\n",
+                      verb_joined_str, CSP_ENV.num_g,
+                      (CSP_ENV.async_config == CSP_ASYNC_CONFIG_ON) ? "on" : "off",
 #ifdef CSP_ENABLE_TOPO_OPT
                       topo_str,
 #endif
-                      (CSP_ENV.async_modes & CSP_ASYNC_MODE_RMA) ? "rma" : "",
-                      (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) ? "pt2pt" : "");
+                      async_joined_str);
 
         if (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT) {
             CSP_msg_print(CSP_MSG_CONFIG_GLOBAL, "PT2PT Offloading Options:\n"

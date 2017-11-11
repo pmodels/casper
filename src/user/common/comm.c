@@ -413,14 +413,22 @@ static inline int ugcomm_print_info(CSPU_comm_t * ug_comm)
 
     CSP_CALLMPI(RETURN, PMPI_Comm_rank(ug_comm->comm, &user_rank));
     if (user_rank == 0) {
+        const char *strs[3];
+        char wc_joined_str[64];
+        int nstrs = 0;
+
+        if (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE)
+            strs[nstrs++] = "none";
+        if (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC)
+            strs[nstrs++] = "anysrc";
+        if (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYTAG_NOTAG)
+            strs[nstrs++] = "anysrc_notag";
+        CSP_strjoin(strs, nstrs, "|", 64, &wc_joined_str[0]);
+
         CSP_msg_print(CSP_MSG_CONFIG_COMM, "CASPER comm: 0x%lx (%s) "
-                      "offload_min_msgsz = %ld, wildcard_used = %s|%s|%s, count of communicators = %d\n",
+                      "offload_min_msgsz = %ld, wildcard_used = %s, count of communicators = %d\n",
                       (unsigned long) ug_comm->comm, CSP_ug_comm_type_name[ug_comm->type],
-                      ug_comm->info_args.offload_min_msgsz,
-                      (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_NONE ? "none" : ""),
-                      (ug_comm->info_args.wildcard_used & CSP_COMM_INFO_WD_ANYSRC ? "anysrc" : ""),
-                      (ug_comm->info_args.wildcard_used &
-                       CSP_COMM_INFO_WD_ANYTAG_NOTAG ? "anytag_notag" : ""), ug_comm->num_ug_comms);
+                      ug_comm->info_args.offload_min_msgsz, wc_joined_str, ug_comm->num_ug_comms);
     }
     return mpi_errno;
 }
