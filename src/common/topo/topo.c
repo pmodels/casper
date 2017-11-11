@@ -129,7 +129,7 @@ static inline int topo_get_cpubind(CSP_topo_bind_info_t * bind_info,
 
         /* Info printing only. Encode bound PU indexes into a string. */
         int puprev = -1, puidx = -1, strpos = 0;
-        memset(bind_info->mask, sizeof(bind_info->mask), 0);
+        memset(bind_info->mask, 0, sizeof(bind_info->mask));
         bind_info->npus = hwloc_bitmap_weight(myset);
         do {
             puidx = hwloc_bitmap_next(myset, puprev);

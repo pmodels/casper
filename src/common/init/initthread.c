@@ -284,6 +284,7 @@ static int initialize_env(void)
         }
 #endif
 
+        memset(verb_joined_str, 0, sizeof(verb_joined_str));
         if (CSP_ENV.verbose & CSP_MSG_ERROR)
             strs[nstrs++] = "err";
         if (CSP_ENV.verbose & CSP_MSG_CONFIG_GLOBAL)
@@ -299,6 +300,7 @@ static int initialize_env(void)
         CSP_strjoin(strs, nstrs, "|", 128, &verb_joined_str[0]);
 
         nstrs = 0;
+        memset(async_joined_str, 0, sizeof(async_joined_str));
         if (CSP_ENV.async_modes & CSP_ASYNC_MODE_RMA)
             strs[nstrs++] = "rma";
         if (CSP_ENV.async_modes & CSP_ASYNC_MODE_PT2PT)
@@ -386,7 +388,6 @@ static int initialize_proc(void)
     /* Reset user/ghost global object */
     CSP_reset_typed_proc();
 
-    CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.wcomm, &CSP_PROC.wgroup));
     CSP_CALLMPI(JUMP, PMPI_Comm_group(CSP_PROC.local_comm, &CSP_PROC.lgroup));
 
     /* Create a user comm_world including all the users,
