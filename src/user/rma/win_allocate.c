@@ -934,16 +934,18 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
     mpi_errno = CSPU_cache_ug_win(ug_win->win, ug_win);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
+    ugwin_print_info(ug_win);
+
   fn_exit:
     if (tmp_gather_buf)
         free(tmp_gather_buf);
-
-    ugwin_print_info(ug_win);
 
     CSPU_ERRHAN_RESET_EXTOBJ(); /* reset before return */
     return mpi_errno;
 
   fn_noasync:
+    ugwin_print_info(ug_win);
+
     CSPU_win_release(ug_win);
     goto fn_exit;
 
