@@ -118,7 +118,6 @@ static int run_test(void)
 
 int main(int argc, char *argv[])
 {
-    int size = NUM_OPS;
     int i, errs = 0;
     MPI_Info info = MPI_INFO_NULL;
     MPI_Comm shm_comm = MPI_COMM_NULL;
