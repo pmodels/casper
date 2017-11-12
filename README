@@ -4,8 +4,9 @@
 Introduction
 ====================================
 
-This project provides a portable and flexible process-based asynchronous progress
-model for MPI remote memory access (RMA) communication.
+This project provides a portable and flexible process-based asynchronous 
+progress model for MPI remote memory access (RMA) communication and 
+two-sided (point-to-point) communication.
 
 
 ====================================
@@ -145,9 +146,20 @@ Known Issues
 
     b. Dynamic Process Routine
 
+    c. No support for derived datatype in point-to-point message offloading
+       routines. User must explicitly set "datatype_used=predefined"
+       info at communicator creation time to enable offloading.
+
+    d. No support for special wildcard message (Use MPI_ANY_SOURCE with
+       distinct tag matching) in point-to-point message offloading routines.
+       User must explicitly set "wildcard_used=none" or
+       "wildcard_used=any_src|any_tag_same_tag" to enable offloading.
+
 2. Casper currently disables user info "alloc_shared_noncontig=true" in
    MPI_Win_allocate, to avoid complex management of shared segments
    displacement on ghost processes.
 
 3. Casper does not support MPI Error Handler Callback in C++ and Fortran
    Binding.
+
+4. The Point-to-Point asynchronous progress routines are not thread-safe.
