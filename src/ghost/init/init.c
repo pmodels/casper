@@ -69,11 +69,13 @@ int CSPG_global_init(void)
     /* Initialization */
     setup_proc();
 
-    mpi_errno = CSPG_offload_init();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPG_offload_init();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPG_datatype_init();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPG_datatype_init();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
     register_cwp_handlers();
     CSPG_mlock_init();

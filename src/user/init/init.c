@@ -188,20 +188,24 @@ int CSPU_global_init(int is_threaded)
     mpi_errno = setup_proc(is_threaded);
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_offload_init();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_offload_init();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_datatype_init();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPU_datatype_init();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_init_win_cache();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPU_init_shmbuf_win_cache();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_init_shmbuf_win_cache();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPU_init_comm_cache();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
-    mpi_errno = CSPU_init_comm_cache();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(RMA)) {
+        mpi_errno = CSPU_init_win_cache();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
     mpi_errno = CSPU_errhan_init();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
@@ -214,9 +218,11 @@ int CSPU_global_init(int is_threaded)
     mpi_errno = comm_errhan_wrap_predefined();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    /* Set up ug_comm wrapper for comm_user_world. */
-    mpi_errno = CSPU_ugcomm_create(MPI_COMM_NULL, MPI_INFO_NULL, CSP_COMM_USER_WORLD);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        /* Set up ug_comm wrapper for comm_user_world. */
+        mpi_errno = CSPU_ugcomm_create(MPI_COMM_NULL, MPI_INFO_NULL, CSP_COMM_USER_WORLD);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
   fn_exit:
     return mpi_errno;
