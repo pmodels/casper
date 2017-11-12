@@ -15,10 +15,11 @@
  * This test checks round-trip isend and irecv with waitall.
  */
 
-#define NUM_OPS 100
 #ifdef TEST_LMSG
+#define NUM_OPS 10
 #define COUNT 10000     /* count of double */
 #else
+#define NUM_OPS 100
 #define COUNT 100       /* count of double */
 #endif
 
