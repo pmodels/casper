@@ -22,7 +22,7 @@ win_allocate
 win_create_acc
 epoch_type
 win_allocate_info
-win_errhan
+win_errhan exec=@CTEST_ENABLE_RMA_ERRCHECK_TEST@
 comm_errhan
 finalize
 isend_test
