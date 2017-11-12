@@ -1,7 +1,46 @@
 ======================================================================
-                          Changes in 1.0rc1
+                          Changes in 1.0b2
 ======================================================================
+- Offloading-based asynchronous progress for MPI nonblocking two-sided
+  (point-to-point) communication. Enable this feature by setting
+  export CSP_ASYNC_MODE="pt2pt" or "pt2pt|rma" at executing time. This
+  environment variable is set to "rma" by default.
+
+  This feature relies on the openpa library.
+  (see http://trac.mpich.org/projects/openpa/)
+
+  We use the embedded openpa (commit 0475704d) by default. User can specify
+  an external openpa installation by setting --with-opa=[DIR] at configure
+  time.
+
+- Performance profiling summary. This feature collects the amount of
+  RMA operations or two-sided messages that are handled by ghost processes
+  and the amount handled by user processes. This feature is disabled by
+  default because it inserts additional counter at performance critical
+  path. Setting --enable-profile at configure time to enable it.
+
+- Hwloc based locality optimization. Casper automatically detects any
+  user core binding at MPI initialize time to ensure ghost processes are
+  evenly assigned onto each socket.
+  Example: if user sets core binding as 0,1,2,3 4,5,6,7, Casper will use
+  0 and 4 as the ghost process. In user-visible COMM_WORLD, rank 0-5 are
+  corresponding to 1-3,4-6, respectively.
+
+  This feature requires the hwloc library.
+  (see https://www.open-mpi.org/projects/hwloc/)
+
+  We embed hwloc version 1.11.8 in Casper by default. User can specify
+  an external hwloc installation by setting --with-hwloc=[DIR] at configure
+  time. To fully disable this feature, set --with-hwloc=no.
+
+- Set CSP_NG=0 to fully disable Casper wrapping routines, and thus no
+  ghost process is isolated. Unlike setting CSP_NG=0, setting
+  CSP_ASYNC_CONFIG=off (on by default) can only disable RMA operation
+  redirection, and can be re-enabled for a window by setting
+  "async_config=on" info at window allocation time.
+
 - BUG FIX: Support error handler for COMM_SELF, inter-communicator.
+
 - BUG FIX: Fixed imcompatible code with OpenMPI.
 
 ======================================================================
