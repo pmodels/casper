@@ -17,7 +17,7 @@ case "$os" in
         echo "Mac"
         brew update
         case "$MPI_IMPL" in
-            mpich)
+            mpich_shm|mpich_odd)
                 brew info mpich
                 brew install mpich
                 ;;
@@ -35,7 +35,7 @@ case "$os" in
     Linux)
         echo "Linux"
         case "$MPI_IMPL" in
-            mpich)
+            mpich_shm|mpich_odd)
                 if [ ! -d "$TRAVIS_ROOT/mpich" ]; then
                     # mpich-v3.3a2 has symbol visibility issue, see https://github.com/pmodels/mpich/issues/2471.
                     wget --no-check-certificate http://www.mpich.org/static/downloads/nightly/master/mpich/mpich-master-v3.3a2-452-ge0000be3f049.tar.gz
