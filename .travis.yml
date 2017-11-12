@@ -6,11 +6,9 @@ os:
 compiler:
   - clang
   - gcc
-matrix:
-  allow_failures:
-    - env: MPI_IMPL=openmpi
 env:
-  - MPI_IMPL=mpich
+  - MPI_IMPL=mpich_shm
+  - MPI_IMPL=mpich_odd
   - MPI_IMPL=openmpi
 before_install:
   - export TRAVIS_ROOT=$HOME/travis
