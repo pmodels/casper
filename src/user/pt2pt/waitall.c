@@ -108,7 +108,8 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
         return PMPI_Waitall(count, array_of_requests, array_of_statuses);
     }
 
-    /*FIXME: complete error handler wrapping. */
+    /* Error directly handled by COMM_WORLD error handler. */
+    /* TODO: do we need thread CS here ? */
 
     cells = CSP_calloc(count, sizeof(CSP_offload_cell_t *));
     skip_flags = CSP_calloc(count, sizeof(int));

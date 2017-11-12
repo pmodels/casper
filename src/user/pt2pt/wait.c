@@ -19,7 +19,8 @@ int MPI_Wait(MPI_Request * request, MPI_Status * status)
         return PMPI_Wait(request, status);
     }
 
-    /*FIXME: complete error handler wrapping. */
+    /* Error directly handled by COMM_WORLD error handler. */
+    /* TODO: do we need thread CS here ? */
 
     CSPU_offload_req_hash_get(*request, &cell);
 

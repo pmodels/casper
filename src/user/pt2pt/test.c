@@ -18,7 +18,8 @@ int MPI_Test(MPI_Request * request, int *flag, MPI_Status * status)
         return PMPI_Test(request, flag, status);
     }
 
-    /*FIXME: complete error handler wrapping. */
+    /* Error directly handled by COMM_WORLD error handler. */
+    /* TODO: do we need thread CS here ? */
 
     CSPU_offload_poll_progress();
 
