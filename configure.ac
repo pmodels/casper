@@ -189,6 +189,20 @@ if test "$enable_thread_safety" = "yes"; then
    AC_DEFINE(CSP_ENABLE_THREAD_SAFE,1,[Define if enable thread safety])
 fi
 
+# MPI IO wrapper check
+AC_ARG_ENABLE(mpio-wrapper, AC_HELP_STRING([--enable-mpio-wrapper],
+                 [Enable MPI IO wrapper. (yes by default).
+                 Casper sets MPI IO wrapper based on the detection at autogen.sh.
+                 However, the wrapper is statically set in release tarball.
+                 This option allows user to disable it at configure time.]),
+                 [ enable_mpio_wrapper=$enableval ],
+                 [ enable_mpio_wrapper=yes ])
+AC_MSG_CHECKING(MPI IO wrapper support)
+AC_MSG_RESULT($enable_mpio_wrapper)
+if test "$enable_mpio_wrapper" = "yes"; then
+   AC_DEFINE(CSP_ENABLE_MPIO_WRAPPER,1,[Define if enable MPI IO wrapper.])
+fi
+
 # Profile output
 AC_ARG_ENABLE(profile, AC_HELP_STRING([--enable-profile],
                  [Enable internal profiling routine (no by default).

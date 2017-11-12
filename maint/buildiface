@@ -214,6 +214,11 @@ while (<INFILE>) {
 
     my $comm_arg = -1;
     if (grep/MPI_Comm /, @arglist) {
+        # set start macro control for File IO routines
+        if ($routine =~ /^MPI_File_/) {
+            print CFILE "\n#ifdef CSP_ENABLE_MPIO_WRAPPER";
+        }
+
         print CFILE "\n$retarg $routine(";
         for ($x = 0; $x <= $#arglist; $x++) {
             $arglist[$x] =~ s/^\s*//g;
@@ -286,6 +291,11 @@ while (<INFILE>) {
         }
 
         print CFILE "}\n";
+
+        # set end macro control for File IO routines
+        if ($routine =~ /^MPI_File_/) {
+            print CFILE "#endif\n";
+        }
     }
 
     $fullline = "";
