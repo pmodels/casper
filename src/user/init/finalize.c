@@ -104,22 +104,26 @@ int CSPU_global_finalize(void)
     mpi_errno = CSPU_mlock_destroy();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_destroy_comm_cache();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_destroy_comm_cache();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_destroy_shmbuf_win_cache();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPU_destroy_shmbuf_win_cache();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPU_destroy_win_cache();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPU_datatype_destroy();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+
+        mpi_errno = CSPU_offload_destroy();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
+
+    if (CSP_IS_MODE_ENABLED(RMA)) {
+        mpi_errno = CSPU_destroy_win_cache();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
     mpi_errno = CSPU_errhan_destroy();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
-
-    mpi_errno = CSPU_datatype_destroy();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
-
-    mpi_errno = CSPU_offload_destroy();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
     mpi_errno = destroy_proc();
@@ -143,8 +147,10 @@ int MPI_Finalize(void)
 
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &user_local_rank));
 
-    mpi_errno = CSPU_ugcomm_free(CSP_COMM_USER_WORLD);
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPU_ugcomm_free(CSP_COMM_USER_WORLD);
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
     /* notify ghost processes to finalize */
     mpi_errno = issue_ghost_cmd();

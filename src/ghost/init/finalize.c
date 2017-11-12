@@ -75,11 +75,13 @@ int CSPG_global_finalize(void)
 
     CSPG_mlock_destory();
 
-    mpi_errno = CSPG_datatype_destory();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+        mpi_errno = CSPG_datatype_destory();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
 
-    mpi_errno = CSPG_offload_destroy();
-    CSP_CHKMPIFAIL_JUMP(mpi_errno);
+        mpi_errno = CSPG_offload_destroy();
+        CSP_CHKMPIFAIL_JUMP(mpi_errno);
+    }
 
     mpi_errno = destroy_proc();
     CSP_CHKMPIFAIL_JUMP(mpi_errno);

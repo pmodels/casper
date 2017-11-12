@@ -115,8 +115,8 @@ static inline int CSPU_datatype_get_g_handle(MPI_Datatype myhandle, int ghost_lr
      * Not sure if DATATYPE_NULL is a valid datatype on other processes,
      * so we use a found flag instead.*/
     if (!found) {
-        CSP_msg_print(CSP_MSG_WARN, "Found unknown or not supported datatype 0x%lx "
-                      "in pt2pt message offloading\n", (unsigned long) myhandle);
+        CSP_msg_print(CSP_MSG_WARN, "Have unknown or not supported datatype 0x%lx "
+                      "in pt2pt message offloading (abort)\n", (unsigned long) myhandle);
         CSP_ASSERT(found);
     }
 
