@@ -81,7 +81,9 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int src, int tag,
         return mpi_errno;
     }
 
+    CSPU_ERRHAN_EXTOBJ_LOCAL_DCL();
     CSPU_COMM_ERRHAN_SET_EXTOBJ();
+    /* TODO: do we need thread CS here ? */
 
     CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
     CSPU_shmbuf_translate_g_addr(buf, &g_bufaddr, &buf_found_flag);
