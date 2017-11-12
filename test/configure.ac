@@ -78,6 +78,21 @@ if test "$enable_thread_test" = "yes"; then
     fi
 fi
 
+# Checkes for enabling error checking tests
+AC_ARG_ENABLE(rmaerr-check-test, AC_HELP_STRING([--disable-rmaerr-check-test],
+                 [Disable Casper RMA error checking tests (no by default).
+                 Also see option --disable-rmaerr-check in Casper configure.]),
+                 [ enable_rma_errcheck_test=$enableval ],
+                 [ enable_rma_errcheck_test=yes ])
+AC_MSG_CHECKING(enable RMA error checking tests)
+AC_MSG_RESULT($enable_rma_errcheck_test)
+CTEST_ENABLE_RMA_ERRCHECK_TEST=0
+if test "$enable_rma_errcheck_test" = "yes"; then
+    CTEST_ENABLE_RMA_ERRCHECK_TEST=1
+    AC_DEFINE(CTEST_ENABLE_RMA_ERRCHECK_TEST,1,[Define if enable RMA error checking tests])
+fi
+AC_SUBST(CTEST_ENABLE_RMA_ERRCHECK_TEST)
+
 # check for attribute support
 PAC_C_GNU_ATTRIBUTE
 
