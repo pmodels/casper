@@ -5,8 +5,8 @@
 ##########################################
 
 echo_n() {
-	# "echo_n" isn't portable, must portably implement with printf
-	printf "%s" "$*"
+    # "echo_n" isn't portable, must portably implement with printf
+    printf "%s" "$*"
 }
 
 check_autotools_version()
@@ -33,11 +33,11 @@ mpih_path=
 
 # Detect Cray MPI 
 if [ "$mpidir" = "/../" ] || [ -d /opt/cray/ ] ; then
-  if [ ! -z "$CRAY_MPICH_DIR" ] ; then
-    mpidir=$CRAY_MPICH_DIR
-  elif [ ! -z "$CRAY_MPICH2_DIR" ] ; then
-    mpidir=$CRAY_MPICH2_DIR
-  fi
+    if [ ! -z "$CRAY_MPICH_DIR" ] ; then
+        mpidir=$CRAY_MPICH_DIR
+    elif [ ! -z "$CRAY_MPICH2_DIR" ] ; then
+        mpidir=$CRAY_MPICH2_DIR
+    fi
 fi
 
 # user specified MPI path
@@ -108,9 +108,9 @@ else
     echo "Found $mpioh_path"
 
     # add IO functions only when MPI supports it
-		echo_n "Generating MPI IO wrappers... "
-		./maint/buildiface --infile $mpioh_path --outfile $wrap_file --append
-		echo "done"
+    echo_n "Generating MPI IO wrappers... "
+    ./maint/buildiface --infile $mpioh_path --outfile $wrap_file --append
+    echo "done"
 fi
 
 
@@ -123,36 +123,38 @@ subdirs=test
 # copy confdb
 echo ""
 for subdir in $subdirs ; do
-	subconfdb_dir=$subdir/confdb
-	echo_n "Syncronizing confdb -> $subconfdb_dir... "
-	if [ -x $subconfdb_dir ] ; then
-		rm -rf "$subconfdb_dir"
-	fi
-	cp -pPR confdb "$subconfdb_dir"
-	echo "done"
+    subconfdb_dir=$subdir/confdb
+    echo_n "Syncronizing confdb -> $subconfdb_dir... "
+    if [ -x $subconfdb_dir ] ; then
+        rm -rf "$subconfdb_dir"
+    fi
+    cp -pPR confdb "$subconfdb_dir"
+    echo "done"
 done
 
 # apply patch for submodules
 echo ""
-echo_n "Applying patch to hwloc... "
+echo  "=== Applying patch to hwloc ==="
 ( cd src/hwloc && git am --3way ../../maint/patches/pre/hwloc/*.patch )
 echo "done"
 
 # autogen for submodules
 extdirs="src/hwloc src/openpa"
 for extdir in $extdirs ; do
-   if [ -d "$extdir" -o -L "$extdir" ] ; then
-       echo ""
-       echo "Running third-party initialization in $extdir"
-       (cd $extdir && ./autogen.sh) || exit 1
-   fi
+    if [ -d "$extdir" -o -L "$extdir" ] ; then
+        echo ""
+        echo "=== Running third-party initialization in $extdir ==="
+        (cd $extdir && ./autogen.sh) || exit 1
+        echo "done"
+    fi
 done
 
 # generate configures
 for subdir in . $subdirs ; do
-	echo ""
-	echo "Generating configure in $subdir"
-	(cd $subdir && autoreconf -vif) || exit 1
+    echo ""
+    echo "=== Generating configure in $subdir ==="
+    (cd $subdir && autoreconf -vif) || exit 1
+    echo "done"
 done
 
 
