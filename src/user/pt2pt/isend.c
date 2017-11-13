@@ -75,11 +75,17 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
     int buf_found_flag = 0, offsz_flag = 0;
     MPI_Aint g_bufaddr = -1;
 
+    /* No communicator replacement if completely disabled */
+    if (CSP_IS_DISABLED) {
+        ORIG_MPI_FNC();
+        return mpi_errno;
+    }
+
     if (comm == MPI_COMM_WORLD)
         comm = CSP_COMM_USER_WORLD;
 
-    /* Skip internal processing when disabled */
-    if (CSP_IS_DISABLED || CSP_IS_MODE_DISABLED(PT2PT)) {
+    /* Only replace communicator if disabled only PT2PT. */
+    if (CSP_IS_MODE_DISABLED(PT2PT)) {
         ORIG_MPI_FNC();
         return mpi_errno;
     }
