@@ -95,8 +95,11 @@ int MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int t
     /* TODO: do we need thread CS here ? */
 
     CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
-    CSPU_shmbuf_translate_g_addr((void *) buf, &g_bufaddr, &buf_found_flag);
-    CSPU_offload_checksz(count, datatype, ug_comm, &offsz_flag);
+    /* Skip check if it is not a pre-wrapped communicator (e.g., MPI_COMM_SELF) */
+    if (ug_comm) {
+        CSPU_shmbuf_translate_g_addr((void *) buf, &g_bufaddr, &buf_found_flag);
+        CSPU_offload_checksz(count, datatype, ug_comm, &offsz_flag);
+    }
 
     CSP_DBG_PRINT("isend: comm 0x%x->ug_comm=%p, buf=%p, g_bufaddr=0x%lx, "
                   "buf_found_flag=%d, offsz_flag=%d\n", comm, ug_comm, buf, g_bufaddr,
