@@ -343,6 +343,12 @@ fi
 AM_CONDITIONAL([csp_have_topo_opt], [test "$have_hwloc" = "yes"])
 
 # OPA library (required)
+opasrcdir=""
+AC_SUBST([opasrcdir])
+opalibdir=""
+AC_SUBST([opalibdir])
+opalib=""
+AC_SUBST([opalib])
 AC_ARG_WITH(opa, [AC_HELP_STRING([--with-opa[=DIR|embedded|no]],
                 [Use the specified OPA installation; Header file opa_primitives.h should be in 
                 dir/include, and libopa should be in dir/lib.Use embedded openpa by default])]
@@ -351,7 +357,7 @@ case "$with_opa" in
     embedded)
     if test -e "${csp_top_srcdir}/src/openpa" ; then
         opasrcdir="src/openpa"
-        opalib="src/openpa/src/lib${OPALIBNAME}.la"
+        # only need header files
         PAC_APPEND_FLAG([-I${csp_top_srcdir}/src/openpa/src],[CPPFLAGS])
         PAC_APPEND_FLAG([-I${csp_top_builddir}/src/openpa/src],[CPPFLAGS])
 
