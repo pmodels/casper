@@ -134,8 +134,8 @@ done
 
 # apply patch for submodules
 echo ""
-echo  "=== Applying patch to hwloc ==="
-( cd src/hwloc && git am --3way ../../maint/patches/pre/hwloc/*.patch )
+echo  "=== Applying patches ==="
+( maint/apply_patch.bash )
 echo "done"
 
 # autogen for submodules
