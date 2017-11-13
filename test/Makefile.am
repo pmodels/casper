@@ -119,4 +119,5 @@ isendirecv_waitall_l_CPPFLAGS    = -DTEST_LMSG $(AM_CPPFLAGS)
 testing:
 	./runtest 
 
+EXTRA_DIST = xfail.ompi
 DIST_SUBDIRS = benchmarks/rma benchmarks/pt2pt 
