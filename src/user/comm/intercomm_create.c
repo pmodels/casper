@@ -36,7 +36,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
 
     /* Create background ug_comm.
      * FIXME: wrap up error handler. */
-    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+    if (CSP_IS_MODE_ENABLED(PT2PT) && (*newintercomm) != MPI_COMM_NULL) {
         mpi_errno = CSPU_ugcomm_create(local_comm, MPI_INFO_NULL, *newintercomm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }

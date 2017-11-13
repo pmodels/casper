@@ -36,7 +36,7 @@ int MPI_Dist_graph_create(MPI_Comm comm_old, int n, const int sources[],
 
     /* Create background ug_comm.
      * FIXME: wrap up error handler. */
-    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+    if (CSP_IS_MODE_ENABLED(PT2PT) && (*comm_dist_graph) != MPI_COMM_NULL) {
         mpi_errno = CSPU_ugcomm_create(comm_old, MPI_INFO_NULL, *comm_dist_graph);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
