@@ -137,7 +137,7 @@ my $local_git_clone = "${tdir}/casper-clone";
 
 # clone git repo
 print("===> Cloning git repo... ");
-run_cmd("git clone ${git_repo} --recursive ${local_git_clone}");
+run_cmd("git clone ${git_repo} -b ${branch} --recursive ${local_git_clone}");
 print("done\n");
 
 # chdirs to $local_git_clone if valid
@@ -201,7 +201,7 @@ print("done\n");
 
 # Execute configure and make dist
 print("===> Running configure... ");
-run_cmd("./configure --prefix=$expdir/install");
+run_cmd("./configure --prefix=$expdir/install CC=$with_mpi/bin/mpicc");
 print("done\n");
 
 print("===> Making the final tarball... ");
