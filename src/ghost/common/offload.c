@@ -166,7 +166,7 @@ static inline int offload_poll_completion(void)
 
             /* Set completion on user.
              * The cell will be recycled by user. */
-            CSP_DBG_ASSERT(cell->pkt.type >= 0 && cell->pkt.type < CSP_OFFLOAD_MAX &&
+            CSP_DBG_ASSERT(cell->pkt.type < CSP_OFFLOAD_MAX &&
                            CSPG_offload_server.cmpl_handlers[cell->pkt.type]);
             CSPG_offload_server.cmpl_handlers[cell->pkt.type] (pkt_ptr, stat);
         }
@@ -196,7 +196,7 @@ static inline int offload_poll_channel(CSPG_offload_channel_t * channel)
         pkt_ptr = &cell->pkt;
 
         /* Handles packet */
-        CSP_DBG_ASSERT(cell->pkt.type >= 0 && cell->pkt.type < CSP_OFFLOAD_MAX &&
+        CSP_DBG_ASSERT(cell->pkt.type < CSP_OFFLOAD_MAX &&
                        CSPG_offload_server.pkt_handlers[cell->pkt.type]);
 
         mpi_errno = CSPG_offload_server.pkt_handlers[cell->pkt.type] (pkt_ptr);
