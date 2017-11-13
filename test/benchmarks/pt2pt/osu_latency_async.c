@@ -8,6 +8,12 @@
  * For detailed copyright and licensing information, please refer to the
  * copyright file COPYRIGHT in the top level OMB directory.
  */
+
+/*
+ * Modified by Argonne National Laboratory.
+ * (C) 2017 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
 #include <mpi.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -15,6 +21,8 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+
+/* This benchmark evaluates point to point latency with computing delay.*/
 
 #define ITERS_SMALL          (100)
 #define ITERS_LARGE          (20)
@@ -50,7 +58,7 @@ static void delay(void)
     } while ((1e6 * (end - start)) < computation);
 }
 
-static void usage()
+static void usage(void)
 {
     printf("Options:\n");
     printf("  -i               number of iterations\n");
@@ -73,7 +81,6 @@ static void set_testname(void)
 
 static void read_comp(void)
 {
-    int c, pos;
     FILE *comp_fp = NULL;
     char line[MAX_FLINE_LEN];
     int nsz, sz, lat = 0;
@@ -106,11 +113,12 @@ int main(int argc, char *argv[])
 {
     int rank, numprocs, i, target;
     int size, nsz;
-    int loop, skip, loop_override = 0, skip_override = 0;
+    int loop = ITERS_SMALL, skip = ITERS_SMALL * SKIP_RATE;
+    int loop_override = 0, skip_override = 0;
     MPI_Status stats[2];
     MPI_Request reqs[2];
     char *sbuf, *rbuf;
-    double t_start = 0.0, t_end = 0.0, time = 0.0, avg_time = 0.0;
+    double t_start = 0.0, time = 0.0, avg_time = 0.0;
     unsigned long align_size = sysconf(_SC_PAGESIZE);
     int c;
     MPI_Info info = MPI_INFO_NULL;

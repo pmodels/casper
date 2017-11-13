@@ -1,7 +1,15 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ * (C) 2017 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "mpi.h"
+
+/* This benchmark evaluates overhead of various communicator creation functions.*/
 
 #define DEFAULT_ITERS  (1024)
 
@@ -105,10 +113,9 @@ static void run_free(const char *creat_type)
 
 int main(int argc, char **argv)
 {
-    int i;
-    double start, end, local_time, avg_time;
+#if defined(USE_DUPCOMM) || defined(USE_TAGTRANS)
     MPI_Info info = MPI_INFO_NULL;
-
+#endif
     MPI_Init(NULL, NULL);
     MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);

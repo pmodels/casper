@@ -4,7 +4,7 @@
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(includedir) -O2
 AM_LDFLAGS = -Wl,-rpath -Wl,$(libdir)
-LDADD = -L$(libdir) -lcasper
+LDADD = -L$(libdir) -lcasper 
 
 noinst_HEADERS = $(top_srcdir)/include/ctest.h
 
@@ -22,12 +22,10 @@ noinst_PROGRAMS = \
 	osu_mbw_mr_async_dupcomm \
 	osu_mbw_mr_async_step   \
 	osu_mbw_mr_async_withthresh   \
-	halo                    \
-	halo_overlap            \
-	halo_step               \
-	halo_overlap_step       \
-	2d_cart_async           \
-	2d_cart_async_step
+	2d_halo_ddt             \
+	2d_halo_ddt_step        \
+	2d_halo_async           \
+	2d_halo_async_step
 
 comm_creation_overhead_dupcomm_SOURCES= comm_creation_overhead.c
 comm_creation_overhead_dupcomm_LDADD= $(LDADD)
@@ -79,17 +77,12 @@ osu_mbw_mr_async_withthresh_LDADD= $(LDADD)
 osu_mbw_mr_async_withthresh_LDFLAGS= $(AM_LDFLAGS)
 osu_mbw_mr_async_withthresh_CFLAGS= $(AM_CPPFLAGS) -DUSE_OFFLOAD_MIN
 
-halo_step_SOURCES= halo.c
-halo_step_LDADD= $(LDADD)
-halo_step_LDFLAGS= $(AM_LDFLAGS)
-halo_step_CFLAGS= $(AM_CPPFLAGS) -DSTEP_TIME
+2d_halo_ddt_step_SOURCES= 2d_halo_ddt.c
+2d_halo_ddt_step_LDADD= $(LDADD)
+2d_halo_ddt_step_LDFLAGS= $(AM_LDFLAGS)
+2d_halo_ddt_step_CFLAGS= $(AM_CPPFLAGS) -DSTEP_TIME
 
-halo_overlap_step_SOURCES= halo_overlap.c
-halo_overlap_step_LDADD= $(LDADD)
-halo_overlap_step_LDFLAGS= $(AM_LDFLAGS)
-halo_overlap_step_CFLAGS= $(AM_CPPFLAGS) -DSTEP_TIME
-
-2d_cart_async_step_SOURCES= 2d_cart_async.c
-2d_cart_async_step_LDADD= $(LDADD)
-2d_cart_async_step_LDFLAGS= $(AM_LDFLAGS)
-2d_cart_async_step_CFLAGS= $(AM_CPPFLAGS) -DSTEP_TIME
+2d_halo_async_step_SOURCES= 2d_halo_async.c
+2d_halo_async_step_LDADD= $(LDADD)
+2d_halo_async_step_LDFLAGS= $(AM_LDFLAGS)
+2d_halo_async_step_CFLAGS= $(AM_CPPFLAGS) -DSTEP_TIME
