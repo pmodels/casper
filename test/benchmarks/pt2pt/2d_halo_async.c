@@ -4,6 +4,9 @@
 #include <assert.h>
 #include "mpi.h"
 
+/* This benchmark evaluates 2D halo exchange with cart and basic datatype.
+ * It also sets info hints to enable Casper message offloading. */
+
 #define DEFAULT_ITERS  (1024)
 #define DEFAULT_DIM    (1024)
 
@@ -16,7 +19,8 @@ static int computation = 0;
 static void usage(void)
 {
     printf("./a.out\n");
-    printf("     --iters [iterations; default %d]\n", DEFAULT_ITERS);
+    printf("     --iters [iterations; default %d] --dim [dimension size %d] "
+           " -c [computing delay %d]\n", DEFAULT_ITERS, DEFAULT_DIM, 0);
     exit(1);
 }
 
@@ -48,7 +52,7 @@ static void delay(void)
 
 int main(int argc, char **argv)
 {
-    int i, j, k;
+    int i;
     double start, end, local_time, avg_time;
     int comm_rank, comm_size;
     int dims[2] = { 0, 0 }, periods[2] = {
@@ -59,7 +63,7 @@ int main(int argc, char **argv)
     MPI_Request req[8];
     MPI_Datatype type;
     MPI_Info info = MPI_INFO_NULL;
-    MPI_Aint matrix_sz = 0, packbuf_sz = 0;
+    MPI_Aint packbuf_sz = 0;
     MPI_Win shm_win;
 
     MPI_Init(NULL, NULL);
@@ -110,6 +114,7 @@ int main(int argc, char **argv)
     /* Enable asynchronous progress. */
     MPI_Info_create(&info);
     MPI_Info_set(info, (char *) "wildcard_used", (char *) "none");
+    MPI_Info_set(info, (char *) "datatype_used", (char *) "predefined");
     MPI_Comm_set_info(MPI_COMM_WORLD, info);
     MPI_Info_free(&info);
 
@@ -140,7 +145,6 @@ int main(int argc, char **argv)
 
     start = MPI_Wtime();
     for (i = 0; i < iters; i++) {
-        int packpos = 0;
         int nreqs = 0;
 
 #ifdef STEP_TIME

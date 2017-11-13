@@ -9,6 +9,12 @@
  * copyright file COPYRIGHT in the top level OMB directory.
  */
 
+/*
+ * Modified by Argonne National Laboratory.
+ * (C) 2017 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #include <mpi.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,6 +22,9 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+
+/* This benchmark evaluates point to point bandwidth and message rate
+ * with computing delay.*/
 
 #define DEFAULT_WINDOW       (64)
 
@@ -46,7 +55,7 @@ MPI_Status *reqstat;
 static MPI_Comm comm_world = MPI_COMM_NULL;
 
 double calc_bw(int rank, int size, int num_pairs, int window_size, char *s_buf, char *r_buf);
-void usage();
+void usage(void);
 
 static int loop;
 static int skip;
@@ -212,7 +221,7 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-void usage()
+void usage(void)
 {
     printf("Options:\n");
     printf("  -p=<pairs>       Number of pairs involved (default np / 2)\n");

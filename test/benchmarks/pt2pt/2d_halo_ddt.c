@@ -1,8 +1,16 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ * (C) 2017 by Argonne National Laboratory.
+ *     See COPYRIGHT in top-level directory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include "mpi.h"
+
+/* This benchmark evaluates 2D halo exchange with cart and derived datatype.*/
 
 #define DEFAULT_ITERS  (1024)
 #define DEFAULT_DIM    (1024)
@@ -14,7 +22,8 @@ static char testname[128] = { 0 };
 static void usage(void)
 {
     printf("./a.out\n");
-    printf("     --iters [iterations; default %d]\n", DEFAULT_ITERS);
+    printf("     --iters [iterations; default %d] --dim [dimension size %d]\n",
+           DEFAULT_ITERS, DEFAULT_DIM);
     exit(1);
 }
 

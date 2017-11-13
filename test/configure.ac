@@ -97,8 +97,8 @@ AC_SUBST(CTEST_ENABLE_RMA_ERRCHECK_TEST)
 PAC_C_GNU_ATTRIBUTE
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([perf/Makefile])
-AC_CONFIG_FILES([benchmarks/Makefile])
+AC_CONFIG_FILES([benchmarks/rma/Makefile])
+AC_CONFIG_FILES([benchmarks/pt2pt/Makefile])
 AC_CONFIG_FILES([testlist])
 AC_CONFIG_FILES([runtest])
 AC_OUTPUT_COMMANDS([chmod a+x runtest])
