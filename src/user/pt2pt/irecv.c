@@ -92,8 +92,11 @@ int MPI_Irecv(void *buf, int count, MPI_Datatype datatype, int src, int tag,
     /* TODO: do we need thread CS here ? */
 
     CSPU_fetch_ug_comm_from_cache(comm, &ug_comm);
-    CSPU_shmbuf_translate_g_addr(buf, &g_bufaddr, &buf_found_flag);
-    CSPU_offload_checksz(count, datatype, ug_comm, &offsz_flag);
+    /* Skip check if it is not a pre-wrapped communicator (e.g., MPI_COMM_SELF) */
+    if (ug_comm) {
+        CSPU_shmbuf_translate_g_addr(buf, &g_bufaddr, &buf_found_flag);
+        CSPU_offload_checksz(count, datatype, ug_comm, &offsz_flag);
+    }
 
     CSP_DBG_PRINT("irecv: comm 0x%x->ug_comm=%p, buf=%p, count=%d, g_bufaddr=0x%lx, "
                   "buf_found_flag=%d, offsz_flag=%d\n", comm, ug_comm, buf, count,
