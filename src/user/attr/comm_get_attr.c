@@ -24,7 +24,7 @@ int MPI_Comm_get_attr(MPI_Comm comm, int comm_keyval, void *attribute_val, int *
     /* If PT2PT is supported, we expose overwritten tag_ub. */
     if (CSP_IS_MODE_ENABLED(PT2PT)) {
         if (comm_keyval == MPI_TAG_UB) {
-            *(int *) attribute_val = CSPU_offload_ch.tag_trans.user_tag_ub;
+            *(void **) attribute_val = &CSPU_offload_ch.tag_trans.user_tag_ub;
         }
     }
 
