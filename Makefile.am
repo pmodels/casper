@@ -10,9 +10,9 @@ include_HEADERS = include/casper.h
 
 libcasper_la_SOURCES =
 
-external_subdirs = @hwlocsrcdir@
-external_ldflags = @hwloclibdir@
-convenience_libs = @hwloclib@
+external_subdirs = @hwlocsrcdir@ @opasrcdir@
+external_ldflags = @hwloclibdir@ @opalibdir@
+convenience_libs = @hwloclib@ @opalib@
 
 libcasper_la_LDFLAGS = $(external_ldflags)
 libcasper_la_LIBADD = $(convenience_libs)
