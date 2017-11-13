@@ -119,4 +119,4 @@ isendirecv_waitall_l_CPPFLAGS    = -DTEST_LMSG $(AM_CPPFLAGS)
 testing:
 	./runtest 
 
-DIST_SUBDIRS = benchmarks
+DIST_SUBDIRS = benchmarks/rma benchmarks/pt2pt 
