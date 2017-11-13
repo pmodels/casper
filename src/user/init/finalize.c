@@ -147,7 +147,7 @@ int MPI_Finalize(void)
 
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(CSP_PROC.user.u_local_comm, &user_local_rank));
 
-    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+    if (CSP_IS_MODE_ENABLED(PT2PT) && CSP_COMM_USER_WORLD != MPI_COMM_NULL) {
         mpi_errno = CSPU_ugcomm_free(CSP_COMM_USER_WORLD);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }

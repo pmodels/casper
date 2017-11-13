@@ -20,7 +20,7 @@ int MPI_Comm_free(MPI_Comm * comm)
      * Even user makes such mistake, we do not free COMM_USER_WORLD. */
 
     /* Free background ug_comm. */
-    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+    if (CSP_IS_MODE_ENABLED(PT2PT) && (*comm) != MPI_COMM_NULL) {
         mpi_errno = CSPU_ugcomm_free(*comm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }

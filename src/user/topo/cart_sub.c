@@ -32,7 +32,7 @@ int MPI_Cart_sub(MPI_Comm comm, const int remain_dims[], MPI_Comm * newcomm)
 
     /* Create background ug_comm.
      * FIXME: wrap up error handler. */
-    if (CSP_IS_MODE_ENABLED(PT2PT)) {
+    if (CSP_IS_MODE_ENABLED(PT2PT) && (*newcomm) != MPI_COMM_NULL) {
         mpi_errno = CSPU_ugcomm_create(comm, MPI_INFO_NULL, *newcomm);
         CSP_CHKMPIFAIL_JUMP(mpi_errno);
     }
