@@ -41,7 +41,7 @@
 
 - BUG FIX: Support error handler for COMM_SELF, inter-communicator.
 
-- BUG FIX: Fixed imcompatible code with OpenMPI.
+- BUG FIX: Fixed incompatible code with OpenMPI.
 
 ======================================================================
                           Changes in 1.0b1
