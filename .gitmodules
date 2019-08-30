@@ -3,4 +3,4 @@
 	url = https://github.com/open-mpi/hwloc
 [submodule "src/openpa"]
 	path = src/openpa
-	url = http://git.mpich.org/openpa.git
+	url = http://github.com/pmodels/openpa
