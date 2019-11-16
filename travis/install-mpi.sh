@@ -37,10 +37,9 @@ case "$os" in
         case "$MPI_IMPL" in
             mpich_shm|mpich_odd)
                 if [ ! -d "$TRAVIS_ROOT/mpich" ]; then
-                    # mpich-v3.3a2 has symbol visibility issue, see https://github.com/pmodels/mpich/issues/2471.
-                    wget --no-check-certificate http://www.mpich.org/static/downloads/nightly/master/mpich/mpich-master-v3.3a2-452-ge0000be3f049.tar.gz
-                    tar -xzf mpich-master-v3.3a2-452-ge0000be3f049.tar.gz
-                    cd mpich-master-v3.3a2-452-ge0000be3f049
+                    wget --no-check-certificate http://www.mpich.org/static/downloads/3.3.2/mpich-3.3.2.tar.gz
+                    tar -xzf mpich-3.3.2.tar.gz
+                    cd mpich-3.3.2
                     mkdir build && cd build
                     ../configure CFLAGS="-w" --prefix=$TRAVIS_ROOT/mpich --disable-fortran --disable-static
                     make -j2
@@ -51,9 +50,9 @@ case "$os" in
                 ;;
             openmpi)
                 if [ ! -d "$TRAVIS_ROOT/open-mpi" ]; then
-                    wget --no-check-certificate https://www.open-mpi.org/software/ompi/v3.0/downloads/openmpi-3.0.0.tar.bz2
-                    tar -xjf openmpi-3.0.0.tar.bz2
-                    cd openmpi-3.0.0
+                    wget --no-check-certificate https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.bz2
+                    tar -xjf openmpi-4.0.2.tar.bz2
+                    cd openmpi-4.0.2
                     mkdir build && cd build
                     ../configure CFLAGS="-w" --prefix=$TRAVIS_ROOT/open-mpi \
                                 --without-verbs --without-fca --without-mxm --without-ucx \

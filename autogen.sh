@@ -14,7 +14,7 @@ check_autotools_version()
     tool=$1
     req_ver=$2
     curr_ver=$($tool --version | head -1 | cut -f4 -d' ' | xargs echo -n)
-    if [ "$curr_ver" != "$req_ver" ]; then
+    if [ "$curr_ver" -ge "$req_ver" ]; then
         echo ""
         echo "$tool version mismatch ($req_ver) required"
         exit
