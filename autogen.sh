@@ -118,6 +118,17 @@ fi
 ## Others
 ##########################################
 
+# It is very easy to not clone recursively.
+# This will fix this issue if it exists and is otherwise innocuous.
+# Conditionalizing it on the presence of .git means it will not
+# run when the user did not clone the code.
+if [ -d ".git" ] ; then
+    if [ ! -f  "src/hwloc/autogen.sh" ] || [ ! -f "src/openpa/autogen.sh" ] ; then
+        echo "=== Attempting to initialize missing submodules ==="
+        (git submodule init && git submodule update) || exit 1
+    fi
+fi
+
 subdirs=test
 
 # copy confdb
