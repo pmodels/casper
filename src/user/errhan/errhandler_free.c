@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include "cspu.h"
 
+#ifndef OMPI_OMIT_MPI1_COMPAT_DECLS
+
 int MPI_Errhandler_free(MPI_Errhandler * errhandler)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -27,3 +29,5 @@ int MPI_Errhandler_free(MPI_Errhandler * errhandler)
   fn_fail:
     goto fn_exit;
 }
+
+#endif /* OMPI_OMIT_MPI1_COMPAT_DECLS */

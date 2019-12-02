@@ -7,9 +7,13 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+#ifndef OMPI_OMIT_MPI1_COMPAT_DECLS
+
 int MPI_Errhandler_get(MPI_Comm comm, MPI_Errhandler * errhandler)
 {
     /* Deprecated function, replaced by MPI_Comm_get_errhandler.
      * See overwritten content in MPI_Comm_get_errhandler. */
     return MPI_Comm_get_errhandler(comm, errhandler);
 }
+
+#endif /* OMPI_OMIT_MPI1_COMPAT_DECLS */
