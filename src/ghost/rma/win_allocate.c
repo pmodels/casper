@@ -222,7 +222,7 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
         CSP_CALLMPI(JUMP, PMPI_Info_dup(user_info, &shared_info));
         CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shm", "true"));
         CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "same_size", "false"));
-        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false"));
+        //CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false"));
     }
 
     /* -Allocate shared window in CHAR type
