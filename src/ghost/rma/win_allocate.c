@@ -27,6 +27,15 @@ static inline int send_ghost_cmd_param(void *params, size_t size, CSPG_win_t * w
     return mpi_errno;
 }
 
+/* Send base offsets of ghost to individual user to respective users via local communicator (non-blocking call). */
+static inline int send_ghost_offset(ptrdiff_t *offset, int dst, int src, MPI_Request *request, CSPG_win_t * win)
+{
+    int mpi_errno = MPI_SUCCESS;
+    CSP_CALLMPI(NOSTMT, PMPI_Isend(offset, 1, MPI_Aint, dst, src,
+                                   CSP_PROC.local_comm, request));
+    return mpi_errno;
+}
+
 static int init_ghost_win(CSP_cwp_fnc_winalloc_pkt_t * winalloc_pkt, CSPG_win_t * win,
                           MPI_Info * user_info)
 {
@@ -196,10 +205,15 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
     MPI_Aint csp_buf_size = CSP_GP_SHARED_SG_SIZE;
     int dst, local_ug_rank, local_ug_nprocs;
     MPI_Info shared_info = MPI_INFO_NULL;
+    int flag, non_contig = 0;
+    char value[6];
     int r_disp_unit;
     MPI_Aint r_size;
     void **user_bases = NULL;
-    int is_first_nonzero = 1;
+    int is_first_nonzero = 1, Nrequest;
+    MPI_Request *requests = NULL;
+    MPI_Status *stats = NULL;
+
 
     CSP_CALLMPI(JUMP, PMPI_Comm_rank(win->local_ug_comm, &local_ug_rank));
     CSP_CALLMPI(JUMP, PMPI_Comm_size(win->local_ug_comm, &local_ug_nprocs));
@@ -222,8 +236,11 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
         CSP_CALLMPI(JUMP, PMPI_Info_dup(user_info, &shared_info));
         CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shm", "true"));
         CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "same_size", "false"));
-        CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false"));
+        //CSP_CALLMPI(JUMP, PMPI_Info_set(shared_info, "alloc_shared_noncontig", "false"));
+        CSP_CALLMPI(JUMP, PMPI_Info_get(shared_info, "alloc_shared_noncontig", 5, value, &flag));
+        if (flag && strcmp(value, "true")) non_contig = 1;
     }
+
 
     /* -Allocate shared window in CHAR type
      * (No local buffer, only need shared buffer on user processes) */
@@ -256,18 +273,43 @@ static int alloc_shared_window(MPI_Info user_info, MPI_Aint * size, CSPG_win_t *
         if (r_size > 0 && is_first_nonzero) {
             win->base = user_bases[dst];
             is_first_nonzero = 0;
+            /* -If shared window is noncontiguously allocated, intiallize the list
+             * of MPI_Requests for communications with all local users */
+            if (local_ug_rank == 0 && noncontig) {
+                Nrequest = local_ug_nprocs - dst;
+                requests = (MPI_Request *) CSP_calloc(Nrequest, sizeof(MPI_Request));
+                //stats = (MPI_Status *) CSP_calloc(Nrequest, sizeof(MPI_Status));
+            }
         }
+        /* -Deliver offset info to individual users */
+        if (!is_first_nonzero && noncontig && dst >= CSP_ENV.num_g && local_ug_rank == 0) {
+            MPI_Request request;
+            MPI_Aint offset = ((char *) user_bases[dst] - (char *) win->base);
+            CSP_CALLMPI(NOSTMT, PMPI_Isend(offset, 1, MPI_Aint, dst, 74,
+                                           CSP_PROC.local_comm, &requests));
+            //send_ghost_offset(&offset, dst, local_ug_rank, &request, win);
+            requests[dst - local_ug_nprocs + Nrequest] = request;
+        }
+
 
         (*size) += r_size;      /* size in byte */
     }
 
     CSPG_DBG_PRINT(" Created shared window, base=%p, size=%ld\n", win->base, (*size));
 
+    if (non_contig) {
+        CSP_CALLMPI(JUMP, PMPI_Waitall(Nrequest, requests, MPI_STATUSES_IGNORE));
+        CSPG_DBG_PRINT(" Offsets delivered to local users.\n");
+    }
   fn_exit:
     if (shared_info && shared_info != MPI_INFO_NULL)
         CSP_CALLMPI_EXIT(PMPI_Info_free(&shared_info));
     if (user_bases)
         free(user_bases);
+    if (requests)
+        free(requests);
+    if (stats)
+        free(stats);
     return mpi_errno;
 
   fn_fail:
